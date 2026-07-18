@@ -55,6 +55,23 @@ const en = {
   delete: "Delete",
   delete_confirm: "Delete this unit and all its bookings?",
 
+  alerts_title: "Alerts",
+  alerts_scan: "Scan now",
+  alerts_empty: "No open alerts. All clear!",
+  alert_vacancy_gap: "Vacancy gap",
+  alert_lease_expiry: "Lease expiring",
+  alert_underpriced: "Underpriced",
+  alert_action: "Suggested action",
+  action_vacancy_gap:
+    "Lower the nightly rate or offer a last-minute discount for these dates.",
+  action_lease_expiry:
+    "Contact the tenant about renewal, or relist the unit for short stays.",
+  action_underpriced:
+    "Raise the nightly rate toward the district benchmark.",
+  alert_dismiss: "Dismiss",
+  alert_resolve: "Resolve",
+  days_left: "days left",
+
   nav_pricing: "Pricing",
   pricing_title: "Price suggestions",
   pricing_intro:
@@ -155,6 +172,22 @@ const ka: Record<StringKey, string> = {
   edit: "რედაქტირება",
   delete: "წაშლა",
   delete_confirm: "წაიშალოს ეს ერთეული და მისი ყველა ჯავშანი?",
+
+  alerts_title: "გაფრთხილებები",
+  alerts_scan: "სკანირება ახლა",
+  alerts_empty: "ღია გაფრთხილებები არ არის. ყველაფერი წესრიგშია!",
+  alert_vacancy_gap: "თავისუფალი ფანჯარა",
+  alert_lease_expiry: "იჯარა იწურება",
+  alert_underpriced: "დაბალი ფასი",
+  alert_action: "რეკომენდებული ქმედება",
+  action_vacancy_gap:
+    "დაწიეთ ღამის ტარიფი ან შესთავაზეთ last-minute ფასდაკლება ამ თარიღებისთვის.",
+  action_lease_expiry:
+    "დაუკავშირდით დამქირავებელს განახლებაზე, ან დააბრუნეთ ერთეული მოკლევადიან გაქირავებაში.",
+  action_underpriced: "აწიეთ ღამის ტარიფი უბნის ბენჩმარკისკენ.",
+  alert_dismiss: "დახურვა",
+  alert_resolve: "მოგვარებულია",
+  days_left: "დღე დარჩა",
 
   nav_pricing: "ფასები",
   pricing_title: "ფასების რეკომენდაციები",

@@ -3,6 +3,7 @@
 
 import "dotenv/config";
 import { syncAllUnits } from "../lib/ical/run-sync";
+import { scanAlerts } from "../lib/alerts/scan";
 
 const intervalMinutes = Number(process.env.SYNC_INTERVAL_MINUTES ?? 60);
 
@@ -21,6 +22,15 @@ async function tick() {
     }
   } catch (error) {
     console.error(`[${startedAt}] sync failed:`, error);
+  }
+
+  try {
+    const alerts = await scanAlerts();
+    console.log(
+      `[${startedAt}] alerts: +${alerts.created} created, ${alerts.skipped} already open`,
+    );
+  } catch (error) {
+    console.error(`[${startedAt}] alert scan failed:`, error);
   }
 }
 

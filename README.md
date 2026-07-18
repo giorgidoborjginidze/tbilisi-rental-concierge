@@ -28,8 +28,16 @@ npm run dev                 # http://localhost:3000
 ```
 
 Useful scripts: `npm run db:migrate`, `npm run db:seed`, `npm run db:studio`,
-`npm test` (vitest), `npm run scheduler` (recurring iCal sync, interval set by
-`SYNC_INTERVAL_MINUTES`).
+`npm test` (vitest), `npm run scheduler` (recurring iCal sync + alert scan,
+interval set by `SYNC_INTERVAL_MINUTES`).
+
+## Alerts
+
+The scan job (`POST /api/alerts/scan`, the **Scan now** button on `/alerts`,
+or the scheduler) creates three alert types, each with a suggested action:
+vacancy gaps of 2+ nights in the next 30 days, active leases expiring within
+30 days, and units priced materially below their district benchmark. Alerts
+dedupe on a stable key — dismissed or resolved alerts never reappear.
 
 ## iCal sync
 
@@ -66,7 +74,7 @@ scripts/scheduler.ts  Local recurring job runner (iCal sync)
 lib/analytics/        Occupancy, ADR, RevPAR, revenue math (pure, tested)
 lib/pricing/          Rule-based pricing engine (pure, tested)
 lib/market/           MarketDataSource interface + Db/Mock sources
-lib/alerts/           Vacancy-gap / lease-expiry / underpriced scans   [planned]
+lib/alerts/           Vacancy-gap / lease-expiry / underpriced scan job
 lib/ai/               Claude rationale writer + deterministic stub
 prisma/               Schema, migrations, seed
 ```
@@ -97,8 +105,8 @@ and amount. Market benchmark data is mock behind a pluggable
 5. ✅ Calendar view (per-unit + portfolio) with vacancy-gap & overlap detection
 6. ✅ Analytics (occupancy, ADR, RevPAR, revenue) + dashboard
 7. ✅ Benchmark + rule-based pricing engine with Claude-generated rationale
-8. Alerts job (vacancy gaps, lease expiry, underpriced) + alerts UI
-9. Unit tests for iCal parsing, analytics math, pricing engine
+8. ✅ Alerts job (vacancy gaps, lease expiry, underpriced) + alerts UI
+9. ✅ Unit tests for iCal parsing, calendar math, analytics, and the pricing engine (40 cases)
 
 Out of scope for the MVP (designed for, not built): two-way channel APIs,
 auto-posting to portals, payments/invoicing, ML pricing, and the Phase 2
