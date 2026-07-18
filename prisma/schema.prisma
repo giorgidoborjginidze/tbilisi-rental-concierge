@@ -1,0 +1,138 @@
+// Prisma schema — STR / Aparthotel Operator Tool (Phase 1)
+//
+// Runs on SQLite locally. Kept Postgres-compatible for a later switch:
+// no SQLite-only features; enum-like fields are Strings (documented below);
+// money is Float for SQLite (switch to Decimal when moving to Postgres).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// The account/customer: a professional STR/aparthotel operator.
+model Operator {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  locale    String   @default("en") // "en" | "ka"
+  createdAt DateTime @default(now())
+
+  units  Unit[]
+  alerts Alert[]
+}
+
+// A rentable unit (apartment, aparthotel room, studio...).
+model Unit {
+  id              String   @id @default(cuid())
+  operatorId      String
+  name            String
+  nameKa          String? // Georgian display name
+  city            String   @default("Tbilisi") // "Tbilisi" | "Batumi"
+  district        String // e.g. "Vake", "Vera", "Saburtalo", "Old Town", "Mtatsminda", "Batumi Boulevard"
+  address         String
+  type            String // "apartment" | "aparthotel_room" | "studio" | "house"
+  capacity        Int
+  bedrooms        Int
+  baseNightlyRate Float
+  currency        String   @default("GEL")
+  amenities       Json // string[] of amenity keys
+  channelLinks    Json // { airbnbUrl?, bookingUrl?, icalUrls: string[] }
+  createdAt       DateTime @default(now())
+
+  operator           Operator            @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  bookings           Booking[]
+  leases             Lease[]
+  pricingSuggestions PricingSuggestion[]
+  alerts             Alert[]
+
+  @@index([operatorId])
+  @@index([district])
+}
+
+// A short-term booking, imported from an iCal feed or entered manually.
+// Guest PII kept minimal: guestName is optional (Georgian PDP law / GDPR).
+model Booking {
+  id         String   @id @default(cuid())
+  unitId     String
+  source     String // "airbnb" | "booking" | "direct" | "manual"
+  guestName  String?
+  checkIn    DateTime
+  checkOut   DateTime
+  nights     Int
+  amount     Float?
+  currency   String   @default("GEL")
+  status     String   @default("confirmed") // "confirmed" | "cancelled" | "tentative"
+  externalId String? // UID from the iCal event, used for dedupe
+  importedAt DateTime @default(now())
+
+  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@unique([unitId, source, externalId])
+  @@index([unitId, checkIn])
+}
+
+// A long-stay contract (aparthotel monthly stays / leases).
+model Lease {
+  id          String   @id @default(cuid())
+  unitId      String
+  tenantName  String?
+  startDate   DateTime
+  endDate     DateTime
+  monthlyRent Float
+  currency    String   @default("GEL")
+  status      String   @default("active") // "active" | "ended" | "upcoming"
+  createdAt   DateTime @default(now())
+
+  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@index([unitId, endDate])
+}
+
+// Output of the rule-based pricing engine, one row per unit per date.
+model PricingSuggestion {
+  id            String   @id @default(cuid())
+  unitId        String
+  date          DateTime
+  suggestedRate Float
+  currency      String   @default("GEL")
+  reasons       Json // { factors: {...}, rationale: string }
+  createdAt     DateTime @default(now())
+
+  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@unique([unitId, date])
+}
+
+// Neighborhood ADR / occupancy reference, per district per month.
+// MVP rows are mock data behind the pluggable MarketDataSource interface.
+model MarketBenchmark {
+  id            String @id @default(cuid())
+  district      String
+  month         String // "YYYY-MM"
+  adr           Float
+  occupancyRate Float // 0..1
+  sampleSize    Int
+  source        String @default("mock")
+
+  @@unique([district, month])
+}
+
+// A proactive alert with a suggested action in its payload.
+model Alert {
+  id         String   @id @default(cuid())
+  operatorId String
+  unitId     String?
+  type       String // "vacancy_gap" | "lease_expiry" | "underpriced"
+  payload    Json // type-specific details + { suggestedAction: string }
+  status     String   @default("open") // "open" | "dismissed" | "resolved"
+  createdAt  DateTime @default(now())
+
+  operator Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  unit     Unit?    @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@index([operatorId, status])
+}

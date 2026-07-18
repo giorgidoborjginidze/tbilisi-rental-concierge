@@ -1,1 +1,88 @@
-# tbilisi-rental-concierge
+# STR Operator Dashboard (Phase 1)
+
+Property-operations tool for short-term-rental (STR) and aparthotel operators in
+Georgia (Tbilisi & Batumi). One dashboard for the whole portfolio: units, a
+unified booking calendar synced from Airbnb / Booking.com iCal feeds, occupancy
+and revenue analytics, rule-based price suggestions against district benchmarks,
+and proactive alerts for vacancy gaps and expiring leases.
+
+This app is also the permissioned supply source for a separate future
+guest/renter concierge (Phase 2) — the data model is kept clean and exportable.
+
+## Stack
+
+- **Next.js** (App Router) + **TypeScript** (strict) + **Tailwind CSS v4**
+- **Prisma 7** ORM with **SQLite** locally (via `@prisma/adapter-better-sqlite3`;
+  schema kept Postgres-compatible for later)
+- **Anthropic API** (Claude) for pricing rationales — optional, falls back to a
+  deterministic local stub when `ANTHROPIC_API_KEY` is unset
+
+## Getting started
+
+```bash
+npm install
+cp .env.example .env        # ANTHROPIC_API_KEY is optional
+npx prisma migrate dev      # creates prisma/dev.db and applies migrations
+npx prisma db seed          # loads the sample portfolio (12 units, ~450 bookings)
+npm run dev                 # http://localhost:3000
+```
+
+Useful scripts: `npm run db:migrate`, `npm run db:seed`, `npm run db:studio`.
+
+## Seed data
+
+One sample operator (**Kolkheti Stays**) with 12 units across Tbilisi districts
+(Vake, Vera, Saburtalo, Old Town, Mtatsminda) and Batumi. Each unit has
+bilingual (EN/KA) names, channel links with iCal URLs, several months of mixed
+Airbnb / Booking / direct bookings (Feb–Oct 2026), a few long-stay leases, and
+mock per-district market benchmarks. The seed is deterministic (seeded PRNG)
+and idempotent — re-running it resets the data.
+
+## Project structure
+
+```
+app/                  Next.js App Router pages + API routes
+app/generated/prisma  Generated Prisma client (gitignored)
+lib/db.ts             Prisma client singleton (SQLite adapter)
+lib/ical/             iCal fetch + parse → Bookings (pure, testable)   [planned]
+lib/analytics/        Occupancy, ADR, RevPAR, revenue math             [planned]
+lib/pricing/          Rule-based pricing engine                        [planned]
+lib/market/           MarketDataSource interface + MockSource          [planned]
+lib/alerts/           Vacancy-gap / lease-expiry / underpriced scans   [planned]
+lib/ai/               Claude rationale writer + local stub             [planned]
+lib/i18n/             EN default / KA toggle string map                [planned]
+prisma/               Schema, migrations, seed
+```
+
+The iCal sync, analytics, and pricing modules are kept framework-free and
+independently unit-testable.
+
+## Data model
+
+`Operator` → `Unit` (district, type, capacity, base rate, amenities, channel
+iCal URLs) → `Booking` (source, dates, amount; deduped on
+`unitId + source + externalId`) and `Lease` (long stays). Plus
+`PricingSuggestion`, `MarketBenchmark` (district × month ADR/occupancy, mock
+for the MVP), and `Alert` (`vacancy_gap` | `lease_expiry` | `underpriced`,
+each carrying a suggested action).
+
+Guest PII is minimal by design (Georgian Personal Data Protection Law /
+GDPR-aligned): `guestName` is optional; a booking needs only source, dates,
+and amount. Market benchmark data is mock behind a pluggable
+`MarketDataSource` — no scraping/republishing of third-party listings.
+
+## Roadmap (build order)
+
+1. ✅ Scaffold: Next.js + TS + Tailwind + Prisma + SQLite
+2. ✅ Prisma schema, migration, seed
+3. Operator onboarding + unit management (add/edit units with iCal URLs)
+4. iCal sync module + scheduled job + manual booking entry
+5. Calendar view (per-unit + portfolio) with vacancy-gap & overlap detection
+6. Analytics (occupancy, ADR, RevPAR, revenue) + dashboard
+7. Benchmark + rule-based pricing engine with Claude-generated rationale
+8. Alerts job (vacancy gaps, lease expiry, underpriced) + alerts UI
+9. Unit tests for iCal parsing, analytics math, pricing engine
+
+Out of scope for the MVP (designed for, not built): two-way channel APIs,
+auto-posting to portals, payments/invoicing, ML pricing, and the Phase 2
+guest-facing concierge.
