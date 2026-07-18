@@ -10,6 +10,7 @@ export default async function Nav() {
   const links = [
     { href: "/", label: t(locale, "nav_dashboard") },
     { href: "/units", label: t(locale, "nav_units") },
+    { href: "/calendar", label: t(locale, "nav_calendar") },
   ];
 
   return (

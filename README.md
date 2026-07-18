@@ -60,6 +60,7 @@ app/                  Next.js App Router pages + API routes
 app/generated/prisma  Generated Prisma client (gitignored)
 lib/db.ts             Prisma client singleton (SQLite adapter)
 lib/i18n/             EN default / KA toggle string map
+lib/calendar/         Vacancy-gap + overlap interval math (pure, tested)
 lib/ical/             iCal parse + sync → Bookings (pure core, tested)
 scripts/scheduler.ts  Local recurring job runner (iCal sync)
 lib/analytics/        Occupancy, ADR, RevPAR, revenue math             [planned]
@@ -93,7 +94,7 @@ and amount. Market benchmark data is mock behind a pluggable
 2. ✅ Prisma schema, migration, seed
 3. ✅ Operator onboarding + unit management (add/edit units with iCal URLs)
 4. ✅ iCal sync module + scheduled job + manual booking entry
-5. Calendar view (per-unit + portfolio) with vacancy-gap & overlap detection
+5. ✅ Calendar view (per-unit + portfolio) with vacancy-gap & overlap detection
 6. Analytics (occupancy, ADR, RevPAR, revenue) + dashboard
 7. Benchmark + rule-based pricing engine with Claude-generated rationale
 8. Alerts job (vacancy gaps, lease expiry, underpriced) + alerts UI
