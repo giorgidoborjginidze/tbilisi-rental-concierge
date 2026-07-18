@@ -55,9 +55,22 @@ const en = {
   delete: "Delete",
   delete_confirm: "Delete this unit and all its bookings?",
 
+  sync_now: "Sync calendars",
+  bookings_add: "Add booking",
+  booking_new_title: "New booking",
+  booking_unit: "Unit",
+  booking_source: "Source",
+  source_manual: "Manual",
+  source_direct: "Direct",
+  booking_guest: "Guest name (optional)",
+  booking_check_in: "Check-in",
+  booking_check_out: "Check-out",
+  booking_amount: "Total amount (optional)",
+
   error_required: "Please fill in all required fields.",
   error_invalid_number: "Rates, capacity and bedrooms must be valid numbers.",
   error_email_taken: "An operator with this email already exists.",
+  error_dates: "Check-out must be after check-in.",
 };
 
 const ka: Record<StringKey, string> = {
@@ -113,10 +126,23 @@ const ka: Record<StringKey, string> = {
   delete: "წაშლა",
   delete_confirm: "წაიშალოს ეს ერთეული და მისი ყველა ჯავშანი?",
 
+  sync_now: "კალენდრების სინქრონიზაცია",
+  bookings_add: "ჯავშნის დამატება",
+  booking_new_title: "ახალი ჯავშანი",
+  booking_unit: "ერთეული",
+  booking_source: "წყარო",
+  source_manual: "ხელით",
+  source_direct: "პირდაპირი",
+  booking_guest: "სტუმრის სახელი (არასავალდებულო)",
+  booking_check_in: "შესვლა",
+  booking_check_out: "გასვლა",
+  booking_amount: "სრული თანხა (არასავალდებულო)",
+
   error_required: "გთხოვთ, შეავსოთ ყველა სავალდებულო ველი.",
   error_invalid_number:
     "ტარიფი, ტევადობა და საძინებლების რაოდენობა უნდა იყოს რიცხვები.",
   error_email_taken: "ოპერატორი ამ ელფოსტით უკვე არსებობს.",
+  error_dates: "გასვლის თარიღი შესვლის თარიღის შემდეგ უნდა იყოს.",
 };
 
 export type StringKey = keyof typeof en;

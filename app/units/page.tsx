@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
 import { parseChannelLinks } from "@/lib/types";
+import { syncNow } from "@/lib/bookings/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -20,14 +21,30 @@ export default async function UnitsPage() {
 
   return (
     <main className="mx-auto w-full max-w-5xl p-8">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">{t(locale, "units_title")}</h1>
-        <Link
-          href="/units/new"
-          className="rounded bg-neutral-900 px-4 py-2 text-sm text-white hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900"
-        >
-          {t(locale, "units_add")}
-        </Link>
+        <div className="flex items-center gap-3">
+          <form action={syncNow}>
+            <button
+              type="submit"
+              className="rounded border border-neutral-300 px-4 py-2 text-sm hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+            >
+              {t(locale, "sync_now")}
+            </button>
+          </form>
+          <Link
+            href="/bookings/new"
+            className="rounded border border-neutral-300 px-4 py-2 text-sm hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+          >
+            {t(locale, "bookings_add")}
+          </Link>
+          <Link
+            href="/units/new"
+            className="rounded bg-neutral-900 px-4 py-2 text-sm text-white hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900"
+          >
+            {t(locale, "units_add")}
+          </Link>
+        </div>
       </div>
 
       {units.length === 0 ? (

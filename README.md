@@ -27,7 +27,22 @@ npx prisma db seed          # loads the sample portfolio (12 units, ~450 booking
 npm run dev                 # http://localhost:3000
 ```
 
-Useful scripts: `npm run db:migrate`, `npm run db:seed`, `npm run db:studio`.
+Useful scripts: `npm run db:migrate`, `npm run db:seed`, `npm run db:studio`,
+`npm test` (vitest), `npm run scheduler` (recurring iCal sync, interval set by
+`SYNC_INTERVAL_MINUTES`).
+
+## iCal sync
+
+Each unit stores its channels' iCal export URLs (`/units` → edit). Sync runs
+three ways: the **Sync calendars** button on the units page, `POST /api/sync`
+(cron-friendly; GET works too), or the local scheduler (`npm run scheduler`).
+Feeds are parsed with a dependency-free RFC 5545 parser
+(`lib/ical/parse.ts`), availability blocks ("Not available"/"Blocked"/
+"CLOSED") are skipped, and bookings are deduped by
+`unitId + source + externalId` (feed UID, or the stay window when a feed has
+no UIDs) — re-syncing updates instead of duplicating. Feed errors are
+reported per-feed and never abort the run. Manual/direct bookings can be
+added at `/bookings/new`.
 
 ## Seed data
 
@@ -44,13 +59,14 @@ and idempotent — re-running it resets the data.
 app/                  Next.js App Router pages + API routes
 app/generated/prisma  Generated Prisma client (gitignored)
 lib/db.ts             Prisma client singleton (SQLite adapter)
-lib/ical/             iCal fetch + parse → Bookings (pure, testable)   [planned]
+lib/i18n/             EN default / KA toggle string map
+lib/ical/             iCal parse + sync → Bookings (pure core, tested)
+scripts/scheduler.ts  Local recurring job runner (iCal sync)
 lib/analytics/        Occupancy, ADR, RevPAR, revenue math             [planned]
 lib/pricing/          Rule-based pricing engine                        [planned]
 lib/market/           MarketDataSource interface + MockSource          [planned]
 lib/alerts/           Vacancy-gap / lease-expiry / underpriced scans   [planned]
 lib/ai/               Claude rationale writer + local stub             [planned]
-lib/i18n/             EN default / KA toggle string map                [planned]
 prisma/               Schema, migrations, seed
 ```
 
@@ -75,8 +91,8 @@ and amount. Market benchmark data is mock behind a pluggable
 
 1. ✅ Scaffold: Next.js + TS + Tailwind + Prisma + SQLite
 2. ✅ Prisma schema, migration, seed
-3. Operator onboarding + unit management (add/edit units with iCal URLs)
-4. iCal sync module + scheduled job + manual booking entry
+3. ✅ Operator onboarding + unit management (add/edit units with iCal URLs)
+4. ✅ iCal sync module + scheduled job + manual booking entry
 5. Calendar view (per-unit + portfolio) with vacancy-gap & overlap detection
 6. Analytics (occupancy, ADR, RevPAR, revenue) + dashboard
 7. Benchmark + rule-based pricing engine with Claude-generated rationale
