@@ -27,6 +27,10 @@ npx prisma db seed          # loads the sample portfolio (12 units, ~450 booking
 npm run dev                 # http://localhost:3000
 ```
 
+> **Windows note:** Windows PowerShell 5.1 doesn't support `&&` — run the
+> commands above one per line (use `Copy-Item .env.example .env` for the
+> copy), or upgrade to PowerShell 7+.
+
 Useful scripts: `npm run db:migrate`, `npm run db:seed`, `npm run db:studio`,
 `npm test` (vitest), `npm run scheduler` (recurring iCal sync + alert scan,
 interval set by `SYNC_INTERVAL_MINUTES`).
