@@ -1,4 +1,7 @@
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { getLocale } from "@/lib/i18n/locale";
+import { t, type StringKey } from "@/lib/i18n/strings";
 
 export const dynamic = "force-dynamic";
 
@@ -17,21 +20,14 @@ export default async function Home() {
     prisma.marketBenchmark.count(),
   ]);
 
-  if (!operator) {
-    return (
-      <main className="mx-auto max-w-3xl p-8">
-        <h1 className="text-2xl font-semibold">STR Operator Dashboard</h1>
-        <p className="mt-4 text-neutral-500">
-          No data yet — run <code className="rounded bg-neutral-100 px-1 dark:bg-neutral-800">npx prisma db seed</code> to load the sample portfolio.
-        </p>
-      </main>
-    );
-  }
+  if (!operator) redirect("/onboarding");
+
+  const locale = await getLocale();
 
   return (
-    <main className="mx-auto max-w-5xl p-8">
+    <main className="mx-auto w-full max-w-5xl p-8">
       <header className="mb-8">
-        <h1 className="text-2xl font-semibold">STR Operator Dashboard</h1>
+        <h1 className="text-2xl font-semibold">{t(locale, "appName")}</h1>
         <p className="mt-1 text-neutral-500">
           {operator.name} · {operator.units.length} units · {bookingCount} bookings · {benchmarkCount} benchmark rows
         </p>
@@ -41,13 +37,13 @@ export default async function Home() {
         <table className="w-full text-sm">
           <thead className="bg-neutral-50 text-left dark:bg-neutral-900">
             <tr>
-              <th className="px-4 py-3 font-medium">Unit</th>
-              <th className="px-4 py-3 font-medium">City</th>
-              <th className="px-4 py-3 font-medium">District</th>
-              <th className="px-4 py-3 font-medium">Type</th>
-              <th className="px-4 py-3 font-medium text-right">Base rate</th>
-              <th className="px-4 py-3 font-medium text-right">Bookings</th>
-              <th className="px-4 py-3 font-medium text-right">Leases</th>
+              <th className="px-4 py-3 font-medium">{t(locale, "unit_name")}</th>
+              <th className="px-4 py-3 font-medium">{t(locale, "unit_city")}</th>
+              <th className="px-4 py-3 font-medium">{t(locale, "unit_district")}</th>
+              <th className="px-4 py-3 font-medium">{t(locale, "unit_type")}</th>
+              <th className="px-4 py-3 font-medium text-right">{t(locale, "base_rate_short")}</th>
+              <th className="px-4 py-3 font-medium text-right">{t(locale, "bookings")}</th>
+              <th className="px-4 py-3 font-medium text-right">{t(locale, "leases")}</th>
             </tr>
           </thead>
           <tbody>
@@ -59,7 +55,7 @@ export default async function Home() {
                 </td>
                 <td className="px-4 py-3">{unit.city}</td>
                 <td className="px-4 py-3">{unit.district}</td>
-                <td className="px-4 py-3">{unit.type}</td>
+                <td className="px-4 py-3">{t(locale, `type_${unit.type}` as StringKey)}</td>
                 <td className="px-4 py-3 text-right">
                   {unit.baseNightlyRate} {unit.currency}
                 </td>
