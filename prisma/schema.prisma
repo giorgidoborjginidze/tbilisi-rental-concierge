@@ -1,0 +1,93 @@
+// Prisma schema for the Tbilisi rental concierge.
+//
+// Uses SQLite locally for zero-config startup. The schema is intentionally kept
+// Postgres-compatible (no SQLite-only column types; JSON stored as String) so the
+// datasource can be switched to postgresql:// later without model changes.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// A rental (or sale) property listing ingested from a source adapter.
+model Listing {
+  id           String   @id @default(cuid())
+  source       String // adapter key, e.g. "mock"
+  sourceUrl    String // link back to the original listing (always preserved)
+  type         String // "rent" | "sale"
+  propertyType String // "apartment" | "house" | "studio" | "room" | ...
+  district     String
+  addressApprox String
+  price        Float
+  currency     String   @default("USD")
+  areaSqm      Float?
+  rooms        Int?
+  bedrooms     Int?
+  floor        Int?
+  furnished    Boolean  @default(false)
+  heating      String? // "central" | "gas" | "electric" | "none" | ...
+  petsAllowed  Boolean  @default(false)
+  availableFrom DateTime?
+  postedAt     DateTime @default(now())
+  lastSeenAt   DateTime @default(now())
+  isActive     Boolean  @default(true)
+  rawText      String? // original free-text description (EN)
+  rawTextKa    String? // original free-text description (KA)
+  photos       String   @default("[]") // JSON-encoded string[] (Postgres-compatible)
+
+  matches Match[]
+
+  @@index([type])
+  @@index([district])
+  @@index([price])
+  @@index([isActive])
+  @@index([lastSeenAt])
+}
+
+/// A user's "what I want" — free-text query plus the extracted structured criteria.
+model SearchRequest {
+  id                 String   @id @default(cuid())
+  userEmail          String
+  rawQuery           String
+  language           String   @default("en") // "en" | "ka"
+  structuredCriteria String   @default("{}") // JSON-encoded SearchCriteria
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  matches Match[]
+
+  @@index([userEmail])
+  @@index([isActive])
+}
+
+/// A scored match between a SearchRequest and a Listing.
+model Match {
+  id              String   @id @default(cuid())
+  searchRequestId String
+  listingId       String
+  score           Float
+  reasons         String   @default("[]") // JSON-encoded MatchReason[]
+  notified        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  searchRequest SearchRequest @relation(fields: [searchRequestId], references: [id], onDelete: Cascade)
+  listing       Listing       @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([searchRequestId, listingId])
+  @@index([searchRequestId])
+  @@index([score])
+  @@index([notified])
+}
+
+/// Minimal user record — a simple email identifier is enough for the MVP.
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  locale    String   @default("en")
+  createdAt DateTime @default(now())
+}
