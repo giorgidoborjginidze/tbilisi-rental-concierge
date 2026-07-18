@@ -55,6 +55,15 @@ const en = {
   delete: "Delete",
   delete_confirm: "Delete this unit and all its bookings?",
 
+  kpi_occupancy: "Occupancy",
+  kpi_revenue: "Revenue",
+  this_month: "This month",
+  next_30_occupancy: "Next 30 days occupancy",
+  monthly_title: "By month",
+  per_unit_title: "By unit (this month)",
+  month_col: "Month",
+  nights_sold: "Nights sold",
+
   calendar_all_units: "All units",
   calendar_gaps: "Vacancy gaps",
   calendar_overlaps: "Double bookings",
@@ -136,6 +145,15 @@ const ka: Record<StringKey, string> = {
   edit: "რედაქტირება",
   delete: "წაშლა",
   delete_confirm: "წაიშალოს ეს ერთეული და მისი ყველა ჯავშანი?",
+
+  kpi_occupancy: "დატვირთულობა",
+  kpi_revenue: "შემოსავალი",
+  this_month: "მიმდინარე თვე",
+  next_30_occupancy: "მომდევნო 30 დღის დატვირთულობა",
+  monthly_title: "თვეების მიხედვით",
+  per_unit_title: "ერთეულების მიხედვით (მიმდინარე თვე)",
+  month_col: "თვე",
+  nights_sold: "გაყიდული ღამეები",
 
   calendar_all_units: "ყველა ერთეული",
   calendar_gaps: "თავისუფალი ფანჯრები",

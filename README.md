@@ -63,7 +63,7 @@ lib/i18n/             EN default / KA toggle string map
 lib/calendar/         Vacancy-gap + overlap interval math (pure, tested)
 lib/ical/             iCal parse + sync → Bookings (pure core, tested)
 scripts/scheduler.ts  Local recurring job runner (iCal sync)
-lib/analytics/        Occupancy, ADR, RevPAR, revenue math             [planned]
+lib/analytics/        Occupancy, ADR, RevPAR, revenue math (pure, tested)
 lib/pricing/          Rule-based pricing engine                        [planned]
 lib/market/           MarketDataSource interface + MockSource          [planned]
 lib/alerts/           Vacancy-gap / lease-expiry / underpriced scans   [planned]
@@ -95,7 +95,7 @@ and amount. Market benchmark data is mock behind a pluggable
 3. ✅ Operator onboarding + unit management (add/edit units with iCal URLs)
 4. ✅ iCal sync module + scheduled job + manual booking entry
 5. ✅ Calendar view (per-unit + portfolio) with vacancy-gap & overlap detection
-6. Analytics (occupancy, ADR, RevPAR, revenue) + dashboard
+6. ✅ Analytics (occupancy, ADR, RevPAR, revenue) + dashboard
 7. Benchmark + rule-based pricing engine with Claude-generated rationale
 8. Alerts job (vacancy gaps, lease expiry, underpriced) + alerts UI
 9. Unit tests for iCal parsing, analytics math, pricing engine
