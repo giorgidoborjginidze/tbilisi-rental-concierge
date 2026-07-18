@@ -55,6 +55,16 @@ const en = {
   delete: "Delete",
   delete_confirm: "Delete this unit and all its bookings?",
 
+  nav_pricing: "Pricing",
+  pricing_title: "Price suggestions",
+  pricing_intro:
+    "Rule-based suggestions for the next 14 days: base rate × seasonality × demand, nudged toward the district benchmark.",
+  pricing_date: "Date",
+  pricing_suggested: "Suggested rate",
+  pricing_benchmark: "District ADR",
+  pricing_underpriced: "Underpriced",
+  pricing_rationale: "Rationale",
+
   kpi_occupancy: "Occupancy",
   kpi_revenue: "Revenue",
   this_month: "This month",
@@ -145,6 +155,16 @@ const ka: Record<StringKey, string> = {
   edit: "რედაქტირება",
   delete: "წაშლა",
   delete_confirm: "წაიშალოს ეს ერთეული და მისი ყველა ჯავშანი?",
+
+  nav_pricing: "ფასები",
+  pricing_title: "ფასების რეკომენდაციები",
+  pricing_intro:
+    "წესებზე დაფუძნებული რეკომენდაციები მომდევნო 14 დღისთვის: საბაზო ტარიფი × სეზონურობა × მოთხოვნა, უბნის ბენჩმარკისკენ მიზიდვით.",
+  pricing_date: "თარიღი",
+  pricing_suggested: "რეკომენდებული ტარიფი",
+  pricing_benchmark: "უბნის ADR",
+  pricing_underpriced: "დაბალი ფასი",
+  pricing_rationale: "დასაბუთება",
 
   kpi_occupancy: "დატვირთულობა",
   kpi_revenue: "შემოსავალი",

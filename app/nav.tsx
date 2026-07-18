@@ -11,6 +11,7 @@ export default async function Nav() {
     { href: "/", label: t(locale, "nav_dashboard") },
     { href: "/units", label: t(locale, "nav_units") },
     { href: "/calendar", label: t(locale, "nav_calendar") },
+    { href: "/pricing", label: t(locale, "nav_pricing") },
   ];
 
   return (

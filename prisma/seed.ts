@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { PrismaClient } from "../app/generated/prisma/client";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { seasonalityFactor } from "../lib/pricing/seasonality";
 
 const adapter = new PrismaBetterSqlite3({
   url: process.env.DATABASE_URL ?? "file:./prisma/dev.db",
@@ -30,16 +31,6 @@ const addDays = (date: Date, days: number) =>
 const monthKey = (date: Date) =>
   `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
 
-// Month (1-12) → demand multiplier. Batumi is far more summer-peaked.
-const TBILISI_SEASONALITY: Record<number, number> = {
-  1: 0.85, 2: 0.8, 3: 0.9, 4: 1.0, 5: 1.05, 6: 1.1,
-  7: 1.2, 8: 1.25, 9: 1.1, 10: 1.0, 11: 0.85, 12: 1.05,
-};
-const BATUMI_SEASONALITY: Record<number, number> = {
-  1: 0.6, 2: 0.6, 3: 0.7, 4: 0.85, 5: 1.0, 6: 1.3,
-  7: 1.6, 8: 1.65, 9: 1.2, 10: 0.9, 11: 0.65, 12: 0.75,
-};
-
 const DISTRICTS = [
   { name: "Vake", city: "Tbilisi", baseAdr: 170 },
   { name: "Vera", city: "Tbilisi", baseAdr: 160 },
@@ -48,10 +39,6 @@ const DISTRICTS = [
   { name: "Mtatsminda", city: "Tbilisi", baseAdr: 190 },
   { name: "Batumi Boulevard", city: "Batumi", baseAdr: 150 },
 ];
-
-function seasonality(city: string, month: number): number {
-  return city === "Batumi" ? BATUMI_SEASONALITY[month] : TBILISI_SEASONALITY[month];
-}
 
 interface UnitSpec {
   name: string;
@@ -188,7 +175,7 @@ function generateBookings(
 
   while (cursor < to) {
     const month = cursor.getUTCMonth() + 1;
-    const factor = seasonality(spec.city, month);
+    const factor = seasonalityFactor(spec.city, month);
 
     const nights = randInt(2, 7);
     const checkIn = cursor;
@@ -342,7 +329,7 @@ async function main() {
   let benchmarkCount = 0;
   for (const district of DISTRICTS) {
     for (let month = 1; month <= 12; month++) {
-      const factor = seasonality(district.city, month);
+      const factor = seasonalityFactor(district.city, month);
       await prisma.marketBenchmark.create({
         data: {
           district: district.name,
