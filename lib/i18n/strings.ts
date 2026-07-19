@@ -85,6 +85,12 @@ const en = {
   asset_link_unit: "Linked STR unit (optional)",
   asset_none: "— none —",
   asset_delete_confirm: "Delete this asset and its contracts?",
+  myhome_url: "myhome.ge listing URL",
+  myhome_hint:
+    "Paste this asset's own listing URL from myhome.ge. The status buttons update the status here and open the listing so you can flip it there too.",
+  myhome_open: "Open on myhome.ge",
+  mark_rented: "Rented",
+  mark_vacant: "Vacant",
 
   assets_total_value: "Total estimated value",
   assets_monthly_income: "Monthly income",
@@ -282,6 +288,12 @@ const ka: Record<StringKey, string> = {
   asset_link_unit: "მიბმული STR ერთეული (არასავალდებულო)",
   asset_none: "— არცერთი —",
   asset_delete_confirm: "წაიშალოს აქტივი და მისი ხელშეკრულებები?",
+  myhome_url: "myhome.ge განცხადების ბმული",
+  myhome_hint:
+    "ჩასვით ამ აქტივის საკუთარი განცხადების ბმული myhome.ge-დან. სტატუსის ღილაკები აქ განაახლებს სტატუსს და გახსნის განცხადებას, რომ იქაც შეცვალოთ.",
+  myhome_open: "myhome.ge-ზე გახსნა",
+  mark_rented: "გაქირავებულია",
+  mark_vacant: "თავისუფალია",
 
   assets_total_value: "ჯამური შეფასებული ღირებულება",
   assets_monthly_income: "თვიური შემოსავალი",

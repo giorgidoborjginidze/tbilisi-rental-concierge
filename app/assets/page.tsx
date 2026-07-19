@@ -7,6 +7,7 @@ import { t, type StringKey } from "@/lib/i18n/strings";
 import { proratedRevenue } from "@/lib/analytics/metrics";
 import { estimateMarketRent, getRentBenchmark } from "@/lib/market/rent";
 import IncomeSection from "./income-section";
+import ListingControls from "./listing-controls";
 
 export const dynamic = "force-dynamic";
 
@@ -187,6 +188,19 @@ export default async function AssetsPage() {
                       >
                         {t(locale, `status_${status}` as StringKey)}
                       </span>
+                      {status !== "str" && (
+                        <ListingControls
+                          assetId={asset.id}
+                          status={status}
+                          showButtons={!contract}
+                          myhomeUrl={asset.myhomeUrl}
+                          labels={{
+                            rented: t(locale, "mark_rented"),
+                            vacant: t(locale, "mark_vacant"),
+                            open: t(locale, "myhome_open"),
+                          }}
+                        />
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       {contract ? (

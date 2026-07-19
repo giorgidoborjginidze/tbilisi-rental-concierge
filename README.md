@@ -48,6 +48,21 @@ return 401 without a session (the local scheduler still processes all
 operators directly). The seeded demo account is
 **ops@kolkhetistays.ge / demo1234** (shown on the login page).
 
+## Deployment (Vercel + Neon Postgres)
+
+The build is database-portable: `scripts/prepare-db.mjs` runs before
+`next build` and follows `DATABASE_URL` — a `file:` URL generates the
+SQLite client (local default), a `postgres…` URL derives
+`prisma/schema.postgres.prisma` from the single source schema, generates
+the Postgres client, and (on Vercel) runs `prisma db push` against the
+database. To deploy: import the GitHub repo into Vercel, create a free
+Postgres database (e.g. Neon), and set two environment variables —
+`DATABASE_URL` (the Neon connection string) and optionally
+`ANTHROPIC_API_KEY`. The runtime picks the matching driver adapter
+automatically (`@prisma/adapter-pg` vs better-sqlite3). Note: the seed
+script is for local SQLite demo data; production starts empty and users
+register their own accounts.
+
 ## Personal assets
 
 The **Assets** section tracks the operator's own property portfolio beyond
@@ -56,7 +71,11 @@ assets (vehicles, equipment). Each asset carries a status (rented / vacant /
 personal use / listed — or "On STR" when linked to an STR unit), rental
 contracts (tenant, term, monthly rent, deposit) with expiry alerts, a
 market-rent estimate from mock per-district GEL/m² benchmarks (with a
-below-market flag), and estimated value. The page consolidates monthly
+below-market flag), and estimated value. Each real-estate asset can store
+its own myhome.ge listing URL; one-click Rented/Vacant buttons on the list
+update the status here and open that exact listing in a new tab so it can
+be flipped there too (myhome.ge has no public third-party API — the
+buttons are hidden while an active contract governs the status). The page consolidates monthly
 income: long-term rent from active contracts + STR revenue + manual entries
 (salary, business, dividends).
 

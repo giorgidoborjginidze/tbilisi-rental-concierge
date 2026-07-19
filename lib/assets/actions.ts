@@ -57,6 +57,7 @@ export async function saveAsset(
     currency: str(formData, "currency") || "GEL",
     status,
     unitId,
+    myhomeUrl: str(formData, "myhomeUrl") || null,
     notes: str(formData, "notes") || null,
   };
 
@@ -72,6 +73,20 @@ export async function saveAsset(
 
   revalidatePath("/assets");
   redirect("/assets");
+}
+
+// Quick status flip used by the per-asset listing buttons (rented/vacant).
+export async function setAssetStatus(formData: FormData) {
+  const operator = await requireOperator();
+  const assetId = str(formData, "assetId");
+  const status = str(formData, "status");
+  if (assetId && (status === "rented" || status === "vacant")) {
+    await prisma.asset.updateMany({
+      where: { id: assetId, operatorId: operator.id },
+      data: { status },
+    });
+    revalidatePath("/assets");
+  }
 }
 
 export async function deleteAsset(formData: FormData) {

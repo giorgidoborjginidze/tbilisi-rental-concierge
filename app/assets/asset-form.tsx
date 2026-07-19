@@ -16,6 +16,7 @@ export interface AssetFormValues {
   address: string;
   areaSqm: string;
   estimatedValue: string;
+  myhomeUrl: string;
   status: string;
   unitId: string;
   notes: string;
@@ -130,6 +131,14 @@ export default function AssetForm({
               name="areaSqm" type="number" min={0} step="0.1"
               defaultValue={asset?.areaSqm} className={inputClass}
             />
+          </label>
+          <label className={`${labelClass} sm:col-span-2`}>
+            {labels.myhome_url}
+            <input
+              name="myhomeUrl" type="url" placeholder="https://www.myhome.ge/pr/..."
+              defaultValue={asset?.myhomeUrl} className={inputClass}
+            />
+            <span className="text-xs text-neutral-500">{labels.myhome_hint}</span>
           </label>
         </>
       )}

@@ -379,6 +379,7 @@ async function main() {
       category: "real_estate", type: "apartment",
       city: "Tbilisi", district: "Saburtalo", address: "45 Nutsubidze St",
       areaSqm: 72, estimatedValue: 280000, status: "rented",
+      myhomeUrl: "https://www.myhome.ge/pr/21437651/",
       contract: {
         tenantName: "L. Gelashvili",
         startDate: utc(2025, 9, 1), endDate: utc(2026, 8, 10),
@@ -414,6 +415,7 @@ async function main() {
       category: "real_estate", type: "commercial",
       city: "Tbilisi", district: "Old Town", address: "112 Aghmashenebeli Ave",
       areaSqm: 45, estimatedValue: 320000, status: "listed",
+      myhomeUrl: "https://www.myhome.ge/pr/21437652/",
     },
     {
       name: "Toyota Camry 2021", nameKa: "ტოიოტა კამრი 2021",
