@@ -108,12 +108,12 @@ export default function ListingControls({
 
   if (!showButtons) {
     return links.length > 0 ? (
-      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">{linkChips}</div>
+      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">{linkChips}</div>
     ) : null;
   }
 
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
       <button
         type="button"
         disabled={pending || status === "rented"}

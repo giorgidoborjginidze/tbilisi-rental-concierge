@@ -242,12 +242,15 @@ a:hover {
   background: var(--status-danger-bg);
 }
 .btn-chip {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  box-sizing: border-box;
   cursor: pointer;
   background: transparent;
   border: 1px solid var(--color-border-strong);
   color: var(--color-text-muted);
-  padding: 3px 11px;
+  padding: 0 11px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 500;
@@ -291,9 +294,11 @@ a:hover {
 .brandmark {
   display: inline-flex;
   align-items: center;
+  height: 26px;
+  box-sizing: border-box;
   text-decoration: none;
   border-radius: 999px;
-  padding: 2px 8px 2px 2px;
+  padding: 0 8px 0 3px;
   font-size: 11px;
   line-height: 1;
   font-weight: 700;
@@ -329,7 +334,7 @@ a:hover {
 .brandmark--airbnb {
   background: #ffffff;
   border: 1px solid var(--color-border-strong);
-  padding: 3px 9px 3px 7px;
+  padding: 0 9px 0 7px;
   gap: 4px;
 }
 .brandmark--ss span {
@@ -345,7 +350,7 @@ a:hover {
 }
 .brandmark--booking {
   background: #003580;
-  padding: 3px 10px;
+  padding: 0 10px;
 }
 .brandmark--booking span {
   margin-left: 0;
@@ -451,8 +456,10 @@ td:first-child {
 .badge {
   display: inline-flex;
   align-items: center;
+  height: 26px;
+  box-sizing: border-box;
   gap: 6px;
-  padding: 3px 11px 3px 9px;
+  padding: 0 11px 0 9px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 500;
@@ -758,7 +765,7 @@ td:first-child {
   }
   .card--stack td {
     border: none;
-    padding: 5px 16px;
+    padding: 6px 16px;
   }
   .card--stack td:first-child {
     padding-top: 12px;
@@ -777,7 +784,7 @@ td:first-child {
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--color-text-muted);
-    margin-bottom: 2px;
+    margin-bottom: 4px;
   }
 }
 .demo-hint {
