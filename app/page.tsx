@@ -18,7 +18,7 @@ const DAY_MS = 86_400_000;
 
 const pct = (rate: number) => `${Math.round(rate * 100)}%`;
 const money = (value: number | null, currency: string) =>
-  value == null ? "—" : `${Math.round(value)} ${currency}`;
+  value == null ? "—" : `${Math.round(value).toLocaleString("en-US")} ${currency}`;
 
 function Kpi({ label, value }: { label: string; value: string }) {
   return (

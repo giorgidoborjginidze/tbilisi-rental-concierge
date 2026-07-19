@@ -158,6 +158,8 @@ a:hover {
   display: flex;
   flex-wrap: wrap;
   gap: 2px;
+  flex: 1;
+  margin-left: 12px;
 }
 .nav__links a {
   color: var(--color-text-muted);
@@ -612,6 +614,10 @@ td:first-child {
   .form-grid {
     grid-template-columns: 1fr;
   }
+  /* Spanning items would otherwise force an implicit second column. */
+  .form-grid > * {
+    grid-column: auto;
+  }
 }
 .form-grid > * {
   min-width: 0;
@@ -652,6 +658,84 @@ td:first-child {
 }
 .auth-box {
   max-width: 400px;
+}
+
+/* ========================= MOBILE ========================= */
+@media (max-width: 760px) {
+  main {
+    padding: 22px 14px 64px;
+  }
+  h1 {
+    font-size: 21px;
+  }
+  h2 {
+    margin-top: 28px;
+  }
+
+  /* Nav: brand + action chips on top, links as a swipeable row below. */
+  .nav {
+    flex-wrap: wrap;
+    padding: 10px 14px;
+    row-gap: 8px;
+  }
+  .nav__brand {
+    font-size: 14px;
+  }
+  .nav__meta {
+    margin-left: auto;
+  }
+  .nav__links {
+    order: 3;
+    flex: none;
+    width: 100%;
+    margin-left: 0;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    margin-bottom: -2px;
+  }
+  .nav__links::-webkit-scrollbar {
+    display: none;
+  }
+  .nav__links a {
+    white-space: nowrap;
+    padding: 5px 10px;
+  }
+
+  .kpi-grid,
+  .kpi-grid--5 {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .kpi {
+    padding: 14px 16px;
+  }
+  .kpi__value {
+    font-size: 21px;
+  }
+
+  th {
+    padding: 10px 12px;
+  }
+  td {
+    padding: 12px;
+  }
+
+  .alert-card {
+    flex-direction: column;
+    padding: 14px 16px;
+  }
+  .cal-name {
+    width: 108px;
+    font-size: 12px;
+  }
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger {
+    padding: 8px 14px;
+    font-size: 13px;
+  }
 }
 .demo-hint {
   margin-top: 24px;

@@ -24,17 +24,15 @@ export default async function Nav() {
 
   return (
     <nav className="nav">
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
-        <Link href="/" className="nav__brand">
-          {t(locale, "appName")}
-        </Link>
-        <div className="nav__links">
-          {links.map((link) => (
-            <Link key={link.href} href={link.href}>
-              {link.label}
-            </Link>
-          ))}
-        </div>
+      <Link href="/" className="nav__brand">
+        {t(locale, "appName")}
+      </Link>
+      <div className="nav__links">
+        {links.map((link) => (
+          <Link key={link.href} href={link.href}>
+            {link.label}
+          </Link>
+        ))}
       </div>
       <div className="nav__meta">
         {operator && <span className="hidden sm:inline">{operator.email}</span>}

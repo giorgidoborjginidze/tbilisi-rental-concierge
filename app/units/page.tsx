@@ -23,7 +23,7 @@ export default async function UnitsPage() {
     <main>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <h1 style={{ marginBottom: 0 }}>{t(locale, "units_title")}</h1>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           <form action={syncNow}>
             <button type="submit" className="btn-secondary">
               {t(locale, "sync_now")}

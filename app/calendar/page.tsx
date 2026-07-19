@@ -151,7 +151,7 @@ export default async function CalendarPage({
         <h1 style={{ marginBottom: 0 }}>
           {t(locale, "nav_calendar")} — {monthLabel}
         </h1>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <UnitFilter
             units={allUnits.map((u) => ({ id: u.id, label: displayName(u) }))}
             selected={unitQuery ?? ""}
