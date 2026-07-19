@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ქონების დაფა — მარკეტინგული ვიდეოს სრული ბრიფი</title>
+<style>
+  :root {
+    --primary: #4f46e5; --primary-hover: #4338ca; --accent: #0369a1;
+    --page: #fafafb; --bg: #ffffff; --surface: #f4f5f9;
+    --border: #e8eaf1; --border-strong: #d5d9e6;
+    --text: #191c28; --muted: #666d81;
+    --rented-bg: #e2f7eb; --rented-text: #0f6b42;
+    --vacant-bg: #fdf0cf; --vacant-text: #855708;
+    --str-bg: #e0f1fd; --str-text: #085e8e;
+    --listed-bg: #ece7fd; --listed-text: #5731c5;
+    --danger-bg: #fde3e3; --danger-text: #a41d2c;
+    --cal-airbnb: #fb5d76; --cal-booking: #2fa8ec; --cal-direct: #23c185;
+    --cal-lease: #9a7bf7; --cal-overlap: #d4232f; --cal-vacant: #edeff5;
+    --radius-sm: 6px; --radius-md: 10px; --radius-lg: 16px;
+    --shadow: 0 1px 1px rgba(24,28,55,.03), 0 8px 24px -12px rgba(24,28,55,.1);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: "Noto Sans Georgian", system-ui, "Sylfaen", sans-serif; background: var(--page); color: var(--text); font-size: 14px; line-height: 1.65; }
+  main { max-width: 900px; margin: 0 auto; padding: 40px 24px 100px; }
+  h1 { font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
+  h2 { font-size: 17px; font-weight: 700; margin: 44px 0 12px; padding-top: 20px; border-top: 2px solid var(--primary); color: var(--primary); }
+  h3 { font-size: 14.5px; font-weight: 700; margin: 20px 0 6px; }
+  p, li { font-size: 13.5px; }
+  ul, ol { padding-left: 20px; margin: 6px 0; }
+  .card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); padding: 18px 20px; margin: 12px 0; }
+  .prompt { background: #191c28; color: #eceef5; border-radius: var(--radius-lg); padding: 20px 22px; font-size: 13px; white-space: pre-wrap; margin: 12px 0; }
+  .prompt b { color: #8f97ff; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--bg); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow); margin: 10px 0; }
+  th { padding: 10px 14px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); border-bottom: 1px solid var(--border); text-align: left; }
+  td { padding: 10px 14px; border-top: 1px solid var(--border); vertical-align: top; }
+  .sw { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; margin-right: 6px; border: 1px solid rgba(0,0,0,.08); }
+  .badge { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px 0 8px; border-radius: 999px; font-size: 11.5px; font-weight: 500; border: 1px solid rgba(0,0,0,.06); }
+  .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .8; }
+  .scene { border-left: 4px solid var(--primary); }
+  .scene .t { font-size: 11px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: .08em; }
+  .vo { background: var(--surface); border-radius: var(--radius-md); padding: 10px 14px; margin-top: 8px; font-style: italic; }
+  .vo::before { content: "🎙 განხმოვანება: "; font-style: normal; font-weight: 700; font-size: 11px; color: var(--muted); }
+  .motion { margin-top: 8px; font-size: 12.5px; color: var(--muted); }
+  .motion::before { content: "🎬 მოძრაობა: "; font-weight: 700; color: var(--accent); }
+  .muted { color: var(--muted); }
+  code { background: var(--surface); padding: 1px 6px; border-radius: 5px; font-size: 12px; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>„ქონების დაფა" — მარკეტინგული ვიდეოს სრული ბრიფი</h1>
+<p class="muted" style="margin-top:6px">თვითკმარი მასალა Claude Design-ისთვის · პროდუქტი: ქართული ქონების მართვის SaaS · ვერსია 1.0</p>
+
+<h2>0 · ჩასასმელი პრომპტი (დააკოპირე ეს ბლოკი)</h2>
+<div class="prompt">ააწყვე <b>უმაღლესი ხარისხის მარკეტინგული პროდუქტ-ვიდეო</b> (ანიმირებული, ეკრანების დემონსტრაციით) ამ ბრიფის მიხედვით. ბრიფში არის: ბრენდ-კიტი ზუსტი ფერებით, 10 სცენის storyboard ქართული განხმოვანების ტექსტით, რეალური საჩვენებელი ციფრები და მოძრაობის ენა.
+
+მოთხოვნები:
+• ხანგრძლივობა ≈ 70 წამი; ფორმატი 16:9 (და თუ შესაძლებელია, 9:16 ვერსიაც სოციალურისთვის)
+• ენა: ქართული (ტიტრები + განხმოვანების ტექსტი სცენებიდან)
+• სტილი: 2026 წლის ნათელი, სუფთა SaaS-ესთეტიკა — თეთრი ბარათები რბილი ჩრდილით, ინდიგოს აქცენტი, მომრგვალებული pill-ელემენტები; შრიფტი Noto Sans Georgian
+• ყველა ეკრანი ააწყვე ბრიფის მე-2 სექციის კომპონენტებით და მე-3 სექციის ციფრებით — არაფერი გამოიგონო, ციფრები ზუსტად გადმოიტანე
+• მოძრაობის ენა: ციფრები ითვლება ზემოთ (count-up), კალენდრის უჯრები ჯაჭვურად ივსება, სტატუსები ფერით გადაირთვება, ზრდის ისრები მწვანე ↑ / კლების წითელი ↓
+• დასასრული: ლოგო + „პირველი თვე უფასოა" + CTA ღილაკი
+გააკეთე საუკეთესო, რაც შეგიძლია — ეს პროდუქტის მთავარი სარეკლამო ვიდეოა.</div>
+
+<h2>1 · პროდუქტი ერთი წინადადებით</h2>
+<div class="card">
+  <p><b>„ქონების დაფა"</b> — ერთი პლატფორმა, სადაც ქართველი მესაკუთრე თუ კომპანია მართავს მთელ ქონებას: ბინებს, კომერციულ ფართებს, ავტომობილებს; Airbnb/Booking-ის ჯავშნებს, გრძელვადიან ხელშეკრულებებს, შემოსავალს, ფასებს და ინვესტიციებს — ქართულად, მარტივად, ტელეფონიდანაც.</p>
+  <p style="margin-top:8px"><b>ვისთვის:</b> ბინის მეპატრონე რამდენიმე ობიექტით · STR/აპარტოტელის ოპერატორი · ქონების მართვის კომპანია გუნდით.</p>
+</div>
+
+<h2>2 · ბრენდ-კიტი (ზუსტი მნიშვნელობები — გამოიყენე უცვლელად)</h2>
+<h3>ფერები</h3>
+<table>
+  <tr><th>დანიშნულება</th><th>HEX</th></tr>
+  <tr><td><span class="sw" style="background:#4f46e5"></span>მთავარი (ინდიგო) — ღილაკები, აქცენტები</td><td><code>#4f46e5</code> (hover <code>#4338ca</code>)</td></tr>
+  <tr><td><span class="sw" style="background:#fafafb"></span>გვერდის ფონი / <span class="sw" style="background:#ffffff"></span>ბარათი</td><td><code>#fafafb</code> / <code>#ffffff</code></td></tr>
+  <tr><td><span class="sw" style="background:#191c28"></span>ტექსტი / <span class="sw" style="background:#666d81"></span>მეორადი</td><td><code>#191c28</code> / <code>#666d81</code></td></tr>
+  <tr><td><span class="sw" style="background:#e2f7eb"></span>გაქირავებული (ბეჯი)</td><td>ფონი <code>#e2f7eb</code> · ტექსტი <code>#0f6b42</code></td></tr>
+  <tr><td><span class="sw" style="background:#fdf0cf"></span>თავისუფალი</td><td>ფონი <code>#fdf0cf</code> · ტექსტი <code>#855708</code></td></tr>
+  <tr><td><span class="sw" style="background:#ece7fd"></span>განთავსებული</td><td>ფონი <code>#ece7fd</code> · ტექსტი <code>#5731c5</code></td></tr>
+  <tr><td><span class="sw" style="background:#e0f1fd"></span>STR-ზე</td><td>ფონი <code>#e0f1fd</code> · ტექსტი <code>#085e8e</code></td></tr>
+  <tr><td>კალენდრის უჯრები: <span class="sw" style="background:#fb5d76"></span>Airbnb · <span class="sw" style="background:#2fa8ec"></span>Booking · <span class="sw" style="background:#23c185"></span>პირდაპირი · <span class="sw" style="background:#9a7bf7"></span>იჯარა · <span class="sw" style="background:#d4232f"></span>გადაფარვა · <span class="sw" style="background:#edeff5"></span>ცარიელი</td><td><code>#fb5d76 #2fa8ec #23c185 #9a7bf7 #d4232f #edeff5</code></td></tr>
+</table>
+<h3>ფორმა და ტიპოგრაფია</h3>
+<ul>
+  <li>შრიფტი: <b>Noto Sans Georgian</b>; სათაურები 700, ციფრები tabular</li>
+  <li>მომრგვალება: ბარათები 16px, ღილაკები 10px, ჩიპები/ბეჯები 999px (pill); ჩრდილი რბილი: <code>0 8px 24px -12px rgba(24,28,55,.1)</code></li>
+  <li>სტატუს-ბეჯს წინ უზის ფერადი წერტილი: <span class="badge" style="background:var(--rented-bg);color:var(--rented-text)">გაქირავებული</span> <span class="badge" style="background:var(--vacant-bg);color:var(--vacant-text)">თავისუფალი</span> <span class="badge" style="background:var(--listed-bg);color:var(--listed-text)">განთავსებული</span></li>
+  <li>პლატფორმის ჩიპები (ბრენდირებული): <b>myhome.ge</b> მწვანე #00b057 · <b>myauto.ge</b> ნარინჯისფერი #fd4100 · <b>ss.ge</b> ფერადი ზოლები + მუქი ტექსტი თეთრზე · <b>airbnb</b> წითელი ბელო #ff385c თეთრზე · <b>Booking.com</b> თეთრი წარწერა ლურჯზე #003580</li>
+</ul>
+
+<h2>3 · საჩვენებელი ციფრები (გამოიყენე ზუსტად ესენი)</h2>
+<div class="card">
+  <ul>
+    <li>დემო-კომპანია: <b>Kolkheti Stays</b> · 12 ერთეული (თბილისი + ბათუმი) · 11 პირადი აქტივი</li>
+    <li>დაფის KPI: დატვირთულობა <b>69%</b> · ADR <b>205 GEL</b> · RevPAR <b>142 GEL</b> · თვის შემოსავალი <b>52,787 GEL</b> · მომდევნო 30 დღე <b>70%</b></li>
+    <li>აქტივები: ჯამური ღირებულება <b>3,065,000 GEL</b> · თვიური შემოსავალი <b>62,137 GEL</b> (ქირა 2,550 + STR 52,787 + სხვა 6,800) · გაქირავებულია <b>3/11</b></li>
+    <li>ზრდის დინამიკა თვეებით (შემოსავალი GEL): თებ 21,841 → მარ 25,567 → აპრ 31,335 → მაი 35,054 → ივნ 40,225 → <b>ივლ 52,787</b> → აგვ 62,239 (პროგნოზი)</li>
+    <li>კალკულატორის მაგალითი: ვაკე, 60მ², ფასი 258,000 GEL, ქირა 1,980 GEL → წმინდა შემოსავლიანობა <b>7.6%</b>, ამოგება <b>13.1 წელი</b>; იპოთეკით (11.5%) ქეშ-ფლოუ <b>−1,171 GEL</b> → ვერდიქტი „დეპოზიტი მეტს გამოიმუშავებს"</li>
+    <li>პაკეტები: სტარტი 15₾ (5 აქტივი) · სტანდარტი 29₾ (20) · პრო 49₾ (50) · ბიზნესი S 99₾ (100 აქტივი, 5 თანამშრომელი) · ბიზნესი M 199₾ (300, 15) · <b>პირველი თვე უფასოა</b></li>
+  </ul>
+</div>
+
+<h2>4 · STORYBOARD — 10 სცენა (≈70 წმ)</h2>
+
+<div class="card scene"><div class="t">სცენა 1 · 0–6 წმ · პრობლემა</div>
+  <p>ბნელი ქაოსი: გაფანტული Excel-ფაილები, ქაღალდის ხელშეკრულებები, 4 სხვადასხვა საიტის ლოგო, ტელეფონზე უპასუხო ზარები. ყველაფერი ირხევა და ილექება.</p>
+  <div class="vo">ბინები, ჯავშნები, ხელშეკრულებები, ფასები… ყველაფერი სხვადასხვა ადგილას?</div>
+  <div class="motion">სწრაფი, ნერვიული ჭრები; ბოლოს ყველაფერი ერთი „შესრუტვით" იკრიბება ერთ ნათელ წერტილში.</div>
+</div>
+
+<div class="card scene"><div class="t">სცენა 2 · 6–12 წმ · გადაწყვეტა</div>
+  <p>ნათელი ეკრანი: ლოგო „ქონების დაფა" და სუფთა დაფა იშლება — ინდიგოს ნავიგაცია, თეთრი KPI ბარათები.</p>
+  <div class="vo">გაიცანი „ქონების დაფა" — მთელი შენი ქონება ერთ ეკრანზე, ქართულად.</div>
+  <div class="motion">ბარათები სათითაოდ „ამოტივტივდება" (stagger, 80მწ ინტერვალით), ჩრდილი რბილად ეშვება.</div>
+</div>
+
+<div class="card scene"><div class="t">სცენა 3 · 12–18 წმ · რეგისტრაცია</div>
+  <p>რეგისტრაციის ფორმა: სახელი, ელფოსტა, პაროლი + არჩევანი ორი pill-ღილაკით: „პირადი" / „კომპანია". კურსორი ირჩევს „პირადი"-ს, ღილაკი ინდიგოთი ივსება. ჩნდება ბეჯი „პირველი 30 დღე უფასოა".</p>
+  <div class="vo">დარეგისტრირდი ერთ წუთში — პირველი თვე სრულიად უფასოა.</div>
+  <div class="motion">ველების ავტო-შევსება აკრეფის ეფექტით; „30 დღე უფასო" ბეჯი pop-ეფექტით (scale 0.8→1).</div>
+</div>
+
+<div class="card scene"><div class="t">სცენა 4 · 18–26 წმ · ობიექტების შეყვანა და კალენდარი</div>
+  <p>ერთეულის დამატება: „ვაკის სტუდიო", Airbnb/Booking iCal ბმულების ჩასმა → ღილაკი „სინქრონიზაცია" → კალენდრის ცარიელი ბადე ჯაჭვურად ივსება ფერადი უჯრებით (ვარდისფერი Airbnb, ცისფერი Booking, მწვანე პირდაპირი, იისფერი იჯარა).</p>
+  <div class="vo">ჩასვი Airbnb-სა და Booking-ის ბმულები — ჯავშნები თავად ჩამოდის და ერთ კალენდარში ეწყობა. ორმაგი ჯავშნით აღარასდროს დაიწვები.</div>
+  <div class="motion">უჯრები მარცხნიდან მარჯვნივ ტალღად ივსება (თითო 30მწ); ერთ უჯრაზე წითელი „გადაფარვის" ციმციმი → მაშინვე გაფრთხილების ბარათი ამოდის.</div>
+</div>
+
+<div class="card scene"><div class="t">სცენა 5 · 26–34 წმ · ციფრები იზრდება</div>
+  <p>დაფა: KPI ბარათებში ციფრები ითვლება 0-დან — 69%, 205 GEL, 52,787 GEL. ქვემოთ თვეების ცხრილი შემოსავლის მზარდი სვეტებით: 21,841 → 52,787 → 62,239. მწვანე ისრები ↑.</p>
+  <div class="vo">ხედავ ზუსტად რამდენს გამოიმუშავებ — თვე-თვეზე, ობიექტ-ობიექტზე. ივლისში 52 ათასი, აგვისტოში უკვე 62.</div>
+  <div class="motion">count-up ანიმაცია tabular ციფრებით; ზრდის ბარები ქვემოდან ამოიზრდება; ერთ თვეზე კლების წითელი ↓-ც აჩვენე ერთი წამით — გულწრფელობა ყიდის.</div>
+</div>
+
+<div class="card scene"><div class="t">სცენა 6 · 34–43 წმ · აქტივები და 1-კლიკიანი სტატუსები</div>
+  <p>აქტივების გვერდი: ბინა myhome-ის მწვანე ჩიპით, მანქანა myauto-ს ნარინჯისფერით, ბათუმის ბინა Booking-ის ლურჯით. კურსორი აჭერს „გაქირავებულია" pill-ს → ბეჯი ყვითლიდან („თავისუფალი") მწვანეზე („გაქირავებული") გადაირთვება და პარალელურად პორტალის განცხადება იხსნება.</p>
+  <div class="vo">ბინა, კომერციული ფართი, ავტომობილიც კი — ერთი ღილაკით აღნიშნავ გაქირავებულია თუ თავისუფალი, და პირდაპირ შენს განცხადებაზე გადადიხარ myhome-ზე, ss.ge-ზე თუ myauto-ზე.</div>
+  <div class="motion">ბეჯის ფერი 300მწ-ში გადადის; ბრენდ-ჩიპები ჩამოთვლისას სათითაოდ „აპულსებს".</div>
+</div>
+
+<div class="card scene"><div class="t">სცენა 7 · 43–50 წმ · ხელშეკრულება, ციფრული გასაღები, WhatsApp</div>
+  <p>ხელშეკრულების ბარათი: 1400 GEL · ვადა 10 აგვ 2026. გვერდით 🔑 „კარის კოდი" → ღილაკი „ახალი კოდი" → ციფრები ტრიალებს და ჩერდება <b>483920</b>-ზე → მწვანე WhatsApp ღილაკი აგზავნის კოდს დამქირავებელთან.</p>
+  <div class="vo">ხელშეკრულების ვადებს პლატფორმა ითვლის, კარის ციფრულ კოდს კი ერთი ღილაკით აგენერირებ და WhatsApp-ით უგზავნი სტუმარს.</div>
+  <div class="motion">კოდის ციფრები slot-machine ეფექტით; WhatsApp-ის ბუშტი გაფრინდება ტელეფონის მაკეტისკენ.</div>
+</div>
+
+<div class="card scene"><div class="t">სცენა 8 · 50–58 წმ · საინვესტიციო კალკულატორი</div>
+  <p>კალკულატორი: სლაიდერით ირჩევა „ვაკე · 60მ²" → ფასი 258,000 და ქირა 1,980 თავად ივსება → შედეგები: შემოსავლიანობა 7.6%, ამოგება 13.1 წელი. ჩართავს „იპოთეკას" → ქეშ-ფლოუ წითლდება −1,171 → ამოხტება ბეჯი „დეპოზიტი მეტს გამოიმუშავებს".</p>
+  <div class="vo">ყიდვამდე დათვალე: რა ფასად, რა ქირით, რამდენ წელში ამოიღებ — და ჯობია თუ არა ბანკის დეპოზიტს. ცივი ციფრები, ემოციების გარეშე.</div>
+  <div class="motion">პარამეტრის ყოველ ცვლილებაზე შედეგები მყისვე „გადაითვლება" (ციფრების სწრაფი roll); ვერდიქტის ბეჯი ფერს იცვლის მწვანე↔წითელი.</div>
+</div>
+
+<div class="card scene"><div class="t">სცენა 9 · 58–65 წმ · გუნდი კომპანიებისთვის</div>
+  <p>ბიზნეს-ხედი: მფლობელი აჭერს „თანამშრომლის მოწვევა" → ლინკი კოპირდება → მეორე ტელეფონზე თანამშრომელი ერთვება და საკუთარ ობიექტებს ამატებს → მფლობელის ეკრანზე მრიცხველი იზრდება: წევრები 2/5, აქტივები ჯამურად.</p>
+  <div class="vo">კომპანიებისთვის — გუნდი: თანამშრომლები საკუთარ ობიექტებს აწარმოებენ, შენ კი მთლიან სურათს ხედავ.</div>
+  <div class="motion">ორი მოწყობილობა გვერდიგვერდ (split-screen); მოწვევის ლინკი ისრით გადაფრინდება მეორე ეკრანზე.</div>
+</div>
+
+<div class="card scene"><div class="t">სცენა 10 · 65–72 წმ · პაკეტები + CTA</div>
+  <p>სამი პირადი პაკეტის ბარათი (15₾ / 29₾ / 49₾) + ორი ბიზნეს (99₾ / 199₾); შუაზე დიდი ბეჯი „პირველი თვე უფასოა". ფინალი: ლოგო, ტელეფონისა და ლეპტოპის მაკეტები დაფით, ღილაკი „დაიწყე უფასოდ".</p>
+  <div class="vo">დაიწყე დღესვე — პირველი თვე უფასოა. შენი ქონება. შენი ციფრები. ერთი დაფა.</div>
+  <div class="motion">ბარათები კასკადით შემოდის; CTA ღილაკი ბოლოს მსუბუქად „ამოისუნთქავს" (scale 1→1.04→1, loop).</div>
+</div>
+
+<h2>5 · ძლიერი მხარეები (გამოკვეთე ვიდეოში ვიზუალურად)</h2>
+<table>
+  <tr><th>უპირატესობა</th><th>როგორ აჩვენო</th></tr>
+  <tr><td><b>ერთი დაფა ყველაფრისთვის</b> — STR + გრძელვადიანი + ავტო + შემოსავალი</td><td>სცენა 2/6: ერთ ეკრანზე სხვადასხვა ტიპის ქონება</td></tr>
+  <tr><td><b>ავტომატური სინქრონიზაცია</b> Airbnb/Booking-იდან, ორმაგი ჯავშნის დაჭერა</td><td>სცენა 4: ფერადი კალენდარი + წითელი გადაფარვა</td></tr>
+  <tr><td><b>ქართული ბაზრისთვის</b>: myhome/ss.ge/myauto ჩიპები, ლარი, ქართული ენა</td><td>სცენა 6: ბრენდირებული ჩიპები</td></tr>
+  <tr><td><b>ზრდის ხილვადობა</b> — შემოსავალი/დატვირთულობა თვეებით</td><td>სცენა 5: count-up + მზარდი ბარები</td></tr>
+  <tr><td><b>ჭკვიანი შეხსენებები</b>: ცარიელი ფანჯრები, ვადის გასვლა, დაბალი ფასი</td><td>სცენა 4/7: ამომხტარი ფერადი გაფრთხილებები</td></tr>
+  <tr><td><b>საინვესტიციო კალკულატორი</b> — უნიკალური ფუნქცია ბაზარზე</td><td>სცენა 8: ვერდიქტის ბეჯი</td></tr>
+  <tr><td><b>გუნდები კომპანიებისთვის</b></td><td>სცენა 9: split-screen</td></tr>
+  <tr><td><b>დაბალი ბარიერი</b>: პირველი თვე უფასო, 15₾-დან</td><td>სცენა 3/10: ბეჯი + ფასები</td></tr>
+</table>
+
+<h2>6 · ტექნიკური მოთხოვნები</h2>
+<div class="card">
+  <ul>
+    <li><b>ხანგრძლივობა:</b> ≈70 წმ (მთავარი); სურვილისამებრ 30 წმ შემოკლებული ვერსია სოციალურისთვის</li>
+    <li><b>ფორმატები:</b> 16:9 (YouTube/საიტი) და 9:16 (Reels/TikTok/Stories)</li>
+    <li><b>ტემპი:</b> სცენა 1 სწრაფი/მოუსვენარი → დანარჩენი მშვიდი, თანაბარი; ჭრები ბითზე</li>
+    <li><b>მუსიკა:</b> თანამედროვე, მსუბუქი ელექტრონული, ოპტიმისტური; ბოლო აკორდი CTA-ზე</li>
+    <li><b>ტიტრები:</b> ყველა განხმოვანების ფრაზა ეკრანზეც (ხმის გარეშე ყურებისთვის)</li>
+    <li><b>მოწყობილობები:</b> ლეპტოპისა და ტელეფონის რეალისტური მაკეტები; მობილურ ხედში აქტივები ბარათებადაა დაშლილი (ასეა აპშიც)</li>
+    <li><b>არ გამოიყენო:</b> სტოკ-ფოტოები ადამიანებით; მხოლოდ პროდუქტის UI + აბსტრაქტული ფონები ბრენდის ფერებში</li>
+  </ul>
+</div>
+
+<p class="muted" style="margin-top:40px">ბრიფი მომზადებულია პროდუქტის რეალური UI-სა და საჩვენებელი მონაცემებისგან · ყველა ფერი და ციფრი ზუსტად შეესაბამება აპლიკაციას.</p>
+
+</main>
+</body>
+</html>
