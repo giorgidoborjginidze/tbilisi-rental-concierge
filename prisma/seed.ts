@@ -231,6 +231,10 @@ async function main() {
   // Idempotent re-seed: wipe in FK-safe order.
   await prisma.alert.deleteMany();
   await prisma.pricingSuggestion.deleteMany();
+  await prisma.incomeRecord.deleteMany();
+  await prisma.rentalContract.deleteMany();
+  await prisma.asset.deleteMany();
+  await prisma.rentBenchmark.deleteMany();
   await prisma.booking.deleteMany();
   await prisma.lease.deleteMany();
   await prisma.marketBenchmark.deleteMany();
@@ -344,9 +348,109 @@ async function main() {
     }
   }
 
+  // Long-term rent benchmarks per district per month (GEL/m², mock).
+  const RENT_PER_SQM: Record<string, number> = {
+    Vake: 32, Vera: 30, Saburtalo: 25, "Old Town": 34,
+    Mtatsminda: 33, "Batumi Boulevard": 22,
+  };
+  let rentBenchmarkCount = 0;
+  for (const district of DISTRICTS) {
+    for (let month = 1; month <= 12; month++) {
+      await prisma.rentBenchmark.create({
+        data: {
+          district: district.name,
+          month: monthKey(utc(2026, month, 1)),
+          avgRentPerSqm: RENT_PER_SQM[district.name] + (month >= 6 && month <= 9 ? 1 : 0),
+          sampleSize: randInt(30, 150),
+          source: "mock",
+        },
+      });
+      rentBenchmarkCount += 1;
+    }
+  }
+
+  // Personal assets: real estate and vehicles, some rented out.
+  const vakeUnit = byName("Vake Park View 2BR");
+  const assets = [
+    {
+      name: "Nutsubidze 2BR Apartment", nameKa: "ნუცუბიძის ბინა — 2 საძინებელი",
+      category: "real_estate", type: "apartment",
+      city: "Tbilisi", district: "Saburtalo", address: "45 Nutsubidze St",
+      areaSqm: 72, estimatedValue: 280000, status: "rented",
+      contract: {
+        tenantName: "L. Gelashvili",
+        startDate: utc(2025, 9, 1), endDate: utc(2026, 8, 10),
+        monthlyRent: 1400, deposit: 1400, status: "active",
+      },
+    },
+    {
+      name: "Vake Park View 2BR (STR)", nameKa: "ვაკის პარკის ხედი (STR)",
+      category: "real_estate", type: "apartment",
+      city: "Tbilisi", district: "Vake", address: "12 Ilia Chavchavadze Ave",
+      areaSqm: 85, estimatedValue: 700000, status: "vacant",
+      unitId: vakeUnit.id,
+    },
+    {
+      name: "Tskneti Summer House", nameKa: "წყნეთის აგარაკი",
+      category: "real_estate", type: "house",
+      city: "Tbilisi", district: "Vake", address: "8 Tskneti Highway",
+      areaSqm: 180, estimatedValue: 450000, status: "personal_use",
+    },
+    {
+      name: "Vera Garage", nameKa: "ვერას გარაჟი",
+      category: "real_estate", type: "garage",
+      city: "Tbilisi", district: "Vera", address: "22 Tatishvili St",
+      areaSqm: 18, estimatedValue: 35000, status: "rented",
+      contract: {
+        tenantName: "N. Adeishvili",
+        startDate: utc(2026, 1, 1), endDate: utc(2026, 12, 31),
+        monthlyRent: 250, deposit: null, status: "active",
+      },
+    },
+    {
+      name: "Aghmashenebeli Retail Space", nameKa: "აღმაშენებლის კომერციული ფართი",
+      category: "real_estate", type: "commercial",
+      city: "Tbilisi", district: "Old Town", address: "112 Aghmashenebeli Ave",
+      areaSqm: 45, estimatedValue: 320000, status: "listed",
+    },
+    {
+      name: "Toyota Camry 2021", nameKa: "ტოიოტა კამრი 2021",
+      category: "vehicle", type: "car",
+      status: "personal_use", estimatedValue: 85000,
+    },
+  ];
+  let contractCount = 0;
+  for (const { contract, ...assetData } of assets) {
+    const asset = await prisma.asset.create({
+      data: { ...assetData, operatorId: operator.id, currency: "GEL" },
+    });
+    if (contract) {
+      await prisma.rentalContract.create({
+        data: { ...contract, assetId: asset.id, currency: "GEL" },
+      });
+      contractCount += 1;
+    }
+  }
+
+  // Manual income entries (rent + STR income are derived automatically).
+  const incomes = [
+    { source: "salary", description: "Monthly salary", date: utc(2026, 5, 30), amount: 5000 },
+    { source: "salary", description: "Monthly salary", date: utc(2026, 6, 30), amount: 5000 },
+    { source: "salary", description: "Monthly salary", date: utc(2026, 7, 15), amount: 5000 },
+    { source: "dividend", description: "Annual dividend — KolkhetiCo", date: utc(2026, 6, 15), amount: 3200 },
+    { source: "business", description: "Consulting invoice", date: utc(2026, 7, 8), amount: 1800 },
+  ];
+  for (const income of incomes) {
+    await prisma.incomeRecord.create({
+      data: { ...income, operatorId: operator.id, currency: "GEL" },
+    });
+  }
+
   console.log(
     `Seeded: 1 operator, ${units.length} units, ${bookingCount} bookings, ` +
-      `${leases.length} leases, ${benchmarkCount} benchmark rows.`,
+      `${leases.length} leases, ${benchmarkCount} benchmark rows, ` +
+      `${assets.length} assets, ${contractCount} contracts, ` +
+      `${rentBenchmarkCount} rent benchmarks, ${incomes.length} income records.`,
   );
 }
 

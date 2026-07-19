@@ -144,5 +144,27 @@ export async function scanAlerts(today = new Date()): Promise<ScanResult> {
     }
   }
 
+  // 4. Asset rental contracts expiring within N days.
+  const expiringContracts = await prisma.rentalContract.findMany({
+    where: {
+      status: "active",
+      endDate: { gte: start, lte: leaseWindowEnd },
+    },
+    include: { asset: true },
+  });
+  for (const contract of expiringContracts) {
+    await push(contract.asset.operatorId, null, "contract_expiry", contract.id, {
+      contractId: contract.id,
+      assetId: contract.assetId,
+      assetName: contract.asset.name,
+      endDate: dayStamp(contract.endDate),
+      tenantName: contract.tenantName,
+      monthlyRent: contract.monthlyRent,
+      daysLeft: Math.round(
+        (contract.endDate.getTime() - start.getTime()) / DAY_MS,
+      ),
+    });
+  }
+
   return result;
 }

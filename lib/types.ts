@@ -28,6 +28,30 @@ export const KNOWN_DISTRICTS = [
 export const BOOKING_SOURCES = ["airbnb", "booking", "direct", "manual"] as const;
 export type BookingSource = (typeof BOOKING_SOURCES)[number];
 
+export const ASSET_CATEGORIES = ["real_estate", "vehicle", "other"] as const;
+
+export const ASSET_TYPES: Record<string, readonly string[]> = {
+  real_estate: ["apartment", "house", "commercial", "land", "garage"],
+  vehicle: ["car", "motorcycle", "truck"],
+  other: ["equipment", "other"],
+};
+
+export const ASSET_STATUSES = [
+  "rented",
+  "vacant",
+  "personal_use",
+  "listed",
+] as const;
+
+export const INCOME_SOURCES = [
+  "rent",
+  "str",
+  "salary",
+  "business",
+  "dividend",
+  "other",
+] as const;
+
 export function parseChannelLinks(value: unknown): ChannelLinks {
   const raw = (value ?? {}) as Partial<ChannelLinks>;
   return {

@@ -14,6 +14,8 @@ const TYPE_STYLE: Record<string, string> = {
     "border-sky-200 bg-sky-50 dark:border-sky-900 dark:bg-sky-950",
   underpriced:
     "border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950",
+  contract_expiry:
+    "border-violet-200 bg-violet-50 dark:border-violet-900 dark:bg-violet-950",
 };
 
 interface AlertPayload {
@@ -27,6 +29,9 @@ interface AlertPayload {
   benchmarkAdr?: number;
   suggestedRate?: number;
   baseNightlyRate?: number;
+  assetId?: string;
+  assetName?: string;
+  monthlyRent?: number;
 }
 
 export default async function AlertsPage() {
@@ -51,6 +56,8 @@ export default async function AlertsPage() {
         return `${payload.tenantName ?? "—"} · ${payload.endDate} · ${payload.daysLeft} ${t(locale, "days_left")}`;
       case "underpriced":
         return `${payload.baseNightlyRate} → ${payload.suggestedRate} ${currency} · ADR ${payload.benchmarkAdr} (${payload.month})`;
+      case "contract_expiry":
+        return `${payload.assetName} · ${payload.tenantName ?? "—"} · ${payload.monthlyRent} ${currency} · ${payload.endDate} · ${payload.daysLeft} ${t(locale, "days_left")}`;
       default:
         return "";
     }

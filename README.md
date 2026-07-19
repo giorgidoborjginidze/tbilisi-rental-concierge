@@ -35,12 +35,25 @@ Useful scripts: `npm run db:migrate`, `npm run db:seed`, `npm run db:studio`,
 `npm test` (vitest), `npm run scheduler` (recurring iCal sync + alert scan,
 interval set by `SYNC_INTERVAL_MINUTES`).
 
+## Personal assets
+
+The **Assets** section tracks the operator's own property portfolio beyond
+STR: real estate (apartments, houses, commercial, land, garages) and movable
+assets (vehicles, equipment). Each asset carries a status (rented / vacant /
+personal use / listed — or "On STR" when linked to an STR unit), rental
+contracts (tenant, term, monthly rent, deposit) with expiry alerts, a
+market-rent estimate from mock per-district GEL/m² benchmarks (with a
+below-market flag), and estimated value. The page consolidates monthly
+income: long-term rent from active contracts + STR revenue + manual entries
+(salary, business, dividends).
+
 ## Alerts
 
 The scan job (`POST /api/alerts/scan`, the **Scan now** button on `/alerts`,
 or the scheduler) creates three alert types, each with a suggested action:
-vacancy gaps of 2+ nights in the next 30 days, active leases expiring within
-30 days, and units priced materially below their district benchmark. Alerts
+vacancy gaps of 2+ nights in the next 30 days, active leases and asset
+rental contracts expiring within 30 days, and units priced materially below
+their district benchmark. Alerts
 dedupe on a stable key — dismissed or resolved alerts never reappear.
 
 ## iCal sync
@@ -93,7 +106,7 @@ iCal URLs) → `Booking` (source, dates, amount; deduped on
 `unitId + source + externalId`) and `Lease` (long stays). Plus
 `PricingSuggestion`, `MarketBenchmark` (district × month ADR/occupancy, mock
 for the MVP), and `Alert` (`vacancy_gap` | `lease_expiry` | `underpriced`,
-each carrying a suggested action).
+each carrying a suggested action). Personal assets add `Asset`, `RentalContract`, `IncomeRecord`, and `RentBenchmark` (district × month GEL/m², mock).
 
 Guest PII is minimal by design (Georgian Personal Data Protection Law /
 GDPR-aligned): `guestName` is optional; a booking needs only source, dates,

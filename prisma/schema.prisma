@@ -21,8 +21,10 @@ model Operator {
   locale    String   @default("en") // "en" | "ka"
   createdAt DateTime @default(now())
 
-  units  Unit[]
-  alerts Alert[]
+  units   Unit[]
+  alerts  Alert[]
+  assets  Asset[]
+  incomes IncomeRecord[]
 }
 
 // A rentable unit (apartment, aparthotel room, studio...).
@@ -48,6 +50,7 @@ model Unit {
   leases             Lease[]
   pricingSuggestions PricingSuggestion[]
   alerts             Alert[]
+  asset              Asset?
 
   @@index([operatorId])
   @@index([district])
@@ -115,6 +118,86 @@ model MarketBenchmark {
   month         String // "YYYY-MM"
   adr           Float
   occupancyRate Float // 0..1
+  sampleSize    Int
+  source        String @default("mock")
+
+  @@unique([district, month])
+}
+
+// A personal asset: real estate (apartment, house, commercial, land,
+// garage) or movable property (vehicle, equipment). Tracks status,
+// estimated value, and — via RentalContract — who rents it and until when.
+model Asset {
+  id             String   @id @default(cuid())
+  operatorId     String
+  name           String
+  nameKa         String?
+  category       String // "real_estate" | "vehicle" | "other"
+  type           String // apartment | house | commercial | land | garage | car | equipment | other
+  city           String?
+  district       String?
+  address        String?
+  areaSqm        Float? // real estate only — drives market-rent estimate
+  estimatedValue Float?
+  currency       String   @default("GEL")
+  status         String   @default("personal_use") // "rented" | "vacant" | "personal_use" | "listed"
+  unitId         String?  @unique // optional link to an STR Unit (same property)
+  notes          String?
+  createdAt      DateTime @default(now())
+
+  operator  Operator         @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  unit      Unit?            @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  contracts RentalContract[]
+  incomes   IncomeRecord[]
+
+  @@index([operatorId])
+}
+
+// A long-term rental contract on an asset (apartment lease, car rental...).
+model RentalContract {
+  id          String   @id @default(cuid())
+  assetId     String
+  tenantName  String?
+  startDate   DateTime
+  endDate     DateTime
+  monthlyRent Float
+  currency    String   @default("GEL")
+  deposit     Float?
+  status      String   @default("active") // "active" | "upcoming" | "ended"
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId, endDate])
+}
+
+// A manual income entry (salary, dividend, one-off) — rent and STR income
+// are derived from contracts and bookings; this covers everything else.
+model IncomeRecord {
+  id          String   @id @default(cuid())
+  operatorId  String
+  assetId     String?
+  source      String // "rent" | "str" | "salary" | "business" | "dividend" | "other"
+  description String?
+  date        DateTime
+  amount      Float
+  currency    String   @default("GEL")
+  createdAt   DateTime @default(now())
+
+  operator Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  asset    Asset?   @relation(fields: [assetId], references: [id], onDelete: SetNull)
+
+  @@index([operatorId, date])
+}
+
+// Long-term rent reference per district per month (GEL per m²). Mock for
+// the MVP, same compliance stance as MarketBenchmark.
+model RentBenchmark {
+  id            String @id @default(cuid())
+  district      String
+  month         String // "YYYY-MM"
+  avgRentPerSqm Float
   sampleSize    Int
   source        String @default("mock")
 
