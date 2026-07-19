@@ -613,6 +613,9 @@ td:first-child {
     grid-template-columns: 1fr;
   }
 }
+.form-grid > * {
+  min-width: 0;
+}
 .field {
   display: flex;
   flex-direction: column;
@@ -623,6 +626,8 @@ td:first-child {
 .field input,
 .field select,
 .field textarea {
+  width: 100%;
+  min-width: 0;
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
   padding: 9px 13px;

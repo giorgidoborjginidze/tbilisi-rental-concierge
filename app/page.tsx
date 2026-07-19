@@ -101,6 +101,18 @@ export default async function Home() {
         </p>
       </header>
 
+      {units.length === 0 && (
+        <div className="alert-card" style={{ alignItems: "center" }}>
+          <div className="alert-card__detail" style={{ marginTop: 0 }}>
+            {t(locale, "units_empty")}
+          </div>
+          <Link href="/units/new" className="btn-primary">
+            {t(locale, "units_add")}
+          </Link>
+        </div>
+      )}
+
+      {units.length > 0 && (<>
       <section>
         <h2>{t(locale, "this_month")}</h2>
         <div className="kpi-grid kpi-grid--5">
@@ -195,6 +207,7 @@ export default async function Home() {
           </table>
         </div>
       </section>
+      </>)}
     </main>
   );
 }
