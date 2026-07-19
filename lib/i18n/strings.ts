@@ -101,7 +101,7 @@ const en = {
   mark_rented: "Rented",
   mark_vacant: "Vacant",
 
-  assets_total_value: "Total estimated value",
+  assets_total_value: "Total value",
   assets_monthly_income: "Monthly income",
   assets_rented_count: "Rented",
   income_rent_derived: "Long-term rent",
@@ -109,6 +109,10 @@ const en = {
   income_manual: "Other income (this month)",
 
   contracts_title: "Rental contracts",
+  contracts_col: "Contract",
+  asset_value_col: "Value",
+  income_rent_short: "Rent",
+  income_other_short: "Other",
   contract_add: "Add contract",
   contract_tenant: "Tenant",
   contract_start: "Start date",
@@ -119,7 +123,7 @@ const en = {
   cstatus_active: "Active",
   cstatus_upcoming: "Upcoming",
   cstatus_ended: "Ended",
-  market_rent_est: "Market rent est.",
+  market_rent_est: "Market rent",
   below_market: "below market",
 
   income_title: "Income records",
@@ -263,7 +267,7 @@ const ka: Record<StringKey, string> = {
 
   save: "შენახვა",
   cancel: "გაუქმება",
-  edit: "რედაქტირება",
+  edit: "შეცვლა",
   delete: "წაშლა",
   delete_confirm: "წაიშალოს ეს ერთეული და მისი ყველა ჯავშანი?",
 
@@ -313,7 +317,7 @@ const ka: Record<StringKey, string> = {
   mark_rented: "გაქირავებულია",
   mark_vacant: "თავისუფალია",
 
-  assets_total_value: "ჯამური შეფასებული ღირებულება",
+  assets_total_value: "ჯამური ღირებულება",
   assets_monthly_income: "თვიური შემოსავალი",
   assets_rented_count: "გაქირავებული",
   income_rent_derived: "გრძელვადიანი ქირა",
@@ -321,6 +325,10 @@ const ka: Record<StringKey, string> = {
   income_manual: "სხვა შემოსავალი (მიმდინარე თვე)",
 
   contracts_title: "ქირავნობის ხელშეკრულებები",
+  contracts_col: "ხელშეკრულება",
+  asset_value_col: "ღირებულება",
+  income_rent_short: "ქირა",
+  income_other_short: "სხვა",
   contract_add: "ხელშეკრულების დამატება",
   contract_tenant: "დამქირავებელი",
   contract_start: "დაწყების თარიღი",
@@ -331,7 +339,7 @@ const ka: Record<StringKey, string> = {
   cstatus_active: "მოქმედი",
   cstatus_upcoming: "მომავალი",
   cstatus_ended: "დასრულებული",
-  market_rent_est: "საბაზრო ქირის შეფასება",
+  market_rent_est: "საბაზრო ქირა",
   below_market: "ბაზარზე დაბალი",
 
   income_title: "შემოსავლის ჩანაწერები",

@@ -134,7 +134,7 @@ export default async function AssetsPage() {
         <Kpi
           label={t(locale, "assets_monthly_income")}
           value={money(totalMonthly)}
-          sub={`${t(locale, "income_rent_derived")}: ${money(rentIncome)} · STR: ${money(strIncome)} · ${t(locale, "income_manual")}: ${money(manualIncomeThisMonth)}`}
+          sub={`${t(locale, "income_rent_short")}: ${money(rentIncome)} · STR: ${money(strIncome)} · ${t(locale, "income_other_short")}: ${money(manualIncomeThisMonth)}`}
         />
         <Kpi
           label={t(locale, "assets_rented_count")}
@@ -153,9 +153,9 @@ export default async function AssetsPage() {
                 <th>{t(locale, "unit_name")}</th>
                 <th>{t(locale, "unit_type")}</th>
                 <th>{t(locale, "status_label")}</th>
-                <th>{t(locale, "contracts_title")}</th>
+                <th>{t(locale, "contracts_col")}</th>
                 <th className="num">{t(locale, "market_rent_est")}</th>
-                <th className="num">{t(locale, "asset_value")}</th>
+                <th className="num">{t(locale, "asset_value_col")}</th>
                 <th />
               </tr>
             </thead>
