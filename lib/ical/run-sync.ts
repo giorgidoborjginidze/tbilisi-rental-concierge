@@ -32,8 +32,11 @@ const defaultFetcher: IcalFetcher = async (url) => {
 
 export async function syncAllUnits(
   fetchText: IcalFetcher = defaultFetcher,
+  operatorId?: string,
 ): Promise<FeedSyncResult[]> {
-  const units = await prisma.unit.findMany();
+  const units = await prisma.unit.findMany({
+    where: operatorId ? { operatorId } : undefined,
+  });
   const results: FeedSyncResult[] = [];
 
   for (const unit of units) {

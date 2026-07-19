@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
 import BookingForm from "./booking-form";
@@ -7,8 +8,7 @@ import BookingForm from "./booking-form";
 export const dynamic = "force-dynamic";
 
 export default async function NewBookingPage() {
-  const operator = await prisma.operator.findFirst();
-  if (!operator) redirect("/onboarding");
+  const operator = await requireOperator();
 
   const locale = await getLocale();
   const units = await prisma.unit.findMany({

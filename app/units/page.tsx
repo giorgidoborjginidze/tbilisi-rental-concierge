@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
 import { parseChannelLinks } from "@/lib/types";
@@ -9,8 +10,7 @@ import { syncNow } from "@/lib/bookings/actions";
 export const dynamic = "force-dynamic";
 
 export default async function UnitsPage() {
-  const operator = await prisma.operator.findFirst();
-  if (!operator) redirect("/onboarding");
+  const operator = await requireOperator();
 
   const locale = await getLocale();
   const units = await prisma.unit.findMany({

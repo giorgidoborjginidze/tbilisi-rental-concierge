@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
 import { proratedRevenue } from "@/lib/analytics/metrics";
@@ -28,8 +29,7 @@ function Kpi({ label, value, sub }: { label: string; value: string; sub?: string
 }
 
 export default async function AssetsPage() {
-  const operator = await prisma.operator.findFirst();
-  if (!operator) redirect("/onboarding");
+  const operator = await requireOperator();
 
   const locale = await getLocale();
   const now = new Date();

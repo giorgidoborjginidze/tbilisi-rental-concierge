@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 import {
@@ -29,8 +30,7 @@ function Kpi({ label, value }: { label: string; value: string }) {
 }
 
 export default async function Home() {
-  const operator = await prisma.operator.findFirst();
-  if (!operator) redirect("/onboarding");
+  const operator = await requireOperator();
 
   const locale = await getLocale();
   const now = new Date();

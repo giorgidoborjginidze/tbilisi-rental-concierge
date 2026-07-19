@@ -8,7 +8,11 @@ import {
 import { prisma } from "@/lib/db";
 
 // Everything an AssetForm (client component) needs, resolved server-side.
-export async function assetFormProps(locale: Locale, currentAssetId?: string) {
+export async function assetFormProps(
+  locale: Locale,
+  operatorId: string,
+  currentAssetId?: string,
+) {
   const labelKeys: StringKey[] = [
     "unit_name", "unit_name_ka", "unit_city", "unit_district", "unit_address",
     "unit_type", "asset_category", "status_label", "asset_area", "asset_value",
@@ -31,6 +35,7 @@ export async function assetFormProps(locale: Locale, currentAssetId?: string) {
   // Units available for linking: not linked to another asset.
   const units = await prisma.unit.findMany({
     where: {
+      operatorId,
       OR: [
         { asset: null },
         ...(currentAssetId ? [{ asset: { id: currentAssetId } }] : []),

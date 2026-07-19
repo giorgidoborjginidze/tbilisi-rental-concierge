@@ -35,6 +35,19 @@ Useful scripts: `npm run db:migrate`, `npm run db:seed`, `npm run db:studio`,
 `npm test` (vitest), `npm run scheduler` (recurring iCal sync + alert scan,
 interval set by `SYNC_INTERVAL_MINUTES`).
 
+## Authentication & multi-user
+
+The app is multi-tenant: each operator registers with email + password
+(`/register`), signs in at `/login`, and sees only their own units,
+bookings, assets, alerts, and income. Passwords are hashed with Node's
+built-in scrypt (no native dependencies); sessions are 30-day httpOnly
+cookies backed by a `Session` table storing only the token's SHA-256.
+Every page, server action, and API route is scoped to the signed-in
+operator — cross-tenant record access returns 404, and the cron routes
+return 401 without a session (the local scheduler still processes all
+operators directly). The seeded demo account is
+**ops@kolkhetistays.ge / demo1234** (shown on the login page).
+
 ## Personal assets
 
 The **Assets** section tracks the operator's own property portfolio beyond

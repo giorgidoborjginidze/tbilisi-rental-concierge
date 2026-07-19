@@ -15,16 +15,30 @@ datasource db {
 
 // The account/customer: a professional STR/aparthotel operator.
 model Operator {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  locale    String   @default("en") // "en" | "ka"
-  createdAt DateTime @default(now())
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String? // scrypt "salt:hash"; null only for legacy rows
+  locale       String   @default("en") // "en" | "ka"
+  createdAt    DateTime @default(now())
 
-  units   Unit[]
-  alerts  Alert[]
-  assets  Asset[]
-  incomes IncomeRecord[]
+  units    Unit[]
+  alerts   Alert[]
+  assets   Asset[]
+  incomes  IncomeRecord[]
+  sessions Session[]
+}
+
+// A login session; id is the SHA-256 of the cookie token.
+model Session {
+  id         String   @id
+  operatorId String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  operator Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+
+  @@index([operatorId])
 }
 
 // A rentable unit (apartment, aparthotel room, studio...).

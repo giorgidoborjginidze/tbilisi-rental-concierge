@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
+import { requireOperator } from "@/lib/auth/session";
 import { syncAllUnits } from "@/lib/ical/run-sync";
 import type { FormState } from "@/lib/units/actions";
 
@@ -21,7 +22,10 @@ export async function createBooking(
 
   if (!unitId || !checkInRaw || !checkOutRaw) return { error: "error_required" };
 
-  const unit = await prisma.unit.findUnique({ where: { id: unitId } });
+  const operator = await requireOperator();
+  const unit = await prisma.unit.findFirst({
+    where: { id: unitId, operatorId: operator.id },
+  });
   if (!unit) return { error: "error_required" };
 
   const checkIn = new Date(`${checkInRaw}T00:00:00Z`);
@@ -63,7 +67,8 @@ export async function createBooking(
 }
 
 export async function syncNow() {
-  await syncAllUnits();
+  const operator = await requireOperator();
+  await syncAllUnits(undefined, operator.id);
   revalidatePath("/units");
   revalidatePath("/");
 }

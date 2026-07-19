@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
+import { requireOperator } from "@/lib/auth/session";
 import { ASSET_CATEGORIES, ASSET_STATUSES } from "@/lib/types";
 import type { FormState } from "@/lib/units/actions";
 
@@ -20,8 +21,7 @@ export async function saveAsset(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const operator = await prisma.operator.findFirst();
-  if (!operator) redirect("/onboarding");
+  const operator = await requireOperator();
 
   const assetId = str(formData, "assetId") || null;
   const name = str(formData, "name");
@@ -61,6 +61,10 @@ export async function saveAsset(
   };
 
   if (assetId) {
+    const owned = await prisma.asset.findFirst({
+      where: { id: assetId, operatorId: operator.id },
+    });
+    if (!owned) return { error: "error_required" };
     await prisma.asset.update({ where: { id: assetId }, data });
   } else {
     await prisma.asset.create({ data: { ...data, operatorId: operator.id } });
@@ -71,9 +75,12 @@ export async function saveAsset(
 }
 
 export async function deleteAsset(formData: FormData) {
+  const operator = await requireOperator();
   const assetId = str(formData, "assetId");
   if (assetId) {
-    await prisma.asset.delete({ where: { id: assetId } });
+    await prisma.asset.deleteMany({
+      where: { id: assetId, operatorId: operator.id },
+    });
     revalidatePath("/assets");
   }
   redirect("/assets");
@@ -100,7 +107,10 @@ export async function saveContract(
   const deposit = optionalNumber(formData, "deposit");
   if (Number.isNaN(deposit)) return { error: "error_invalid_number" };
 
-  const asset = await prisma.asset.findUnique({ where: { id: assetId } });
+  const operator = await requireOperator();
+  const asset = await prisma.asset.findFirst({
+    where: { id: assetId, operatorId: operator.id },
+  });
   if (!asset) return { error: "error_required" };
 
   const now = new Date();
@@ -134,10 +144,13 @@ export async function saveContract(
 }
 
 export async function deleteContract(formData: FormData) {
+  const operator = await requireOperator();
   const contractId = str(formData, "contractId");
   const assetId = str(formData, "assetId");
   if (contractId) {
-    await prisma.rentalContract.delete({ where: { id: contractId } });
+    await prisma.rentalContract.deleteMany({
+      where: { id: contractId, asset: { operatorId: operator.id } },
+    });
     revalidatePath("/assets");
     if (assetId) revalidatePath(`/assets/${assetId}/edit`);
   }
@@ -147,8 +160,7 @@ export async function addIncome(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const operator = await prisma.operator.findFirst();
-  if (!operator) redirect("/onboarding");
+  const operator = await requireOperator();
 
   const dateRaw = str(formData, "date");
   const amount = Number(str(formData, "amount"));
@@ -174,9 +186,12 @@ export async function addIncome(
 }
 
 export async function deleteIncome(formData: FormData) {
+  const operator = await requireOperator();
   const incomeId = str(formData, "incomeId");
   if (incomeId) {
-    await prisma.incomeRecord.delete({ where: { id: incomeId } });
+    await prisma.incomeRecord.deleteMany({
+      where: { id: incomeId, operatorId: operator.id },
+    });
     revalidatePath("/assets");
   }
 }

@@ -20,7 +20,10 @@ export interface ScanResult {
 
 const dayStamp = (date: Date) => date.toISOString().slice(0, 10);
 
-export async function scanAlerts(today = new Date()): Promise<ScanResult> {
+export async function scanAlerts(
+  today = new Date(),
+  operatorId?: string,
+): Promise<ScanResult> {
   const start = new Date(
     Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()),
   );
@@ -29,6 +32,7 @@ export async function scanAlerts(today = new Date()): Promise<ScanResult> {
   const month = `${start.getUTCFullYear()}-${String(start.getUTCMonth() + 1).padStart(2, "0")}`;
 
   const units = await prisma.unit.findMany({
+    where: operatorId ? { operatorId } : undefined,
     include: {
       bookings: {
         where: {
@@ -43,7 +47,9 @@ export async function scanAlerts(today = new Date()): Promise<ScanResult> {
 
   // Dedupe against every existing alert regardless of status — a dismissed
   // or resolved alert must not reappear on the next scan.
-  const existingAlerts = await prisma.alert.findMany();
+  const existingAlerts = await prisma.alert.findMany({
+    where: operatorId ? { operatorId } : undefined,
+  });
   const openKeys = new Set(
     existingAlerts.map((alert) => {
       const payload = alert.payload as { key?: string };
@@ -149,6 +155,7 @@ export async function scanAlerts(today = new Date()): Promise<ScanResult> {
     where: {
       status: "active",
       endDate: { gte: start, lte: leaseWindowEnd },
+      ...(operatorId ? { asset: { operatorId } } : {}),
     },
     include: { asset: true },
   });

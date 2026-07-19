@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 import {
@@ -43,8 +44,7 @@ export default async function CalendarPage({
 }: {
   searchParams: Promise<{ month?: string; unit?: string }>;
 }) {
-  const operator = await prisma.operator.findFirst();
-  if (!operator) redirect("/onboarding");
+  const operator = await requireOperator();
 
   const locale = await getLocale();
   const { month: monthQuery, unit: unitQuery } = await searchParams;

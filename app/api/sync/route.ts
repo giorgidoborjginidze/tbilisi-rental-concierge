@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
+import { getSessionOperator } from "@/lib/auth/session";
 import { syncAllUnits } from "@/lib/ical/run-sync";
 
-// Cron-style endpoint: POST (or GET, for simple schedulers) runs a full
-// iCal sync across all units and reports per-feed results.
+// Cron-style endpoint: runs the iCal sync for the logged-in operator's
+// units and reports per-feed results. (The local scheduler syncs all
+// operators directly via the module, without HTTP.)
 async function handle() {
-  const results = await syncAllUnits();
+  const operator = await getSessionOperator();
+  if (!operator) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  const results = await syncAllUnits(undefined, operator.id);
   const summary = {
     feeds: results.length,
     created: results.reduce((sum, r) => sum + r.created, 0),

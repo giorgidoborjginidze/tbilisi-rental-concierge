@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
 import { deleteContract } from "@/lib/assets/actions";
@@ -14,18 +15,17 @@ export default async function EditAssetPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const operator = await prisma.operator.findFirst();
-  if (!operator) redirect("/onboarding");
+  const operator = await requireOperator();
 
   const { id } = await params;
-  const asset = await prisma.asset.findUnique({
-    where: { id },
+  const asset = await prisma.asset.findFirst({
+    where: { id, operatorId: operator.id },
     include: { contracts: { orderBy: { endDate: "desc" } } },
   });
   if (!asset) notFound();
 
   const locale = await getLocale();
-  const props = await assetFormProps(locale, asset.id);
+  const props = await assetFormProps(locale, operator.id, asset.id);
 
   const contractLabelKeys: StringKey[] = [
     "contract_add", "contract_tenant", "contract_start", "contract_end",

@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
+import { requireOperator } from "@/lib/auth/session";
 import { UNIT_TYPES } from "@/lib/types";
 import type { StringKey } from "@/lib/i18n/strings";
 
@@ -11,28 +12,11 @@ export type FormState = { error: StringKey } | null;
 const str = (formData: FormData, key: string) =>
   String(formData.get(key) ?? "").trim();
 
-export async function createOperator(
-  _prev: FormState,
-  formData: FormData,
-): Promise<FormState> {
-  const name = str(formData, "name");
-  const email = str(formData, "email");
-  if (!name || !email) return { error: "error_required" };
-
-  const existing = await prisma.operator.findUnique({ where: { email } });
-  if (existing) return { error: "error_email_taken" };
-
-  await prisma.operator.create({ data: { name, email } });
-  revalidatePath("/", "layout");
-  redirect("/");
-}
-
 export async function saveUnit(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const operator = await prisma.operator.findFirst();
-  if (!operator) redirect("/onboarding");
+  const operator = await requireOperator();
 
   const unitId = str(formData, "unitId") || null;
   const name = str(formData, "name");
@@ -90,6 +74,10 @@ export async function saveUnit(
   };
 
   if (unitId) {
+    const owned = await prisma.unit.findFirst({
+      where: { id: unitId, operatorId: operator.id },
+    });
+    if (!owned) return { error: "error_required" };
     await prisma.unit.update({ where: { id: unitId }, data });
   } else {
     await prisma.unit.create({ data: { ...data, operatorId: operator.id } });
@@ -101,9 +89,12 @@ export async function saveUnit(
 }
 
 export async function deleteUnit(formData: FormData) {
+  const operator = await requireOperator();
   const unitId = str(formData, "unitId");
   if (unitId) {
-    await prisma.unit.delete({ where: { id: unitId } });
+    await prisma.unit.deleteMany({
+      where: { id: unitId, operatorId: operator.id },
+    });
     revalidatePath("/units");
     revalidatePath("/");
   }

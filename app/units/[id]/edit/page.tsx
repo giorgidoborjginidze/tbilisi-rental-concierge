@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 import { parseAmenities, parseChannelLinks } from "@/lib/types";
@@ -13,11 +14,12 @@ export default async function EditUnitPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const operator = await prisma.operator.findFirst();
-  if (!operator) redirect("/onboarding");
+  const operator = await requireOperator();
 
   const { id } = await params;
-  const unit = await prisma.unit.findUnique({ where: { id } });
+  const unit = await prisma.unit.findFirst({
+    where: { id, operatorId: operator.id },
+  });
   if (!unit) notFound();
 
   const locale = await getLocale();

@@ -181,6 +181,18 @@ const en = {
   booking_check_out: "Check-out",
   booking_amount: "Total amount (optional)",
 
+  login_title: "Sign in",
+  login_submit: "Sign in",
+  register_title: "Create account",
+  register_submit: "Create account",
+  password_label: "Password",
+  auth_no_account: "No account yet?",
+  auth_have_account: "Already have an account?",
+  logout: "Sign out",
+  demo_hint: "Demo account: ops@kolkhetistays.ge / demo1234",
+
+  error_password_short: "Password must be at least 8 characters.",
+  error_invalid_credentials: "Incorrect email or password.",
   error_required: "Please fill in all required fields.",
   error_invalid_number: "Rates, capacity and bedrooms must be valid numbers.",
   error_email_taken: "An operator with this email already exists.",
@@ -365,6 +377,18 @@ const ka: Record<StringKey, string> = {
   booking_check_out: "გასვლა",
   booking_amount: "სრული თანხა (არასავალდებულო)",
 
+  login_title: "შესვლა",
+  login_submit: "შესვლა",
+  register_title: "ანგარიშის შექმნა",
+  register_submit: "ანგარიშის შექმნა",
+  password_label: "პაროლი",
+  auth_no_account: "ჯერ არ გაქვთ ანგარიში?",
+  auth_have_account: "უკვე გაქვთ ანგარიში?",
+  logout: "გასვლა",
+  demo_hint: "სადემონსტრაციო ანგარიში: ops@kolkhetistays.ge / demo1234",
+
+  error_password_short: "პაროლი მინიმუმ 8 სიმბოლო უნდა იყოს.",
+  error_invalid_credentials: "ელფოსტა ან პაროლი არასწორია.",
   error_required: "გთხოვთ, შეავსოთ ყველა სავალდებულო ველი.",
   error_invalid_number:
     "ტარიფი, ტევადობა და საძინებლების რაოდენობა უნდა იყოს რიცხვები.",
