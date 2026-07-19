@@ -322,15 +322,32 @@ a:hover {
 .brandmark--myauto {
   background: #fd4100;
 }
-/* Same visual language extended to the other platforms the app links to. */
-.brandmark--ss {
-  background: #2e6bff;
-}
+/* ss.ge / Airbnb / Booking.com mimic each portal's real logo lockup. */
+.brandmark--ss,
 .brandmark--airbnb {
-  background: #ff5a5f;
+  background: #ffffff;
+  border: 1px solid var(--color-border-strong);
+  padding: 3px 9px 3px 7px;
+  gap: 4px;
+}
+.brandmark--ss span {
+  color: #21273a;
+  margin-left: 0;
+  letter-spacing: 0;
+}
+.brandmark--airbnb span {
+  color: #ff385c;
+  margin-left: 0;
+  letter-spacing: 0;
+  text-transform: lowercase;
 }
 .brandmark--booking {
   background: #003580;
+  padding: 3px 10px;
+}
+.brandmark--booking span {
+  margin-left: 0;
+  letter-spacing: 0;
 }
 
 .kpi-grid {

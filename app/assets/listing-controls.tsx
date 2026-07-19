@@ -10,19 +10,64 @@ export interface ListingLink {
   url: string;
 }
 
-// Branded platform chip, exactly as in the approved design:
-// <a class="brandmark brandmark--myhome"><b>myhome</b><span>.ge</span></a>
+// ss.ge stripes glyph (the logo's staggered rainbow bars).
+const SS_STRIPES = [
+  { w: 8, c: "#f43535" },
+  { w: 6, c: "#ff8a00" },
+  { w: 8, c: "#ffc400" },
+  { w: 6, c: "#3fbf2f" },
+  { w: 8, c: "#1e88ff" },
+  { w: 6, c: "#9b30f2" },
+];
+
+// Airbnb bélo, simplified for 12px rendering.
+const BELO_PATH =
+  "M12 2.6c1.1 0 2 .6 2.6 1.7l5.5 11.1c1 2-.4 4.2-2.6 4.2-1 0-2-.5-3-1.4L12 16l-2.5 2.2c-1 .9-2 1.4-3 1.4-2.2 0-3.6-2.2-2.6-4.2L9.4 4.3C10 3.2 10.9 2.6 12 2.6Zm0 4.2c-.9 0-1.7.8-1.7 1.8 0 .6.3 1.4.9 2.4l.8 1.3.8-1.3c.6-1 .9-1.8.9-2.4 0-1-.8-1.8-1.7-1.8Z";
+
+// Branded platform chip. myhome/myauto keep the approved design's
+// two-tone pill; ss/airbnb/booking mimic each portal's real logo.
 export function Brandmark({ link }: { link: ListingLink }) {
+  const shared = {
+    href: link.url,
+    target: "_blank",
+    rel: "noopener noreferrer",
+  } as const;
+
+  if (link.platform === "ss") {
+    return (
+      <a {...shared} className="brandmark brandmark--ss">
+        <svg width="11" height="11" viewBox="0 0 12 12" aria-hidden>
+          {SS_STRIPES.map((bar, i) => (
+            <rect key={i} x={0} y={i * 2} width={bar.w} height={1.4} rx={0.7} fill={bar.c} />
+          ))}
+        </svg>
+        <span>ss.ge</span>
+      </a>
+    );
+  }
+  if (link.platform === "airbnb") {
+    return (
+      <a {...shared} className="brandmark brandmark--airbnb">
+        <svg width="12" height="12" viewBox="0 0 24 24" aria-hidden>
+          <path d={BELO_PATH} fill="#ff385c" fillRule="evenodd" />
+        </svg>
+        <span>airbnb</span>
+      </a>
+    );
+  }
+  if (link.platform === "booking") {
+    return (
+      <a {...shared} className="brandmark brandmark--booking">
+        <span>Booking.com</span>
+      </a>
+    );
+  }
+
   const dot = link.label.indexOf(".");
   const head = dot > 0 ? link.label.slice(0, dot) : link.label;
   const tail = dot > 0 ? link.label.slice(dot) : "";
   return (
-    <a
-      href={link.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={`brandmark brandmark--${link.platform}`}
-    >
+    <a {...shared} className={`brandmark brandmark--${link.platform}`}>
       <b>{head}</b>
       {tail && <span>{tail}</span>}
     </a>
