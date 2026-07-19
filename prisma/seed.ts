@@ -248,6 +248,11 @@ async function main() {
       email: "ops@kolkhetistays.ge",
       passwordHash: hashPassword("demo1234"),
       locale: "en",
+      // Demo account: personal Pro plan (12 units / 11 assets need it).
+      accountType: "personal",
+      plan: "pro",
+      planSetAt: utc(2026, 1, 15),
+      trialEndsAt: utc(2026, 2, 14),
     },
   });
 

@@ -9,9 +9,12 @@ import type { FormState } from "@/lib/units/actions";
 export default function AuthForm({
   mode,
   labels,
+  invite,
 }: {
   mode: "login" | "register";
   labels: Record<string, string>;
+  /** Team invite token (register mode): joins the inviter's company. */
+  invite?: string;
 }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     mode === "login" ? login : register,
@@ -25,6 +28,27 @@ export default function AuthForm({
           {labels.operator_name}
           <input name="name" required />
         </label>
+      )}
+      {mode === "register" && invite && (
+        <>
+          <input type="hidden" name="invite" value={invite} />
+          <p className="demo-hint" style={{ margin: 0 }}>{labels.invited_to_company}</p>
+        </>
+      )}
+      {mode === "register" && !invite && (
+        <div className="field">
+          {labels.account_type}
+          <div className="flex gap-1.5">
+            <label className="btn-chip" style={{ cursor: "pointer" }}>
+              <input type="radio" name="accountType" value="personal" defaultChecked style={{ marginRight: 6 }} />
+              {labels.account_personal}
+            </label>
+            <label className="btn-chip" style={{ cursor: "pointer" }}>
+              <input type="radio" name="accountType" value="business" style={{ marginRight: 6 }} />
+              {labels.account_business}
+            </label>
+          </div>
+        </div>
       )}
       <label className="field">
         {labels.operator_email}

@@ -9,6 +9,8 @@ import type { FormState } from "@/lib/units/actions";
 const str = (formData: FormData, key: string) =>
   String(formData.get(key) ?? "").trim();
 
+const TRIAL_MS = 30 * 86_400_000;
+
 export async function register(
   _prev: FormState,
   formData: FormData,
@@ -16,6 +18,9 @@ export async function register(
   const name = str(formData, "name");
   const email = str(formData, "email").toLowerCase();
   const password = String(formData.get("password") ?? "");
+  const accountType =
+    str(formData, "accountType") === "business" ? "business" : "personal";
+  const inviteToken = str(formData, "invite");
 
   if (!name || !email) return { error: "error_required" };
   if (password.length < 8) return { error: "error_password_short" };
@@ -23,9 +28,39 @@ export async function register(
   const existing = await prisma.operator.findUnique({ where: { email } });
   if (existing) return { error: "error_email_taken" };
 
+  // Team invite: the new account joins the inviting company as a member
+  // (the company's plan and limits apply; no own trial needed).
+  const invite = inviteToken
+    ? await prisma.invite.findUnique({ where: { token: inviteToken } })
+    : null;
+  if (inviteToken && (!invite || invite.usedAt)) {
+    return { error: "error_invite_invalid" };
+  }
+
   const operator = await prisma.operator.create({
-    data: { name, email, passwordHash: hashPassword(password) },
+    data: invite
+      ? {
+          name,
+          email,
+          passwordHash: hashPassword(password),
+          accountType: "business",
+          role: "member",
+          companyId: invite.companyId,
+        }
+      : {
+          name,
+          email,
+          passwordHash: hashPassword(password),
+          accountType,
+          trialEndsAt: new Date(Date.now() + TRIAL_MS),
+        },
   });
+  if (invite) {
+    await prisma.invite.update({
+      where: { id: invite.id },
+      data: { usedAt: new Date() },
+    });
+  }
   await createSession(operator.id);
   redirect("/");
 }

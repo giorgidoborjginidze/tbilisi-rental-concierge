@@ -170,6 +170,48 @@ const en = {
   invest_disclaimer:
     "Approximate estimate based on mock market averages. Not financial advice \u2014 verify prices, rates and costs before investing.",
 
+  nav_billing: "Plan",
+  billing_title: "Plan & subscription",
+  billing_intro:
+    "The first month is free with full access. From the second month, pick the plan that fits your portfolio. Payments launch soon \u2014 until then the selected plan activates immediately.",
+  billing_trial: "Free trial",
+  billing_trial_over:
+    "Your free month is over \u2014 choose a plan to keep adding records.",
+  billing_current: "Current plan",
+  billing_choose: "Choose",
+  billing_chosen: "Selected",
+  billing_member_account:
+    "Your account is part of a company team \u2014 the company's plan applies.",
+  plan_starter: "Starter",
+  plan_standard: "Standard",
+  plan_pro: "Pro",
+  plan_biz_s: "Business S",
+  plan_biz_m: "Business M",
+  per_month: "\u20be/mo",
+  billing_assets: "assets",
+  billing_units: "STR units",
+  billing_members: "team seats",
+  usage_title: "Usage",
+  team_title: "Team",
+  team_invite: "Invite employee",
+  team_invite_hint:
+    "Create an invite and send the link to your employee \u2014 registering through it joins your company, and they can enter the listings they manage.",
+  team_members: "Members",
+  team_pending: "Pending invites",
+  team_remove: "Remove",
+  copy_link: "Copy link",
+  account_type: "Account type",
+  account_personal: "Personal",
+  account_business: "Company",
+  invited_to_company: "You are joining a company team.",
+  error_limit_assets:
+    "Your plan's asset limit is reached \u2014 upgrade on the Plan page.",
+  error_limit_units:
+    "Your plan's unit limit is reached \u2014 upgrade on the Plan page.",
+  error_limit_members: "No free team seats on your plan.",
+  error_owner_only: "Only the account owner can do this.",
+  error_invite_invalid: "This invite link is invalid or already used.",
+
   below_market: "below market",
 
   income_title: "Income records",
@@ -431,6 +473,48 @@ const ka: Record<StringKey, string> = {
   res_verdict_poor: "დეპოზიტი მეტს გამოიმუშავებს",
   invest_disclaimer:
     "მიახლოებითი შეფასება mock საბაზრო საშუალოებით. ეს არ არის ფინანსური რჩევა — ინვესტიციამდე გადაამოწმე ფასები, განაკვეთები და ხარჯები.",
+
+  nav_billing: "პაკეტი",
+  billing_title: "პაკეტი და გამოწერა",
+  billing_intro:
+    "პირველი თვე უფასოა სრული წვდომით. მეორე თვიდან აირჩიე შენს პორტფელზე მორგებული პაკეტი. გადახდები მალე ჩაირთვება — მანამდე არჩეული პაკეტი მაშინვე აქტიურდება.",
+  billing_trial: "უფასო პერიოდი",
+  billing_trial_over:
+    "უფასო თვე დასრულდა — ჩანაწერების დამატების გასაგრძელებლად აირჩიე პაკეტი.",
+  billing_current: "მიმდინარე პაკეტი",
+  billing_choose: "არჩევა",
+  billing_chosen: "არჩეულია",
+  billing_member_account:
+    "შენი ანგარიში კომპანიის გუნდშია — მოქმედებს კომპანიის პაკეტი.",
+  plan_starter: "სტარტი",
+  plan_standard: "სტანდარტი",
+  plan_pro: "პრო",
+  plan_biz_s: "ბიზნესი S",
+  plan_biz_m: "ბიზნესი M",
+  per_month: "₾/თვე",
+  billing_assets: "აქტივი",
+  billing_units: "STR ერთეული",
+  billing_members: "გუნდის წევრი",
+  usage_title: "მოხმარება",
+  team_title: "გუნდი",
+  team_invite: "თანამშრომლის მოწვევა",
+  team_invite_hint:
+    "შექმენი მოწვევა და ლინკი გაუგზავნე თანამშრომელს — ამ ლინკით რეგისტრაცია მას შენს კომპანიაში აერთიანებს და თავის ობიექტებს თვითონ შეიტანს.",
+  team_members: "წევრები",
+  team_pending: "გაგზავნილი მოწვევები",
+  team_remove: "წაშლა",
+  copy_link: "ლინკის კოპირება",
+  account_type: "ანგარიშის ტიპი",
+  account_personal: "პირადი",
+  account_business: "კომპანია",
+  invited_to_company: "შენ უერთდები კომპანიის გუნდს.",
+  error_limit_assets:
+    "პაკეტის აქტივების ლიმიტი ამოიწურა — გაზარდე პაკეტი გვერდზე «პაკეტი».",
+  error_limit_units:
+    "პაკეტის ერთეულების ლიმიტი ამოიწურა — გაზარდე პაკეტი გვერდზე «პაკეტი».",
+  error_limit_members: "პაკეტში თავისუფალი ადგილი აღარ არის.",
+  error_owner_only: "ამის გაკეთება მხოლოდ ანგარიშის მფლობელს შეუძლია.",
+  error_invite_invalid: "მოწვევის ლინკი არასწორია ან უკვე გამოყენებულია.",
 
   below_market: "ბაზარზე დაბალი",
 

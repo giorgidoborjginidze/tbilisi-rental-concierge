@@ -7,7 +7,7 @@ import { requireOperator } from "@/lib/auth/session";
 import { UNIT_TYPES } from "@/lib/types";
 import type { StringKey } from "@/lib/i18n/strings";
 
-export type FormState = { error: StringKey } | null;
+export type FormState = { error: StringKey; ok?: never } | { ok: true; error?: never } | null;
 
 const str = (formData: FormData, key: string) =>
   String(formData.get(key) ?? "").trim();
@@ -80,6 +80,10 @@ export async function saveUnit(
     if (!owned) return { error: "error_required" };
     await prisma.unit.update({ where: { id: unitId }, data });
   } else {
+    const { getBillingContext } = await import("@/lib/billing/context");
+    if (!(await getBillingContext(operator)).canAddUnit) {
+      return { error: "error_limit_units" };
+    }
     await prisma.unit.create({ data: { ...data, operatorId: operator.id } });
   }
 

@@ -64,6 +64,20 @@ automatically (`@prisma/adapter-pg` vs better-sqlite3). Note: the seed
 script is for local SQLite demo data; production starts empty and users
 register their own accounts.
 
+## Plans & teams
+
+Every new account gets a 30-day free trial with top-tier limits. After
+that, a chosen plan's limits apply (payments land in a later stage —
+choosing a plan on `/billing` activates it immediately). Personal tiers:
+Starter 15₾ (5 assets / 3 units), Standard 29₾ (20 / 10), Pro 49₾
+(50 / 30). Company tiers add team seats: Business S 99₾ (100 assets /
+60 units / 5 seats), Business M 199₾ (300 / 200 / 15). Business owners
+invite employees from `/billing` — the invite link
+(`/register?invite=<token>`) joins the new account to the company, the
+employee enters the listings they manage, and all limits are counted
+company-wide. Creating assets/units past the plan limit is blocked with
+an upgrade hint; over-limit records from a downgrade stay visible.
+
 ## Personal assets
 
 The **Assets** section tracks the operator's own property portfolio beyond

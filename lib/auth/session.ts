@@ -34,6 +34,11 @@ export type SessionOperator = {
   name: string;
   email: string;
   locale: string;
+  accountType: string;
+  plan: string | null;
+  trialEndsAt: Date | null;
+  companyId: string | null;
+  role: string;
 };
 
 export async function getSessionOperator(): Promise<SessionOperator | null> {
@@ -44,7 +49,13 @@ export async function getSessionOperator(): Promise<SessionOperator | null> {
   const session = await prisma.session.findUnique({
     where: { id: sha256(token) },
     include: {
-      operator: { select: { id: true, name: true, email: true, locale: true } },
+      operator: {
+        select: {
+          id: true, name: true, email: true, locale: true,
+          accountType: true, plan: true, trialEndsAt: true,
+          companyId: true, role: true,
+        },
+      },
     },
   });
   if (!session) return null;

@@ -22,11 +22,43 @@ model Operator {
   locale       String   @default("en") // "en" | "ka"
   createdAt    DateTime @default(now())
 
+  // Billing: 30-day full-access trial from signup, then a chosen plan.
+  // Payments land in a later stage — choosing a plan activates it.
+  accountType String    @default("personal") // "personal" | "business"
+  plan        String? // "starter" | "standard" | "pro" | "biz_s" | "biz_m"
+  trialEndsAt DateTime?
+  planSetAt   DateTime?
+
+  // Team (business accounts): members belong to an owner's company and
+  // enter their own listings; limits are counted company-wide.
+  companyId String?
+  role      String  @default("owner") // "owner" | "member"
+  company   Operator?  @relation("Team", fields: [companyId], references: [id], onDelete: SetNull)
+  members   Operator[] @relation("Team")
+
   units    Unit[]
   alerts   Alert[]
   assets   Asset[]
   incomes  IncomeRecord[]
   sessions Session[]
+  invites  Invite[]
+
+  @@index([companyId])
+}
+
+// A pending team invitation (business plans). The invite link is
+// /register?invite=<token>; no email sending yet — the owner copies it.
+model Invite {
+  id        String    @id @default(cuid())
+  companyId String
+  email     String
+  token     String    @unique
+  createdAt DateTime  @default(now())
+  usedAt    DateTime?
+
+  company Operator @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
 }
 
 // A login session; id is the SHA-256 of the cookie token.

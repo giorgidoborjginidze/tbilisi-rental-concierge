@@ -7,9 +7,14 @@ import { AUTH_LABEL_KEYS } from "../login/labels";
 
 export const dynamic = "force-dynamic";
 
-export default async function RegisterPage() {
+export default async function RegisterPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ invite?: string }>;
+}) {
   if (await getSessionOperator()) redirect("/");
 
+  const { invite } = await searchParams;
   const locale = await getLocale();
   const labels = Object.fromEntries(
     AUTH_LABEL_KEYS.map((key) => [key, t(locale, key)]),
@@ -20,7 +25,7 @@ export default async function RegisterPage() {
       <section className="auth-box">
       <h1>{t(locale, "register_title")}</h1>
       <p style={{ color: "var(--color-text-muted)" }}>{t(locale, "onboarding_intro")}</p>
-      <AuthForm mode="register" labels={labels} />
+      <AuthForm mode="register" labels={labels} invite={invite} />
       </section>
     </main>
   );

@@ -75,6 +75,10 @@ export async function saveAsset(
     if (!owned) return { error: "error_required" };
     await prisma.asset.update({ where: { id: assetId }, data });
   } else {
+    const { getBillingContext } = await import("@/lib/billing/context");
+    if (!(await getBillingContext(operator)).canAddAsset) {
+      return { error: "error_limit_assets" };
+    }
     await prisma.asset.create({ data: { ...data, operatorId: operator.id } });
   }
 

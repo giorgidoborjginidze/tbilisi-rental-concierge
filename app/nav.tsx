@@ -36,6 +36,11 @@ export default async function Nav() {
       </div>
       <div className="nav__meta">
         {operator && <span className="hidden sm:inline">{operator.email}</span>}
+        {operator && (
+          <Link href="/billing" className="btn-chip">
+            {t(locale, "nav_billing")}
+          </Link>
+        )}
         <form action={toggleLocale}>
           <input type="hidden" name="locale" value={other} />
           <button type="submit" className="btn-chip">
