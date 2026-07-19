@@ -30,7 +30,7 @@ export default function IncomeSection({
     <section className="mt-10">
       <h2 className="mb-3 text-lg font-medium">{t(locale, "income_title")}</h2>
       <div className="grid gap-6 md:grid-cols-2">
-        <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+        <div className="overflow-x-auto rounded-2xl border border-line bg-white shadow-card">
           <table className="w-full text-sm">
             <tbody>
               {incomes.length === 0 ? (

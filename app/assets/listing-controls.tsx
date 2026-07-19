@@ -3,23 +3,28 @@
 import { useTransition } from "react";
 import { setAssetStatus } from "@/lib/assets/actions";
 
+export interface ListingLink {
+  label: string; // "myhome.ge" | "ss.ge" | "myauto.ge" | "Airbnb" | "Booking.com"
+  url: string;
+}
+
 // Per-asset quick status flip. Updates the status here and — when the
-// asset has its own myhome.ge listing — opens that exact listing in a new
-// tab so the operator can flip it there too (myhome.ge has no public API
-// for third-party status updates).
+// asset has its own listings — opens the first one in a new tab so the
+// operator can flip it there too (the Georgian portals have no public
+// third-party APIs). Personal-use assets get neither buttons nor links.
 export default function ListingControls({
   assetId,
   status,
-  myhomeUrl,
+  links,
   showButtons,
   labels,
 }: {
   assetId: string;
   status: string;
-  myhomeUrl: string | null;
+  links: ListingLink[];
   /** False while an active contract governs the status. */
   showButtons: boolean;
-  labels: { rented: string; vacant: string; open: string };
+  labels: { rented: string; vacant: string };
 }) {
   const [pending, startTransition] = useTransition();
 
@@ -30,34 +35,36 @@ export default function ListingControls({
       formData.set("status", next);
       await setAssetStatus(formData);
     });
-    if (myhomeUrl) window.open(myhomeUrl, "_blank", "noopener");
+    if (links[0]) window.open(links[0].url, "_blank", "noopener");
   };
 
   const buttonClass = (active: boolean) =>
     `rounded border px-2 py-0.5 text-xs transition-colors disabled:opacity-50 ${
       active
-        ? "border-neutral-800 bg-neutral-900 text-white dark:border-neutral-100 dark:bg-neutral-100 dark:text-neutral-900"
+        ? "border-primary bg-primary text-white"
         : "border-neutral-300 text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800"
     }`;
 
+  const linkChips = links.map((link) => (
+    <a
+      key={link.label}
+      href={link.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-xs text-accent hover:underline"
+    >
+      {link.label} ↗
+    </a>
+  ));
+
   if (!showButtons) {
-    return myhomeUrl ? (
-      <div className="mt-1.5">
-        <a
-          href={myhomeUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          title={labels.open}
-          className="text-xs text-sky-600 hover:underline dark:text-sky-400"
-        >
-          myhome ↗
-        </a>
-      </div>
+    return links.length > 0 ? (
+      <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">{linkChips}</div>
     ) : null;
   }
 
   return (
-    <div className="mt-1.5 flex items-center gap-1.5">
+    <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
       <button
         type="button"
         disabled={pending || status === "rented"}
@@ -74,17 +81,7 @@ export default function ListingControls({
       >
         {labels.vacant}
       </button>
-      {myhomeUrl && (
-        <a
-          href={myhomeUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          title={labels.open}
-          className="text-xs text-sky-600 hover:underline dark:text-sky-400"
-        >
-          myhome ↗
-        </a>
-      )}
+      {linkChips}
     </div>
   );
 }

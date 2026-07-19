@@ -51,9 +51,9 @@ export default async function PricingPage({
         {selected.baseNightlyRate} {selected.currency}
       </p>
 
-      <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+      <div className="overflow-x-auto rounded-2xl border border-line bg-white shadow-card">
         <table className="w-full text-sm">
-          <thead className="bg-neutral-50 text-left dark:bg-neutral-900">
+          <thead className="bg-surface2 text-left">
             <tr>
               <th className="px-4 py-3 font-medium">{t(locale, "pricing_date")}</th>
               <th className="px-4 py-3 font-medium text-right">
@@ -71,7 +71,7 @@ export default async function PricingPage({
               return (
                 <tr
                   key={row.date.toISOString()}
-                  className="border-t border-neutral-200 dark:border-neutral-800"
+                  className="border-t border-line"
                 >
                   <td className="px-4 py-3">{fmtDay.format(row.date)}</td>
                   <td className="px-4 py-3 text-right">

@@ -28,7 +28,7 @@ export default async function EditAssetPage({
   const props = await assetFormProps(locale, operator.id, asset.id);
 
   const contractLabelKeys: StringKey[] = [
-    "contract_add", "contract_tenant", "contract_start", "contract_end",
+    "contract_add", "contract_tenant", "tenant_phone", "contract_start", "contract_end",
     "contract_rent", "contract_deposit", "asset_notes", "error_required",
     "error_invalid_number", "error_dates", "error_email_taken",
   ];
@@ -58,6 +58,11 @@ export default async function EditAssetPage({
           areaSqm: asset.areaSqm?.toString() ?? "",
           estimatedValue: asset.estimatedValue?.toString() ?? "",
           myhomeUrl: asset.myhomeUrl ?? "",
+          ssUrl: asset.ssUrl ?? "",
+          myautoUrl: asset.myautoUrl ?? "",
+          airbnbUrl: asset.airbnbUrl ?? "",
+          bookingUrl: asset.bookingUrl ?? "",
+          rentalMode: asset.rentalMode,
           status: asset.status,
           unitId: asset.unitId ?? "",
           notes: asset.notes ?? "",
@@ -77,7 +82,8 @@ export default async function EditAssetPage({
                   <span className="font-medium">
                     {contract.monthlyRent} {contract.currency}
                   </span>{" "}
-                  · {contract.tenantName ?? "—"} · {fmtDate.format(contract.startDate)}{" "}
+                  · {contract.tenantName ?? "—"}
+                  {contract.tenantPhone ? ` (${contract.tenantPhone})` : ""} · {fmtDate.format(contract.startDate)}{" "}
                   – {fmtDate.format(contract.endDate)}{" "}
                   <span className="text-xs text-neutral-500">
                     ({t(locale, `cstatus_${contract.status}` as StringKey)})

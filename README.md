@@ -12,6 +12,7 @@ guest/renter concierge (Phase 2) — the data model is kept clean and exportable
 ## Stack
 
 - **Next.js** (App Router) + **TypeScript** (strict) + **Tailwind CSS v4**
+  (2026 light-first design system: indigo primary, soft-shadow cards, Noto Sans Georgian)
 - **Prisma 7** ORM with **SQLite** locally (via `@prisma/adapter-better-sqlite3`;
   schema kept Postgres-compatible for later)
 - **Anthropic API** (Claude) for pricing rationales — optional, falls back to a
@@ -71,11 +72,17 @@ assets (vehicles, equipment). Each asset carries a status (rented / vacant /
 personal use / listed — or "On STR" when linked to an STR unit), rental
 contracts (tenant, term, monthly rent, deposit) with expiry alerts, a
 market-rent estimate from mock per-district GEL/m² benchmarks (with a
-below-market flag), and estimated value. Each real-estate asset can store
-its own myhome.ge listing URL; one-click Rented/Vacant buttons on the list
-update the status here and open that exact listing in a new tab so it can
-be flipped there too (myhome.ge has no public third-party API — the
-buttons are hidden while an active contract governs the status). The page consolidates monthly
+below-market flag), and estimated value. Each asset stores its own listing
+URLs per platform — myhome.ge / ss.ge / Airbnb / Booking.com for real
+estate, myauto.ge for vehicles — plus a long-term vs daily rental mode.
+One-click Rented/Vacant buttons update the status here and open the
+asset's first listing in a new tab (the Georgian portals have no public
+third-party APIs); assets in personal use show no listings or buttons at
+all, and the buttons hide while an active contract governs the status.
+Rentable real-estate assets also carry a digital door key: a one-click
+6-digit code generator with a WhatsApp deep link that prefills the code
+and address to the tenant's phone (from the contract) — no WhatsApp
+Business API required. The page consolidates monthly
 income: long-term rent from active contracts + STR revenue + manual entries
 (salary, business, dividends).
 

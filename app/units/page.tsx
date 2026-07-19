@@ -27,20 +27,20 @@ export default async function UnitsPage() {
           <form action={syncNow}>
             <button
               type="submit"
-              className="rounded border border-neutral-300 px-4 py-2 text-sm hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+              className="rounded border border-line-strong bg-white px-4 py-2 text-sm shadow-card hover:bg-surface2"
             >
               {t(locale, "sync_now")}
             </button>
           </form>
           <Link
             href="/bookings/new"
-            className="rounded border border-neutral-300 px-4 py-2 text-sm hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+            className="rounded border border-line-strong bg-white px-4 py-2 text-sm shadow-card hover:bg-surface2"
           >
             {t(locale, "bookings_add")}
           </Link>
           <Link
             href="/units/new"
-            className="rounded bg-neutral-900 px-4 py-2 text-sm text-white hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900"
+            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white shadow-card hover:bg-primary-dark"
           >
             {t(locale, "units_add")}
           </Link>
@@ -50,9 +50,9 @@ export default async function UnitsPage() {
       {units.length === 0 ? (
         <p className="text-neutral-500">{t(locale, "units_empty")}</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+        <div className="overflow-x-auto rounded-2xl border border-line bg-white shadow-card">
           <table className="w-full text-sm">
-            <thead className="bg-neutral-50 text-left dark:bg-neutral-900">
+            <thead className="bg-surface2 text-left">
               <tr>
                 <th className="px-4 py-3 font-medium">{t(locale, "unit_name")}</th>
                 <th className="px-4 py-3 font-medium">{t(locale, "unit_district")}</th>
@@ -71,7 +71,7 @@ export default async function UnitsPage() {
                 return (
                   <tr
                     key={unit.id}
-                    className="border-t border-neutral-200 dark:border-neutral-800"
+                    className="border-t border-line"
                   >
                     <td className="px-4 py-3">
                       <div>{displayName}</div>
@@ -93,7 +93,7 @@ export default async function UnitsPage() {
                     <td className="px-4 py-3 text-right">
                       <Link
                         href={`/units/${unit.id}/edit`}
-                        className="text-blue-600 hover:underline dark:text-blue-400"
+                        className="text-primary hover:underline"
                       >
                         {t(locale, "edit")}
                       </Link>

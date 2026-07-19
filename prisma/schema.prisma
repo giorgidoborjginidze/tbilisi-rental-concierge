@@ -97,6 +97,7 @@ model Lease {
   id          String   @id @default(cuid())
   unitId      String
   tenantName  String?
+  tenantPhone String? // for WhatsApp (door codes, notifications)
   startDate   DateTime
   endDate     DateTime
   monthlyRent Float
@@ -155,8 +156,18 @@ model Asset {
   estimatedValue Float?
   currency       String   @default("GEL")
   status         String   @default("personal_use") // "rented" | "vacant" | "personal_use" | "listed"
+  rentalMode     String   @default("long_term") // "long_term" | "daily"
   unitId         String?  @unique // optional link to an STR Unit (same property)
-  myhomeUrl      String? // this asset's own listing on myhome.ge
+  // Per-platform listing URLs for this asset's own announcements.
+  // Real estate: myhome/ss/airbnb/booking; vehicles: myauto.
+  myhomeUrl      String?
+  ssUrl          String?
+  myautoUrl      String?
+  airbnbUrl      String?
+  bookingUrl     String?
+  // Digital door key (daily rentals / handovers), sent via WhatsApp.
+  doorCode            String?
+  doorCodeGeneratedAt DateTime?
   notes          String?
   createdAt      DateTime @default(now())
 
@@ -173,6 +184,7 @@ model RentalContract {
   id          String   @id @default(cuid())
   assetId     String
   tenantName  String?
+  tenantPhone String? // for WhatsApp (door codes, notifications)
   startDate   DateTime
   endDate     DateTime
   monthlyRent Float

@@ -374,6 +374,7 @@ async function main() {
   // Personal assets: real estate and vehicles, some rented out.
   const vakeUnit = byName("Vake Park View 2BR");
   const assets = [
+    // 1) Long-term rented apartment, listed on myhome.ge
     {
       name: "Nutsubidze 2BR Apartment", nameKa: "ნუცუბიძის ბინა — 2 საძინებელი",
       category: "real_estate", type: "apartment",
@@ -381,46 +382,101 @@ async function main() {
       areaSqm: 72, estimatedValue: 280000, status: "rented",
       myhomeUrl: "https://www.myhome.ge/pr/21437651/",
       contract: {
-        tenantName: "L. Gelashvili",
+        tenantName: "L. Gelashvili", tenantPhone: "+995 599 11 22 33",
         startDate: utc(2025, 9, 1), endDate: utc(2026, 8, 10),
         monthlyRent: 1400, deposit: 1400, status: "active",
       },
     },
+    // 2) Commercial space listed on ss.ge
     {
-      name: "Vake Park View 2BR (STR)", nameKa: "ვაკის პარკის ხედი (STR)",
-      category: "real_estate", type: "apartment",
-      city: "Tbilisi", district: "Vake", address: "12 Ilia Chavchavadze Ave",
-      areaSqm: 85, estimatedValue: 700000, status: "vacant",
-      unitId: vakeUnit.id,
+      name: "Aghmashenebeli Retail Space", nameKa: "აღმაშენებლის კომერციული ფართი",
+      category: "real_estate", type: "commercial",
+      city: "Tbilisi", district: "Old Town", address: "112 Aghmashenebeli Ave",
+      areaSqm: 45, estimatedValue: 320000, status: "listed",
+      ssUrl: "https://home.ss.ge/ka/udzravi-qoneba/21437652",
     },
+    // 3) House listed on Airbnb
+    {
+      name: "Didi Dighomi House", nameKa: "დიდი დიღმის სახლი",
+      category: "real_estate", type: "house",
+      city: "Tbilisi", district: "Saburtalo", address: "7 Petre Kavtaradze St",
+      areaSqm: 140, estimatedValue: 390000, status: "listed",
+      airbnbUrl: "https://www.airbnb.com/rooms/41120099",
+    },
+    // 4) Apartment listed on Booking.com
+    {
+      name: "Batumi Seaside 2BR", nameKa: "ბათუმის სანაპიროს ბინა",
+      category: "real_estate", type: "apartment",
+      city: "Batumi", district: "Batumi Boulevard", address: "5 Seaside St",
+      areaSqm: 68, estimatedValue: 260000, status: "listed",
+      bookingUrl: "https://www.booking.com/hotel/ge/batumi-seaside-2br.html",
+    },
+    // 5) One asset on three platforms at once, up for rent
+    {
+      name: "Vera Sunny 1BR", nameKa: "ვერას მზიანი ბინა",
+      category: "real_estate", type: "apartment",
+      city: "Tbilisi", district: "Vera", address: "14 Kiacheli St",
+      areaSqm: 55, estimatedValue: 240000, status: "listed",
+      myhomeUrl: "https://www.myhome.ge/pr/21437653/",
+      ssUrl: "https://home.ss.ge/ka/udzravi-qoneba/21437653",
+      airbnbUrl: "https://www.airbnb.com/rooms/41120098",
+    },
+    // 6) Daily-rental studio with a seeded door code
+    {
+      name: "Old Town Daily Studio", nameKa: "ძველი ქალაქის დღიური სტუდიო",
+      category: "real_estate", type: "apartment",
+      city: "Tbilisi", district: "Old Town", address: "6 Shardeni St",
+      areaSqm: 38, estimatedValue: 210000, status: "vacant",
+      rentalMode: "daily",
+      myhomeUrl: "https://www.myhome.ge/pr/21437654/",
+      airbnbUrl: "https://www.airbnb.com/rooms/41120097",
+      doorCode: "483920", doorCodeGeneratedAt: utc(2026, 7, 15),
+    },
+    // 7) Personal use — no listings by design
     {
       name: "Tskneti Summer House", nameKa: "წყნეთის აგარაკი",
       category: "real_estate", type: "house",
       city: "Tbilisi", district: "Vake", address: "8 Tskneti Highway",
       areaSqm: 180, estimatedValue: 450000, status: "personal_use",
     },
+    // 8) Linked to an STR unit
+    {
+      name: "Vake Park View 2BR (STR)", nameKa: "ვაკის პარკის ხედი (STR)",
+      category: "real_estate", type: "apartment",
+      city: "Tbilisi", district: "Vake", address: "12 Ilia Chavchavadze Ave",
+      areaSqm: 85, estimatedValue: 700000, status: "vacant",
+      unitId: vakeUnit.id,
+      airbnbUrl: "https://www.airbnb.com/rooms/41120001",
+    },
+    // 9) Rented garage
     {
       name: "Vera Garage", nameKa: "ვერას გარაჟი",
       category: "real_estate", type: "garage",
       city: "Tbilisi", district: "Vera", address: "22 Tatishvili St",
       areaSqm: 18, estimatedValue: 35000, status: "rented",
       contract: {
-        tenantName: "N. Adeishvili",
+        tenantName: "N. Adeishvili", tenantPhone: null,
         startDate: utc(2026, 1, 1), endDate: utc(2026, 12, 31),
         monthlyRent: 250, deposit: null, status: "active",
       },
     },
-    {
-      name: "Aghmashenebeli Retail Space", nameKa: "აღმაშენებლის კომერციული ფართი",
-      category: "real_estate", type: "commercial",
-      city: "Tbilisi", district: "Old Town", address: "112 Aghmashenebeli Ave",
-      areaSqm: 45, estimatedValue: 320000, status: "listed",
-      myhomeUrl: "https://www.myhome.ge/pr/21437652/",
-    },
+    // 10) Personal car — no listings by design
     {
       name: "Toyota Camry 2021", nameKa: "ტოიოტა კამრი 2021",
       category: "vehicle", type: "car",
       status: "personal_use", estimatedValue: 85000,
+    },
+    // 11) Rented-out car listed on myauto.ge
+    {
+      name: "Kia Sportage 2022", nameKa: "კია სპორტაჯი 2022",
+      category: "vehicle", type: "car",
+      status: "rented", estimatedValue: 95000,
+      myautoUrl: "https://www.myauto.ge/ka/pr/118234567",
+      contract: {
+        tenantName: "G. Tsiklauri", tenantPhone: "+995 555 44 33 22",
+        startDate: utc(2026, 5, 1), endDate: utc(2027, 5, 1),
+        monthlyRent: 900, deposit: 900, status: "active",
+      },
     },
   ];
   let contractCount = 0;

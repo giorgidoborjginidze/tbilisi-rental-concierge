@@ -43,6 +43,23 @@ export const ASSET_STATUSES = [
   "listed",
 ] as const;
 
+export const RENTAL_MODES = ["long_term", "daily"] as const;
+
+// Listing platforms per asset category. field = Asset column name.
+export const LISTING_PLATFORMS: Record<
+  string,
+  { key: string; label: string; field: string }[]
+> = {
+  real_estate: [
+    { key: "myhome", label: "myhome.ge", field: "myhomeUrl" },
+    { key: "ss", label: "ss.ge", field: "ssUrl" },
+    { key: "airbnb", label: "Airbnb", field: "airbnbUrl" },
+    { key: "booking", label: "Booking.com", field: "bookingUrl" },
+  ],
+  vehicle: [{ key: "myauto", label: "myauto.ge", field: "myautoUrl" }],
+  other: [],
+};
+
 export const INCOME_SOURCES = [
   "rent",
   "str",

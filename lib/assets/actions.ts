@@ -1,5 +1,7 @@
 "use server";
 
+import { randomInt } from "node:crypto";
+
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
@@ -57,7 +59,12 @@ export async function saveAsset(
     currency: str(formData, "currency") || "GEL",
     status,
     unitId,
+    rentalMode: str(formData, "rentalMode") === "daily" ? "daily" : "long_term",
     myhomeUrl: str(formData, "myhomeUrl") || null,
+    ssUrl: str(formData, "ssUrl") || null,
+    myautoUrl: str(formData, "myautoUrl") || null,
+    airbnbUrl: str(formData, "airbnbUrl") || null,
+    bookingUrl: str(formData, "bookingUrl") || null,
     notes: str(formData, "notes") || null,
   };
 
@@ -73,6 +80,23 @@ export async function saveAsset(
 
   revalidatePath("/assets");
   redirect("/assets");
+}
+
+// Generate a fresh 6-digit door code for an asset (daily rentals /
+// tenant handovers); sent to the tenant via a WhatsApp deep link.
+export async function generateDoorCode(formData: FormData) {
+  const operator = await requireOperator();
+  const assetId = str(formData, "assetId");
+  if (assetId) {
+    await prisma.asset.updateMany({
+      where: { id: assetId, operatorId: operator.id },
+      data: {
+        doorCode: String(randomInt(0, 1_000_000)).padStart(6, "0"),
+        doorCodeGeneratedAt: new Date(),
+      },
+    });
+    revalidatePath("/assets");
+  }
 }
 
 // Quick status flip used by the per-asset listing buttons (rented/vacant).
@@ -135,6 +159,7 @@ export async function saveContract(
     data: {
       assetId,
       tenantName: str(formData, "tenantName") || null,
+      tenantPhone: str(formData, "tenantPhone") || null,
       startDate,
       endDate,
       monthlyRent,

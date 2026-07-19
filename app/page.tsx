@@ -22,7 +22,7 @@ const money = (value: number | null, currency: string) =>
 
 function Kpi({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
+    <div className="rounded-2xl border border-line bg-white p-4 shadow-card">
       <div className="text-xs uppercase tracking-wide text-neutral-500">{label}</div>
       <div className="mt-1 text-2xl font-semibold">{value}</div>
     </div>
@@ -126,9 +126,9 @@ export default async function Home() {
 
       <section className="mb-10">
         <h2 className="mb-3 text-lg font-medium">{t(locale, "monthly_title")}</h2>
-        <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+        <div className="overflow-x-auto rounded-2xl border border-line bg-white shadow-card">
           <table className="w-full text-sm">
-            <thead className="bg-neutral-50 text-left dark:bg-neutral-900">
+            <thead className="bg-surface2 text-left">
               <tr>
                 <th className={headerCell}>{t(locale, "month_col")}</th>
                 <th className={`${headerCell} text-right`}>{t(locale, "kpi_occupancy")}</th>
@@ -146,8 +146,8 @@ export default async function Home() {
                 return (
                   <tr
                     key={row.key}
-                    className={`border-t border-neutral-200 dark:border-neutral-800 ${
-                      isCurrent ? "bg-neutral-50 font-medium dark:bg-neutral-900" : ""
+                    className={`border-t border-line ${
+                      isCurrent ? "bg-surface2 font-medium" : ""
                     }`}
                   >
                     <td className="px-4 py-3">{fmtMonth.format(row.start)}</td>
@@ -166,9 +166,9 @@ export default async function Home() {
 
       <section>
         <h2 className="mb-3 text-lg font-medium">{t(locale, "per_unit_title")}</h2>
-        <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+        <div className="overflow-x-auto rounded-2xl border border-line bg-white shadow-card">
           <table className="w-full text-sm">
-            <thead className="bg-neutral-50 text-left dark:bg-neutral-900">
+            <thead className="bg-surface2 text-left">
               <tr>
                 <th className={headerCell}>{t(locale, "unit_name")}</th>
                 <th className={headerCell}>{t(locale, "unit_district")}</th>
@@ -182,7 +182,7 @@ export default async function Home() {
             </thead>
             <tbody>
               {perUnitThisMonth.map(({ unit, metrics }) => (
-                <tr key={unit.id} className="border-t border-neutral-200 dark:border-neutral-800">
+                <tr key={unit.id} className="border-t border-line">
                   <td className="px-4 py-3">
                     <Link href={`/calendar?unit=${unit.id}`} className="hover:underline">
                       {displayName(unit)}

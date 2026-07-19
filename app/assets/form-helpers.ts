@@ -17,7 +17,8 @@ export async function assetFormProps(
     "unit_name", "unit_name_ka", "unit_city", "unit_district", "unit_address",
     "unit_type", "asset_category", "status_label", "asset_area", "asset_value",
     "asset_notes", "asset_link_unit", "asset_none", "asset_delete_confirm",
-    "myhome_url", "myhome_hint",
+    "myhome_url", "myhome_hint", "ss_url", "myauto_url", "unit_airbnb_url",
+    "unit_booking_url", "rental_mode", "mode_long_term", "mode_daily",
     "save", "cancel", "delete", "error_required", "error_invalid_number",
     "error_email_taken", "error_dates",
   ];

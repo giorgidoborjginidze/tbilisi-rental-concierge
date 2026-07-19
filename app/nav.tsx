@@ -22,7 +22,7 @@ export default async function Nav() {
     : [];
 
   return (
-    <nav className="border-b border-neutral-200 dark:border-neutral-800">
+    <nav className="border-b border-line">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-y-2 px-8 py-3">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
           <Link href="/" className="font-semibold">
@@ -48,7 +48,7 @@ export default async function Nav() {
             <input type="hidden" name="locale" value={other} />
             <button
               type="submit"
-              className="rounded border border-neutral-300 px-2 py-1 text-xs hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+              className="rounded border border-line-strong bg-white px-2 py-1 text-xs hover:bg-surface2"
             >
               {other === "ka" ? "ქართული" : "English"}
             </button>
@@ -65,7 +65,7 @@ export default async function Nav() {
           ) : (
             <Link
               href="/login"
-              className="rounded border border-neutral-300 px-2 py-1 text-xs hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+              className="rounded border border-line-strong bg-white px-2 py-1 text-xs hover:bg-surface2"
             >
               {t(locale, "login_title")}
             </Link>

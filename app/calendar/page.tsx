@@ -159,7 +159,7 @@ export default async function CalendarPage({
           <div className="flex items-center gap-2">
             <Link
               href={`/calendar?month=${monthParam(prev.year, prev.month)}${unitSuffix}`}
-              className="rounded border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+              className="rounded border border-line-strong bg-white px-3 py-1.5 text-sm shadow-card hover:bg-surface2"
             >
               ←
             </Link>
@@ -168,7 +168,7 @@ export default async function CalendarPage({
             </span>
             <Link
               href={`/calendar?month=${monthParam(next.year, next.month)}${unitSuffix}`}
-              className="rounded border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+              className="rounded border border-line-strong bg-white px-3 py-1.5 text-sm shadow-card hover:bg-surface2"
             >
               →
             </Link>
@@ -185,11 +185,11 @@ export default async function CalendarPage({
         ))}
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+      <div className="overflow-x-auto rounded-2xl border border-line bg-white shadow-card">
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="bg-neutral-50 dark:bg-neutral-900">
-              <th className="sticky left-0 z-10 bg-neutral-50 px-3 py-2 text-left font-medium dark:bg-neutral-900">
+              <th className="sticky left-0 z-10 bg-surface2 px-3 py-2 text-left font-medium">
                 {t(locale, "booking_unit")}
               </th>
               {Array.from({ length: daysInMonth }, (_, i) => (
@@ -201,8 +201,8 @@ export default async function CalendarPage({
           </thead>
           <tbody>
             {rows.map(({ unit, days }) => (
-              <tr key={unit.id} className="border-t border-neutral-200 dark:border-neutral-800">
-                <td className="sticky left-0 z-10 max-w-48 truncate bg-white px-3 py-2 dark:bg-neutral-950">
+              <tr key={unit.id} className="border-t border-line">
+                <td className="sticky left-0 z-10 max-w-48 truncate bg-white px-3 py-2">
                   <Link href={`/calendar?month=${monthParam(year, month)}&unit=${unit.id}`} className="hover:underline">
                     {displayName(unit)}
                   </Link>

@@ -70,7 +70,7 @@ export default async function AlertsPage() {
         <form action={runAlertScan}>
           <button
             type="submit"
-            className="rounded border border-neutral-300 px-4 py-2 text-sm hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+            className="rounded border border-line-strong bg-white px-4 py-2 text-sm shadow-card hover:bg-surface2"
           >
             {t(locale, "alerts_scan")}
           </button>

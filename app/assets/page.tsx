@@ -6,8 +6,10 @@ import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
 import { proratedRevenue } from "@/lib/analytics/metrics";
 import { estimateMarketRent, getRentBenchmark } from "@/lib/market/rent";
+import { LISTING_PLATFORMS } from "@/lib/types";
 import IncomeSection from "./income-section";
-import ListingControls from "./listing-controls";
+import ListingControls, { type ListingLink } from "./listing-controls";
+import DoorKey from "./door-key";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +23,7 @@ const STATUS_STYLE: Record<string, string> = {
 
 function Kpi({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
+    <div className="rounded-2xl border border-line bg-white p-4 shadow-card">
       <div className="text-xs uppercase tracking-wide text-neutral-500">{label}</div>
       <div className="mt-1 text-2xl font-semibold">{value}</div>
       {sub && <div className="mt-1 text-xs text-neutral-500">{sub}</div>}
@@ -70,6 +72,16 @@ export default async function AssetsPage() {
   const effectiveStatus = (asset: (typeof assets)[number]) =>
     activeContract(asset) ? "rented" : asset.unitId ? "str" : asset.status;
 
+  // Listing links per asset: platform set follows the category; assets in
+  // personal use get no links at all (nothing is published for them).
+  const listingLinks = (asset: (typeof assets)[number]): ListingLink[] => {
+    if (effectiveStatus(asset) === "personal_use") return [];
+    const record = asset as unknown as Record<string, string | null>;
+    return (LISTING_PLATFORMS[asset.category] ?? [])
+      .filter((platform) => record[platform.field])
+      .map((platform) => ({ label: platform.label, url: record[platform.field]! }));
+  };
+
   // Income consolidation for the current month.
   const rentIncome = assets.reduce((sum, asset) => {
     const contract = activeContract(asset);
@@ -110,7 +122,7 @@ export default async function AssetsPage() {
         <h1 className="text-2xl font-semibold">{t(locale, "assets_title")}</h1>
         <Link
           href="/assets/new"
-          className="rounded bg-neutral-900 px-4 py-2 text-sm text-white hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900"
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white shadow-card hover:bg-primary-dark"
         >
           {t(locale, "assets_add")}
         </Link>
@@ -133,9 +145,9 @@ export default async function AssetsPage() {
       {assets.length === 0 ? (
         <p className="text-neutral-500">{t(locale, "assets_empty")}</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+        <div className="overflow-x-auto rounded-2xl border border-line bg-white shadow-card">
           <table className="w-full text-sm">
-            <thead className="bg-neutral-50 text-left dark:bg-neutral-900">
+            <thead className="bg-surface2 text-left">
               <tr>
                 <th className="px-4 py-3 font-medium">{t(locale, "unit_name")}</th>
                 <th className="px-4 py-3 font-medium">{t(locale, "unit_type")}</th>
@@ -161,7 +173,7 @@ export default async function AssetsPage() {
                   contract && marketRent && contract.monthlyRent < marketRent * 0.85;
 
                 return (
-                  <tr key={asset.id} className="border-t border-neutral-200 dark:border-neutral-800">
+                  <tr key={asset.id} className="border-t border-line">
                     <td className="px-4 py-3">
                       <div>{displayName(asset)}</div>
                       <div className="text-xs text-neutral-500">
@@ -171,7 +183,7 @@ export default async function AssetsPage() {
                             {" "}
                             <Link
                               href={`/calendar?unit=${asset.unit.id}`}
-                              className="text-sky-600 hover:underline dark:text-sky-400"
+                              className="text-accent hover:underline"
                             >
                               ({asset.unit.name})
                             </Link>
@@ -181,6 +193,11 @@ export default async function AssetsPage() {
                     </td>
                     <td className="px-4 py-3">
                       {t(locale, `type_${asset.type}` as StringKey)}
+                      {asset.rentalMode === "daily" && (
+                        <span className="ml-1.5 rounded bg-sky-100 px-1.5 py-0.5 text-xs text-sky-800 dark:bg-sky-900 dark:text-sky-200">
+                          {t(locale, "mode_daily")}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <span
@@ -192,12 +209,11 @@ export default async function AssetsPage() {
                         <ListingControls
                           assetId={asset.id}
                           status={status}
-                          showButtons={!contract}
-                          myhomeUrl={asset.myhomeUrl}
+                          showButtons={!contract && status !== "personal_use"}
+                          links={listingLinks(asset)}
                           labels={{
                             rented: t(locale, "mark_rented"),
                             vacant: t(locale, "mark_vacant"),
-                            open: t(locale, "myhome_open"),
                           }}
                         />
                       )}
@@ -215,6 +231,18 @@ export default async function AssetsPage() {
                         </div>
                       ) : (
                         <span className="text-neutral-400">—</span>
+                      )}
+                      {asset.category === "real_estate" && status !== "personal_use" && (
+                        <DoorKey
+                          assetId={asset.id}
+                          code={asset.doorCode}
+                          phone={contract?.tenantPhone?.replace(/\D/g, "") || null}
+                          message={`${displayName(asset)}${asset.address ? ` (${asset.address})` : ""} — ${t(locale, "door_key")}:`}
+                          labels={{
+                            key: t(locale, "door_key"),
+                            generate: t(locale, "door_generate"),
+                          }}
+                        />
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -239,7 +267,7 @@ export default async function AssetsPage() {
                     <td className="px-4 py-3 text-right">
                       <Link
                         href={`/assets/${asset.id}/edit`}
-                        className="text-blue-600 hover:underline dark:text-blue-400"
+                        className="text-primary hover:underline"
                       >
                         {t(locale, "edit")}
                       </Link>

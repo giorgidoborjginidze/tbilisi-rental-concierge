@@ -6,7 +6,7 @@ import { createBooking } from "@/lib/bookings/actions";
 import type { FormState } from "@/lib/units/actions";
 
 const inputClass =
-  "w-full rounded border border-neutral-300 bg-transparent px-3 py-2 text-sm dark:border-neutral-700";
+  "w-full rounded border border-line-strong bg-white px-3 py-2 text-sm";
 const labelClass = "flex flex-col gap-1 text-sm";
 
 export default function BookingForm({
@@ -69,7 +69,7 @@ export default function BookingForm({
         <button
           type="submit"
           disabled={pending}
-          className="rounded bg-neutral-900 px-4 py-2 text-sm text-white hover:bg-neutral-700 disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900"
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white shadow-card hover:bg-primary-dark disabled:opacity-50"
         >
           {labels.save}
         </button>

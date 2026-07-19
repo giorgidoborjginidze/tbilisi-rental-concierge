@@ -25,7 +25,7 @@ export default function UnitFilter({
         else params.delete("unit");
         router.push(`${basePath}?${params.toString()}`);
       }}
-      className="rounded border border-neutral-300 bg-transparent px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-950"
+      className="rounded border border-line-strong bg-white px-3 py-2 text-sm dark:bg-neutral-950"
     >
       {allLabel !== undefined && <option value="">{allLabel}</option>}
       {units.map((unit) => (

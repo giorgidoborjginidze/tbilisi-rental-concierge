@@ -5,7 +5,7 @@ import { saveContract } from "@/lib/assets/actions";
 import type { FormState } from "@/lib/units/actions";
 
 const inputClass =
-  "w-full rounded border border-neutral-300 bg-transparent px-3 py-2 text-sm dark:border-neutral-700";
+  "w-full rounded border border-line-strong bg-white px-3 py-2 text-sm";
 const labelClass = "flex flex-col gap-1 text-sm";
 
 export default function ContractForm({
@@ -23,12 +23,16 @@ export default function ContractForm({
   return (
     <form
       action={formAction}
-      className="grid grid-cols-2 gap-3 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800"
+      className="grid grid-cols-2 gap-3 rounded-2xl border border-line bg-white p-4 shadow-card"
     >
       <input type="hidden" name="assetId" value={assetId} />
       <label className={labelClass}>
         {labels.contract_tenant}
         <input name="tenantName" className={inputClass} />
+      </label>
+      <label className={labelClass}>
+        {labels.tenant_phone}
+        <input name="tenantPhone" type="tel" placeholder="+995 5XX XX XX XX" className={inputClass} />
       </label>
       <label className={labelClass}>
         {labels.contract_rent}
@@ -57,7 +61,7 @@ export default function ContractForm({
         <button
           type="submit"
           disabled={pending}
-          className="rounded bg-neutral-900 px-4 py-2 text-sm text-white hover:bg-neutral-700 disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900"
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white shadow-card hover:bg-primary-dark disabled:opacity-50"
         >
           {labels.contract_add}
         </button>
