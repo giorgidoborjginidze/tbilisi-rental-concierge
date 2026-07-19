@@ -15,8 +15,8 @@ export default async function NewAssetPage() {
   const props = await assetFormProps(locale, operator.id);
 
   return (
-    <main className="mx-auto w-full max-w-3xl p-8">
-      <h1 className="text-2xl font-semibold">{t(locale, "asset_new_title")}</h1>
+    <main>
+      <h1>{t(locale, "asset_new_title")}</h1>
       <AssetForm {...props} />
     </main>
   );

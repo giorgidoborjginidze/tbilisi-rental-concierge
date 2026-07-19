@@ -16,12 +16,12 @@ export default async function LoginPage() {
   );
 
   return (
-    <main className="mx-auto w-full max-w-md p-8">
-      <h1 className="text-2xl font-semibold">{t(locale, "login_title")}</h1>
+    <main>
+      <section className="auth-box">
+      <h1>{t(locale, "login_title")}</h1>
       <AuthForm mode="login" labels={labels} />
-      <p className="mt-6 rounded border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900">
-        {t(locale, "demo_hint")}
-      </p>
+      <p className="demo-hint">{t(locale, "demo_hint")}</p>
+      </section>
     </main>
   );
 }

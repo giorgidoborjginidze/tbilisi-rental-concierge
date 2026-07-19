@@ -4,9 +4,6 @@ import { useActionState } from "react";
 import { saveContract } from "@/lib/assets/actions";
 import type { FormState } from "@/lib/units/actions";
 
-const inputClass =
-  "w-full rounded border border-line-strong bg-white px-3 py-2 text-sm";
-const labelClass = "flex flex-col gap-1 text-sm";
 
 export default function ContractForm({
   assetId,
@@ -23,45 +20,45 @@ export default function ContractForm({
   return (
     <form
       action={formAction}
-      className="grid grid-cols-2 gap-3 rounded-2xl border border-line bg-white p-4 shadow-card"
+      className="card form-grid form-grid--full" style={{ padding: 18, overflow: "visible" }}
     >
       <input type="hidden" name="assetId" value={assetId} />
-      <label className={labelClass}>
+      <label className="field">
         {labels.contract_tenant}
-        <input name="tenantName" className={inputClass} />
+        <input name="tenantName" />
       </label>
-      <label className={labelClass}>
+      <label className="field">
         {labels.tenant_phone}
-        <input name="tenantPhone" type="tel" placeholder="+995 5XX XX XX XX" className={inputClass} />
+        <input name="tenantPhone" type="tel" placeholder="+995 5XX XX XX XX" />
       </label>
-      <label className={labelClass}>
+      <label className="field">
         {labels.contract_rent}
-        <input name="monthlyRent" type="number" min={1} step="0.01" required className={inputClass} />
+        <input name="monthlyRent" type="number" min={1} step="0.01" required />
       </label>
-      <label className={labelClass}>
+      <label className="field">
         {labels.contract_start}
-        <input name="startDate" type="date" required className={inputClass} />
+        <input name="startDate" type="date" required />
       </label>
-      <label className={labelClass}>
+      <label className="field">
         {labels.contract_end}
-        <input name="endDate" type="date" required className={inputClass} />
+        <input name="endDate" type="date" required />
       </label>
-      <label className={labelClass}>
+      <label className="field">
         {labels.contract_deposit}
-        <input name="deposit" type="number" min={0} step="0.01" className={inputClass} />
+        <input name="deposit" type="number" min={0} step="0.01" />
       </label>
-      <label className={labelClass}>
+      <label className="field">
         {labels.asset_notes}
-        <input name="notes" className={inputClass} />
+        <input name="notes" />
       </label>
       {state?.error && (
-        <p className="col-span-2 text-sm text-red-600">{labels[state.error]}</p>
+        <p className="col-span-2" style={{ color: "var(--status-danger-text)", fontSize: 13 }}>{labels[state.error]}</p>
       )}
       <div className="col-span-2">
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white shadow-card hover:bg-primary-dark disabled:opacity-50"
+          className="btn-primary"
         >
           {labels.contract_add}
         </button>

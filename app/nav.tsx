@@ -22,55 +22,38 @@ export default async function Nav() {
     : [];
 
   return (
-    <nav className="border-b border-line">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-y-2 px-8 py-3">
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
-          <Link href="/" className="font-semibold">
-            {t(locale, "appName")}
-          </Link>
+    <nav className="nav">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
+        <Link href="/" className="nav__brand">
+          {t(locale, "appName")}
+        </Link>
+        <div className="nav__links">
           {links.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="text-sm text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
-            >
+            <Link key={link.href} href={link.href}>
               {link.label}
             </Link>
           ))}
         </div>
-        <div className="flex items-center gap-3">
-          {operator && (
-            <span className="hidden text-xs text-neutral-500 sm:inline">
-              {operator.email}
-            </span>
-          )}
-          <form action={toggleLocale}>
-            <input type="hidden" name="locale" value={other} />
-            <button
-              type="submit"
-              className="rounded border border-line-strong bg-white px-2 py-1 text-xs hover:bg-surface2"
-            >
-              {other === "ka" ? "ქართული" : "English"}
+      </div>
+      <div className="nav__meta">
+        {operator && <span className="hidden sm:inline">{operator.email}</span>}
+        <form action={toggleLocale}>
+          <input type="hidden" name="locale" value={other} />
+          <button type="submit" className="btn-chip">
+            {other === "ka" ? "ქართული" : "English"}
+          </button>
+        </form>
+        {operator ? (
+          <form action={logout}>
+            <button type="submit" className="btn-chip">
+              {t(locale, "logout")}
             </button>
           </form>
-          {operator ? (
-            <form action={logout}>
-              <button
-                type="submit"
-                className="rounded border border-neutral-300 px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800"
-              >
-                {t(locale, "logout")}
-              </button>
-            </form>
-          ) : (
-            <Link
-              href="/login"
-              className="rounded border border-line-strong bg-white px-2 py-1 text-xs hover:bg-surface2"
-            >
-              {t(locale, "login_title")}
-            </Link>
-          )}
-        </div>
+        ) : (
+          <Link href="/login" className="btn-chip">
+            {t(locale, "login_title")}
+          </Link>
+        )}
       </div>
     </nav>
   );

@@ -22,9 +22,9 @@ const money = (value: number | null, currency: string) =>
 
 function Kpi({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-line bg-white p-4 shadow-card">
-      <div className="text-xs uppercase tracking-wide text-neutral-500">{label}</div>
-      <div className="mt-1 text-2xl font-semibold">{value}</div>
+    <div className="kpi">
+      <div className="kpi__label">{label}</div>
+      <div className="kpi__value">{value}</div>
     </div>
   );
 }
@@ -92,21 +92,18 @@ export default async function Home() {
   const displayName = (unit: { name: string; nameKa: string | null }) =>
     locale === "ka" && unit.nameKa ? unit.nameKa : unit.name;
 
-  const headerCell = "px-4 py-3 font-medium";
-  const numCell = "px-4 py-3 text-right";
-
   return (
-    <main className="mx-auto w-full max-w-5xl p-8">
-      <header className="mb-8">
-        <h1 className="text-2xl font-semibold">{t(locale, "appName")}</h1>
-        <p className="mt-1 text-neutral-500">
+    <main>
+      <header>
+        <h1>{t(locale, "appName")}</h1>
+        <p style={{ color: "var(--color-text-muted)" }}>
           {operator.name} · {units.length} {t(locale, "nav_units").toLowerCase()}
         </p>
       </header>
 
-      <section className="mb-10">
-        <h2 className="mb-3 text-lg font-medium">{t(locale, "this_month")}</h2>
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+      <section>
+        <h2>{t(locale, "this_month")}</h2>
+        <div className="kpi-grid kpi-grid--5">
           <Kpi
             label={t(locale, "kpi_occupancy")}
             value={pct(portfolioThisMonth.occupancyRate)}
@@ -124,18 +121,18 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="mb-10">
-        <h2 className="mb-3 text-lg font-medium">{t(locale, "monthly_title")}</h2>
-        <div className="overflow-x-auto rounded-2xl border border-line bg-white shadow-card">
-          <table className="w-full text-sm">
-            <thead className="bg-surface2 text-left">
+      <section>
+        <h2>{t(locale, "monthly_title")}</h2>
+        <div className="card">
+          <table>
+            <thead>
               <tr>
-                <th className={headerCell}>{t(locale, "month_col")}</th>
-                <th className={`${headerCell} text-right`}>{t(locale, "kpi_occupancy")}</th>
-                <th className={`${headerCell} text-right`}>{t(locale, "nights_sold")}</th>
-                <th className={`${headerCell} text-right`}>ADR</th>
-                <th className={`${headerCell} text-right`}>RevPAR</th>
-                <th className={`${headerCell} text-right`}>
+                <th>{t(locale, "month_col")}</th>
+                <th className="num">{t(locale, "kpi_occupancy")}</th>
+                <th className="num">{t(locale, "nights_sold")}</th>
+                <th className="num">ADR</th>
+                <th className="num">RevPAR</th>
+                <th className="num">
                   {t(locale, "kpi_revenue")} ({currency})
                 </th>
               </tr>
@@ -146,16 +143,14 @@ export default async function Home() {
                 return (
                   <tr
                     key={row.key}
-                    className={`border-t border-line ${
-                      isCurrent ? "bg-surface2 font-medium" : ""
-                    }`}
+                    style={isCurrent ? { background: "var(--color-surface)", fontWeight: 500 } : undefined}
                   >
-                    <td className="px-4 py-3">{fmtMonth.format(row.start)}</td>
-                    <td className={numCell}>{pct(row.metrics.occupancyRate)}</td>
-                    <td className={numCell}>{row.metrics.bookedNights}</td>
-                    <td className={numCell}>{money(row.metrics.adr, "")}</td>
-                    <td className={numCell}>{money(row.metrics.revpar, "")}</td>
-                    <td className={numCell}>{Math.round(row.metrics.revenue)}</td>
+                    <td>{fmtMonth.format(row.start)}</td>
+                    <td className="num">{pct(row.metrics.occupancyRate)}</td>
+                    <td className="num">{row.metrics.bookedNights}</td>
+                    <td className="num">{money(row.metrics.adr, "")}</td>
+                    <td className="num">{money(row.metrics.revpar, "")}</td>
+                    <td className="num">{Math.round(row.metrics.revenue)}</td>
                   </tr>
                 );
               })}
@@ -165,35 +160,35 @@ export default async function Home() {
       </section>
 
       <section>
-        <h2 className="mb-3 text-lg font-medium">{t(locale, "per_unit_title")}</h2>
-        <div className="overflow-x-auto rounded-2xl border border-line bg-white shadow-card">
-          <table className="w-full text-sm">
-            <thead className="bg-surface2 text-left">
+        <h2>{t(locale, "per_unit_title")}</h2>
+        <div className="card">
+          <table>
+            <thead>
               <tr>
-                <th className={headerCell}>{t(locale, "unit_name")}</th>
-                <th className={headerCell}>{t(locale, "unit_district")}</th>
-                <th className={`${headerCell} text-right`}>{t(locale, "kpi_occupancy")}</th>
-                <th className={`${headerCell} text-right`}>ADR</th>
-                <th className={`${headerCell} text-right`}>RevPAR</th>
-                <th className={`${headerCell} text-right`}>
+                <th>{t(locale, "unit_name")}</th>
+                <th>{t(locale, "unit_district")}</th>
+                <th className="num">{t(locale, "kpi_occupancy")}</th>
+                <th className="num">ADR</th>
+                <th className="num">RevPAR</th>
+                <th className="num">
                   {t(locale, "kpi_revenue")} ({currency})
                 </th>
               </tr>
             </thead>
             <tbody>
               {perUnitThisMonth.map(({ unit, metrics }) => (
-                <tr key={unit.id} className="border-t border-line">
-                  <td className="px-4 py-3">
-                    <Link href={`/calendar?unit=${unit.id}`} className="hover:underline">
+                <tr key={unit.id}>
+                  <td>
+                    <Link href={`/calendar?unit=${unit.id}`} className="link">
                       {displayName(unit)}
                     </Link>
-                    <div className="text-xs text-neutral-500">{unit.city}</div>
+                    <div className="cell-sub">{unit.city}</div>
                   </td>
-                  <td className="px-4 py-3">{unit.district}</td>
-                  <td className={numCell}>{pct(metrics.occupancyRate)}</td>
-                  <td className={numCell}>{money(metrics.adr, "")}</td>
-                  <td className={numCell}>{money(metrics.revpar, "")}</td>
-                  <td className={numCell}>{Math.round(metrics.revenue)}</td>
+                  <td>{unit.district}</td>
+                  <td className="num">{pct(metrics.occupancyRate)}</td>
+                  <td className="num">{money(metrics.adr, "")}</td>
+                  <td className="num">{money(metrics.revpar, "")}</td>
+                  <td className="num">{Math.round(metrics.revenue)}</td>
                 </tr>
               ))}
             </tbody>

@@ -16,14 +16,13 @@ export const dynamic = "force-dynamic";
 const DAY_MS = 86_400_000;
 
 const KIND_CLASS: Record<string, string> = {
-  airbnb: "bg-rose-400 dark:bg-rose-500",
-  booking: "bg-sky-400 dark:bg-sky-500",
-  direct: "bg-emerald-400 dark:bg-emerald-500",
-  manual: "bg-emerald-400 dark:bg-emerald-500",
-  lease: "bg-violet-400 dark:bg-violet-500",
+  airbnb: "cal-cell--airbnb",
+  booking: "cal-cell--booking",
+  direct: "cal-cell--direct",
+  manual: "cal-cell--direct",
+  lease: "cal-cell--lease",
 };
-const OVERLAP_CLASS = "bg-red-600";
-const VACANT_CLASS = "bg-neutral-100 dark:bg-neutral-800";
+const OVERLAP_CLASS = "cal-cell--overlap";
 
 function parseMonth(value: string | undefined): { year: number; month: number } {
   const match = value?.match(/^(\d{4})-(\d{2})$/);
@@ -111,7 +110,7 @@ export default async function CalendarPage({
             ? OVERLAP_CLASS
             : covering.length === 1
               ? KIND_CLASS[covering[0].kind] ?? KIND_CLASS.direct
-              : VACANT_CLASS,
+              : "",
       };
     });
 
@@ -138,18 +137,20 @@ export default async function CalendarPage({
     locale === "ka" && unit.nameKa ? unit.nameKa : unit.name;
 
   const legend = [
-    { label: "Airbnb", className: KIND_CLASS.airbnb },
-    { label: "Booking.com", className: KIND_CLASS.booking },
-    { label: t(locale, "calendar_direct_manual"), className: KIND_CLASS.direct },
-    { label: t(locale, "calendar_lease"), className: KIND_CLASS.lease },
-    { label: t(locale, "calendar_overlap"), className: OVERLAP_CLASS },
-    { label: t(locale, "calendar_vacant"), className: VACANT_CLASS },
+    { label: "Airbnb", color: "var(--cal-airbnb)" },
+    { label: "Booking.com", color: "var(--cal-booking)" },
+    { label: t(locale, "calendar_direct_manual"), color: "var(--cal-direct)" },
+    { label: t(locale, "calendar_lease"), color: "var(--cal-lease)" },
+    { label: t(locale, "calendar_overlap"), color: "var(--cal-overlap)" },
+    { label: t(locale, "calendar_vacant"), color: "var(--cal-vacant)", bordered: true },
   ];
 
   return (
-    <main className="mx-auto w-full max-w-6xl p-8">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">{t(locale, "nav_calendar")}</h1>
+    <main>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+        <h1 style={{ marginBottom: 0 }}>
+          {t(locale, "nav_calendar")} — {monthLabel}
+        </h1>
         <div className="flex items-center gap-3">
           <UnitFilter
             units={allUnits.map((u) => ({ id: u.id, label: displayName(u) }))}
@@ -159,16 +160,13 @@ export default async function CalendarPage({
           <div className="flex items-center gap-2">
             <Link
               href={`/calendar?month=${monthParam(prev.year, prev.month)}${unitSuffix}`}
-              className="rounded border border-line-strong bg-white px-3 py-1.5 text-sm shadow-card hover:bg-surface2"
+              className="btn-chip"
             >
               ←
             </Link>
-            <span className="min-w-36 text-center text-sm font-medium">
-              {monthLabel}
-            </span>
             <Link
               href={`/calendar?month=${monthParam(next.year, next.month)}${unitSuffix}`}
-              className="rounded border border-line-strong bg-white px-3 py-1.5 text-sm shadow-card hover:bg-surface2"
+              className="btn-chip"
             >
               →
             </Link>
@@ -176,99 +174,91 @@ export default async function CalendarPage({
         </div>
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-4 text-xs text-neutral-600 dark:text-neutral-400">
+      <div className="legend">
         {legend.map((item) => (
-          <span key={item.label} className="flex items-center gap-1.5">
-            <span className={`inline-block h-3 w-3 rounded-sm ${item.className}`} />
+          <span key={item.label}>
+            <i
+              style={{
+                background: item.color,
+                border: item.bordered ? "1px solid var(--color-border)" : undefined,
+              }}
+            />
             {item.label}
           </span>
         ))}
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-line bg-white shadow-card">
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="bg-neutral-50 dark:bg-neutral-900">
-              <th className="sticky left-0 z-10 bg-surface2 px-3 py-2 text-left font-medium">
-                {t(locale, "booking_unit")}
-              </th>
-              {Array.from({ length: daysInMonth }, (_, i) => (
-                <th key={i} className="px-0.5 py-2 text-center text-[10px] font-normal text-neutral-500">
-                  {i + 1}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(({ unit, days }) => (
-              <tr key={unit.id} className="border-t border-line">
-                <td className="sticky left-0 z-10 max-w-48 truncate bg-white px-3 py-2">
-                  <Link href={`/calendar?month=${monthParam(year, month)}&unit=${unit.id}`} className="hover:underline">
-                    {displayName(unit)}
-                  </Link>
-                </td>
-                {days.map((day, i) => (
-                  <td key={i} className="p-0.5">
-                    <div className={`h-6 min-w-3 rounded-sm ${day.className}`} />
-                  </td>
-                ))}
-              </tr>
+      <div className="card" style={{ padding: "12px 16px" }}>
+        <div className="cal-row">
+          <span className="cal-name" />
+          {Array.from({ length: daysInMonth }, (_, i) => (
+            <span key={i} className="cal-daynum">
+              {i + 1}
+            </span>
+          ))}
+        </div>
+        {rows.map(({ unit, days }) => (
+          <div key={unit.id} className="cal-row">
+            <span className="cal-name" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <Link
+                href={`/calendar?month=${monthParam(year, month)}&unit=${unit.id}`}
+                style={{ color: "inherit", textDecoration: "none" }}
+              >
+                {displayName(unit)}
+              </Link>
+            </span>
+            {days.map((day, i) => (
+              <span key={i} className={`cal-cell ${day.className}`} />
             ))}
-          </tbody>
-        </table>
+          </div>
+        ))}
       </div>
 
-      <div className="mt-8 grid gap-8 md:grid-cols-2">
+      <div className="mt-4 grid gap-x-8 md:grid-cols-2">
         <section>
-          <h2 className="mb-3 text-lg font-medium">{t(locale, "calendar_gaps")}</h2>
+          <h2>{t(locale, "calendar_gaps")}</h2>
           {rows.every((r) => r.gaps.length === 0) ? (
-            <p className="text-sm text-neutral-500">{t(locale, "calendar_no_gaps")}</p>
+            <p style={{ color: "var(--color-text-muted)" }}>{t(locale, "calendar_no_gaps")}</p>
           ) : (
-            <ul className="space-y-2 text-sm">
-              {rows.flatMap(({ unit, gaps }) =>
-                gaps.map((gap, i) => (
-                  <li
-                    key={`${unit.id}-${i}`}
-                    className="flex items-center justify-between rounded border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-900 dark:bg-amber-950"
-                  >
-                    <span>{displayName(unit)}</span>
-                    <span className="text-neutral-600 dark:text-neutral-400">
+            rows.flatMap(({ unit, gaps }) =>
+              gaps.map((gap, i) => (
+                <div key={`${unit.id}-${i}`} className="alert-card alert-card--gap">
+                  <div>
+                    <div className="alert-card__title">{displayName(unit)}</div>
+                    <div className="alert-card__detail">
                       {fmtDay.format(gap.start)} – {fmtDay.format(gap.end)} ·{" "}
                       {gap.nights} {t(locale, "nights_short")}
-                    </span>
-                  </li>
-                )),
-              )}
-            </ul>
+                    </div>
+                  </div>
+                </div>
+              )),
+            )
           )}
         </section>
 
         <section>
-          <h2 className="mb-3 text-lg font-medium">{t(locale, "calendar_overlaps")}</h2>
+          <h2>{t(locale, "calendar_overlaps")}</h2>
           {rows.every((r) => r.overlaps.length === 0) ? (
-            <p className="text-sm text-neutral-500">{t(locale, "calendar_no_overlaps")}</p>
+            <p style={{ color: "var(--color-text-muted)" }}>{t(locale, "calendar_no_overlaps")}</p>
           ) : (
-            <ul className="space-y-2 text-sm">
-              {rows.flatMap(({ unit, overlaps }) =>
-                overlaps.map((overlap, i) => (
-                  <li
-                    key={`${unit.id}-${i}`}
-                    className="flex items-center justify-between rounded border border-red-200 bg-red-50 px-3 py-2 dark:border-red-900 dark:bg-red-950"
-                  >
-                    <span>
+            rows.flatMap(({ unit, overlaps }) =>
+              overlaps.map((overlap, i) => (
+                <div key={`${unit.id}-${i}`} className="alert-card alert-card--overlap">
+                  <div>
+                    <div className="alert-card__title">
                       {displayName(unit)}{" "}
-                      <span className="text-xs text-neutral-500">
+                      <span style={{ fontWeight: 400, fontSize: 12, color: "var(--color-text-muted)" }}>
                         ({overlap.kinds.join(" + ")})
                       </span>
-                    </span>
-                    <span className="text-neutral-600 dark:text-neutral-400">
+                    </div>
+                    <div className="alert-card__detail">
                       {fmtDay.format(overlap.start)} – {fmtDay.format(overlap.end)} ·{" "}
                       {overlap.nights} {t(locale, "nights_short")}
-                    </span>
-                  </li>
-                )),
-              )}
-            </ul>
+                    </div>
+                  </div>
+                </div>
+              )),
+            )
           )}
         </section>
       </div>

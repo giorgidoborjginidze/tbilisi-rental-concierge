@@ -17,22 +17,23 @@ export default function UnitFilter({
   const searchParams = useSearchParams();
 
   return (
-    <select
-      value={selected}
-      onChange={(event) => {
-        const params = new URLSearchParams(searchParams);
-        if (event.target.value) params.set("unit", event.target.value);
-        else params.delete("unit");
-        router.push(`${basePath}?${params.toString()}`);
-      }}
-      className="rounded border border-line-strong bg-white px-3 py-2 text-sm dark:bg-neutral-950"
-    >
-      {allLabel !== undefined && <option value="">{allLabel}</option>}
-      {units.map((unit) => (
-        <option key={unit.id} value={unit.id}>
-          {unit.label}
-        </option>
-      ))}
-    </select>
+    <span className="field">
+      <select
+        value={selected}
+        onChange={(event) => {
+          const params = new URLSearchParams(searchParams);
+          if (event.target.value) params.set("unit", event.target.value);
+          else params.delete("unit");
+          router.push(`${basePath}?${params.toString()}`);
+        }}
+      >
+        {allLabel !== undefined && <option value="">{allLabel}</option>}
+        {units.map((unit) => (
+          <option key={unit.id} value={unit.id}>
+            {unit.label}
+          </option>
+        ))}
+      </select>
+    </span>
   );
 }

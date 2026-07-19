@@ -13,20 +13,20 @@ import DoorKey from "./door-key";
 
 export const dynamic = "force-dynamic";
 
-const STATUS_STYLE: Record<string, string> = {
-  rented: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200",
-  str: "bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-200",
-  vacant: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
-  personal_use: "bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300",
-  listed: "bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200",
+const STATUS_BADGE: Record<string, string> = {
+  rented: "badge--rented",
+  str: "badge--str",
+  vacant: "badge--vacant",
+  personal_use: "badge--personal",
+  listed: "badge--listed",
 };
 
 function Kpi({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-2xl border border-line bg-white p-4 shadow-card">
-      <div className="text-xs uppercase tracking-wide text-neutral-500">{label}</div>
-      <div className="mt-1 text-2xl font-semibold">{value}</div>
-      {sub && <div className="mt-1 text-xs text-neutral-500">{sub}</div>}
+    <div className="kpi">
+      <div className="kpi__label">{label}</div>
+      <div className="kpi__value">{value}</div>
+      {sub && <div className="kpi__sub">{sub}</div>}
     </div>
   );
 }
@@ -79,7 +79,11 @@ export default async function AssetsPage() {
     const record = asset as unknown as Record<string, string | null>;
     return (LISTING_PLATFORMS[asset.category] ?? [])
       .filter((platform) => record[platform.field])
-      .map((platform) => ({ label: platform.label, url: record[platform.field]! }));
+      .map((platform) => ({
+        platform: platform.key,
+        label: platform.label,
+        url: record[platform.field]!,
+      }));
   };
 
   // Income consolidation for the current month.
@@ -117,18 +121,15 @@ export default async function AssetsPage() {
     locale === "ka" && a.nameKa ? a.nameKa : a.name;
 
   return (
-    <main className="mx-auto w-full max-w-6xl p-8">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">{t(locale, "assets_title")}</h1>
-        <Link
-          href="/assets/new"
-          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white shadow-card hover:bg-primary-dark"
-        >
+    <main>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 style={{ marginBottom: 0 }}>{t(locale, "assets_title")}</h1>
+        <Link href="/assets/new" className="btn-primary">
           {t(locale, "assets_add")}
         </Link>
       </div>
 
-      <section className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
+      <section className="kpi-grid">
         <Kpi label={t(locale, "assets_total_value")} value={money(totalValue)} />
         <Kpi
           label={t(locale, "assets_monthly_income")}
@@ -143,19 +144,19 @@ export default async function AssetsPage() {
       </section>
 
       {assets.length === 0 ? (
-        <p className="text-neutral-500">{t(locale, "assets_empty")}</p>
+        <p style={{ color: "var(--color-text-muted)" }}>{t(locale, "assets_empty")}</p>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-line bg-white shadow-card">
-          <table className="w-full text-sm">
-            <thead className="bg-surface2 text-left">
+        <div className="card">
+          <table>
+            <thead>
               <tr>
-                <th className="px-4 py-3 font-medium">{t(locale, "unit_name")}</th>
-                <th className="px-4 py-3 font-medium">{t(locale, "unit_type")}</th>
-                <th className="px-4 py-3 font-medium">{t(locale, "status_label")}</th>
-                <th className="px-4 py-3 font-medium">{t(locale, "contracts_title")}</th>
-                <th className="px-4 py-3 font-medium text-right">{t(locale, "market_rent_est")}</th>
-                <th className="px-4 py-3 font-medium text-right">{t(locale, "asset_value")}</th>
-                <th className="px-4 py-3" />
+                <th>{t(locale, "unit_name")}</th>
+                <th>{t(locale, "unit_type")}</th>
+                <th>{t(locale, "status_label")}</th>
+                <th>{t(locale, "contracts_title")}</th>
+                <th className="num">{t(locale, "market_rent_est")}</th>
+                <th className="num">{t(locale, "asset_value")}</th>
+                <th />
               </tr>
             </thead>
             <tbody>
@@ -173,35 +174,35 @@ export default async function AssetsPage() {
                   contract && marketRent && contract.monthlyRent < marketRent * 0.85;
 
                 return (
-                  <tr key={asset.id} className="border-t border-line">
-                    <td className="px-4 py-3">
+                  <tr key={asset.id}>
+                    <td>
                       <div>{displayName(asset)}</div>
-                      <div className="text-xs text-neutral-500">
+                      <div className="cell-sub">
                         {[asset.district, asset.address].filter(Boolean).join(" · ")}
                         {asset.unit && (
                           <>
                             {" "}
-                            <Link
-                              href={`/calendar?unit=${asset.unit.id}`}
-                              className="text-accent hover:underline"
-                            >
+                            <Link href={`/calendar?unit=${asset.unit.id}`} className="link">
                               ({asset.unit.name})
                             </Link>
                           </>
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3">
+                    <td>
                       {t(locale, `type_${asset.type}` as StringKey)}
                       {asset.rentalMode === "daily" && (
-                        <span className="ml-1.5 rounded bg-sky-100 px-1.5 py-0.5 text-xs text-sky-800 dark:bg-sky-900 dark:text-sky-200">
-                          {t(locale, "mode_daily")}
-                        </span>
+                        <>
+                          {" "}
+                          <span className="badge badge--str">
+                            {t(locale, "mode_daily")}
+                          </span>
+                        </>
                       )}
                     </td>
-                    <td className="px-4 py-3">
+                    <td>
                       <span
-                        className={`rounded px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[status] ?? STATUS_STYLE.personal_use}`}
+                        className={`badge ${STATUS_BADGE[status] ?? STATUS_BADGE.personal_use}`}
                       >
                         {t(locale, `status_${status}` as StringKey)}
                       </span>
@@ -218,19 +219,19 @@ export default async function AssetsPage() {
                         />
                       )}
                     </td>
-                    <td className="px-4 py-3">
+                    <td style={{ fontWeight: 400 }}>
                       {contract ? (
                         <div>
                           <div>
                             {contract.monthlyRent} {contract.currency} ·{" "}
                             {contract.tenantName ?? "—"}
                           </div>
-                          <div className="text-xs text-neutral-500">
+                          <div className="cell-sub">
                             {t(locale, "contract_until")}: {fmtDate.format(contract.endDate)}
                           </div>
                         </div>
                       ) : (
-                        <span className="text-neutral-400">—</span>
+                        <span style={{ color: "var(--color-text-muted)" }}>—</span>
                       )}
                       {asset.category === "real_estate" && status !== "personal_use" && (
                         <DoorKey
@@ -245,30 +246,29 @@ export default async function AssetsPage() {
                         />
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="num">
                       {marketRent ? (
                         <div>
-                          <span className="text-neutral-600 dark:text-neutral-400">
+                          <span style={{ color: "var(--color-text-muted)" }}>
                             ~{marketRent} GEL
                           </span>
                           {belowMarket && (
-                            <div className="mt-0.5 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800 dark:bg-amber-900 dark:text-amber-200">
-                              {t(locale, "below_market")}
+                            <div style={{ marginTop: 4 }}>
+                              <span className="badge badge--vacant">
+                                {t(locale, "below_market")}
+                              </span>
                             </div>
                           )}
                         </div>
                       ) : (
-                        <span className="text-neutral-400">—</span>
+                        <span style={{ color: "var(--color-text-muted)" }}>—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="num">
                       {asset.estimatedValue ? money(asset.estimatedValue) : "—"}
                     </td>
-                    <td className="px-4 py-3 text-right">
-                      <Link
-                        href={`/assets/${asset.id}/edit`}
-                        className="text-primary hover:underline"
-                      >
+                    <td className="num">
+                      <Link href={`/assets/${asset.id}/edit`} className="link">
                         {t(locale, "edit")}
                       </Link>
                     </td>

@@ -14,8 +14,8 @@ export default async function NewUnitPage() {
   const locale = await getLocale();
 
   return (
-    <main className="mx-auto w-full max-w-3xl p-8">
-      <h1 className="text-2xl font-semibold">{t(locale, "unit_new_title")}</h1>
+    <main>
+      <h1>{t(locale, "unit_new_title")}</h1>
       <UnitForm {...unitFormProps(locale)} />
     </main>
   );

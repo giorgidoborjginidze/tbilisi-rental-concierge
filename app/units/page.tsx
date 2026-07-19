@@ -20,47 +20,38 @@ export default async function UnitsPage() {
   });
 
   return (
-    <main className="mx-auto w-full max-w-5xl p-8">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">{t(locale, "units_title")}</h1>
+    <main>
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <h1 style={{ marginBottom: 0 }}>{t(locale, "units_title")}</h1>
         <div className="flex items-center gap-3">
           <form action={syncNow}>
-            <button
-              type="submit"
-              className="rounded border border-line-strong bg-white px-4 py-2 text-sm shadow-card hover:bg-surface2"
-            >
+            <button type="submit" className="btn-secondary">
               {t(locale, "sync_now")}
             </button>
           </form>
-          <Link
-            href="/bookings/new"
-            className="rounded border border-line-strong bg-white px-4 py-2 text-sm shadow-card hover:bg-surface2"
-          >
+          <Link href="/bookings/new" className="btn-secondary">
             {t(locale, "bookings_add")}
           </Link>
-          <Link
-            href="/units/new"
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white shadow-card hover:bg-primary-dark"
-          >
+          <Link href="/units/new" className="btn-primary">
             {t(locale, "units_add")}
           </Link>
         </div>
       </div>
 
       {units.length === 0 ? (
-        <p className="text-neutral-500">{t(locale, "units_empty")}</p>
+        <p style={{ color: "var(--color-text-muted)" }}>{t(locale, "units_empty")}</p>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-line bg-white shadow-card">
-          <table className="w-full text-sm">
-            <thead className="bg-surface2 text-left">
+        <div className="card">
+          <table>
+            <thead>
               <tr>
-                <th className="px-4 py-3 font-medium">{t(locale, "unit_name")}</th>
-                <th className="px-4 py-3 font-medium">{t(locale, "unit_district")}</th>
-                <th className="px-4 py-3 font-medium">{t(locale, "unit_type")}</th>
-                <th className="px-4 py-3 font-medium text-right">{t(locale, "base_rate_short")}</th>
-                <th className="px-4 py-3 font-medium text-right">{t(locale, "bookings")}</th>
-                <th className="px-4 py-3 font-medium text-center">iCal</th>
-                <th className="px-4 py-3" />
+                <th>{t(locale, "unit_name")}</th>
+                <th>{t(locale, "unit_district")}</th>
+                <th>{t(locale, "unit_type")}</th>
+                <th className="num">{t(locale, "base_rate_short")}</th>
+                <th className="num">{t(locale, "bookings")}</th>
+                <th style={{ textAlign: "center" }}>iCal</th>
+                <th />
               </tr>
             </thead>
             <tbody>
@@ -69,32 +60,24 @@ export default async function UnitsPage() {
                 const displayName =
                   locale === "ka" && unit.nameKa ? unit.nameKa : unit.name;
                 return (
-                  <tr
-                    key={unit.id}
-                    className="border-t border-line"
-                  >
-                    <td className="px-4 py-3">
+                  <tr key={unit.id}>
+                    <td>
                       <div>{displayName}</div>
-                      <div className="text-xs text-neutral-500">
+                      <div className="cell-sub">
                         {unit.city} · {unit.address}
                       </div>
                     </td>
-                    <td className="px-4 py-3">{unit.district}</td>
-                    <td className="px-4 py-3">
-                      {t(locale, `type_${unit.type}` as StringKey)}
-                    </td>
-                    <td className="px-4 py-3 text-right">
+                    <td>{unit.district}</td>
+                    <td>{t(locale, `type_${unit.type}` as StringKey)}</td>
+                    <td className="num">
                       {unit.baseNightlyRate} {unit.currency}
                     </td>
-                    <td className="px-4 py-3 text-right">{unit._count.bookings}</td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="num">{unit._count.bookings}</td>
+                    <td style={{ textAlign: "center" }}>
                       {links.icalUrls.length > 0 ? links.icalUrls.length : "—"}
                     </td>
-                    <td className="px-4 py-3 text-right">
-                      <Link
-                        href={`/units/${unit.id}/edit`}
-                        className="text-primary hover:underline"
-                      >
+                    <td className="num">
+                      <Link href={`/units/${unit.id}/edit`} className="link">
                         {t(locale, "edit")}
                       </Link>
                     </td>

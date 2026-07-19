@@ -27,9 +27,6 @@ export interface AssetFormValues {
   notes: string;
 }
 
-const inputClass =
-  "w-full rounded border border-line-strong bg-white px-3 py-2 text-sm";
-const labelClass = "flex flex-col gap-1 text-sm";
 
 export default function AssetForm({
   asset,
@@ -59,48 +56,48 @@ export default function AssetForm({
     <form action={formAction} className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
       {asset?.id && <input type="hidden" name="assetId" value={asset.id} />}
 
-      <label className={labelClass}>
+      <label className="field">
         {labels.unit_name}
-        <input name="name" required defaultValue={asset?.name} className={inputClass} />
+        <input name="name" required defaultValue={asset?.name} />
       </label>
-      <label className={labelClass}>
+      <label className="field">
         {labels.unit_name_ka}
-        <input name="nameKa" defaultValue={asset?.nameKa} className={inputClass} />
+        <input name="nameKa" defaultValue={asset?.nameKa} />
       </label>
 
-      <label className={labelClass}>
+      <label className="field">
         {labels.asset_category}
         <select
           name="category"
           value={category}
           onChange={(event) => setCategory(event.target.value)}
-          className={inputClass}
+         
         >
           {categories.map((c) => (
             <option key={c.value} value={c.value}>{c.label}</option>
           ))}
         </select>
       </label>
-      <label className={labelClass}>
+      <label className="field">
         {labels.unit_type}
-        <select name="type" defaultValue={asset?.type} className={inputClass}>
+        <select name="type" defaultValue={asset?.type}>
           {types.map((type) => (
             <option key={type.value} value={type.value}>{type.label}</option>
           ))}
         </select>
       </label>
 
-      <label className={labelClass}>
+      <label className="field">
         {labels.status_label}
-        <select name="status" defaultValue={asset?.status ?? "personal_use"} className={inputClass}>
+        <select name="status" defaultValue={asset?.status ?? "personal_use"}>
           {statuses.map((s) => (
             <option key={s.value} value={s.value}>{s.label}</option>
           ))}
         </select>
       </label>
-      <label className={labelClass}>
+      <label className="field">
         {labels.asset_link_unit}
-        <select name="unitId" defaultValue={asset?.unitId ?? ""} className={inputClass}>
+        <select name="unitId" defaultValue={asset?.unitId ?? ""}>
           <option value="">{labels.asset_none}</option>
           {units.map((unit) => (
             <option key={unit.id} value={unit.id}>{unit.label}</option>
@@ -110,15 +107,15 @@ export default function AssetForm({
 
       {category === "real_estate" && (
         <>
-          <label className={labelClass}>
+          <label className="field">
             {labels.unit_city}
-            <input name="city" defaultValue={asset?.city ?? "Tbilisi"} className={inputClass} />
+            <input name="city" defaultValue={asset?.city ?? "Tbilisi"} />
           </label>
-          <label className={labelClass}>
+          <label className="field">
             {labels.unit_district}
             <input
               name="district" list="asset-district-options"
-              defaultValue={asset?.district} className={inputClass}
+              defaultValue={asset?.district}
             />
             <datalist id="asset-district-options">
               {districts.map((district) => (
@@ -126,92 +123,92 @@ export default function AssetForm({
               ))}
             </datalist>
           </label>
-          <label className={`${labelClass} sm:col-span-2`}>
+          <label className="field sm:col-span-2">
             {labels.unit_address}
-            <input name="address" defaultValue={asset?.address} className={inputClass} />
+            <input name="address" defaultValue={asset?.address} />
           </label>
-          <label className={labelClass}>
+          <label className="field">
             {labels.asset_area}
             <input
               name="areaSqm" type="number" min={0} step="0.1"
-              defaultValue={asset?.areaSqm} className={inputClass}
+              defaultValue={asset?.areaSqm}
             />
           </label>
-          <label className={labelClass}>
+          <label className="field">
             {labels.rental_mode}
-            <select name="rentalMode" defaultValue={asset?.rentalMode ?? "long_term"} className={inputClass}>
+            <select name="rentalMode" defaultValue={asset?.rentalMode ?? "long_term"}>
               <option value="long_term">{labels.mode_long_term}</option>
               <option value="daily">{labels.mode_daily}</option>
             </select>
           </label>
-          <label className={labelClass}>
+          <label className="field">
             {labels.myhome_url}
             <input
               name="myhomeUrl" type="url" placeholder="https://www.myhome.ge/pr/..."
-              defaultValue={asset?.myhomeUrl} className={inputClass}
+              defaultValue={asset?.myhomeUrl}
             />
           </label>
-          <label className={labelClass}>
+          <label className="field">
             {labels.ss_url}
             <input
               name="ssUrl" type="url" placeholder="https://home.ss.ge/..."
-              defaultValue={asset?.ssUrl} className={inputClass}
+              defaultValue={asset?.ssUrl}
             />
           </label>
-          <label className={labelClass}>
+          <label className="field">
             {labels.unit_airbnb_url}
             <input
               name="airbnbUrl" type="url" placeholder="https://www.airbnb.com/rooms/..."
-              defaultValue={asset?.airbnbUrl} className={inputClass}
+              defaultValue={asset?.airbnbUrl}
             />
           </label>
-          <label className={labelClass}>
+          <label className="field">
             {labels.unit_booking_url}
             <input
               name="bookingUrl" type="url" placeholder="https://www.booking.com/hotel/ge/..."
-              defaultValue={asset?.bookingUrl} className={inputClass}
+              defaultValue={asset?.bookingUrl}
             />
           </label>
-          <span className="text-xs text-neutral-500 sm:col-span-2">{labels.myhome_hint}</span>
+          <span className="hint sm:col-span-2">{labels.myhome_hint}</span>
         </>
       )}
 
       {category === "vehicle" && (
-        <label className={`${labelClass} sm:col-span-2`}>
+        <label className="field sm:col-span-2">
           {labels.myauto_url}
           <input
             name="myautoUrl" type="url" placeholder="https://www.myauto.ge/pr/..."
-            defaultValue={asset?.myautoUrl} className={inputClass}
+            defaultValue={asset?.myautoUrl}
           />
         </label>
       )}
 
-      <label className={labelClass}>
+      <label className="field">
         {labels.asset_value}
         <input
           name="estimatedValue" type="number" min={0} step="1"
-          defaultValue={asset?.estimatedValue} className={inputClass}
+          defaultValue={asset?.estimatedValue}
         />
       </label>
 
-      <label className={`${labelClass} sm:col-span-2`}>
+      <label className="field sm:col-span-2">
         {labels.asset_notes}
-        <textarea name="notes" rows={2} defaultValue={asset?.notes} className={inputClass} />
+        <textarea name="notes" rows={2} defaultValue={asset?.notes} />
       </label>
 
       {state?.error && (
-        <p className="text-sm text-red-600 sm:col-span-2">{labels[state.error]}</p>
+        <p className="sm:col-span-2" style={{ color: "var(--status-danger-text)", fontSize: 13 }}>{labels[state.error]}</p>
       )}
 
       <div className="flex items-center gap-3 sm:col-span-2">
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white shadow-card hover:bg-primary-dark disabled:opacity-50"
+          className="btn-primary"
         >
           {labels.save}
         </button>
-        <Link href="/assets" className="text-sm text-neutral-500 hover:underline">
+        <Link href="/assets" className="link">
           {labels.cancel}
         </Link>
         {asset?.id && (
@@ -221,7 +218,7 @@ export default function AssetForm({
               if (confirm(labels.asset_delete_confirm)) return deleteAsset(formData);
             }}
             formNoValidate
-            className="ml-auto rounded border border-red-300 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:border-red-900 dark:hover:bg-red-950"
+            className="ml-auto btn-danger"
           >
             {labels.delete}
           </button>

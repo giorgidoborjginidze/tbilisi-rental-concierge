@@ -4,8 +4,29 @@ import { useTransition } from "react";
 import { setAssetStatus } from "@/lib/assets/actions";
 
 export interface ListingLink {
+  /** Platform key — maps to a .brandmark--* variant. */
+  platform: string; // "myhome" | "ss" | "myauto" | "airbnb" | "booking"
   label: string; // "myhome.ge" | "ss.ge" | "myauto.ge" | "Airbnb" | "Booking.com"
   url: string;
+}
+
+// Branded platform chip, exactly as in the approved design:
+// <a class="brandmark brandmark--myhome"><b>myhome</b><span>.ge</span></a>
+export function Brandmark({ link }: { link: ListingLink }) {
+  const dot = link.label.indexOf(".");
+  const head = dot > 0 ? link.label.slice(0, dot) : link.label;
+  const tail = dot > 0 ? link.label.slice(dot) : "";
+  return (
+    <a
+      href={link.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`brandmark brandmark--${link.platform}`}
+    >
+      <b>{head}</b>
+      {tail && <span>{tail}</span>}
+    </a>
+  );
 }
 
 // Per-asset quick status flip. Updates the status here and — when the
@@ -38,38 +59,21 @@ export default function ListingControls({
     if (links[0]) window.open(links[0].url, "_blank", "noopener");
   };
 
-  const buttonClass = (active: boolean) =>
-    `rounded border px-2 py-0.5 text-xs transition-colors disabled:opacity-50 ${
-      active
-        ? "border-primary bg-primary text-white"
-        : "border-neutral-300 text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800"
-    }`;
-
-  const linkChips = links.map((link) => (
-    <a
-      key={link.label}
-      href={link.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-xs text-accent hover:underline"
-    >
-      {link.label} ↗
-    </a>
-  ));
+  const linkChips = links.map((link) => <Brandmark key={link.platform} link={link} />);
 
   if (!showButtons) {
     return links.length > 0 ? (
-      <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">{linkChips}</div>
+      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">{linkChips}</div>
     ) : null;
   }
 
   return (
-    <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+    <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
       <button
         type="button"
         disabled={pending || status === "rented"}
         onClick={() => flip("rented")}
-        className={buttonClass(status === "rented")}
+        className={`btn-chip ${status === "rented" ? "btn-chip--active" : ""}`}
       >
         {labels.rented}
       </button>
@@ -77,7 +81,7 @@ export default function ListingControls({
         type="button"
         disabled={pending || status === "vacant"}
         onClick={() => flip("vacant")}
-        className={buttonClass(status === "vacant")}
+        className={`btn-chip ${status === "vacant" ? "btn-chip--active" : ""}`}
       >
         {labels.vacant}
       </button>

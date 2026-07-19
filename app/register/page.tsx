@@ -16,10 +16,12 @@ export default async function RegisterPage() {
   );
 
   return (
-    <main className="mx-auto w-full max-w-md p-8">
-      <h1 className="text-2xl font-semibold">{t(locale, "register_title")}</h1>
-      <p className="mt-2 text-neutral-500">{t(locale, "onboarding_intro")}</p>
+    <main>
+      <section className="auth-box">
+      <h1>{t(locale, "register_title")}</h1>
+      <p style={{ color: "var(--color-text-muted)" }}>{t(locale, "onboarding_intro")}</p>
       <AuthForm mode="register" labels={labels} />
+      </section>
     </main>
   );
 }

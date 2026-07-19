@@ -26,8 +26,8 @@ export default async function EditUnitPage({
   const links = parseChannelLinks(unit.channelLinks);
 
   return (
-    <main className="mx-auto w-full max-w-3xl p-8">
-      <h1 className="text-2xl font-semibold">{t(locale, "unit_edit_title")}</h1>
+    <main>
+      <h1>{t(locale, "unit_edit_title")}</h1>
       <UnitForm
         {...unitFormProps(locale)}
         unit={{

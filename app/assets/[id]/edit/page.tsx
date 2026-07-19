@@ -42,8 +42,8 @@ export default async function EditAssetPage({
   });
 
   return (
-    <main className="mx-auto w-full max-w-3xl p-8">
-      <h1 className="text-2xl font-semibold">{t(locale, "asset_edit_title")}</h1>
+    <main>
+      <h1>{t(locale, "asset_edit_title")}</h1>
       <AssetForm
         {...props}
         asset={{
@@ -69,14 +69,14 @@ export default async function EditAssetPage({
         }}
       />
 
-      <section className="mt-10">
-        <h2 className="mb-3 text-lg font-medium">{t(locale, "contracts_title")}</h2>
+      <section>
+        <h2>{t(locale, "contracts_title")}</h2>
         {asset.contracts.length > 0 && (
           <ul className="mb-4 space-y-2">
             {asset.contracts.map((contract) => (
               <li
                 key={contract.id}
-                className="flex items-center justify-between rounded border border-neutral-200 px-4 py-2 text-sm dark:border-neutral-800"
+                className="alert-card" style={{ padding: "12px 18px", alignItems: "center" }}
               >
                 <div>
                   <span className="font-medium">
@@ -85,7 +85,7 @@ export default async function EditAssetPage({
                   · {contract.tenantName ?? "—"}
                   {contract.tenantPhone ? ` (${contract.tenantPhone})` : ""} · {fmtDate.format(contract.startDate)}{" "}
                   – {fmtDate.format(contract.endDate)}{" "}
-                  <span className="text-xs text-neutral-500">
+                  <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
                     ({t(locale, `cstatus_${contract.status}` as StringKey)})
                   </span>
                 </div>
@@ -94,7 +94,7 @@ export default async function EditAssetPage({
                   <input type="hidden" name="assetId" value={asset.id} />
                   <button
                     type="submit"
-                    className="text-xs text-neutral-400 hover:text-red-500"
+                    className="btn-chip"
                     aria-label="delete contract"
                   >
                     ✕

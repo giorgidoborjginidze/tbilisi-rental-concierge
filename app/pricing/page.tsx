@@ -37,68 +37,64 @@ export default async function PricingPage({
     locale === "ka" && unit.nameKa ? unit.nameKa : unit.name;
 
   return (
-    <main className="mx-auto w-full max-w-4xl p-8">
+    <main>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">{t(locale, "pricing_title")}</h1>
+        <h1 style={{ marginBottom: 0 }}>{t(locale, "pricing_title")}</h1>
         <UnitFilter
           basePath="/pricing"
           units={units.map((u) => ({ id: u.id, label: displayName(u) }))}
           selected={selected.id}
         />
       </div>
-      <p className="mb-6 text-sm text-neutral-500">
+      <p className="mb-5" style={{ color: "var(--color-text-muted)", fontSize: 13 }}>
         {t(locale, "pricing_intro")} · {t(locale, "base_rate_short")}:{" "}
         {selected.baseNightlyRate} {selected.currency}
       </p>
 
-      <div className="overflow-x-auto rounded-2xl border border-line bg-white shadow-card">
-        <table className="w-full text-sm">
-          <thead className="bg-surface2 text-left">
+      <div className="card">
+        <table>
+          <thead>
             <tr>
-              <th className="px-4 py-3 font-medium">{t(locale, "pricing_date")}</th>
-              <th className="px-4 py-3 font-medium text-right">
-                {t(locale, "pricing_suggested")}
-              </th>
-              <th className="px-4 py-3 font-medium text-right">
-                {t(locale, "pricing_benchmark")}
-              </th>
-              <th className="px-4 py-3 font-medium">{t(locale, "pricing_rationale")}</th>
+              <th>{t(locale, "pricing_date")}</th>
+              <th className="num">{t(locale, "pricing_suggested")}</th>
+              <th className="num">{t(locale, "pricing_benchmark")}</th>
+              <th>{t(locale, "pricing_rationale")}</th>
             </tr>
           </thead>
           <tbody>
             {(suggestions ?? []).map((row) => {
               const delta = row.result.suggestedRate - selected.baseNightlyRate;
               return (
-                <tr
-                  key={row.date.toISOString()}
-                  className="border-t border-line"
-                >
-                  <td className="px-4 py-3">{fmtDay.format(row.date)}</td>
-                  <td className="px-4 py-3 text-right">
-                    <span className="font-medium">
-                      {row.result.suggestedRate} {selected.currency}
-                    </span>{" "}
+                <tr key={row.date.toISOString()}>
+                  <td>{fmtDay.format(row.date)}</td>
+                  <td className="num">
+                    {row.result.suggestedRate} {selected.currency}{" "}
                     <span
-                      className={
-                        delta > 0
-                          ? "text-xs text-emerald-600"
-                          : delta < 0
-                            ? "text-xs text-red-500"
-                            : "text-xs text-neutral-400"
-                      }
+                      style={{
+                        fontSize: 12,
+                        color:
+                          delta > 0
+                            ? "var(--status-rented-text)"
+                            : delta < 0
+                              ? "var(--status-danger-text)"
+                              : "var(--color-text-muted)",
+                      }}
                     >
                       {delta > 0 ? `+${delta}` : delta < 0 ? `${delta}` : "="}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right text-neutral-500">
+                  <td className="num" style={{ color: "var(--color-text-muted)" }}>
                     {row.result.factors.benchmarkAdr ?? "—"}
                     {row.result.underpriced && (
-                      <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800 dark:bg-amber-900 dark:text-amber-200">
-                        {t(locale, "pricing_underpriced")}
-                      </span>
+                      <>
+                        {" "}
+                        <span className="badge badge--vacant">
+                          {t(locale, "pricing_underpriced")}
+                        </span>
+                      </>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-neutral-600 dark:text-neutral-400">
+                  <td style={{ color: "var(--color-text-muted)", fontWeight: 400 }}>
                     {row.rationale}
                   </td>
                 </tr>

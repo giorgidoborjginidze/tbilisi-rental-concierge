@@ -26,8 +26,9 @@ export default async function NewBookingPage() {
   const labels = Object.fromEntries(labelKeys.map((key) => [key, t(locale, key)]));
 
   return (
-    <main className="mx-auto w-full max-w-md p-8">
-      <h1 className="text-2xl font-semibold">{t(locale, "booking_new_title")}</h1>
+    <main>
+      <div className="auth-box" style={{ maxWidth: 480 }}>
+      <h1>{t(locale, "booking_new_title")}</h1>
       <BookingForm
         labels={labels}
         units={units.map((unit) => ({
@@ -35,6 +36,7 @@ export default async function NewBookingPage() {
           label: `${locale === "ka" && unit.nameKa ? unit.nameKa : unit.name} (${unit.city})`,
         }))}
       />
+      </div>
     </main>
   );
 }

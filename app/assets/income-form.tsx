@@ -4,9 +4,6 @@ import { useActionState } from "react";
 import { addIncome } from "@/lib/assets/actions";
 import type { FormState } from "@/lib/units/actions";
 
-const inputClass =
-  "w-full rounded border border-line-strong bg-white px-3 py-2 text-sm";
-const labelClass = "flex flex-col gap-1 text-sm";
 
 export default function IncomeForm({ labels }: { labels: Record<string, string> }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(
@@ -17,37 +14,37 @@ export default function IncomeForm({ labels }: { labels: Record<string, string> 
   return (
     <form
       action={formAction}
-      className="grid h-fit grid-cols-2 gap-3 rounded-2xl border border-line bg-white p-4 shadow-card"
+      className="card form-grid form-grid--full h-fit" style={{ padding: 18, overflow: "visible" }}
     >
-      <label className={labelClass}>
+      <label className="field">
         {labels.income_source}
-        <select name="source" className={inputClass}>
+        <select name="source">
           <option value="salary">{labels.source_salary}</option>
           <option value="business">{labels.source_business}</option>
           <option value="dividend">{labels.source_dividend}</option>
           <option value="other">{labels.source_other}</option>
         </select>
       </label>
-      <label className={labelClass}>
+      <label className="field">
         {labels.income_date}
-        <input name="date" type="date" required className={inputClass} />
+        <input name="date" type="date" required />
       </label>
-      <label className={labelClass}>
+      <label className="field">
         {labels.income_amount}
-        <input name="amount" type="number" min={0} step="0.01" required className={inputClass} />
+        <input name="amount" type="number" min={0} step="0.01" required />
       </label>
-      <label className={labelClass}>
+      <label className="field">
         {labels.income_desc}
-        <input name="description" className={inputClass} />
+        <input name="description" />
       </label>
       {state?.error && (
-        <p className="col-span-2 text-sm text-red-600">{labels[state.error]}</p>
+        <p className="col-span-2" style={{ color: "var(--status-danger-text)", fontSize: 13 }}>{labels[state.error]}</p>
       )}
       <div className="col-span-2">
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white shadow-card hover:bg-primary-dark disabled:opacity-50"
+          className="btn-primary"
         >
           {labels.income_add}
         </button>

@@ -22,9 +22,6 @@ export interface UnitFormValues {
   icalUrls: string;
 }
 
-const inputClass =
-  "w-full rounded border border-line-strong bg-white px-3 py-2 text-sm";
-const labelClass = "flex flex-col gap-1 text-sm";
 
 export default function UnitForm({
   unit,
@@ -48,31 +45,31 @@ export default function UnitForm({
     <form action={formAction} className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
       {unit?.id && <input type="hidden" name="unitId" value={unit.id} />}
 
-      <label className={labelClass}>
+      <label className="field">
         {labels.unit_name}
-        <input name="name" required defaultValue={unit?.name} className={inputClass} />
+        <input name="name" required defaultValue={unit?.name} />
       </label>
-      <label className={labelClass}>
+      <label className="field">
         {labels.unit_name_ka}
-        <input name="nameKa" defaultValue={unit?.nameKa} className={inputClass} />
+        <input name="nameKa" defaultValue={unit?.nameKa} />
       </label>
 
-      <label className={labelClass}>
+      <label className="field">
         {labels.unit_city}
-        <select name="city" defaultValue={unit?.city ?? cities[0]} className={inputClass}>
+        <select name="city" defaultValue={unit?.city ?? cities[0]}>
           {cities.map((city) => (
             <option key={city} value={city}>{city}</option>
           ))}
         </select>
       </label>
-      <label className={labelClass}>
+      <label className="field">
         {labels.unit_district}
         <input
           name="district"
           required
           list="district-options"
           defaultValue={unit?.district}
-          className={inputClass}
+         
         />
         <datalist id="district-options">
           {districts.map((district) => (
@@ -81,89 +78,89 @@ export default function UnitForm({
         </datalist>
       </label>
 
-      <label className={`${labelClass} sm:col-span-2`}>
+      <label className="field sm:col-span-2">
         {labels.unit_address}
-        <input name="address" required defaultValue={unit?.address} className={inputClass} />
+        <input name="address" required defaultValue={unit?.address} />
       </label>
 
-      <label className={labelClass}>
+      <label className="field">
         {labels.unit_type}
-        <select name="type" defaultValue={unit?.type ?? types[0]?.value} className={inputClass}>
+        <select name="type" defaultValue={unit?.type ?? types[0]?.value}>
           {types.map((type) => (
             <option key={type.value} value={type.value}>{type.label}</option>
           ))}
         </select>
       </label>
-      <label className={labelClass}>
+      <label className="field">
         {labels.unit_currency}
-        <select name="currency" defaultValue={unit?.currency ?? "GEL"} className={inputClass}>
+        <select name="currency" defaultValue={unit?.currency ?? "GEL"}>
           {["GEL", "USD", "EUR"].map((currency) => (
             <option key={currency} value={currency}>{currency}</option>
           ))}
         </select>
       </label>
 
-      <label className={labelClass}>
+      <label className="field">
         {labels.unit_capacity}
         <input
           name="capacity" type="number" min={1} required
-          defaultValue={unit?.capacity ?? 2} className={inputClass}
+          defaultValue={unit?.capacity ?? 2}
         />
       </label>
-      <label className={labelClass}>
+      <label className="field">
         {labels.unit_bedrooms}
         <input
           name="bedrooms" type="number" min={0} required
-          defaultValue={unit?.bedrooms ?? 1} className={inputClass}
+          defaultValue={unit?.bedrooms ?? 1}
         />
       </label>
 
-      <label className={labelClass}>
+      <label className="field">
         {labels.unit_base_rate}
         <input
           name="baseNightlyRate" type="number" min={1} step="0.01" required
-          defaultValue={unit?.baseNightlyRate} className={inputClass}
+          defaultValue={unit?.baseNightlyRate}
         />
       </label>
-      <label className={labelClass}>
+      <label className="field">
         {labels.unit_amenities}
         <input
           name="amenities" placeholder="wifi, ac, washer"
-          defaultValue={unit?.amenities} className={inputClass}
+          defaultValue={unit?.amenities}
         />
       </label>
 
-      <label className={labelClass}>
+      <label className="field">
         {labels.unit_airbnb_url}
-        <input name="airbnbUrl" type="url" defaultValue={unit?.airbnbUrl} className={inputClass} />
+        <input name="airbnbUrl" type="url" defaultValue={unit?.airbnbUrl} />
       </label>
-      <label className={labelClass}>
+      <label className="field">
         {labels.unit_booking_url}
-        <input name="bookingUrl" type="url" defaultValue={unit?.bookingUrl} className={inputClass} />
+        <input name="bookingUrl" type="url" defaultValue={unit?.bookingUrl} />
       </label>
 
-      <label className={`${labelClass} sm:col-span-2`}>
+      <label className="field sm:col-span-2">
         {labels.unit_ical_urls}
         <textarea
           name="icalUrls" rows={3} defaultValue={unit?.icalUrls}
-          className={`${inputClass} font-mono text-xs`}
+          className="font-mono text-xs"
         />
-        <span className="text-xs text-neutral-500">{labels.unit_ical_hint}</span>
+        <span className="hint">{labels.unit_ical_hint}</span>
       </label>
 
       {state?.error && (
-        <p className="text-sm text-red-600 sm:col-span-2">{labels[state.error]}</p>
+        <p className="sm:col-span-2" style={{ color: "var(--status-danger-text)", fontSize: 13 }}>{labels[state.error]}</p>
       )}
 
       <div className="flex items-center gap-3 sm:col-span-2">
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white shadow-card hover:bg-primary-dark disabled:opacity-50"
+          className="btn-primary"
         >
           {labels.save}
         </button>
-        <Link href="/units" className="text-sm text-neutral-500 hover:underline">
+        <Link href="/units" className="link">
           {labels.cancel}
         </Link>
         {unit?.id && (
@@ -173,7 +170,7 @@ export default function UnitForm({
               if (confirm(labels.delete_confirm)) return deleteUnit(formData);
             }}
             formNoValidate
-            className="ml-auto rounded border border-red-300 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:border-red-900 dark:hover:bg-red-950"
+            className="ml-auto btn-danger"
           >
             {labels.delete}
           </button>

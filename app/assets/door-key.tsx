@@ -37,21 +37,26 @@ export default function DoorKey({
     : `https://wa.me/?text=${text}`;
 
   return (
-    <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-      <span className="text-neutral-500">🔑 {labels.key}:</span>
+    <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1" style={{ fontSize: 12 }}>
+      <span style={{ color: "var(--color-text-muted)" }}>🔑 {labels.key}:</span>
       {code ? (
-        <span className="rounded bg-neutral-100 px-1.5 py-0.5 font-mono font-semibold tracking-wider dark:bg-neutral-800">
+        <span
+          className="font-mono"
+          style={{
+            background: "var(--color-surface)",
+            border: "1px solid var(--color-border)",
+            borderRadius: "var(--radius-sm)",
+            padding: "1px 7px",
+            fontWeight: 600,
+            letterSpacing: "0.08em",
+          }}
+        >
           {code}
         </span>
       ) : (
-        <span className="text-neutral-400">—</span>
+        <span style={{ color: "var(--color-text-muted)" }}>—</span>
       )}
-      <button
-        type="button"
-        onClick={generate}
-        disabled={pending}
-        className="rounded border border-neutral-300 px-2 py-0.5 text-neutral-600 hover:bg-neutral-100 disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800"
-      >
+      <button type="button" onClick={generate} disabled={pending} className="btn-chip">
         {labels.generate}
       </button>
       {code && (
@@ -59,7 +64,7 @@ export default function DoorKey({
           href={waHref}
           target="_blank"
           rel="noopener noreferrer"
-          className="rounded border border-emerald-300 px-2 py-0.5 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950"
+          className="btn-chip btn-chip--wa"
         >
           WhatsApp ↗
         </a>
