@@ -146,7 +146,7 @@ export default async function AssetsPage() {
       {assets.length === 0 ? (
         <p style={{ color: "var(--color-text-muted)" }}>{t(locale, "assets_empty")}</p>
       ) : (
-        <div className="card">
+        <div className="card card--stack">
           <table>
             <thead>
               <tr>
@@ -189,7 +189,7 @@ export default async function AssetsPage() {
                         )}
                       </div>
                     </td>
-                    <td>
+                    <td data-label={t(locale, "unit_type")}>
                       {t(locale, `type_${asset.type}` as StringKey)}
                       {asset.rentalMode === "daily" && (
                         <>
@@ -200,7 +200,7 @@ export default async function AssetsPage() {
                         </>
                       )}
                     </td>
-                    <td>
+                    <td data-label={t(locale, "status_label")}>
                       <span
                         className={`badge ${STATUS_BADGE[status] ?? STATUS_BADGE.personal_use}`}
                       >
@@ -219,7 +219,7 @@ export default async function AssetsPage() {
                         />
                       )}
                     </td>
-                    <td style={{ fontWeight: 400 }}>
+                    <td data-label={t(locale, "contracts_col")} style={{ fontWeight: 400 }}>
                       {contract ? (
                         <div>
                           <div>
@@ -246,7 +246,7 @@ export default async function AssetsPage() {
                         />
                       )}
                     </td>
-                    <td className="num">
+                    <td className="num" data-label={t(locale, "market_rent_est")}>
                       {marketRent ? (
                         <div>
                           <span style={{ color: "var(--color-text-muted)" }}>
@@ -264,7 +264,7 @@ export default async function AssetsPage() {
                         <span style={{ color: "var(--color-text-muted)" }}>—</span>
                       )}
                     </td>
-                    <td className="num">
+                    <td className="num" data-label={t(locale, "asset_value_col")}>
                       {asset.estimatedValue ? money(asset.estimatedValue) : "—"}
                     </td>
                     <td className="num">

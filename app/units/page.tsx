@@ -41,7 +41,7 @@ export default async function UnitsPage() {
       {units.length === 0 ? (
         <p style={{ color: "var(--color-text-muted)" }}>{t(locale, "units_empty")}</p>
       ) : (
-        <div className="card">
+        <div className="card card--stack">
           <table>
             <thead>
               <tr>
@@ -67,13 +67,13 @@ export default async function UnitsPage() {
                         {unit.city} · {unit.address}
                       </div>
                     </td>
-                    <td>{unit.district}</td>
-                    <td>{t(locale, `type_${unit.type}` as StringKey)}</td>
-                    <td className="num">
+                    <td data-label={t(locale, "unit_district")}>{unit.district}</td>
+                    <td data-label={t(locale, "unit_type")}>{t(locale, `type_${unit.type}` as StringKey)}</td>
+                    <td className="num" data-label={t(locale, "base_rate_short")}>
                       {unit.baseNightlyRate} {unit.currency}
                     </td>
-                    <td className="num">{unit._count.bookings}</td>
-                    <td style={{ textAlign: "center" }}>
+                    <td className="num" data-label={t(locale, "bookings")}>{unit._count.bookings}</td>
+                    <td data-label="iCal" style={{ textAlign: "center" }}>
                       {links.icalUrls.length > 0 ? links.icalUrls.length : "—"}
                     </td>
                     <td className="num">
