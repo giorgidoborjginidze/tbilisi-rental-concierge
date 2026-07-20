@@ -1,0 +1,683 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+</head><body>
+<title>ქონების დაფა — ინტერაქციული დემო</title>
+<style>
+  :root {
+    --primary: #4f46e5; --primary-hover: #4338ca; --primary-contrast: #ffffff;
+    --accent: #0369a1;
+    --page: #fafafb; --bg: #ffffff; --surface: #f4f5f9;
+    --border: #e8eaf1; --border-strong: #d5d9e6;
+    --text: #191c28; --muted: #666d81;
+    --rented-bg: #e2f7eb; --rented-text: #0f6b42;
+    --vacant-bg: #fdf0cf; --vacant-text: #855708;
+    --str-bg: #e0f1fd; --str-text: #085e8e;
+    --listed-bg: #ece7fd; --listed-text: #5731c5;
+    --personal-bg: #eef0f5; --personal-text: #464d61;
+    --danger-bg: #fde3e3; --danger-text: #a41d2c;
+    --cal-airbnb: #fb5d76; --cal-booking: #2fa8ec; --cal-direct: #23c185;
+    --cal-lease: #9a7bf7; --cal-overlap: #d4232f; --cal-vacant: #edeff5;
+    --r-sm: 6px; --r-md: 10px; --r-lg: 16px;
+    --shadow: 0 1px 1px rgba(24,28,55,.03), 0 8px 24px -12px rgba(24,28,55,.1);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --primary: #8f97ff; --primary-hover: #a6acff; --primary-contrast: #101227;
+      --accent: #71b8f2;
+      --page: #0e1015; --bg: #151822; --surface: #1c2030;
+      --border: #262b3b; --border-strong: #363d52;
+      --text: #eceef5; --muted: #969db2;
+      --rented-bg: #133527; --rented-text: #74e3ae;
+      --vacant-bg: #382b0e; --vacant-text: #f0c452;
+      --str-bg: #0f2f46; --str-text: #7ccaf4;
+      --listed-bg: #29204d; --listed-text: #c2b2fc;
+      --personal-bg: #232838; --personal-text: #c5cbdd;
+      --danger-bg: #3e1418; --danger-text: #f79ba5;
+      --cal-vacant: #262b3b;
+      --shadow: 0 1px 2px rgba(0,0,0,.35), 0 10px 26px -12px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    --primary: #8f97ff; --primary-hover: #a6acff; --primary-contrast: #101227;
+    --accent: #71b8f2;
+    --page: #0e1015; --bg: #151822; --surface: #1c2030;
+    --border: #262b3b; --border-strong: #363d52;
+    --text: #eceef5; --muted: #969db2;
+    --rented-bg: #133527; --rented-text: #74e3ae;
+    --vacant-bg: #382b0e; --vacant-text: #f0c452;
+    --str-bg: #0f2f46; --str-text: #7ccaf4;
+    --listed-bg: #29204d; --listed-text: #c2b2fc;
+    --personal-bg: #232838; --personal-text: #c5cbdd;
+    --danger-bg: #3e1418; --danger-text: #f79ba5;
+    --cal-vacant: #262b3b;
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 10px 26px -12px rgba(0,0,0,.5);
+  }
+  :root[data-theme="light"] {
+    --primary: #4f46e5; --primary-hover: #4338ca; --primary-contrast: #ffffff;
+    --accent: #0369a1;
+    --page: #fafafb; --bg: #ffffff; --surface: #f4f5f9;
+    --border: #e8eaf1; --border-strong: #d5d9e6;
+    --text: #191c28; --muted: #666d81;
+    --rented-bg: #e2f7eb; --rented-text: #0f6b42;
+    --vacant-bg: #fdf0cf; --vacant-text: #855708;
+    --str-bg: #e0f1fd; --str-text: #085e8e;
+    --listed-bg: #ece7fd; --listed-text: #5731c5;
+    --personal-bg: #eef0f5; --personal-text: #464d61;
+    --danger-bg: #fde3e3; --danger-text: #a41d2c;
+    --cal-airbnb: #fb5d76; --cal-booking: #2fa8ec; --cal-direct: #23c185;
+    --cal-lease: #9a7bf7; --cal-overlap: #d4232f; --cal-vacant: #edeff5;
+    --shadow: 0 1px 1px rgba(24,28,55,.03), 0 8px 24px -12px rgba(24,28,55,.1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Noto Sans Georgian", system-ui, "Sylfaen", sans-serif;
+    background: var(--page); color: var(--text);
+    font-size: 14px; line-height: 1.6; -webkit-font-smoothing: antialiased;
+  }
+  main { width: 100%; max-width: 1080px; margin: 0 auto; padding: 32px 32px 80px; }
+  h1 { font-size: 24px; font-weight: 700; letter-spacing: -.02em; margin-bottom: 8px; text-wrap: balance; }
+  h2 { font-size: 16px; font-weight: 600; letter-spacing: -.01em; margin: 32px 0 14px; }
+  a { color: var(--accent); }
+
+  /* demo ribbon */
+  .demo-bar {
+    background: var(--primary); color: var(--primary-contrast);
+    text-align: center; font-size: 12px; font-weight: 600; padding: 6px 14px;
+  }
+
+  .nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 32px; border-bottom: 1px solid var(--border);
+    background: var(--bg); position: sticky; top: 0; z-index: 10;
+  }
+  .nav__brand { font-weight: 700; letter-spacing: -.01em; font-size: 14.5px; white-space: nowrap; }
+  .nav__links { display: flex; gap: 2px; flex: 1; margin-left: 12px; }
+  .nav__links button {
+    background: none; border: 0; cursor: pointer; font-family: inherit;
+    color: var(--muted); font-size: 13.5px; font-weight: 500;
+    padding: 6px 12px; border-radius: 8px; white-space: nowrap;
+    transition: background .15s, color .15s;
+  }
+  .nav__links button:hover { color: var(--text); background: var(--surface); }
+  .nav__links button.on { color: var(--primary); background: var(--surface); }
+  .nav__links button:focus-visible, .btn:focus-visible, .chip:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  .nav__meta { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+
+  .btn {
+    display: inline-block; border: 0; cursor: pointer; font-family: inherit;
+    background: var(--primary); color: var(--primary-contrast);
+    padding: 9px 18px; border-radius: var(--r-md);
+    font-size: 13.5px; font-weight: 600; letter-spacing: .01em;
+    transition: background .15s, transform .1s;
+  }
+  .btn:hover { background: var(--primary-hover); }
+  .btn:active { transform: translateY(1px); }
+  .btn--ghost { background: var(--bg); border: 1px solid var(--border-strong); color: var(--text); font-weight: 500; }
+  .btn--ghost:hover { background: var(--surface); border-color: var(--primary); }
+
+  .chip {
+    display: inline-flex; align-items: center; height: 26px; cursor: pointer;
+    background: transparent; border: 1px solid var(--border-strong);
+    color: var(--muted); padding: 0 11px; border-radius: 999px;
+    font-size: 12px; font-weight: 500; font-family: inherit; white-space: nowrap;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  .chip:hover { border-color: var(--primary); color: var(--text); }
+  .chip.on { background: var(--primary); color: var(--primary-contrast); border-color: var(--primary); }
+  .chip--wa { border-color: #1fa855; color: #128c46; text-decoration: none; }
+
+  .badge {
+    display: inline-flex; align-items: center; height: 26px; gap: 6px;
+    padding: 0 11px 0 9px; border-radius: 999px; font-size: 12px; font-weight: 500;
+    white-space: nowrap; border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+  }
+  .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .8; flex-shrink: 0; }
+  .b-rented { background: var(--rented-bg); color: var(--rented-text); }
+  .b-vacant { background: var(--vacant-bg); color: var(--vacant-text); }
+  .b-str { background: var(--str-bg); color: var(--str-text); }
+  .b-listed { background: var(--listed-bg); color: var(--listed-text); }
+  .b-personal { background: var(--personal-bg); color: var(--personal-text); }
+  .b-danger { background: var(--danger-bg); color: var(--danger-text); }
+
+  .brand {
+    display: inline-flex; align-items: center; height: 26px; text-decoration: none;
+    border-radius: 999px; padding: 0 8px 0 3px; font-size: 11px; font-weight: 700;
+    letter-spacing: -.01em; white-space: nowrap; line-height: 1;
+  }
+  .brand b { background: #fff; border-radius: 999px; padding: 4px 7px; color: #3d3d3d; }
+  .brand span { color: #fff; margin-left: 4px; }
+  .brand--myhome { background: #00b057; }
+  .brand--myauto { background: #fd4100; }
+  .brand--ss, .brand--airbnb { background: #fff; border: 1px solid var(--border-strong); padding: 0 9px 0 7px; gap: 4px; }
+  .brand--ss span { color: #21273a; margin-left: 4px; }
+  .brand--airbnb span { color: #ff385c; margin-left: 4px; text-transform: lowercase; }
+  .brand--booking { background: #003580; padding: 0 10px; }
+  .brand--booking span { margin-left: 0; }
+
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 18px 0 8px; }
+  .kpis--5 { grid-template-columns: repeat(5, 1fr); }
+  .kpi { border: 1px solid var(--border); border-radius: var(--r-lg); padding: 18px 20px; background: var(--bg); box-shadow: var(--shadow); }
+  .kpi b { display: block; font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); }
+  .kpi .v { font-size: 26px; font-weight: 700; letter-spacing: -.025em; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .kpi small { font-size: 11px; color: var(--muted); display: block; margin-top: 5px; }
+
+  .card { border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--bg); box-shadow: var(--shadow); overflow: hidden; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th { padding: 12px 18px; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); border-bottom: 1px solid var(--border); text-align: left; }
+  td { padding: 14px 18px; border-top: 1px solid var(--border); vertical-align: top; }
+  tbody tr:first-child td { border-top: 0; }
+  td:first-child { font-weight: 600; }
+  .sub { font-size: 12px; color: var(--muted); margin-top: 3px; font-weight: 400; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+
+  .alert { border: 1px solid var(--border); border-radius: var(--r-lg); padding: 16px 20px; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px; background: var(--bg); box-shadow: var(--shadow); }
+  .alert--gap { border-color: color-mix(in srgb, var(--vacant-text) 25%, var(--bg)); background: color-mix(in srgb, var(--vacant-bg) 40%, var(--bg)); }
+  .alert--lease { border-color: color-mix(in srgb, var(--str-text) 25%, var(--bg)); background: color-mix(in srgb, var(--str-bg) 40%, var(--bg)); }
+  .alert--contract { border-color: color-mix(in srgb, var(--listed-text) 25%, var(--bg)); background: color-mix(in srgb, var(--listed-bg) 40%, var(--bg)); }
+  .alert--green { border-color: color-mix(in srgb, var(--rented-text) 25%, var(--bg)); background: color-mix(in srgb, var(--rented-bg) 40%, var(--bg)); }
+  .alert h3 { font-size: 14.5px; font-weight: 600; }
+  .alert p { font-size: 13px; margin-top: 3px; color: var(--muted); }
+  .alert .act { font-size: 13px; margin-top: 8px; color: var(--text); }
+
+  .cal-row { display: flex; align-items: center; gap: 3px; padding: 6px 0; }
+  .cal-name { width: 170px; flex-shrink: 0; font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cc { width: 21px; height: 21px; flex-shrink: 0; border-radius: var(--r-sm); background: var(--cal-vacant); }
+  .cc.a { background: var(--cal-airbnb); } .cc.b { background: var(--cal-booking); }
+  .cc.d { background: var(--cal-direct); } .cc.l { background: var(--cal-lease); }
+  .cc.o { background: var(--cal-overlap); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--cal-overlap) 55%, black); }
+  .cal-day { width: 21px; flex-shrink: 0; text-align: center; font-size: 10px; color: var(--muted); }
+  .legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin: 8px 0 14px; flex-wrap: wrap; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 12px; height: 12px; border-radius: 4px; display: inline-block; }
+
+  .field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 500; }
+  .field input, .field select {
+    width: 100%; min-width: 0; border: 1px solid var(--border-strong); border-radius: var(--r-md);
+    padding: 9px 13px; font-size: 14px; font-family: inherit; font-weight: 400;
+    background: var(--bg); color: var(--text); transition: border-color .15s, box-shadow .15s;
+  }
+  .field input:focus, .field select:focus { outline: 0; border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+
+  .code {
+    font-family: ui-monospace, monospace; background: var(--surface);
+    border: 1px solid var(--border); border-radius: var(--r-sm);
+    padding: 1px 8px; font-weight: 600; letter-spacing: .1em;
+  }
+  .hint { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); padding: 10px 14px; font-size: 12px; color: var(--muted); }
+
+  .page { display: none; }
+  .page.on { display: block; animation: fadein .25s ease; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .page.on { animation: none; } }
+
+  /* login gate */
+  #gate { max-width: 400px; margin: 48px auto 0; }
+  #gate .card { overflow: visible; padding: 24px; }
+  #gate .field { margin-bottom: 14px; }
+
+  .plan-note { margin-top: 10px; }
+
+  @media (max-width: 760px) {
+    main { padding: 20px 14px 64px; }
+    h1 { font-size: 20px; }
+    .nav { flex-wrap: wrap; padding: 10px 14px; row-gap: 8px; }
+    .nav__meta { margin-left: auto; }
+    .nav__links { order: 3; flex: none; width: 100%; margin-left: 0; overflow-x: auto; scrollbar-width: none; }
+    .nav__links::-webkit-scrollbar { display: none; }
+    .kpis, .kpis--5 { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .kpi .v { font-size: 20px; }
+    .cols, .grid2 { grid-template-columns: 1fr; }
+    .cal-name { width: 104px; font-size: 12px; }
+    th { padding: 10px 12px; } td { padding: 11px 12px; }
+    .alert { flex-direction: column; }
+    /* stacked asset cards, like the real app */
+    .stack thead { display: none; }
+    .stack table, .stack tbody, .stack tr, .stack td { display: block; width: 100%; }
+    .stack tr { padding: 8px 0; }
+    .stack tr + tr { border-top: 1px solid var(--border); }
+    .stack td { border: 0; padding: 6px 16px; }
+    .stack td:first-child { padding-top: 12px; }
+    .stack td[data-l]::before {
+      content: attr(data-l); display: block; font-size: 10px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 4px;
+    }
+    .stack .num { text-align: left; }
+  }
+</style>
+
+<div class="demo-bar">ინტერაქციული დემო · მონაცემები საჩვენებელია · ღილაკები მუშაობს — დააჭირე და ნახე</div>
+
+<nav class="nav">
+  <span class="nav__brand">ქონების დაფა</span>
+  <div class="nav__links" id="navlinks" hidden>
+    <button data-p="dash" class="on">მთავარი</button>
+    <button data-p="units">ერთეულები</button>
+    <button data-p="cal">კალენდარი</button>
+    <button data-p="assets">აქტივები</button>
+    <button data-p="invest">ინვესტიცია</button>
+    <button data-p="alerts">გაფრთხილებები</button>
+    <button data-p="plans">პაკეტი</button>
+  </div>
+  <div class="nav__meta">
+    <span id="who" hidden>ops@kolkhetistays.ge</span>
+    <button class="chip" id="themeBtn" type="button">🌙</button>
+  </div>
+</nav>
+
+<main>
+
+<!-- ══ შესვლა ══ -->
+<section id="gate">
+  <h1>შესვლა</h1>
+  <p style="color:var(--muted); margin-bottom:16px">სადემონსტრაციო ანგარიში უკვე შევსებულია — უბრალოდ შედი.</p>
+  <div class="card">
+    <label class="field">ელფოსტა
+      <input value="ops@kolkhetistays.ge" readonly>
+    </label>
+    <label class="field">პაროლი
+      <input type="password" value="demo1234" readonly>
+    </label>
+    <button class="btn" style="width:100%" onclick="enter()">შესვლა</button>
+    <p class="hint" style="margin-top:14px">რეგისტრაციისას ირჩევ „პირადი / კომპანია" ტიპს — პირველი 30 დღე სრულად უფასოა.</p>
+  </div>
+</section>
+
+<div id="app" hidden>
+
+<!-- ══ დაფა ══ -->
+<section class="page on" id="p-dash">
+  <h1>STR ოპერატორის დაფა</h1>
+  <p style="color:var(--muted)">Kolkheti Stays · 12 ერთეული · თბილისი და ბათუმი</p>
+  <h2>მიმდინარე თვე</h2>
+  <div class="kpis kpis--5">
+    <div class="kpi"><b>დატვირთულობა</b><div class="v"><span class="cnt" data-to="69">0</span>%</div></div>
+    <div class="kpi"><b>ADR</b><div class="v"><span class="cnt" data-to="205">0</span> ₾</div></div>
+    <div class="kpi"><b>RevPAR</b><div class="v"><span class="cnt" data-to="142">0</span> ₾</div></div>
+    <div class="kpi"><b>შემოსავალი</b><div class="v"><span class="cnt" data-to="52787">0</span> ₾</div></div>
+    <div class="kpi"><b>მომდევნო 30 დღე</b><div class="v"><span class="cnt" data-to="70">0</span>%</div></div>
+  </div>
+  <h2>თვეების მიხედვით</h2>
+  <div class="card"><table>
+    <thead><tr><th>თვე</th><th class="num">დატვირთულობა</th><th class="num">ღამეები</th><th class="num">ADR</th><th class="num">შემოსავალი (₾)</th></tr></thead>
+    <tbody>
+      <tr><td>თებ 26</td><td class="num">48%</td><td class="num">161</td><td class="num">136</td><td class="num">21,841</td></tr>
+      <tr><td>მარ 26</td><td class="num">46%</td><td class="num">170</td><td class="num">150</td><td class="num">25,567</td></tr>
+      <tr><td>აპრ 26</td><td class="num">50%</td><td class="num">180</td><td class="num">174</td><td class="num">31,335</td></tr>
+      <tr><td>მაი 26</td><td class="num">54%</td><td class="num">202</td><td class="num">174</td><td class="num">35,054</td></tr>
+      <tr><td>ივნ 26</td><td class="num">58%</td><td class="num">210</td><td class="num">192</td><td class="num">40,225</td></tr>
+      <tr style="background:var(--surface); font-weight:500"><td>ივლ 26</td><td class="num">69%</td><td class="num">257</td><td class="num">205</td><td class="num">52,787</td></tr>
+      <tr><td>აგვ 26</td><td class="num">77%</td><td class="num">287</td><td class="num">217</td><td class="num">62,239</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ══ ერთეულები ══ -->
+<section class="page" id="p-units">
+  <h1>ერთეულები</h1>
+  <div class="row" style="margin-bottom:14px">
+    <button class="btn--ghost btn" onclick="toast(this,'სინქრონიზაცია დასრულდა — 3 ახალი ჯავშანი ჩამოვიდა ✓')">კალენდრების სინქრონიზაცია</button>
+    <button class="btn">ერთეულის დამატება</button>
+  </div>
+  <div class="card stack"><table>
+    <thead><tr><th>სახელი</th><th data-l>უბანი</th><th>ტიპი</th><th class="num">ტარიფი</th><th class="num">ჯავშნები</th><th style="text-align:center">iCal</th></tr></thead>
+    <tbody>
+      <tr><td>ვაკის პარკის ხედი 2ს<div class="sub">თბილისი · 12 ჭავჭავაძის გამზ.</div></td><td data-l="უბანი">ვაკე</td><td data-l="ტიპი">ბინა</td><td class="num" data-l="ტარიფი">240 ₾</td><td class="num" data-l="ჯავშნები">41</td><td data-l="iCal" style="text-align:center">2</td></tr>
+      <tr><td>ვერას ტერასა 1ს<div class="sub">თბილისი · 8 კიაჩელის ქ.</div></td><td data-l="უბანი">ვერა</td><td data-l="ტიპი">ბინა</td><td class="num" data-l="ტარიფი">195 ₾</td><td class="num" data-l="ჯავშნები">38</td><td data-l="iCal" style="text-align:center">2</td></tr>
+      <tr><td>საბურთალოს საოჯახო 3ს<div class="sub">თბილისი · 45 ვაჟა-ფშაველას გამზ.</div></td><td data-l="უბანი">საბურთალო</td><td data-l="ტიპი">ბინა</td><td class="num" data-l="ტარიფი">175 ₾</td><td class="num" data-l="ჯავშნები">29</td><td data-l="iCal" style="text-align:center">1</td></tr>
+      <tr><td>ძველი ქალაქის მარანი<div class="sub">თბილისი · 3 შარდენის ქ.</div></td><td data-l="უბანი">ძველი ქალაქი</td><td data-l="ტიპი">სტუდია</td><td class="num" data-l="ტარიფი">210 ₾</td><td class="num" data-l="ჯავშნები">44</td><td data-l="iCal" style="text-align:center">2</td></tr>
+      <tr><td>მთაწმინდის პანორამა 2ს<div class="sub">თბილისი · 21 ბესიკის ქ.</div></td><td data-l="უბანი">მთაწმინდა</td><td data-l="ტიპი">ბინა</td><td class="num" data-l="ტარიფი">260 ₾</td><td class="num" data-l="ჯავშნები">35</td><td data-l="iCal" style="text-align:center">2</td></tr>
+      <tr><td>ბათუმის ზღვის ხედი<div class="sub">ბათუმი · 5 სანაპიროს ქ.</div></td><td data-l="უბანი">ბულვარი</td><td data-l="ტიპი">აპარტოტელი</td><td class="num" data-l="ტარიფი">230 ₾</td><td class="num" data-l="ჯავშნები">52</td><td data-l="iCal" style="text-align:center">2</td></tr>
+    </tbody>
+  </table></div>
+  <p class="hint" style="margin-top:12px">სრულ ვერსიაში: Airbnb-სა და Booking-ის iCal ბმულებით ჯავშნები ავტომატურად სინქრონდება — ხელით შეყვანა აღარ გჭირდება.</p>
+</section>
+
+<!-- ══ კალენდარი ══ -->
+<section class="page" id="p-cal">
+  <h1>კალენდარი — აგვისტო 2026</h1>
+  <div class="legend">
+    <span><i style="background:var(--cal-airbnb)"></i>Airbnb</span>
+    <span><i style="background:var(--cal-booking)"></i>Booking.com</span>
+    <span><i style="background:var(--cal-direct)"></i>პირდაპირი</span>
+    <span><i style="background:var(--cal-lease)"></i>იჯარა</span>
+    <span><i style="background:var(--cal-overlap)"></i>გადაფარვა</span>
+    <span><i style="background:var(--cal-vacant); border:1px solid var(--border)"></i>თავისუფალი</span>
+  </div>
+  <div class="card" style="padding:12px 16px" id="calbox"></div>
+  <div class="cols" style="margin-top:16px">
+    <div>
+      <h2 style="margin-top:0">თავისუფალი ფანჯრები</h2>
+      <div class="alert alert--gap"><div><h3>ორბი ბიჩი 1ს</h3><p>11 აგვ – 13 აგვ · 2 ღამე</p><div class="act"><b>რეკომენდაცია:</b> დაწიე ღამის ტარიფი ან შესთავაზე last-minute ფასდაკლება.</div></div></div>
+    </div>
+    <div>
+      <h2 style="margin-top:0">ორმაგი ჯავშნები</h2>
+      <div class="alert alert--green" id="noOverlap" hidden><div><p style="color:var(--rented-text)">გადაფარვა მოგვარებულია ✓</p></div></div>
+      <div class="alert" style="border-color:color-mix(in srgb, var(--danger-text) 25%, var(--bg)); background:color-mix(in srgb, var(--danger-bg) 40%, var(--bg))" id="ovl">
+        <div><h3>ბათუმის ზღვის ხედი <span style="font-weight:400; font-size:12px; color:var(--muted)">(airbnb + booking)</span></h3><p>14 აგვ – 15 აგვ · 1 ღამე</p><div class="act"><b>რეკომენდაცია:</b> გადაამოწმე არხებზე და გააუქმე ერთ-ერთი.</div></div>
+        <button class="chip" onclick="ovl.hidden=true; noOverlap.hidden=false">მოგვარებულია</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ აქტივები ══ -->
+<section class="page" id="p-assets">
+  <h1>ჩემი აქტივები</h1>
+  <div class="kpis">
+    <div class="kpi"><b>ჯამური ღირებულება</b><div class="v">3,065,000 ₾</div></div>
+    <div class="kpi"><b>თვიური შემოსავალი</b><div class="v">62,137 ₾</div><small>ქირა: 2,550 · STR: 52,787 · სხვა: 6,800</small></div>
+    <div class="kpi"><b>გაქირავებული</b><div class="v" id="rentedCnt">3 / 11</div></div>
+    <div class="kpi"><b>STR (მიმდინარე თვე)</b><div class="v">52,787 ₾</div></div>
+  </div>
+  <div class="card stack"><table>
+    <thead><tr><th>სახელი</th><th>ტიპი</th><th>სტატუსი</th><th>ხელშეკრულება</th><th class="num">საბაზრო ქირა</th><th class="num">ღირებულება</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>აღმაშენებლის კომერციული ფართი<div class="sub">ძველი ქალაქი · 112 აღმაშენებლის გამზ.</div></td>
+        <td data-l="ტიპი">კომერციული ფართი</td>
+        <td data-l="სტატუსი">
+          <span class="badge b-listed" id="st1">განთავსებული</span>
+          <div class="row">
+            <button class="chip" onclick="flip(1,'rented',this)">გაქირავებულია</button>
+            <button class="chip" onclick="flip(1,'vacant',this)">თავისუფალია</button>
+            <a class="brand brand--ss" href="#" onclick="return false"><svg width="11" height="11" viewBox="0 0 12 12"><rect y="0" width="8" height="1.4" rx=".7" fill="#f43535"/><rect y="2" width="6" height="1.4" rx=".7" fill="#ff8a00"/><rect y="4" width="8" height="1.4" rx=".7" fill="#ffc400"/><rect y="6" width="6" height="1.4" rx=".7" fill="#3fbf2f"/><rect y="8" width="8" height="1.4" rx=".7" fill="#1e88ff"/><rect y="10" width="6" height="1.4" rx=".7" fill="#9b30f2"/></svg><span>ss.ge</span></a>
+          </div>
+        </td>
+        <td data-l="ხელშეკრულება" style="font-weight:400">—
+          <div class="row" style="font-size:12px">🔑 <span class="code" id="dk1">— — —</span>
+            <button class="chip" onclick="genCode(1)">ახალი კოდი</button>
+            <a class="chip chip--wa" id="wa1" hidden target="_blank" rel="noopener">WhatsApp ↗</a>
+          </div>
+        </td>
+        <td class="num" data-l="საბაზრო ქირა">~1,575 ₾</td>
+        <td class="num" data-l="ღირებულება">320,000 ₾</td>
+      </tr>
+      <tr>
+        <td>ნუცუბიძის ბინა — 2 საძინებელი<div class="sub">საბურთალო · 45 ნუცუბიძის ქ.</div></td>
+        <td data-l="ტიპი">ბინა</td>
+        <td data-l="სტატუსი">
+          <span class="badge b-rented">გაქირავებული</span>
+          <div class="row"><a class="brand brand--myhome" href="#" onclick="return false"><b>myhome</b><span>.ge</span></a></div>
+        </td>
+        <td data-l="ხელშეკრულება" style="font-weight:400">1,400 ₾ · ლ. გელაშვილი<div class="sub">ვადა: 10 აგვ 2026</div>
+          <div class="row" style="font-size:12px">🔑 <span class="code">483920</span>
+            <a class="chip chip--wa" href="https://wa.me/?text=%E1%83%99%E1%83%90%E1%83%A0%E1%83%98%E1%83%A1%20%E1%83%99%E1%83%9D%E1%83%93%E1%83%98%3A%20483920" target="_blank" rel="noopener">WhatsApp ↗</a>
+          </div>
+        </td>
+        <td class="num" data-l="საბაზრო ქირა">~1,872 ₾ <div style="margin-top:4px"><span class="badge b-vacant">ბაზარზე დაბალი</span></div></td>
+        <td class="num" data-l="ღირებულება">280,000 ₾</td>
+      </tr>
+      <tr>
+        <td>ბათუმის სანაპიროს ბინა<div class="sub">ბათუმი · 5 სანაპიროს ქ.</div></td>
+        <td data-l="ტიპი">ბინა</td>
+        <td data-l="სტატუსი">
+          <span class="badge b-listed" id="st2">განთავსებული</span>
+          <div class="row">
+            <button class="chip" onclick="flip(2,'rented',this)">გაქირავებულია</button>
+            <button class="chip" onclick="flip(2,'vacant',this)">თავისუფალია</button>
+            <a class="brand brand--booking" href="#" onclick="return false"><span>Booking.com</span></a>
+          </div>
+        </td>
+        <td data-l="ხელშეკრულება" style="font-weight:400">—</td>
+        <td class="num" data-l="საბაზრო ქირა">~1,564 ₾</td>
+        <td class="num" data-l="ღირებულება">260,000 ₾</td>
+      </tr>
+      <tr>
+        <td>ძველი ქალაქის დღიური სტუდია<div class="sub">ძველი ქალაქი · 7 გომის ქ.</div></td>
+        <td data-l="ტიპი">სტუდია <span class="badge b-str">დღიური</span></td>
+        <td data-l="სტატუსი">
+          <span class="badge b-vacant" id="st3">თავისუფალი</span>
+          <div class="row">
+            <button class="chip" onclick="flip(3,'rented',this)">გაქირავებულია</button>
+            <button class="chip on" onclick="flip(3,'vacant',this)">თავისუფალია</button>
+            <a class="brand brand--airbnb" href="#" onclick="return false"><svg width="12" height="12" viewBox="0 0 24 24"><path d="M12 2.6c1.1 0 2 .6 2.6 1.7l5.5 11.1c1 2-.4 4.2-2.6 4.2-1 0-2-.5-3-1.4L12 16l-2.5 2.2c-1 .9-2 1.4-3 1.4-2.2 0-3.6-2.2-2.6-4.2L9.4 4.3C10 3.2 10.9 2.6 12 2.6Zm0 4.2c-.9 0-1.7.8-1.7 1.8 0 .6.3 1.4.9 2.4l.8 1.3.8-1.3c.6-1 .9-1.8.9-2.4 0-1-.8-1.8-1.7-1.8Z" fill="#ff385c" fill-rule="evenodd"/></svg><span>airbnb</span></a>
+          </div>
+        </td>
+        <td data-l="ხელშეკრულება" style="font-weight:400">—</td>
+        <td class="num" data-l="საბაზრო ქირა">~1,120 ₾</td>
+        <td class="num" data-l="ღირებულება">195,000 ₾</td>
+      </tr>
+      <tr>
+        <td>ტოიოტა კამრი 2021<div class="sub">პირადი ავტომობილი</div></td>
+        <td data-l="ტიპი">ავტომობილი</td>
+        <td data-l="სტატუსი"><span class="badge b-personal">პირადი მოხმარება</span></td>
+        <td data-l="ხელშეკრულება" style="font-weight:400">—</td>
+        <td class="num" data-l="საბაზრო ქირა">—</td>
+        <td class="num" data-l="ღირებულება">85,000 ₾</td>
+      </tr>
+      <tr>
+        <td>კია სპორტეიჯი 2023<div class="sub">გაქირავებულია ყოველთვიურად</div></td>
+        <td data-l="ტიპი">ავტომობილი</td>
+        <td data-l="სტატუსი">
+          <span class="badge b-rented">გაქირავებული</span>
+          <div class="row"><a class="brand brand--myauto" href="#" onclick="return false"><b>myauto</b><span>.ge</span></a></div>
+        </td>
+        <td data-l="ხელშეკრულება" style="font-weight:400">1,150 ₾ · გ. კაპანაძე<div class="sub">ვადა: 1 დეკ 2026</div></td>
+        <td class="num" data-l="საბაზრო ქირა">—</td>
+        <td class="num" data-l="ღირებულება">98,000 ₾</td>
+      </tr>
+    </tbody>
+  </table></div>
+  <p class="hint" style="margin-top:12px">„გაქირავებულია / თავისუფალია" ღილაკები აქვე ცვლის სტატუსს და სრულ ვერსიაში შენს განცხადებას ხსნის myhome / ss.ge / myauto-ზე. პირადი მოხმარების აქტივებს ბმულები არ აქვს — განზრახ.</p>
+</section>
+
+<!-- ══ ინვესტიცია ══ -->
+<section class="page" id="p-invest">
+  <h1>საინვესტიციო კალკულატორი</h1>
+  <p style="color:var(--muted); max-width:620px; margin-bottom:16px">შეაფასე, რამდენად მომგებიანია ქონების ყიდვა გასაქირავებლად. ფასები მიახლოებითი საბაზრო საშუალოა — ყველა ველი შეცვლადია და შედეგი მყისვე გადაითვლება.</p>
+  <div class="cols">
+    <div class="card" style="padding:20px; overflow:visible">
+      <div class="grid2">
+        <label class="field">უბანი
+          <select id="iDistrict" onchange="calc(true)">
+            <option value="Vake">ვაკე</option><option value="Vera">ვერა</option>
+            <option value="Saburtalo">საბურთალო</option><option value="Old Town">ძველი ქალაქი</option>
+            <option value="Mtatsminda">მთაწმინდა</option><option value="Batumi">ბათუმის ბულვარი</option>
+          </select>
+        </label>
+        <label class="field">ფართი (მ²)<input id="iArea" type="number" value="60" min="5" oninput="calc(true)"></label>
+        <label class="field">ფასი (₾)<input id="iPrice" type="number" value="258000" oninput="calc()"></label>
+        <label class="field">თვიური ქირა (₾)<input id="iRent" type="number" value="1980" oninput="calc()"></label>
+        <label class="field">რემონტი
+          <select id="iRenov" onchange="calc(true)">
+            <option value="0">არ სჭირდება</option><option value="250" selected>კოსმეტიკური (~250 ₾/მ²)</option>
+            <option value="500">სტანდარტული (~500 ₾/მ²)</option><option value="900">სრული (~900 ₾/მ²)</option>
+          </select>
+        </label>
+        <label class="field">რემონტის ბიუჯეტი (₾)<input id="iRenovCost" type="number" value="15000" oninput="calc()"></label>
+        <label class="field" style="flex-direction:row; align-items:center; gap:8px; grid-column:1/-1">
+          <input type="checkbox" id="iLoan" checked onchange="calc()" style="width:16px; height:16px"> იპოთეკით ყიდვა
+        </label>
+        <label class="field">შენატანი (%)<input id="iDown" type="number" value="20" oninput="calc()"></label>
+        <label class="field">განაკვეთი (%)<input id="iRate" type="number" value="11.5" step="0.1" oninput="calc()"></label>
+        <label class="field">ვადა (წელი)<input id="iTerm" type="number" value="10" oninput="calc()"></label>
+        <label class="field">დეპოზიტის განაკვეთი (%)<input id="iDep" type="number" value="9.5" step="0.1" oninput="calc()"></label>
+      </div>
+    </div>
+    <div>
+      <div class="alert" style="align-items:center; margin-bottom:14px">
+        <h3>შედეგი</h3><span class="badge" id="verdict">—</span>
+      </div>
+      <div class="kpis" style="grid-template-columns:1fr 1fr; margin:0">
+        <div class="kpi"><b>ჯამური ინვესტიცია</b><div class="v" id="rTotal">—</div><small id="rCash"></small></div>
+        <div class="kpi"><b>წმინდა თვიური შემოსავალი</b><div class="v" id="rNet">—</div><small id="rDep"></small></div>
+        <div class="kpi" id="kPay"><b>სესხის თვიური შენატანი</b><div class="v" id="rPay">—</div><small id="rBank"></small></div>
+        <div class="kpi" id="kFlow"><b>თვიური ქეშ-ფლოუ</b><div class="v" id="rFlow">—</div></div>
+        <div class="kpi"><b>წმინდა შემოსავლიანობა</b><div class="v" id="rYield">—</div><small id="rGross"></small></div>
+        <div class="kpi"><b>ამოგების ვადა</b><div class="v" id="rBack">—</div></div>
+      </div>
+      <p class="hint plan-note">მიახლოებითი შეფასება — არ არის ფინანსური რჩევა. ინვესტიციამდე გადაამოწმე ფასები და განაკვეთები.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ გაფრთხილებები ══ -->
+<section class="page" id="p-alerts">
+  <h1>გაფრთხილებები</h1>
+  <div class="row" style="margin-bottom:14px">
+    <button class="btn--ghost btn" onclick="toast(this,'სკანირება დასრულდა ✓')">სკანირება ახლა</button>
+  </div>
+  <div class="alert alert--contract"><div><h3>ხელშეკრულება იწურება — ნუცუბიძის ბინა</h3><p>ლ. გელაშვილი · 1,400 ₾ · 10 აგვ 2026 · 22 დღე დარჩა</p><div class="act"><b>რეკომენდაცია:</b> დაუკავშირდი დამქირავებელს განახლებაზე, ან დაგეგმე ხელახლა განთავსება.</div></div><div style="display:flex; gap:8px"><button class="chip" onclick="this.closest('.alert').remove()">მოგვარებულია</button><button class="chip" onclick="this.closest('.alert').remove()">დახურვა</button></div></div>
+  <div class="alert alert--gap"><div><h3>თავისუფალი ფანჯარა — ორბი ბიჩი 1ს</h3><p>2026-08-11 → 2026-08-13 · 2 ღამე</p><div class="act"><b>რეკომენდაცია:</b> დაწიე ღამის ტარიფი ან შესთავაზე last-minute ფასდაკლება.</div></div><div style="display:flex; gap:8px"><button class="chip" onclick="this.closest('.alert').remove()">მოგვარებულია</button><button class="chip" onclick="this.closest('.alert').remove()">დახურვა</button></div></div>
+  <div class="alert alert--lease"><div><h3>ფასი ბენჩმარკზე დაბალია — საბურთალოს მეტრო 1ს</h3><p>145 ₾ → რეკომენდებული 172 ₾ · უბნის ADR 180 ₾</p><div class="act"><b>რეკომენდაცია:</b> ასწიე ღამის ტარიფი უბნის საშუალომდე.</div></div><div style="display:flex; gap:8px"><button class="chip" onclick="this.closest('.alert').remove()">მოგვარებულია</button><button class="chip" onclick="this.closest('.alert').remove()">დახურვა</button></div></div>
+  <p class="hint">სრულ ვერსიაში სკანირება ავტომატურად ეშვება: ცარიელი ფანჯრები, ვადის ამოწურვა და დაბალი ფასები თავად გიპოვის.</p>
+</section>
+
+<!-- ══ პაკეტი ══ -->
+<section class="page" id="p-plans">
+  <h1>პაკეტი და გამოწერა</h1>
+  <p style="color:var(--muted); max-width:620px">პირველი თვე უფასოა სრული წვდომით. მეორე თვიდან — შენს პორტფელზე მორგებული პაკეტი.</p>
+  <div class="alert alert--green" style="align-items:center; margin-top:14px">
+    <h3>უფასო პერიოდი: 30 დღე დარჩა</h3><span class="badge b-rented">პრო</span>
+  </div>
+  <h2>პირადი</h2>
+  <div class="kpis" style="grid-template-columns:repeat(3,1fr); margin:0">
+    <div class="kpi"><b>სტარტი</b><div class="v">15 ₾/თვე</div><small>✓ 5 აქტივი<br>✓ 3 STR ერთეული</small><button class="chip planbtn" style="margin-top:12px" onclick="pick(this)">არჩევა</button></div>
+    <div class="kpi"><b>სტანდარტი</b><div class="v">29 ₾/თვე</div><small>✓ 20 აქტივი<br>✓ 10 STR ერთეული</small><button class="chip planbtn" style="margin-top:12px" onclick="pick(this)">არჩევა</button></div>
+    <div class="kpi" style="border-color:var(--primary); box-shadow:0 0 0 1px var(--primary), var(--shadow)"><b>პრო</b><div class="v">49 ₾/თვე</div><small>✓ 50 აქტივი<br>✓ 30 STR ერთეული</small><button class="chip planbtn on" style="margin-top:12px" onclick="pick(this)">არჩეულია</button></div>
+  </div>
+  <h2>კომპანიებისთვის</h2>
+  <div class="kpis" style="grid-template-columns:repeat(2,1fr); margin:0">
+    <div class="kpi"><b>ბიზნესი S</b><div class="v">99 ₾/თვე</div><small>✓ 100 აქტივი · 60 ერთეული<br>✓ 5 თანამშრომელი</small><button class="chip planbtn" style="margin-top:12px" onclick="pick(this)">არჩევა</button></div>
+    <div class="kpi"><b>ბიზნესი M</b><div class="v">199 ₾/თვე</div><small>✓ 300 აქტივი · 200 ერთეული<br>✓ 15 თანამშრომელი</small><button class="chip planbtn" style="margin-top:12px" onclick="pick(this)">არჩევა</button></div>
+  </div>
+  <p class="hint" style="margin-top:14px">ბიზნეს-პაკეტებში მფლობელი მოწვევის ლინკით ამატებს თანამშრომლებს — თითოეული საკუთარ ობიექტებს აწარმოებს, ლიმიტები კი მთელ კომპანიაზე ჯამურად ითვლება.</p>
+</section>
+
+</div>
+</main>
+
+<script>
+  // ── shell ──
+  const $ = (s) => document.querySelector(s);
+  function enter() {
+    $("#gate").hidden = true; $("#app").hidden = false;
+    $("#navlinks").hidden = false; $("#who").hidden = false;
+    countUp();
+  }
+  document.querySelectorAll("#navlinks button").forEach((b) => {
+    b.addEventListener("click", () => {
+      document.querySelectorAll("#navlinks button").forEach((x) => x.classList.remove("on"));
+      b.classList.add("on");
+      document.querySelectorAll(".page").forEach((p) => p.classList.remove("on"));
+      $("#p-" + b.dataset.p).classList.add("on");
+      window.scrollTo({ top: 0 });
+    });
+  });
+  $("#themeBtn").addEventListener("click", () => {
+    const root = document.documentElement;
+    const dark = (root.dataset.theme ?? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")) === "dark";
+    root.dataset.theme = dark ? "light" : "dark";
+    $("#themeBtn").textContent = dark ? "🌙" : "☀️";
+  });
+  function toast(btn, msg) { const t = btn.textContent; btn.textContent = msg; btn.disabled = true; setTimeout(() => { btn.textContent = t; btn.disabled = false; }, 1800); }
+
+  // ── dashboard count-up ──
+  function countUp() {
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      document.querySelectorAll(".cnt").forEach((el) => { el.textContent = Number(el.dataset.to).toLocaleString("en-US"); });
+      return;
+    }
+    document.querySelectorAll(".cnt").forEach((el) => {
+      const to = Number(el.dataset.to); const t0 = performance.now();
+      const step = (t) => {
+        const k = Math.min(1, (t - t0) / 900);
+        el.textContent = Math.round(to * (1 - Math.pow(1 - k, 3))).toLocaleString("en-US");
+        if (k < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    });
+  }
+
+  // ── calendar grid ──
+  const CAL = [
+    ["ბათუმის ზღვის ხედი",   "aaa.bbbb.aa.ddoob"],
+    ["ორბი ბიჩი 1ს",          "bbbbb..aaaa.dd..a"],
+    ["მთაწმინდის პანორამა",   "b.bbbbbbbbb.aaaa."],
+    ["რუსთაველის კლასიკა",    "aaaa..bbbbbb.dddd"],
+    ["ძველი ქალაქის მარანი",  "bbb..bbbbbbb.bbbb"],
+    ["საბურთალოს საოჯახო",    "llllllll..aaaa.b."],
+    ["ვაკის პარკის ხედი",     "bbbb..aaaaaaaa.bb"],
+    ["ვერას ტერასა",          ".bbbb.aaa...bbb.a"],
+  ];
+  const cls = { a: "a", b: "b", d: "d", l: "l", o: "o", ".": "" };
+  const box = $("#calbox");
+  let head = '<div class="cal-row"><span class="cal-name"></span>';
+  for (let i = 1; i <= 17; i++) head += `<span class="cal-day">${i}</span>`;
+  box.innerHTML = head + "</div>" + CAL.map(([n, p]) =>
+    `<div class="cal-row"><span class="cal-name">${n}</span>` +
+    [...p].map((c) => `<span class="cc ${cls[c]}"></span>`).join("") + "</div>").join("");
+
+  // ── asset status flips ──
+  const BADGE = { rented: ["b-rented", "გაქირავებული"], vacant: ["b-vacant", "თავისუფალი"] };
+  function flip(i, to, btn) {
+    const el = $("#st" + i);
+    el.className = "badge " + BADGE[to][0]; el.textContent = BADGE[to][1];
+    btn.parentElement.querySelectorAll(".chip").forEach((c) => c.classList.remove("on"));
+    btn.classList.add("on");
+  }
+  function genCode(i) {
+    const code = String(Math.floor(Math.random() * 1e6)).padStart(6, "0");
+    $("#dk" + i).textContent = code;
+    const wa = $("#wa" + i);
+    wa.hidden = false;
+    wa.href = "https://wa.me/?text=" + encodeURIComponent("კარის კოდი: " + code);
+  }
+
+  // ── plans ──
+  function pick(btn) {
+    document.querySelectorAll(".planbtn").forEach((b) => { b.classList.remove("on"); b.textContent = "არჩევა"; });
+    btn.classList.add("on"); btn.textContent = "არჩეულია";
+  }
+
+  // ── invest calculator (ported from lib/invest/calc.ts) ──
+  const SQM = { Vake: [4300, 33], Vera: [4000, 31], Saburtalo: [3100, 26], "Old Town": [4200, 35], Mtatsminda: [4100, 34], Batumi: [2900, 23] };
+  const fmt = (v) => Math.round(v).toLocaleString("en-US") + " ₾";
+  function calc(prefill) {
+    const area = +$("#iArea").value || 0;
+    const [ppm, rpm] = SQM[$("#iDistrict").value];
+    if (prefill) {
+      $("#iPrice").value = Math.round(area * ppm);
+      $("#iRent").value = Math.round(area * rpm * 0.95 + area);
+      $("#iRenovCost").value = Math.round(area * +$("#iRenov").value);
+    }
+    const price = +$("#iPrice").value || 0, renov = +$("#iRenovCost").value || 0;
+    const rent = +$("#iRent").value || 0, useLoan = $("#iLoan").checked;
+    const down = +$("#iDown").value || 0, rate = +$("#iRate").value || 0;
+    const term = +$("#iTerm").value || 0, dep = +$("#iDep").value || 0;
+    const total = price + renov;
+    const principal = useLoan ? price * (1 - Math.min(100, Math.max(0, down)) / 100) : 0;
+    const cash = total - principal;
+    const n = Math.round(term * 12), r = rate / 100 / 12;
+    const pay = principal > 0 && n > 0 ? (r === 0 ? principal / n : principal * r / (1 - Math.pow(1 + r, -n))) : 0;
+    const net = rent * 0.92 * 0.95; // 8% ვაკანტურობა, 5% გადასახადი
+    const flow = net - pay;
+    const yieldNet = total > 0 ? net * 12 / total * 100 : 0;
+    const yieldGross = total > 0 ? rent * 12 / total * 100 : 0;
+    const back = net > 0 ? total / (net * 12) : null;
+    const depInc = cash * dep / 100 / 12;
+
+    $("#rTotal").textContent = fmt(total);
+    $("#rCash").textContent = useLoan ? "საკუთარი თანხა: " + fmt(cash) : "";
+    $("#rNet").textContent = fmt(net);
+    $("#rDep").textContent = "იგივე თანხა დეპოზიტზე: " + fmt(depInc);
+    $("#kPay").style.display = useLoan ? "" : "none";
+    $("#kFlow").style.display = useLoan ? "" : "none";
+    $("#rPay").textContent = fmt(pay);
+    $("#rBank").textContent = "ბანკს ჯამში: " + fmt(pay * n);
+    $("#rFlow").textContent = fmt(flow);
+    $("#rFlow").style.color = flow >= 0 ? "var(--rented-text)" : "var(--danger-text)";
+    $("#rYield").textContent = yieldNet.toFixed(1) + "%";
+    $("#rGross").textContent = "მთლიანი: " + yieldGross.toFixed(1) + "%";
+    $("#rBack").textContent = back ? back.toFixed(1) + " წელი" : "—";
+    const v = $("#verdict");
+    if (yieldNet >= dep + 1.5) { v.className = "badge b-rented"; v.textContent = "დეპოზიტზე უკეთესია"; }
+    else if (yieldNet >= dep - 1) { v.className = "badge b-vacant"; v.textContent = "დაახლ. დეპოზიტის ტოლია"; }
+    else { v.className = "badge b-danger"; v.textContent = "დეპოზიტი მეტს გამოიმუშავებს"; }
+  }
+  calc();
+</script>
+</body></html>
