@@ -16,6 +16,7 @@ export interface AssetFormValues {
   address: string;
   areaSqm: string;
   estimatedValue: string;
+  monthlyIncome: string;
   myhomeUrl: string;
   ssUrl: string;
   myautoUrl: string;
@@ -87,23 +88,29 @@ export default function AssetForm({
         </select>
       </label>
 
-      <label className="field">
-        {labels.status_label}
-        <select name="status" defaultValue={asset?.status ?? "personal_use"}>
-          {statuses.map((s) => (
-            <option key={s.value} value={s.value}>{s.label}</option>
-          ))}
-        </select>
-      </label>
-      <label className="field">
-        {labels.asset_link_unit}
-        <select name="unitId" defaultValue={asset?.unitId ?? ""}>
-          <option value="">{labels.asset_none}</option>
-          {units.map((unit) => (
-            <option key={unit.id} value={unit.id}>{unit.label}</option>
-          ))}
-        </select>
-      </label>
+      {category === "income_source" ? (
+        <input type="hidden" name="status" value="personal_use" />
+      ) : (
+        <>
+          <label className="field">
+            {labels.status_label}
+            <select name="status" defaultValue={asset?.status ?? "personal_use"}>
+              {statuses.map((s) => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            {labels.asset_link_unit}
+            <select name="unitId" defaultValue={asset?.unitId ?? ""}>
+              <option value="">{labels.asset_none}</option>
+              {units.map((unit) => (
+                <option key={unit.id} value={unit.id}>{unit.label}</option>
+              ))}
+            </select>
+          </label>
+        </>
+      )}
 
       {category === "real_estate" && (
         <>
@@ -183,13 +190,26 @@ export default function AssetForm({
         </label>
       )}
 
-      <label className="field">
-        {labels.asset_value}
-        <input
-          name="estimatedValue" type="number" min={0} step="1"
-          defaultValue={asset?.estimatedValue}
-        />
-      </label>
+      {category === "income_source" ? (
+        <>
+          <label className="field">
+            {labels.income_monthly}
+            <input
+              name="monthlyIncome" type="number" min={0} step="0.01"
+              defaultValue={asset?.monthlyIncome}
+            />
+          </label>
+          <span className="hint sm:col-span-2">{labels.income_source_hint}</span>
+        </>
+      ) : (
+        <label className="field">
+          {labels.asset_value}
+          <input
+            name="estimatedValue" type="number" min={0} step="1"
+            defaultValue={asset?.estimatedValue}
+          />
+        </label>
+      )}
 
       <label className="field sm:col-span-2">
         {labels.asset_notes}

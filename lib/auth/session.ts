@@ -31,7 +31,7 @@ export async function createSession(operatorId: string): Promise<void> {
 
 export type SessionOperator = {
   id: string;
-  name: string;
+  name: string | null;
   email: string;
   locale: string;
   accountType: string;

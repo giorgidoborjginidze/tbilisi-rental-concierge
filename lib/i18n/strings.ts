@@ -64,7 +64,43 @@ const en = {
   asset_category: "Category",
   category_real_estate: "Real estate",
   category_vehicle: "Vehicle",
+  category_income_source: "Income source",
   category_other: "Other",
+  type_salary: "Salary",
+  type_dividend: "Dividend",
+  type_business: "Business",
+  type_pension: "Pension",
+  type_interest: "Interest / deposit",
+  type_royalty: "Royalty",
+  income_monthly: "Monthly income (GEL)",
+  income_recurring: "Recurring income",
+  per_month_word: "mo",
+  income_source_hint:
+    "Track a recurring income stream (salary, dividend, pension\u2026). Only an amount is stored \u2014 no employer, account or payer details are required.",
+  operator_name_optional: "Name (optional)",
+  operator_name_hint:
+    "Optional \u2014 a display label only. You can leave it blank and use the app with just your email.",
+  privacy_note_register:
+    "We ask for the minimum: an email and a password. Your data is private to you, isolated from every other account, and never sold or shared.",
+  nav_privacy: "Privacy",
+  privacy_title: "Privacy & confidentiality",
+  privacy_intro:
+    "Your portfolio is sensitive. This app is built to know as little as possible about you and to keep what it does know strictly yours.",
+  privacy_h_minimal: "We collect the minimum",
+  privacy_p_minimal:
+    "Signing up needs only an email and a password. Your name is optional. Tenant details (name, phone) are optional and stored only to help you contact them \u2014 nothing about a booking is required beyond dates and an amount.",
+  privacy_h_isolation: "Your data is isolated",
+  privacy_p_isolation:
+    "Every account is fully separated. Each page, action and export is scoped to you \u2014 no other user, and no employee you have not invited, can see your units, assets, income or contracts.",
+  privacy_h_security: "Security",
+  privacy_p_security:
+    "Passwords are hashed (never stored in the clear). Sessions are held as one-way hashes, so even a database leak exposes no usable login. Traffic is encrypted in transit.",
+  privacy_h_sharing: "No selling, no sharing",
+  privacy_p_sharing:
+    "We never sell your data or share it with third parties. Market figures shown in the app are approximate reference averages, not data drawn from your account.",
+  privacy_h_control: "You are in control",
+  privacy_p_control:
+    "Delete any asset, contract or income record at any time \u2014 it is removed for good. Remove a team member and their access ends immediately.",
   type_commercial: "Commercial space",
   type_land: "Land",
   type_garage: "Garage",
@@ -368,7 +404,43 @@ const ka: Record<StringKey, string> = {
   asset_category: "კატეგორია",
   category_real_estate: "უძრავი ქონება",
   category_vehicle: "სატრანსპორტო საშუალება",
+  category_income_source: "შემოსავლის წყარო",
   category_other: "სხვა",
+  type_salary: "ხელფასი",
+  type_dividend: "დივიდენდი",
+  type_business: "ბიზნესი",
+  type_pension: "პენსია",
+  type_interest: "პროცენტი / დეპოზიტი",
+  type_royalty: "როიალტი",
+  income_monthly: "თვიური შემოსავალი (GEL)",
+  income_recurring: "მუდმივი შემოსავალი",
+  per_month_word: "თვე",
+  income_source_hint:
+    "აღრიცხე მუდმივი შემოსავალი (ხელფასი, დივიდენდი, პენსია\u2026). ინახება მხოლოდ თანხა \u2014 დამსაქმებელი, ანგარიში ან გადამხდელი არ არის საჭირო.",
+  operator_name_optional: "სახელი (არასავალდებულო)",
+  operator_name_hint:
+    "არასავალდებულო \u2014 მხოლოდ საჩვენებელი სახელი. შეგიძლია ცარიელი დატოვო და მხოლოდ ელფოსტით ისარგებლო.",
+  privacy_note_register:
+    "ვითხოვთ მინიმუმს: ელფოსტას და პაროლს. შენი მონაცემები მხოლოდ შენია, იზოლირებულია ყველა სხვა ანგარიშისგან და არასდროს იყიდება ან ზიარდება.",
+  nav_privacy: "კონფიდენციალურობა",
+  privacy_title: "კონფიდენციალურობა და მონაცემთა დაცვა",
+  privacy_intro:
+    "შენი პორტფელი მგრძნობიარე ინფორმაციაა. ეს აპლიკაცია აგებულია ისე, რომ შენზე მინიმალური იცოდეს და რაც იცის, მკაცრად შენად შეინახოს.",
+  privacy_h_minimal: "ვაგროვებთ მინიმუმს",
+  privacy_p_minimal:
+    "რეგისტრაციას მხოლოდ ელფოსტა და პაროლი სჭირდება. სახელი არასავალდებულოა. დამქირავებლის მონაცემები (სახელი, ტელეფონი) არასავალდებულოა და ინახება მხოლოდ დასაკავშირებლად \u2014 ჯავშანზე თარიღებისა და თანხის გარდა არაფერია საჭირო.",
+  privacy_h_isolation: "შენი მონაცემები იზოლირებულია",
+  privacy_p_isolation:
+    "ყველა ანგარიში სრულად გამიჯნულია. თითოეული გვერდი, ქმედება და ექსპორტი მხოლოდ შენზეა მიბმული \u2014 ვერც სხვა მომხმარებელი და ვერც შენ მიერ არ-მოწვეული თანამშრომელი ვერ ხედავს შენს ერთეულებს, აქტივებს, შემოსავალს ან ხელშეკრულებებს.",
+  privacy_h_security: "უსაფრთხოება",
+  privacy_p_security:
+    "პაროლები დაჰეშილია (არასდროს ინახება ღიად). სესიები ცალმხრივი ჰეშითაა დაცული, ამიტომ ბაზის გაჟონვაც კი გამოსაყენებელ პაროლს არ ამჟღავნებს. მონაცემები გადაცემისას დაშიფრულია.",
+  privacy_h_sharing: "არ იყიდება, არ ზიარდება",
+  privacy_p_sharing:
+    "შენს მონაცემებს არასდროს ვყიდით და მესამე მხარეს არ ვუზიარებთ. აპში ნაჩვენები საბაზრო ციფრები მიახლოებითი საორიენტაციო საშუალოა და არა შენი ანგარიშიდან აღებული მონაცემი.",
+  privacy_h_control: "კონტროლი შენ გაქვს",
+  privacy_p_control:
+    "ნებისმიერი აქტივი, ხელშეკრულება თუ შემოსავალი ნებისმიერ დროს წაშალე \u2014 სამუდამოდ იშლება. თანამშრომლის მოშორებისთანავე მისი წვდომა წყდება.",
   type_commercial: "კომერციული ფართი",
   type_land: "მიწის ნაკვეთი",
   type_garage: "გარაჟი",

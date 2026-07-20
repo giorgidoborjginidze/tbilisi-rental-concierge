@@ -483,6 +483,18 @@ async function main() {
         monthlyRent: 900, deposit: 900, status: "active",
       },
     },
+    // 12) Recurring income stream — amount only, no payer details
+    {
+      name: "Salary", nameKa: "ხელფასი",
+      category: "income_source", type: "salary",
+      status: "personal_use", monthlyIncome: 5000,
+    },
+    // 13) Recurring dividend income
+    {
+      name: "Dividend — KolkhetiCo", nameKa: "დივიდენდი — KolkhetiCo",
+      category: "income_source", type: "dividend",
+      status: "personal_use", monthlyIncome: 1200,
+    },
   ];
   let contractCount = 0;
   for (const { contract, ...assetData } of assets) {

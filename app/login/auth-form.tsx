@@ -25,8 +25,9 @@ export default function AuthForm({
     <form action={formAction} className="mt-6 flex flex-col gap-4">
       {mode === "register" && (
         <label className="field">
-          {labels.operator_name}
-          <input name="name" required />
+          {labels.operator_name_optional}
+          <input name="name" autoComplete="off" />
+          <span className="hint">{labels.operator_name_hint}</span>
         </label>
       )}
       {mode === "register" && invite && (

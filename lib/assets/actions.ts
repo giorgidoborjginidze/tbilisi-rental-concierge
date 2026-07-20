@@ -41,7 +41,12 @@ export async function saveAsset(
 
   const areaSqm = optionalNumber(formData, "areaSqm");
   const estimatedValue = optionalNumber(formData, "estimatedValue");
-  if (Number.isNaN(areaSqm) || Number.isNaN(estimatedValue)) {
+  const monthlyIncome = optionalNumber(formData, "monthlyIncome");
+  if (
+    Number.isNaN(areaSqm) ||
+    Number.isNaN(estimatedValue) ||
+    Number.isNaN(monthlyIncome)
+  ) {
     return { error: "error_invalid_number" };
   }
 
@@ -56,6 +61,7 @@ export async function saveAsset(
     address: str(formData, "address") || null,
     areaSqm,
     estimatedValue,
+    monthlyIncome,
     currency: str(formData, "currency") || "GEL",
     status,
     unitId,

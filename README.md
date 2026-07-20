@@ -163,8 +163,19 @@ each carrying a suggested action). Personal assets add `Asset`, `RentalContract`
 
 Guest PII is minimal by design (Georgian Personal Data Protection Law /
 GDPR-aligned): `guestName` is optional; a booking needs only source, dates,
-and amount. Market benchmark data is mock behind a pluggable
-`MarketDataSource` — no scraping/republishing of third-party listings.
+and amount. Registration asks only for an email and a password — the
+operator's name is optional. Tenant name/phone are optional and stored
+only for contact. Income sources store an amount only (no employer or
+payer). A dedicated `/privacy` page states the confidentiality stance
+(minimal collection, full per-account isolation, hashed passwords and
+sessions, no selling or sharing) and is linked in the site footer.
+Market benchmark data is mock behind a pluggable `MarketDataSource` —
+no scraping/republishing of third-party listings.
+
+Assets also include an **income-source** category (salary, dividend,
+business, pension, interest, royalty) that records a recurring monthly
+amount and folds into the monthly-income total alongside rent and STR
+revenue — no location, listing links or market-rent estimate.
 
 ## Roadmap (build order)
 

@@ -6,7 +6,7 @@ import type { FormState } from "@/lib/units/actions";
 
 export interface MemberRow {
   id: string;
-  name: string;
+  name: string | null;
   email: string;
   assets: number;
   units: number;
@@ -110,7 +110,7 @@ export default function TeamSection({
                 {members.map((member) => (
                   <tr key={member.id}>
                     <td>
-                      {member.name}
+                      {member.name ?? member.email}
                       <div className="cell-sub">{member.email}</div>
                     </td>
                     <td style={{ fontWeight: 400 }}>

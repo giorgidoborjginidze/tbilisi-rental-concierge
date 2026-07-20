@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Geist, Geist_Mono, Noto_Sans_Georgian } from "next/font/google";
 import "./globals.css";
 import Nav from "./nav";
+import { getLocale } from "@/lib/i18n/locale";
+import { t } from "@/lib/i18n/strings";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,11 +27,12 @@ export const metadata: Metadata = {
     "Portfolio, calendar, pricing and alerts for STR / aparthotel operators in Georgia",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
   return (
     <html
       lang="en"
@@ -36,7 +40,24 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <Nav />
-        {children}
+        <div className="flex-1">{children}</div>
+        <footer
+          style={{
+            borderTop: "1px solid var(--color-border)",
+            padding: "16px 32px",
+            display: "flex",
+            gap: 16,
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 12,
+            color: "var(--color-ink-muted)",
+          }}
+        >
+          <span>🔒 {t(locale, "appName")}</span>
+          <Link href="/privacy" className="link">
+            {t(locale, "privacy_title")}
+          </Link>
+        </footer>
       </body>
     </html>
   );

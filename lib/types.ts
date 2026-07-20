@@ -28,13 +28,31 @@ export const KNOWN_DISTRICTS = [
 export const BOOKING_SOURCES = ["airbnb", "booking", "direct", "manual"] as const;
 export type BookingSource = (typeof BOOKING_SOURCES)[number];
 
-export const ASSET_CATEGORIES = ["real_estate", "vehicle", "other"] as const;
+export const ASSET_CATEGORIES = [
+  "real_estate",
+  "vehicle",
+  "income_source",
+  "other",
+] as const;
 
 export const ASSET_TYPES: Record<string, readonly string[]> = {
   real_estate: ["apartment", "house", "commercial", "land", "garage"],
   vehicle: ["car", "motorcycle", "truck"],
+  income_source: [
+    "salary",
+    "dividend",
+    "business",
+    "pension",
+    "interest",
+    "royalty",
+    "other",
+  ],
   other: ["equipment", "other"],
 };
+
+// Categories whose assets are pure income streams: no location, area,
+// listing links, market rent or door key — just a recurring amount.
+export const INCOME_CATEGORY = "income_source";
 
 export const ASSET_STATUSES = [
   "rented",
@@ -57,6 +75,7 @@ export const LISTING_PLATFORMS: Record<
     { key: "booking", label: "Booking.com", field: "bookingUrl" },
   ],
   vehicle: [{ key: "myauto", label: "myauto.ge", field: "myautoUrl" }],
+  income_source: [],
   other: [],
 };
 

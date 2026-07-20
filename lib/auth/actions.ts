@@ -15,14 +15,16 @@ export async function register(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const name = str(formData, "name");
+  // Name is optional — collected only as a display label, never required.
+  // Georgian PDP / data-minimisation stance: ask for as little as possible.
+  const name = str(formData, "name") || null;
   const email = str(formData, "email").toLowerCase();
   const password = String(formData.get("password") ?? "");
   const accountType =
     str(formData, "accountType") === "business" ? "business" : "personal";
   const inviteToken = str(formData, "invite");
 
-  if (!name || !email) return { error: "error_required" };
+  if (!email) return { error: "error_required" };
   if (password.length < 8) return { error: "error_password_short" };
 
   const existing = await prisma.operator.findUnique({ where: { email } });

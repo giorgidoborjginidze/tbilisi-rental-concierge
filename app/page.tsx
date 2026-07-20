@@ -97,7 +97,7 @@ export default async function Home() {
       <header>
         <h1>{t(locale, "appName")}</h1>
         <p style={{ color: "var(--color-text-muted)" }}>
-          {operator.name} · {units.length} {t(locale, "nav_units").toLowerCase()}
+          {operator.name ?? operator.email} · {units.length} {t(locale, "nav_units").toLowerCase()}
         </p>
       </header>
 

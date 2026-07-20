@@ -16,7 +16,7 @@ datasource db {
 // The account/customer: a professional STR/aparthotel operator.
 model Operator {
   id           String   @id @default(cuid())
-  name         String
+  name         String? // optional — display name only; never required
   email        String   @unique
   passwordHash String? // scrypt "salt:hash"; null only for legacy rows
   locale       String   @default("en") // "en" | "ka"
@@ -179,13 +179,14 @@ model Asset {
   operatorId     String
   name           String
   nameKa         String?
-  category       String // "real_estate" | "vehicle" | "other"
-  type           String // apartment | house | commercial | land | garage | car | equipment | other
+  category       String // "real_estate" | "vehicle" | "income_source" | "other"
+  type           String // apartment | house | commercial | land | garage | car | equipment | salary | dividend | ...
   city           String?
   district       String?
   address        String?
   areaSqm        Float? // real estate only — drives market-rent estimate
   estimatedValue Float?
+  monthlyIncome  Float? // income_source only — recurring monthly amount (GEL)
   currency       String   @default("GEL")
   status         String   @default("personal_use") // "rented" | "vacant" | "personal_use" | "listed"
   rentalMode     String   @default("long_term") // "long_term" | "daily"

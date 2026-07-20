@@ -26,6 +26,10 @@ export default async function RegisterPage({
       <h1>{t(locale, "register_title")}</h1>
       <p style={{ color: "var(--color-text-muted)" }}>{t(locale, "onboarding_intro")}</p>
       <AuthForm mode="register" labels={labels} invite={invite} />
+      <p className="demo-hint" style={{ marginTop: 20 }}>
+        🔒 {labels.privacy_note_register}{" "}
+        <a href="/privacy" className="link">{t(locale, "privacy_title")}</a>
+      </p>
       </section>
     </main>
   );

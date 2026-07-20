@@ -57,6 +57,7 @@ export default async function EditAssetPage({
           address: asset.address ?? "",
           areaSqm: asset.areaSqm?.toString() ?? "",
           estimatedValue: asset.estimatedValue?.toString() ?? "",
+          monthlyIncome: asset.monthlyIncome?.toString() ?? "",
           myhomeUrl: asset.myhomeUrl ?? "",
           ssUrl: asset.ssUrl ?? "",
           myautoUrl: asset.myautoUrl ?? "",

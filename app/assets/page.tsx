@@ -91,6 +91,12 @@ export default async function AssetsPage() {
     const contract = activeContract(asset);
     return sum + (contract?.monthlyRent ?? 0);
   }, 0);
+  // Recurring income streams registered as assets (salary, dividend, …).
+  const otherIncomeSources = assets.reduce(
+    (sum, asset) =>
+      asset.category === "income_source" ? sum + (asset.monthlyIncome ?? 0) : sum,
+    0,
+  );
   const strIncome = monthBookings.reduce(
     (sum, b) => sum + proratedRevenue(b, { start: monthStart, end: monthEnd }),
     0,
@@ -98,7 +104,8 @@ export default async function AssetsPage() {
   const manualIncomeThisMonth = monthIncomes
     .filter((r) => r.date >= monthStart && r.date < monthEnd)
     .reduce((sum, r) => sum + r.amount, 0);
-  const totalMonthly = rentIncome + strIncome + manualIncomeThisMonth;
+  const totalMonthly =
+    rentIncome + strIncome + manualIncomeThisMonth + otherIncomeSources;
 
   const totalValue = assets.reduce((sum, a) => sum + (a.estimatedValue ?? 0), 0);
   const rentedCount = assets.filter((a) => effectiveStatus(a) === "rented").length;
@@ -134,7 +141,7 @@ export default async function AssetsPage() {
         <Kpi
           label={t(locale, "assets_monthly_income")}
           value={money(totalMonthly)}
-          sub={`${t(locale, "income_rent_short")}: ${money(rentIncome)} · STR: ${money(strIncome)} · ${t(locale, "income_other_short")}: ${money(manualIncomeThisMonth)}`}
+          sub={`${t(locale, "income_rent_short")}: ${money(rentIncome)} · STR: ${money(strIncome)} · ${t(locale, "income_other_short")}: ${money(manualIncomeThisMonth + otherIncomeSources)}`}
         />
         <Kpi
           label={t(locale, "assets_rented_count")}
@@ -161,6 +168,7 @@ export default async function AssetsPage() {
             </thead>
             <tbody>
               {assets.map((asset) => {
+                const isIncome = asset.category === "income_source";
                 const contract = activeContract(asset);
                 const status = effectiveStatus(asset);
                 const benchmark = asset.district
@@ -191,7 +199,7 @@ export default async function AssetsPage() {
                     </td>
                     <td data-label={t(locale, "unit_type")}>
                       {t(locale, `type_${asset.type}` as StringKey)}
-                      {asset.rentalMode === "daily" && (
+                      {asset.rentalMode === "daily" && !isIncome && (
                         <>
                           {" "}
                           <span className="badge badge--str">
@@ -201,26 +209,38 @@ export default async function AssetsPage() {
                       )}
                     </td>
                     <td data-label={t(locale, "status_label")}>
-                      <span
-                        className={`badge ${STATUS_BADGE[status] ?? STATUS_BADGE.personal_use}`}
-                      >
-                        {t(locale, `status_${status}` as StringKey)}
-                      </span>
-                      {status !== "str" && (
-                        <ListingControls
-                          assetId={asset.id}
-                          status={status}
-                          showButtons={!contract && status !== "personal_use"}
-                          links={listingLinks(asset)}
-                          labels={{
-                            rented: t(locale, "mark_rented"),
-                            vacant: t(locale, "mark_vacant"),
-                          }}
-                        />
+                      {isIncome ? (
+                        <span className="badge badge--rented">
+                          {t(locale, "income_recurring")}
+                        </span>
+                      ) : (
+                        <>
+                          <span
+                            className={`badge ${STATUS_BADGE[status] ?? STATUS_BADGE.personal_use}`}
+                          >
+                            {t(locale, `status_${status}` as StringKey)}
+                          </span>
+                          {status !== "str" && (
+                            <ListingControls
+                              assetId={asset.id}
+                              status={status}
+                              showButtons={!contract && status !== "personal_use"}
+                              links={listingLinks(asset)}
+                              labels={{
+                                rented: t(locale, "mark_rented"),
+                                vacant: t(locale, "mark_vacant"),
+                              }}
+                            />
+                          )}
+                        </>
                       )}
                     </td>
                     <td data-label={t(locale, "contracts_col")} style={{ fontWeight: 400 }}>
-                      {contract ? (
+                      {isIncome ? (
+                        <span style={{ fontWeight: 600 }}>
+                          {money(asset.monthlyIncome ?? 0)} / {t(locale, "per_month_word")}
+                        </span>
+                      ) : contract ? (
                         <div>
                           <div>
                             {contract.monthlyRent} {contract.currency} ·{" "}
