@@ -37,8 +37,11 @@ export default function AssetForm({
   districts,
   units,
   labels,
+  initialCategory,
 }: {
   asset?: AssetFormValues;
+  /** Preselects the category for a fresh form (e.g. ?category=income_source). */
+  initialCategory?: string;
   typesByCategory: Record<string, { value: string; label: string }[]>;
   categories: { value: string; label: string }[];
   statuses: { value: string; label: string }[];
@@ -50,7 +53,9 @@ export default function AssetForm({
     saveAsset,
     null,
   );
-  const [category, setCategory] = useState(asset?.category ?? "real_estate");
+  const [category, setCategory] = useState(
+    asset?.category ?? initialCategory ?? "real_estate",
+  );
   const types = typesByCategory[category] ?? [];
 
   return (

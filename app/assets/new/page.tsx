@@ -8,16 +8,21 @@ import { assetFormProps } from "../form-helpers";
 
 export const dynamic = "force-dynamic";
 
-export default async function NewAssetPage() {
+export default async function NewAssetPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ category?: string }>;
+}) {
   const operator = await requireOperator();
 
+  const { category } = await searchParams;
   const locale = await getLocale();
   const props = await assetFormProps(locale, operator.id);
 
   return (
     <main>
       <h1>{t(locale, "asset_new_title")}</h1>
-      <AssetForm {...props} />
+      <AssetForm {...props} initialCategory={category} />
     </main>
   );
 }

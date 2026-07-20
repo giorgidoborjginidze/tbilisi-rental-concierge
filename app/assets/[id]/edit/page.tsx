@@ -1,14 +1,36 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
 import { deleteContract } from "@/lib/assets/actions";
+import { LISTING_PLATFORMS } from "@/lib/types";
 import AssetForm from "../../asset-form";
 import ContractForm from "../../contract-form";
+import ListingControls, { type ListingLink } from "../../listing-controls";
+import DoorKey from "../../door-key";
 import { assetFormProps } from "../../form-helpers";
 
 export const dynamic = "force-dynamic";
+
+const DAY_MS = 86_400_000;
+
+const STATUS_BADGE: Record<string, string> = {
+  rented: "badge--rented",
+  str: "badge--str",
+  vacant: "badge--vacant",
+  personal_use: "badge--personal",
+  listed: "badge--listed",
+};
+
+const KIND_CLASS: Record<string, string> = {
+  airbnb: "cal-cell--airbnb",
+  booking: "cal-cell--booking",
+  direct: "cal-cell--direct",
+  manual: "cal-cell--direct",
+  lease: "cal-cell--lease",
+};
 
 export default async function EditAssetPage({
   params,
@@ -20,12 +42,88 @@ export default async function EditAssetPage({
   const { id } = await params;
   const asset = await prisma.asset.findFirst({
     where: { id, operatorId: operator.id },
-    include: { contracts: { orderBy: { endDate: "desc" } } },
+    include: {
+      contracts: { orderBy: { endDate: "desc" } },
+      unit: { select: { id: true, name: true } },
+    },
   });
   if (!asset) notFound();
 
   const locale = await getLocale();
   const props = await assetFormProps(locale, operator.id, asset.id);
+  const isIncome = asset.category === "income_source";
+
+  const now = new Date();
+  const activeContract = asset.contracts.find(
+    (c) => c.status !== "ended" && c.startDate <= now && c.endDate >= now,
+  );
+  const status = activeContract ? "rented" : asset.unitId ? "str" : asset.status;
+
+  const record = asset as unknown as Record<string, string | null>;
+  const links: ListingLink[] =
+    status === "personal_use"
+      ? []
+      : (LISTING_PLATFORMS[asset.category] ?? [])
+          .filter((platform) => record[platform.field])
+          .map((platform) => ({
+            platform: platform.key,
+            label: platform.label,
+            url: record[platform.field]!,
+          }));
+
+  const displayName =
+    locale === "ka" && asset.nameKa ? asset.nameKa : asset.name;
+
+  // ── Per-asset occupancy calendar: 2 months back through 3 ahead. ──
+  // Days are colored by rental contracts (lease) and, when the asset is
+  // linked to an STR unit, by that unit's bookings per source.
+  const calStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 2, 1));
+  const calEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 4, 1));
+  const showCalendar = !isIncome;
+  const bookings = showCalendar && asset.unitId
+    ? await prisma.booking.findMany({
+        where: {
+          unitId: asset.unitId,
+          status: { not: "cancelled" },
+          checkIn: { lt: calEnd },
+          checkOut: { gt: calStart },
+        },
+        select: { source: true, checkIn: true, checkOut: true },
+      })
+    : [];
+  const stays = [
+    ...asset.contracts
+      .filter((c) => c.status !== "ended")
+      .map((c) => ({ kind: "lease", start: c.startDate, end: c.endDate })),
+    ...bookings.map((b) => ({ kind: b.source, start: b.checkIn, end: b.checkOut })),
+  ];
+
+  const intl = locale === "ka" ? "ka-GE" : "en-GB";
+  const fmtMonth = new Intl.DateTimeFormat(intl, { month: "short", year: "2-digit" });
+  const fmtDate = new Intl.DateTimeFormat(intl, {
+    day: "numeric", month: "short", year: "numeric",
+  });
+
+  const months: { label: string; days: string[] }[] = [];
+  if (showCalendar) {
+    for (let m = 0; m < 6; m++) {
+      const mStart = new Date(Date.UTC(calStart.getUTCFullYear(), calStart.getUTCMonth() + m, 1));
+      const mEnd = new Date(Date.UTC(mStart.getUTCFullYear(), mStart.getUTCMonth() + 1, 1));
+      const dayCount = Math.round((mEnd.getTime() - mStart.getTime()) / DAY_MS);
+      const days = Array.from({ length: dayCount }, (_, i) => {
+        const dayStart = new Date(mStart.getTime() + i * DAY_MS);
+        const dayEnd = new Date(dayStart.getTime() + DAY_MS);
+        const covering = stays.filter((s) => s.start < dayEnd && s.end > dayStart);
+        return covering.length > 1
+          ? "cal-cell--overlap"
+          : covering.length === 1
+            ? KIND_CLASS[covering[0].kind] ?? KIND_CLASS.direct
+            : "";
+      });
+      months.push({ label: fmtMonth.format(mStart), days });
+    }
+  }
+  const isCurrentMonth = (label: string) => label === fmtMonth.format(now);
 
   const contractLabelKeys: StringKey[] = [
     "contract_add", "contract_tenant", "tenant_phone", "contract_start", "contract_end",
@@ -36,14 +134,107 @@ export default async function EditAssetPage({
     contractLabelKeys.map((key) => [key, t(locale, key)]),
   );
 
-  const intl = locale === "ka" ? "ka-GE" : "en-GB";
-  const fmtDate = new Intl.DateTimeFormat(intl, {
-    day: "numeric", month: "short", year: "numeric",
-  });
-
   return (
     <main>
-      <h1>{t(locale, "asset_edit_title")}</h1>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+        <h1 style={{ marginBottom: 0 }}>{displayName}</h1>
+        <Link href="/assets" className="btn-chip">← {t(locale, "assets_title")}</Link>
+      </div>
+
+      {/* ── Summary: status, listings, door key — same controls as the list ── */}
+      <div className="alert-card" style={{ display: "block" }}>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {isIncome ? (
+            <>
+              <span className="badge badge--rented">{t(locale, "income_recurring")}</span>
+              <span style={{ fontWeight: 600 }}>
+                {Math.round(asset.monthlyIncome ?? 0).toLocaleString("en-US")} GEL /{" "}
+                {t(locale, "per_month_word")}
+              </span>
+            </>
+          ) : (
+            <>
+              <span className={`badge ${STATUS_BADGE[status] ?? STATUS_BADGE.personal_use}`}>
+                {t(locale, `status_${status}` as StringKey)}
+              </span>
+              {asset.rentalMode === "daily" && (
+                <span className="badge badge--str">{t(locale, "mode_daily")}</span>
+              )}
+              {asset.unit && (
+                <Link href={`/calendar?unit=${asset.unit.id}`} className="link" style={{ fontSize: 13 }}>
+                  ({asset.unit.name})
+                </Link>
+              )}
+            </>
+          )}
+        </div>
+        {!isIncome && status !== "str" && (
+          <ListingControls
+            assetId={asset.id}
+            status={status}
+            showButtons={!activeContract && status !== "personal_use"}
+            links={links}
+            labels={{
+              rented: t(locale, "mark_rented"),
+              vacant: t(locale, "mark_vacant"),
+            }}
+          />
+        )}
+        {asset.category === "real_estate" && status !== "personal_use" && (
+          <DoorKey
+            assetId={asset.id}
+            code={asset.doorCode}
+            phone={activeContract?.tenantPhone?.replace(/\D/g, "") || null}
+            message={`${displayName}${asset.address ? ` (${asset.address})` : ""} — ${t(locale, "door_key")}:`}
+            labels={{
+              key: t(locale, "door_key"),
+              generate: t(locale, "door_generate"),
+            }}
+          />
+        )}
+      </div>
+
+      {/* ── Occupancy calendar: when this asset was rented and when not ── */}
+      {showCalendar && (
+        <section>
+          <h2>{t(locale, "nav_calendar")}</h2>
+          <div className="legend">
+            <span><i style={{ background: "var(--cal-lease)" }} />{t(locale, "calendar_lease")}</span>
+            {asset.unitId && (
+              <>
+                <span><i style={{ background: "var(--cal-airbnb)" }} />Airbnb</span>
+                <span><i style={{ background: "var(--cal-booking)" }} />Booking.com</span>
+                <span><i style={{ background: "var(--cal-direct)" }} />{t(locale, "calendar_direct_manual")}</span>
+              </>
+            )}
+            <span>
+              <i style={{ background: "var(--cal-vacant)", border: "1px solid var(--color-border)" }} />
+              {t(locale, "calendar_vacant")}
+            </span>
+          </div>
+          <div className="card" style={{ padding: "12px 16px" }}>
+            {months.map((month) => (
+              <div key={month.label} className="cal-row">
+                <span
+                  className="cal-name"
+                  style={{
+                    width: 64,
+                    fontWeight: isCurrentMonth(month.label) ? 700 : 500,
+                    color: isCurrentMonth(month.label) ? "var(--color-primary)" : undefined,
+                  }}
+                >
+                  {month.label}
+                </span>
+                {month.days.map((cls, i) => (
+                  <span key={i} className={`cal-cell ${cls}`} />
+                ))}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <h2>{t(locale, "asset_edit_title")}</h2>
       <AssetForm
         {...props}
         asset={{
@@ -70,43 +261,42 @@ export default async function EditAssetPage({
         }}
       />
 
-      <section>
-        <h2>{t(locale, "contracts_title")}</h2>
-        {asset.contracts.length > 0 && (
-          <ul className="mb-4 space-y-2">
-            {asset.contracts.map((contract) => (
-              <li
-                key={contract.id}
-                className="alert-card" style={{ padding: "12px 18px", alignItems: "center" }}
-              >
-                <div>
-                  <span className="font-medium">
-                    {contract.monthlyRent} {contract.currency}
-                  </span>{" "}
-                  · {contract.tenantName ?? "—"}
-                  {contract.tenantPhone ? ` (${contract.tenantPhone})` : ""} · {fmtDate.format(contract.startDate)}{" "}
-                  – {fmtDate.format(contract.endDate)}{" "}
-                  <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
-                    ({t(locale, `cstatus_${contract.status}` as StringKey)})
-                  </span>
-                </div>
-                <form action={deleteContract}>
-                  <input type="hidden" name="contractId" value={contract.id} />
-                  <input type="hidden" name="assetId" value={asset.id} />
-                  <button
-                    type="submit"
-                    className="btn-chip"
-                    aria-label="delete contract"
-                  >
-                    ✕
-                  </button>
-                </form>
-              </li>
-            ))}
-          </ul>
-        )}
-        <ContractForm assetId={asset.id} labels={contractLabels} />
-      </section>
+      {!isIncome && (
+        <section>
+          <h2>{t(locale, "contracts_title")}</h2>
+          {asset.contracts.length > 0 && (
+            <ul className="mb-4 space-y-2">
+              {asset.contracts.map((contract) => (
+                <li
+                  key={contract.id}
+                  className="alert-card"
+                  style={{ padding: "12px 18px", alignItems: "center" }}
+                >
+                  <div>
+                    <span className="font-medium">
+                      {contract.monthlyRent} {contract.currency}
+                    </span>{" "}
+                    · {contract.tenantName ?? "—"}
+                    {contract.tenantPhone ? ` (${contract.tenantPhone})` : ""} · {fmtDate.format(contract.startDate)}{" "}
+                    – {fmtDate.format(contract.endDate)}{" "}
+                    <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
+                      ({t(locale, `cstatus_${contract.status}` as StringKey)})
+                    </span>
+                  </div>
+                  <form action={deleteContract}>
+                    <input type="hidden" name="contractId" value={contract.id} />
+                    <input type="hidden" name="assetId" value={asset.id} />
+                    <button type="submit" className="btn-chip" aria-label="delete contract">
+                      ✕
+                    </button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          )}
+          <ContractForm assetId={asset.id} labels={contractLabels} />
+        </section>
+      )}
     </main>
   );
 }
