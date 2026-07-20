@@ -207,6 +207,9 @@
   }
   .hint { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); padding: 10px 14px; font-size: 12px; color: var(--muted); }
 
+  .alink { color: inherit; font-weight: 600; text-decoration: none; border-bottom: 1px dashed var(--border-strong); }
+  .alink:hover { color: var(--primary); border-bottom-color: var(--primary); }
+
   .page { display: none; }
   .page.on { display: block; animation: fadein .25s ease; }
   @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
@@ -366,121 +369,127 @@
 
 <!-- ══ აქტივები ══ -->
 <section class="page" id="p-assets">
-  <h1>ჩემი აქტივები</h1>
+  <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px">
+    <h1 style="margin-bottom:0">ჩემი აქტივები</h1>
+    <div style="display:flex; gap:8px; flex-wrap:wrap">
+      <button class="btn btn--ghost" onclick="openAdd('income_source')">შემოსავლის დამატება</button>
+      <button class="btn" onclick="openAdd('real_estate')">აქტივის დამატება</button>
+    </div>
+  </div>
   <div class="kpis">
     <div class="kpi"><b>ჯამური ღირებულება</b><div class="v">3,065,000 ₾</div></div>
-    <div class="kpi"><b>თვიური შემოსავალი</b><div class="v">68,337 ₾</div><small>ქირა: 2,550 · STR: 52,787 · სხვა: 13,000</small></div>
+    <div class="kpi"><b>თვიური შემოსავალი</b><div class="v" id="incKpi">68,337 ₾</div><small id="incSub">ქირა: 2,550 · STR: 52,787 · სხვა: 13,000</small></div>
     <div class="kpi"><b>გაქირავებული</b><div class="v" id="rentedCnt">3 / 13</div></div>
     <div class="kpi"><b>STR (მიმდინარე თვე)</b><div class="v">52,787 ₾</div></div>
   </div>
+  <p style="color:var(--muted); font-size:13px">შედი ნებისმიერ აქტივში (სახელზე დაჭერით) — ნახავ სტატუსს, კარის კოდს და გაქირავების კალენდარს.</p>
+
+  <h2>უძრავი ქონება</h2>
   <div class="card stack"><table>
-    <thead><tr><th>სახელი</th><th>ტიპი</th><th>სტატუსი</th><th>ხელშეკრულება</th><th class="num">საბაზრო ქირა</th><th class="num">ღირებულება</th></tr></thead>
-    <tbody>
+    <thead><tr><th>სახელი</th><th>ტიპი</th><th>სტატუსი</th><th>ხელშეკრულება</th><th class="num">ღირებულება</th></tr></thead>
+    <tbody id="tbl-re">
       <tr>
-        <td>ხელფასი<div class="sub">შემოსავლის წყარო — ინახება მხოლოდ თანხა</div></td>
-        <td data-l="ტიპი">ხელფასი</td>
-        <td data-l="სტატუსი"><span class="badge b-rented">მუდმივი შემოსავალი</span></td>
-        <td data-l="ხელშეკრულება" style="font-weight:600">5,000 ₾ / თვე</td>
-        <td class="num" data-l="საბაზრო ქირა">—</td>
-        <td class="num" data-l="ღირებულება">—</td>
-      </tr>
-      <tr>
-        <td>დივიდენდი — KolkhetiCo<div class="sub">შემოსავლის წყარო</div></td>
-        <td data-l="ტიპი">დივიდენდი</td>
-        <td data-l="სტატუსი"><span class="badge b-rented">მუდმივი შემოსავალი</span></td>
-        <td data-l="ხელშეკრულება" style="font-weight:600">1,200 ₾ / თვე</td>
-        <td class="num" data-l="საბაზრო ქირა">—</td>
-        <td class="num" data-l="ღირებულება">—</td>
-      </tr>
-      <tr>
-        <td>აღმაშენებლის კომერციული ფართი<div class="sub">ძველი ქალაქი · 112 აღმაშენებლის გამზ.</div></td>
-        <td data-l="ტიპი">კომერციული ფართი</td>
-        <td data-l="სტატუსი">
-          <span class="badge b-listed" id="st1">განთავსებული</span>
-          <div class="row">
-            <button class="chip" onclick="flip(1,'rented',this)">გაქირავებულია</button>
-            <button class="chip" onclick="flip(1,'vacant',this)">თავისუფალია</button>
-            <a class="brand brand--ss" href="#" onclick="return false"><svg width="11" height="11" viewBox="0 0 12 12"><rect y="0" width="8" height="1.4" rx=".7" fill="#f43535"/><rect y="2" width="6" height="1.4" rx=".7" fill="#ff8a00"/><rect y="4" width="8" height="1.4" rx=".7" fill="#ffc400"/><rect y="6" width="6" height="1.4" rx=".7" fill="#3fbf2f"/><rect y="8" width="8" height="1.4" rx=".7" fill="#1e88ff"/><rect y="10" width="6" height="1.4" rx=".7" fill="#9b30f2"/></svg><span>ss.ge</span></a>
-          </div>
-        </td>
-        <td data-l="ხელშეკრულება" style="font-weight:400">—
-          <div class="row" style="font-size:12px">🔑 <span class="code" id="dk1">— — —</span>
-            <button class="chip" onclick="genCode(1)">ახალი კოდი</button>
-            <a class="chip chip--wa" id="wa1" hidden target="_blank" rel="noopener">WhatsApp ↗</a>
-          </div>
-        </td>
-        <td class="num" data-l="საბაზრო ქირა">~1,575 ₾</td>
-        <td class="num" data-l="ღირებულება">320,000 ₾</td>
-      </tr>
-      <tr>
-        <td>ნუცუბიძის ბინა — 2 საძინებელი<div class="sub">საბურთალო · 45 ნუცუბიძის ქ.</div></td>
+        <td><a href="#" class="alink" onclick="return detail('ნუცუბიძის ბინა — 2 საძინებელი','rented','1400 ₾ · ლ. გელაშვილი · 10 აგვ-მდე','llllp.',true)">ნუცუბიძის ბინა — 2 საძინებელი</a><div class="sub">საბურთალო · 45 ნუცუბიძის ქ.</div></td>
         <td data-l="ტიპი">ბინა</td>
-        <td data-l="სტატუსი">
-          <span class="badge b-rented">გაქირავებული</span>
-          <div class="row"><a class="brand brand--myhome" href="#" onclick="return false"><b>myhome</b><span>.ge</span></a></div>
-        </td>
-        <td data-l="ხელშეკრულება" style="font-weight:400">1,400 ₾ · ლ. გელაშვილი<div class="sub">ვადა: 10 აგვ 2026</div>
-          <div class="row" style="font-size:12px">🔑 <span class="code">483920</span>
-            <a class="chip chip--wa" href="https://wa.me/?text=%E1%83%99%E1%83%90%E1%83%A0%E1%83%98%E1%83%A1%20%E1%83%99%E1%83%9D%E1%83%93%E1%83%98%3A%20483920" target="_blank" rel="noopener">WhatsApp ↗</a>
-          </div>
-        </td>
-        <td class="num" data-l="საბაზრო ქირა">~1,872 ₾ <div style="margin-top:4px"><span class="badge b-vacant">ბაზარზე დაბალი</span></div></td>
+        <td data-l="სტატუსი"><span class="badge b-rented">გაქირავებული</span><div class="row"><a class="brand brand--myhome" href="#" onclick="return false"><b>myhome</b><span>.ge</span></a></div></td>
+        <td data-l="ხელშეკრულება" style="font-weight:400">1,400 ₾ · ლ. გელაშვილი<div class="sub">ვადა: 10 აგვ 2026</div></td>
         <td class="num" data-l="ღირებულება">280,000 ₾</td>
       </tr>
       <tr>
-        <td>ბათუმის სანაპიროს ბინა<div class="sub">ბათუმი · 5 სანაპიროს ქ.</div></td>
+        <td><a href="#" class="alink" onclick="return detail('ბათუმის სანაპიროს ბინა','listed','—','......',false)">ბათუმის სანაპიროს ბინა</a><div class="sub">ბათუმი · 5 სანაპიროს ქ.</div></td>
         <td data-l="ტიპი">ბინა</td>
-        <td data-l="სტატუსი">
-          <span class="badge b-listed" id="st2">განთავსებული</span>
-          <div class="row">
-            <button class="chip" onclick="flip(2,'rented',this)">გაქირავებულია</button>
-            <button class="chip" onclick="flip(2,'vacant',this)">თავისუფალია</button>
-            <a class="brand brand--booking" href="#" onclick="return false"><span>Booking.com</span></a>
-          </div>
-        </td>
+        <td data-l="სტატუსი"><span class="badge b-listed">განთავსებული</span><div class="row"><a class="brand brand--booking" href="#" onclick="return false"><span>Booking.com</span></a></div></td>
         <td data-l="ხელშეკრულება" style="font-weight:400">—</td>
-        <td class="num" data-l="საბაზრო ქირა">~1,564 ₾</td>
         <td class="num" data-l="ღირებულება">260,000 ₾</td>
       </tr>
       <tr>
-        <td>ძველი ქალაქის დღიური სტუდია<div class="sub">ძველი ქალაქი · 7 გომის ქ.</div></td>
+        <td><a href="#" class="alink" onclick="return detail('ძველი ქალაქის დღიური სტუდია','vacant','დღიური გაქირავება','pppppp',true)">ძველი ქალაქის დღიური სტუდია</a><div class="sub">ძველი ქალაქი · 7 გომის ქ.</div></td>
         <td data-l="ტიპი">სტუდია <span class="badge b-str">დღიური</span></td>
-        <td data-l="სტატუსი">
-          <span class="badge b-vacant" id="st3">თავისუფალი</span>
-          <div class="row">
-            <button class="chip" onclick="flip(3,'rented',this)">გაქირავებულია</button>
-            <button class="chip on" onclick="flip(3,'vacant',this)">თავისუფალია</button>
-            <a class="brand brand--airbnb" href="#" onclick="return false"><svg width="12" height="12" viewBox="0 0 24 24"><path d="M12 2.6c1.1 0 2 .6 2.6 1.7l5.5 11.1c1 2-.4 4.2-2.6 4.2-1 0-2-.5-3-1.4L12 16l-2.5 2.2c-1 .9-2 1.4-3 1.4-2.2 0-3.6-2.2-2.6-4.2L9.4 4.3C10 3.2 10.9 2.6 12 2.6Zm0 4.2c-.9 0-1.7.8-1.7 1.8 0 .6.3 1.4.9 2.4l.8 1.3.8-1.3c.6-1 .9-1.8.9-2.4 0-1-.8-1.8-1.7-1.8Z" fill="#ff385c" fill-rule="evenodd"/></svg><span>airbnb</span></a>
-          </div>
-        </td>
+        <td data-l="სტატუსი"><span class="badge b-vacant">თავისუფალი</span><div class="row"><a class="brand brand--airbnb" href="#" onclick="return false"><svg width="12" height="12" viewBox="0 0 24 24"><path d="M12 2.6c1.1 0 2 .6 2.6 1.7l5.5 11.1c1 2-.4 4.2-2.6 4.2-1 0-2-.5-3-1.4L12 16l-2.5 2.2c-1 .9-2 1.4-3 1.4-2.2 0-3.6-2.2-2.6-4.2L9.4 4.3C10 3.2 10.9 2.6 12 2.6Zm0 4.2c-.9 0-1.7.8-1.7 1.8 0 .6.3 1.4.9 2.4l.8 1.3.8-1.3c.6-1 .9-1.8.9-2.4 0-1-.8-1.8-1.7-1.8Z" fill="#ff385c" fill-rule="evenodd"/></svg><span>airbnb</span></a></div></td>
         <td data-l="ხელშეკრულება" style="font-weight:400">—</td>
-        <td class="num" data-l="საბაზრო ქირა">~1,120 ₾</td>
         <td class="num" data-l="ღირებულება">195,000 ₾</td>
-      </tr>
-      <tr>
-        <td>ტოიოტა კამრი 2021<div class="sub">პირადი ავტომობილი</div></td>
-        <td data-l="ტიპი">ავტომობილი</td>
-        <td data-l="სტატუსი"><span class="badge b-personal">პირადი მოხმარება</span></td>
-        <td data-l="ხელშეკრულება" style="font-weight:400">—</td>
-        <td class="num" data-l="საბაზრო ქირა">—</td>
-        <td class="num" data-l="ღირებულება">85,000 ₾</td>
-      </tr>
-      <tr>
-        <td>კია სპორტეიჯი 2023<div class="sub">გაქირავებულია ყოველთვიურად</div></td>
-        <td data-l="ტიპი">ავტომობილი</td>
-        <td data-l="სტატუსი">
-          <span class="badge b-rented">გაქირავებული</span>
-          <div class="row"><a class="brand brand--myauto" href="#" onclick="return false"><b>myauto</b><span>.ge</span></a></div>
-        </td>
-        <td data-l="ხელშეკრულება" style="font-weight:400">1,150 ₾ · გ. კაპანაძე<div class="sub">ვადა: 1 დეკ 2026</div></td>
-        <td class="num" data-l="საბაზრო ქირა">—</td>
-        <td class="num" data-l="ღირებულება">98,000 ₾</td>
       </tr>
     </tbody>
   </table></div>
-  <p class="hint" style="margin-top:12px">„გაქირავებულია / თავისუფალია" ღილაკები აქვე ცვლის სტატუსს და სრულ ვერსიაში შენს განცხადებას ხსნის myhome / ss.ge / myauto-ზე. პირადი მოხმარების აქტივებს ბმულები არ აქვს — განზრახ. ქონების გარდა შეგიძლია დაამატო შემოსავლის წყაროებიც (ხელფასი, დივიდენდი, პენსია…) — ინახება მხოლოდ თანხა, დამსაქმებელი ან გადამხდელი არ არის საჭირო.</p>
+
+  <h2>მოძრავი ქონება</h2>
+  <div class="card stack"><table>
+    <thead><tr><th>სახელი</th><th>ტიპი</th><th>სტატუსი</th><th>ხელშეკრულება</th><th class="num">ღირებულება</th></tr></thead>
+    <tbody id="tbl-veh">
+      <tr>
+        <td><a href="#" class="alink" onclick="return detail('კია სპორტეიჯი 2023','rented','1,150 ₾ · გ. კაპანაძე · 1 დეკ-მდე','llllll',false)">კია სპორტეიჯი 2023</a><div class="sub">გაქირავებულია ყოველთვიურად</div></td>
+        <td data-l="ტიპი">ავტომობილი</td>
+        <td data-l="სტატუსი"><span class="badge b-rented">გაქირავებული</span><div class="row"><a class="brand brand--myauto" href="#" onclick="return false"><b>myauto</b><span>.ge</span></a></div></td>
+        <td data-l="ხელშეკრულება" style="font-weight:400">1,150 ₾ · გ. კაპანაძე<div class="sub">ვადა: 1 დეკ 2026</div></td>
+        <td class="num" data-l="ღირებულება">98,000 ₾</td>
+      </tr>
+      <tr>
+        <td><a href="#" class="alink" onclick="return detail('ტოიოტა კამრი 2021','personal','პირადი მოხმარება','......',false)">ტოიოტა კამრი 2021</a><div class="sub">პირადი ავტომობილი</div></td>
+        <td data-l="ტიპი">ავტომობილი</td>
+        <td data-l="სტატუსი"><span class="badge b-personal">პირადი მოხმარება</span></td>
+        <td data-l="ხელშეკრულება" style="font-weight:400">—</td>
+        <td class="num" data-l="ღირებულება">85,000 ₾</td>
+      </tr>
+    </tbody>
+  </table></div>
+
+  <h2 style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap">ყოველთვიური შემოსავალი
+    <button class="chip" onclick="openAdd('income_source')">+ შემოსავლის დამატება</button></h2>
+  <div class="card stack"><table>
+    <thead><tr><th>სახელი</th><th>ტიპი</th><th class="num">თვიური შემოსავალი</th></tr></thead>
+    <tbody id="tbl-inc">
+      <tr><td>ხელფასი<div class="sub">ინახება მხოლოდ თანხა</div></td><td data-l="ტიპი"><span class="badge b-rented">ხელფასი</span></td><td class="num" data-l="თანხა" style="font-weight:600">5,000 ₾ / თვე</td></tr>
+      <tr><td>დივიდენდი — KolkhetiCo</td><td data-l="ტიპი"><span class="badge b-rented">დივიდენდი</span></td><td class="num" data-l="თანხა" style="font-weight:600">1,200 ₾ / თვე</td></tr>
+    </tbody>
+  </table></div>
+  <p class="hint" style="margin-top:12px">შემოსავლის წყაროზე (ხელფასი, დივიდენდი, პენსია…) ინახება მხოლოდ თანხა — დამსაქმებელი ან გადამხდელი არ არის საჭირო.</p>
 </section>
 
+<!-- ══ აქტივის დამატების ფორმა ══ -->
+<section class="page" id="p-add">
+  <h1 id="addTitle">ახალი აქტივი</h1>
+  <div class="card" style="padding:20px; overflow:visible; max-width:640px">
+    <div class="grid2">
+      <label class="field">კატეგორია
+        <select id="aCat" onchange="switchCat()">
+          <option value="real_estate">უძრავი ქონება</option>
+          <option value="vehicle">მოძრავი ქონება</option>
+          <option value="income_source">შემოსავლის წყარო</option>
+          <option value="other">სხვა</option>
+        </select>
+      </label>
+      <label class="field">ტიპი
+        <select id="aType"></select>
+      </label>
+      <label class="field" style="grid-column:1/-1">სახელი
+        <input id="aName" placeholder="მაგ.: ვაკის ბინა / ხელფასი">
+      </label>
+      <label class="field af af-re">უბანი
+        <select id="aDistrict"><option>ვაკე</option><option>ვერა</option><option>საბურთალო</option><option>ძველი ქალაქი</option><option>მთაწმინდა</option><option>ბათუმი</option></select>
+      </label>
+      <label class="field af af-re">ფართი (მ²)
+        <input id="aArea" type="number" value="60">
+      </label>
+      <label class="field af af-re" style="grid-column:1/-1">myhome.ge განცხადების ბმული
+        <input placeholder="https://www.myhome.ge/pr/...">
+      </label>
+      <label class="field af af-veh" style="grid-column:1/-1" hidden>myauto.ge განცხადების ბმული
+        <input placeholder="https://www.myauto.ge/pr/...">
+      </label>
+      <label class="field af af-val">შეფასებული ღირებულება (₾)
+        <input id="aValue" type="number" placeholder="250000">
+      </label>
+      <label class="field af af-inc" hidden>თვიური შემოსავალი (₾)
+        <input id="aIncome" type="number" placeholder="5000">
+      </label>
+    </div>
+    <p class="hint af af-inc" style="margin-top:12px" hidden>🔒 ინახება მხოლოდ თანხა — დამსაქმებელი, ანგარიში ან გადამხდელი არ არის საჭირო.</p>
+    <div style="display:flex; gap:10px; margin-top:16px">
+      <button class="btn" onclick="saveAsset()">შენახვა</button>
+      <button class="btn btn--ghost" onclick="go('assets')">გაუქმება</button>
+    </div>
+  </div>
+</section>
 <!-- ══ ინვესტიცია ══ -->
 <section class="page" id="p-invest">
   <h1>საინვესტიციო კალკულატორი</h1>
@@ -576,6 +585,32 @@
 </section>
 
 </div>
+
+<!-- ══ აქტივის დეტალური ხედი (მოდალი) ══ -->
+<div id="dOverlay" style="position:fixed; inset:0; background:rgba(15,17,26,.45); z-index:40; display:none; align-items:center; justify-content:center; padding:16px" onclick="if(event.target===this) dClose()">
+  <div class="card" style="max-width:560px; width:100%; padding:22px; overflow:visible; max-height:90vh; overflow-y:auto">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px">
+      <h2 style="margin:0" id="dName">—</h2>
+      <button class="chip" onclick="dClose()">✕</button>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <span class="badge" id="dBadge">—</span>
+      <span id="dContract" style="font-size:13px; color:var(--muted)"></span>
+    </div>
+    <div id="dKeyBlock" style="margin-top:14px">
+      <div class="row" style="font-size:12px">🔑 კარის კოდი: <span class="code" id="dCode">—</span>
+        <button class="chip" onclick="dGen()">ახალი კოდი</button>
+        <a class="chip chip--wa" id="dWa" hidden target="_blank" rel="noopener">WhatsApp ↗</a>
+      </div>
+    </div>
+    <h2 style="font-size:14px; margin:18px 0 8px">გაქირავების კალენდარი (6 თვე)</h2>
+    <div id="dCal" style="display:flex; gap:4px"></div>
+    <div class="legend" style="margin-top:8px">
+      <span><i style="background:var(--cal-lease)"></i>გაქირავებული</span>
+      <span><i style="background:var(--cal-vacant); border:1px solid var(--border)"></i>თავისუფალი</span>
+    </div>
+  </div>
+</div>
 </main>
 
 <script>
@@ -608,6 +643,86 @@
     root.dataset.theme = dark ? "light" : "dark";
     $("#themeBtn").textContent = dark ? "🌙" : "☀️";
   });
+  function go(id) {
+    document.querySelectorAll("#navlinks button").forEach((x) => x.classList.toggle("on", x.dataset.p === id));
+    document.querySelectorAll(".page").forEach((pg) => pg.classList.remove("on"));
+    document.querySelector("#p-" + id).classList.add("on");
+    window.scrollTo({ top: 0 });
+  }
+
+  // ── დამატების ფორმა ──
+  const TYPES = {
+    real_estate: ["ბინა", "სახლი", "კომერციული ფართი", "მიწა", "გარაჟი"],
+    vehicle: ["ავტომობილი", "მოტოციკლი", "სატვირთო"],
+    income_source: ["ხელფასი", "დივიდენდი", "ბიზნესი", "პენსია", "პროცენტი / დეპოზიტი", "როიალტი"],
+    other: ["აღჭურვილობა", "სხვა"],
+  };
+  function openAdd(cat) {
+    $("#aCat").value = cat; switchCat();
+    $("#addTitle").textContent = cat === "income_source" ? "შემოსავლის დამატება" : "ახალი აქტივი";
+    $("#aName").value = "";
+    go("add");
+  }
+  function switchCat() {
+    const cat = $("#aCat").value;
+    $("#aType").innerHTML = TYPES[cat].map((x) => "<option>" + x + "</option>").join("");
+    document.querySelectorAll(".af").forEach((el) => { el.hidden = true; });
+    if (cat === "real_estate") document.querySelectorAll(".af-re, .af-val").forEach((el) => { el.hidden = false; });
+    else if (cat === "vehicle") document.querySelectorAll(".af-veh, .af-val").forEach((el) => { el.hidden = false; });
+    else if (cat === "income_source") document.querySelectorAll(".af-inc").forEach((el) => { el.hidden = false; });
+    else document.querySelectorAll(".af-val").forEach((el) => { el.hidden = false; });
+  }
+  let extraIncome = 0;
+  function saveAsset() {
+    const cat = $("#aCat").value;
+    const name = $("#aName").value.trim() || "უსახელო";
+    const type = $("#aType").value;
+    if (cat === "income_source") {
+      const amt = Number($("#aIncome").value) || 0;
+      extraIncome += amt;
+      $("#tbl-inc").insertAdjacentHTML("beforeend",
+        '<tr><td>' + name + '</td><td data-l="ტიპი"><span class="badge b-rented">' + type +
+        '</span></td><td class="num" data-l="თანხა" style="font-weight:600">' + amt.toLocaleString("en-US") + ' ₾ / თვე</td></tr>');
+      $("#incKpi").textContent = (68337 + extraIncome).toLocaleString("en-US") + " ₾";
+      $("#incSub").textContent = "ქირა: 2,550 · STR: 52,787 · სხვა: " + (13000 + extraIncome).toLocaleString("en-US");
+    } else {
+      const val = Number($("#aValue").value) || 0;
+      const tbl = cat === "vehicle" ? "#tbl-veh" : "#tbl-re";
+      $(tbl).insertAdjacentHTML("beforeend",
+        '<tr><td><a href="#" class="alink" onclick="return detail(\'' + name.replace(/'/g, "") + '\',\'vacant\',\'—\',\'......\',false)">' + name +
+        '</a></td><td data-l="ტიპი">' + type + '</td><td data-l="სტატუსი"><span class="badge b-vacant">თავისუფალი</span></td>' +
+        '<td data-l="ხელშეკრულება" style="font-weight:400">—</td><td class="num" data-l="ღირებულება">' +
+        (val ? val.toLocaleString("en-US") + " ₾" : "—") + '</td></tr>');
+    }
+    go("assets");
+  }
+
+  // ── დეტალური ხედი ──
+  const D_BADGE = { rented: ["b-rented", "გაქირავებული"], vacant: ["b-vacant", "თავისუფალი"], listed: ["b-listed", "განთავსებული"], personal: ["b-personal", "პირადი მოხმარება"] };
+  const D_MONTHS = ["მაი", "ივნ", "ივლ", "აგვ", "სექ", "ოქტ"];
+  function detail(name, status, contract, cal, hasKey) {
+    $("#dName").textContent = name;
+    const [cls, label] = D_BADGE[status] || D_BADGE.vacant;
+    const badge = $("#dBadge"); badge.className = "badge " + cls; badge.textContent = label;
+    $("#dContract").textContent = contract === "—" ? "" : contract;
+    $("#dKeyBlock").style.display = hasKey ? "" : "none";
+    $("#dCode").textContent = "—"; $("#dWa").hidden = true;
+    $("#dCal").innerHTML = [...cal].map((c, i) => {
+      const bg = c === "l" ? "var(--cal-lease)" : c === "p" ? "linear-gradient(90deg, var(--cal-lease) 55%, var(--cal-vacant) 55%)" : "var(--cal-vacant)";
+      return '<div style="flex:1; text-align:center"><div style="height:26px; border-radius:6px; background:' + bg +
+        '; border:1px solid var(--border)"></div><div style="font-size:10px; color:var(--muted); margin-top:3px">' + D_MONTHS[i] + '</div></div>';
+    }).join("");
+    $("#dOverlay").style.display = "flex";
+    return false;
+  }
+  function dGen() {
+    const code = String(Math.floor(Math.random() * 1e6)).padStart(6, "0");
+    $("#dCode").textContent = code;
+    const wa = $("#dWa"); wa.hidden = false;
+    wa.href = "https://wa.me/?text=" + encodeURIComponent("კარის კოდი: " + code);
+  }
+  function dClose() { $("#dOverlay").style.display = "none"; }
+
   function toast(btn, msg) { const t = btn.textContent; btn.textContent = msg; btn.disabled = true; setTimeout(() => { btn.textContent = t; btn.disabled = false; }, 1800); }
 
   // ── dashboard count-up ──
@@ -714,5 +829,6 @@
     else { v.className = "badge b-danger"; v.textContent = "დეპოზიტი მეტს გამოიმუშავებს"; }
   }
   calc();
+  switchCat();
 </script>
 </body></html>
