@@ -13,16 +13,18 @@ export interface PlanDef {
   maxUnits: number;
   /** Team seats including the owner (personal plans: 1). */
   maxMembers: number;
+  /** Pro investment analysis (5-year underwriting) included? */
+  analysis: boolean;
 }
 
 export const TRIAL_DAYS = 30;
 
 export const PLANS: PlanDef[] = [
-  { id: "starter", kind: "personal", priceGel: 15, maxAssets: 5, maxUnits: 3, maxMembers: 1 },
-  { id: "standard", kind: "personal", priceGel: 29, maxAssets: 20, maxUnits: 10, maxMembers: 1 },
-  { id: "pro", kind: "personal", priceGel: 49, maxAssets: 50, maxUnits: 30, maxMembers: 1 },
-  { id: "biz_s", kind: "business", priceGel: 99, maxAssets: 100, maxUnits: 60, maxMembers: 5 },
-  { id: "biz_m", kind: "business", priceGel: 199, maxAssets: 300, maxUnits: 200, maxMembers: 15 },
+  { id: "starter", kind: "personal", priceGel: 15, maxAssets: 5, maxUnits: 3, maxMembers: 1, analysis: false },
+  { id: "standard", kind: "personal", priceGel: 29, maxAssets: 20, maxUnits: 10, maxMembers: 1, analysis: false },
+  { id: "pro", kind: "personal", priceGel: 49, maxAssets: 50, maxUnits: 30, maxMembers: 1, analysis: true },
+  { id: "biz_s", kind: "business", priceGel: 99, maxAssets: 100, maxUnits: 60, maxMembers: 5, analysis: true },
+  { id: "biz_m", kind: "business", priceGel: 199, maxAssets: 300, maxUnits: 200, maxMembers: 15, analysis: true },
 ];
 
 export const planById = (id: string | null | undefined): PlanDef | null =>

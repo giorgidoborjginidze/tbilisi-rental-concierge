@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
@@ -47,6 +48,18 @@ export default async function InvestPage() {
       <p className="mb-5" style={{ color: "var(--color-text-muted)", fontSize: 13, maxWidth: 640 }}>
         {t(locale, "invest_intro")}
       </p>
+
+      <div className="alert-card alert-card--contract" style={{ alignItems: "center", marginBottom: 20 }}>
+        <div>
+          <div className="alert-card__title">
+            {t(locale, "wor_title")} <span className="badge badge--listed">PRO</span>
+          </div>
+          <div className="alert-card__detail">{t(locale, "wor_teaser")}</div>
+        </div>
+        <Link href="/invest/pro" className="btn-primary" style={{ whiteSpace: "nowrap" }}>
+          {t(locale, "wor_open")}
+        </Link>
+      </div>
       <Calculator
         districts={[...KNOWN_DISTRICTS]}
         rentPerSqm={rentPerSqm}

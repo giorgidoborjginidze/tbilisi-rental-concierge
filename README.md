@@ -100,6 +100,20 @@ Business API required. The page consolidates monthly
 income: long-term rent from active contracts + STR revenue + manual entries
 (salary, business, dividends).
 
+## Pro investment analysis (paid)
+
+`/invest/pro` (Pro and Business plans; unlocked during the trial) ports
+the operator's underwriting spreadsheet as a hidden-algorithm engine
+(`lib/invest/worthiness.ts`, 18 tests): full loan amortization (PMT +
+monthly walk), a 5-year projection with rent growth, vacancy, seven
+operating expense lines, depreciation, points amortization and income
+tax, producing NOI, cap rate, BT/AT cash flow, cash-on-cash, equity
+build-up, payback period and a weighted worth-it verdict. The UI shows
+only a short deal form (extras collapsed) and the results — none of the
+internals. Three source-sheet formula bugs were corrected on port
+(multiplicative vacancy, points input instead of a hard-coded 20%,
+single-currency return ratios).
+
 ## Alerts
 
 The scan job (`POST /api/alerts/scan`, the **Scan now** button on `/alerts`,
