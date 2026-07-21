@@ -6,6 +6,7 @@ import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
 import { deleteContract } from "@/lib/assets/actions";
 import { dayPrice } from "@/lib/assets/daily-price";
+import OccupancyCalendar from "./occupancy-calendar";
 import { LISTING_PLATFORMS } from "@/lib/types";
 import AssetForm from "../../asset-form";
 import ContractForm from "../../contract-form";
@@ -125,7 +126,11 @@ export default async function EditAssetPage({
   });
 
   const fmtDay = new Intl.DateTimeFormat(intl, { day: "numeric", month: "short" });
-  const months: { label: string; days: { cls: string; title: string }[] }[] = [];
+  const months: {
+    label: string;
+    current: boolean;
+    days: { iso: string; cls: string; title: string }[];
+  }[] = [];
   if (showCalendar) {
     for (let m = 0; m < 6; m++) {
       const mStart = new Date(Date.UTC(calStart.getUTCFullYear(), calStart.getUTCMonth() + m, 1));
@@ -152,12 +157,29 @@ export default async function EditAssetPage({
         const statusText = rented
           ? t(locale, "status_rented")
           : t(locale, "calendar_vacant");
-        return { cls, title: `${fmtDay.format(dayStart)} — ${statusText}${priceText}` };
+        return {
+          iso: dayStart.toISOString().slice(0, 10),
+          cls,
+          title: `${fmtDay.format(dayStart)} — ${statusText}${priceText}`,
+        };
       });
-      months.push({ label: fmtMonth.format(mStart), days });
+      months.push({
+        label: fmtMonth.format(mStart),
+        current: fmtMonth.format(mStart) === fmtMonth.format(now),
+        days,
+      });
     }
   }
-  const isCurrentMonth = (label: string) => label === fmtMonth.format(now);
+
+  const calendarLabelKeys: StringKey[] = [
+    "drag_hint", "mark_range_title", "mark_save", "nights_short",
+    "contract_start", "contract_end", "contract_rent", "daily_rate",
+    "contract_tenant", "cancel", "error_required", "error_invalid_number",
+    "error_dates",
+  ];
+  const calendarLabels = Object.fromEntries(
+    calendarLabelKeys.map((key) => [key, t(locale, key)]),
+  );
 
   const contractLabelKeys: StringKey[] = [
     "contract_add", "contract_tenant", "tenant_phone", "contract_start", "contract_end",
@@ -259,25 +281,17 @@ export default async function EditAssetPage({
               {t(locale, "calendar_vacant")}
             </span>
           </div>
-          <div className="card" style={{ padding: "12px 16px" }}>
-            {months.map((month) => (
-              <div key={month.label} className="cal-row">
-                <span
-                  className="cal-name"
-                  style={{
-                    width: 64,
-                    fontWeight: isCurrentMonth(month.label) ? 700 : 500,
-                    color: isCurrentMonth(month.label) ? "var(--color-primary)" : undefined,
-                  }}
-                >
-                  {month.label}
-                </span>
-                {month.days.map((day, i) => (
-                  <span key={i} className={`cal-cell ${day.cls}`} title={day.title} />
-                ))}
-              </div>
-            ))}
-          </div>
+          <OccupancyCalendar
+            assetId={asset.id}
+            months={months}
+            defaultRate={
+              asset.rentalMode === "daily"
+                ? asset.dailyRate
+                : asset.contracts[0]?.monthlyRent ?? null
+            }
+            isDaily={asset.rentalMode === "daily"}
+            labels={calendarLabels}
+          />
         </section>
       )}
 

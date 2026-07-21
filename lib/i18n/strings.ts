@@ -325,6 +325,10 @@ const en = {
   dash_no_handovers: "No handovers today.",
   dash_no_returns: "No returns today.",
 
+  drag_hint:
+    "Drag across the calendar to select days — the selection is saved as a rental for those dates.",
+  mark_range_title: "Selected",
+  mark_save: "Mark as rented",
   daily_rate: "Daily rate (GEL)",
   weekend_pct: "Weekend premium (%)",
   holiday_pct: "Holiday premium (%)",
@@ -806,6 +810,10 @@ const ka: Record<StringKey, string> = {
   dash_no_handovers: "დღეს გაცემა არ არის.",
   dash_no_returns: "დღეს დაბრუნება არ არის.",
 
+  drag_hint:
+    "გადაატარე თითი ან მაუსი კალენდარზე დღეების მოსანიშნად — მონიშნული პერიოდი გაქირავებულად ჩაიწერება.",
+  mark_range_title: "მონიშნულია",
+  mark_save: "გაქირავებულად ჩაწერა",
   daily_rate: "დღიური ტარიფი (₾)",
   weekend_pct: "შაბათ-კვირის დანამატი (%)",
   holiday_pct: "დღესასწაულის დანამატი (%)",

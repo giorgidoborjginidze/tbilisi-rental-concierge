@@ -600,6 +600,10 @@ td:first-child {
   border-radius: var(--radius-sm);
   background: var(--cal-vacant);
 }
+.cal-cell--sel {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
 .cal-cell--airbnb {
   background: var(--cal-airbnb);
 }
