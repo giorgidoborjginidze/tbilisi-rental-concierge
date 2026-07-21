@@ -22,6 +22,14 @@ export async function register(
   const password = String(formData.get("password") ?? "");
   const accountType =
     str(formData, "accountType") === "business" ? "business" : "personal";
+  // Workspace profile: personal accounts are "personal"; business accounts
+  // pick hotel/aparthotel vs brokerage/property management (default hotel).
+  const profile =
+    accountType === "business"
+      ? str(formData, "profile") === "brokerage"
+        ? "brokerage"
+        : "hotel"
+      : "personal";
   const inviteToken = str(formData, "invite");
 
   if (!email) return { error: "error_required" };
@@ -39,6 +47,14 @@ export async function register(
     return { error: "error_invite_invalid" };
   }
 
+  // Invited members inherit the company's workspace profile.
+  const company = invite
+    ? await prisma.operator.findUnique({
+        where: { id: invite.companyId },
+        select: { profile: true },
+      })
+    : null;
+
   const operator = await prisma.operator.create({
     data: invite
       ? {
@@ -46,6 +62,7 @@ export async function register(
           email,
           passwordHash: hashPassword(password),
           accountType: "business",
+          profile: company?.profile ?? "hotel",
           role: "member",
           companyId: invite.companyId,
         }
@@ -54,6 +71,7 @@ export async function register(
           email,
           passwordHash: hashPassword(password),
           accountType,
+          profile,
           trialEndsAt: new Date(Date.now() + TRIAL_MS),
         },
   });

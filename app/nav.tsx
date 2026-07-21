@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { prisma } from "@/lib/db";
 import { getSessionOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
@@ -10,12 +11,23 @@ export default async function Nav() {
   const operator = await getSessionOperator();
   const other = locale === "en" ? "ka" : "en";
 
+  // The Rentals section follows the workspace profile: hotels always see
+  // it, brokerages never do (they work in Assets), personal accounts see
+  // it once they actually have a rentable unit.
+  const showRentals = operator
+    ? operator.profile === "hotel" ||
+      (operator.profile !== "brokerage" &&
+        (await prisma.unit.count({ where: { operatorId: operator.id } })) > 0)
+    : false;
+
   // Signed in: grouped sections (rentals gets sub-tabs on its pages).
   // Signed out: informational only — home and the free calculator.
   const links = operator
     ? [
         { href: "/", label: t(locale, "nav_dashboard") },
-        { href: "/units", label: t(locale, "nav_rentals") },
+        ...(showRentals
+          ? [{ href: "/units", label: t(locale, "nav_rentals") }]
+          : []),
         { href: "/assets", label: t(locale, "nav_assets") },
         { href: "/invest", label: t(locale, "nav_invest") },
         { href: "/alerts", label: t(locale, "nav_alerts") },

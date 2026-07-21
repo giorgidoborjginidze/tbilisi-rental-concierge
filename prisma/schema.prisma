@@ -25,6 +25,8 @@ model Operator {
   // Billing: 30-day full-access trial from signup, then a chosen plan.
   // Payments land in a later stage — choosing a plan activates it.
   accountType String    @default("personal") // "personal" | "business"
+  // Workspace profile: shapes the dashboard and nav.
+  profile     String    @default("personal") // "personal" | "hotel" | "brokerage"
   plan        String? // "starter" | "standard" | "pro" | "biz_s" | "biz_m"
   trialEndsAt DateTime?
   planSetAt   DateTime?

@@ -250,6 +250,8 @@ async function main() {
       locale: "en",
       // Demo account: personal Pro plan (12 units / 11 assets need it).
       accountType: "personal",
+      // Hotel workspace profile — shows the operations dashboard.
+      profile: "hotel",
       plan: "pro",
       planSetAt: utc(2026, 1, 15),
       trialEndsAt: utc(2026, 2, 14),

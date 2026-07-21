@@ -294,7 +294,29 @@ const en = {
   account_type: "Account type",
   account_personal: "Personal",
   account_business: "Company",
+  profile_label: "Company profile",
+  profile_hotel: "Hotel / aparthotel",
+  profile_brokerage: "Brokerage / property management",
+  profile_hint:
+    "Shapes your dashboard and menu: a hotel sees today's arrivals and occupancy, a brokerage sees managed objects and contracts.",
   invited_to_company: "You are joining a company team.",
+
+  dash_arrivals_today: "Arrivals today",
+  dash_departures_today: "Departures today",
+  dash_occupied_now: "Occupied now",
+  dash_no_arrivals: "No arrivals today.",
+  dash_no_departures: "No departures today.",
+  dash_open_alerts: "Open alerts",
+  dash_guest: "Guest",
+  dash_managed: "Objects under management",
+  dash_status_title: "Status overview",
+  dash_expiring_30: "Contracts expiring within 30 days",
+  dash_no_expiring: "No contracts expire in the next 30 days.",
+  dash_rent_month: "Monthly rent income",
+  dash_quick: "Quick actions",
+  analytics_title: "Rental analytics",
+  analytics_intro:
+    "Detailed occupancy, rate and revenue breakdowns — by month and by unit.",
   error_limit_assets:
     "Your plan's asset limit is reached \u2014 upgrade on the Plan page.",
   error_limit_units:
@@ -713,7 +735,29 @@ const ka: Record<StringKey, string> = {
   account_type: "ანგარიშის ტიპი",
   account_personal: "პირადი",
   account_business: "კომპანია",
+  profile_label: "კომპანიის პროფილი",
+  profile_hotel: "სასტუმრო / აპარტოტელი",
+  profile_brokerage: "სამაკლერო / ქონების მართვა",
+  profile_hint:
+    "განსაზღვრავს მთავარ დაფას და მენიუს: სასტუმრო ხედავს დღევანდელ ჩასახლებებს და დატვირთულობას, სამაკლერო — სამართავ ობიექტებს და ხელშეკრულებებს.",
   invited_to_company: "შენ უერთდები კომპანიის გუნდს.",
+
+  dash_arrivals_today: "დღეს ჩასახლება",
+  dash_departures_today: "დღეს გასვლა",
+  dash_occupied_now: "ახლა დაკავებული",
+  dash_no_arrivals: "დღეს ჩასახლება არ არის.",
+  dash_no_departures: "დღეს გასვლა არ არის.",
+  dash_open_alerts: "აქტიური გაფრთხილებები",
+  dash_guest: "სტუმარი",
+  dash_managed: "სამართავი ობიექტები",
+  dash_status_title: "სტატუსების მიმოხილვა",
+  dash_expiring_30: "ხელშეკრულებები, რომელთა ვადა 30 დღეში იწურება",
+  dash_no_expiring: "მომდევნო 30 დღეში არცერთი ხელშეკრულების ვადა არ იწურება.",
+  dash_rent_month: "თვიური ქირის შემოსავალი",
+  dash_quick: "სწრაფი მოქმედებები",
+  analytics_title: "გაქირავების ანალიტიკა",
+  analytics_intro:
+    "დეტალური ანალიზი — დატვირთულობა, ფასი და შემოსავალი თვეებისა და ერთეულების მიხედვით.",
   error_limit_assets:
     "პაკეტის აქტივების ლიმიტი ამოიწურა — გაზარდე პაკეტი გვერდზე «პაკეტი».",
   error_limit_units:

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { login, register } from "@/lib/auth/actions";
 import type { FormState } from "@/lib/units/actions";
 
@@ -20,6 +20,7 @@ export default function AuthForm({
     mode === "login" ? login : register,
     null,
   );
+  const [accountType, setAccountType] = useState<"personal" | "business">("personal");
 
   return (
     <form action={formAction} className="mt-6 flex flex-col gap-4">
@@ -41,14 +42,44 @@ export default function AuthForm({
           {labels.account_type}
           <div className="flex gap-1.5">
             <label className="btn-chip" style={{ cursor: "pointer" }}>
-              <input type="radio" name="accountType" value="personal" defaultChecked style={{ marginRight: 6 }} />
+              <input
+                type="radio"
+                name="accountType"
+                value="personal"
+                checked={accountType === "personal"}
+                onChange={() => setAccountType("personal")}
+                style={{ marginRight: 6 }}
+              />
               {labels.account_personal}
             </label>
             <label className="btn-chip" style={{ cursor: "pointer" }}>
-              <input type="radio" name="accountType" value="business" style={{ marginRight: 6 }} />
+              <input
+                type="radio"
+                name="accountType"
+                value="business"
+                checked={accountType === "business"}
+                onChange={() => setAccountType("business")}
+                style={{ marginRight: 6 }}
+              />
               {labels.account_business}
             </label>
           </div>
+        </div>
+      )}
+      {mode === "register" && !invite && accountType === "business" && (
+        <div className="field">
+          {labels.profile_label}
+          <div className="flex flex-wrap gap-1.5">
+            <label className="btn-chip" style={{ cursor: "pointer" }}>
+              <input type="radio" name="profile" value="hotel" defaultChecked style={{ marginRight: 6 }} />
+              🏨 {labels.profile_hotel}
+            </label>
+            <label className="btn-chip" style={{ cursor: "pointer" }}>
+              <input type="radio" name="profile" value="brokerage" style={{ marginRight: 6 }} />
+              🏢 {labels.profile_brokerage}
+            </label>
+          </div>
+          <span className="hint">{labels.profile_hint}</span>
         </div>
       )}
       <label className="field">
