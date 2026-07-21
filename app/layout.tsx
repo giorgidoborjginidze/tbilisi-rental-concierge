@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { Geist, Geist_Mono, Noto_Sans_Georgian } from "next/font/google";
 import "./globals.css";
 import Nav from "./nav";
@@ -33,9 +34,14 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const locale = await getLocale();
+  // Manual theme choice ("light" | "dark"); absent = follow the OS.
+  const themeCookie = (await cookies()).get("theme")?.value;
+  const theme =
+    themeCookie === "dark" || themeCookie === "light" ? themeCookie : undefined;
   return (
     <html
       lang="en"
+      data-theme={theme}
       className={`${geistSans.variable} ${geistMono.variable} ${notoGeorgian.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">

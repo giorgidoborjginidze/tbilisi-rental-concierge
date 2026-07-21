@@ -5,6 +5,7 @@ import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 import { toggleLocale } from "@/lib/i18n/actions";
 import { logout } from "@/lib/auth/actions";
+import ThemeToggle from "./theme-toggle";
 
 export default async function Nav() {
   const locale = await getLocale();
@@ -56,6 +57,7 @@ export default async function Nav() {
             {t(locale, "nav_billing")}
           </Link>
         )}
+        <ThemeToggle />
         <form action={toggleLocale}>
           <input type="hidden" name="locale" value={other} />
           <button type="submit" className="btn-chip">

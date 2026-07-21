@@ -67,8 +67,13 @@
   --cal-vacant: #edeff5;
 }
 
+/* Dark theme tokens. Applied two ways so the in-app toggle wins over
+   the OS setting in BOTH directions:
+   - system dark, unless the user forced light (data-theme="light");
+   - user forced dark (data-theme="dark") regardless of the OS.
+   Keep the two blocks identical when editing colors. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     color-scheme: dark;
     --color-primary: #8f97ff;
     --color-primary-hover: #a6acff;
@@ -97,6 +102,35 @@
     --shadow-card:
       0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 26px -12px rgba(0, 0, 0, 0.5);
   }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-primary: #8f97ff;
+  --color-primary-hover: #a6acff;
+  --color-primary-contrast: #101227;
+  --color-accent: #71b8f2;
+  --color-page: #0e1015;
+  --color-bg: #151822;
+  --color-surface: #1c2030;
+  --color-border: #262b3b;
+  --color-border-strong: #363d52;
+  --color-text: #eceef5;
+  --color-text-muted: #969db2;
+  --status-rented-bg: #133527;
+  --status-rented-text: #74e3ae;
+  --status-vacant-bg: #382b0e;
+  --status-vacant-text: #f0c452;
+  --status-str-bg: #0f2f46;
+  --status-str-text: #7ccaf4;
+  --status-listed-bg: #29204d;
+  --status-listed-text: #c2b2fc;
+  --status-personal-bg: #232838;
+  --status-personal-text: #c5cbdd;
+  --status-danger-bg: #3e1418;
+  --status-danger-text: #f79ba5;
+  --cal-vacant: #262b3b;
+  --shadow-card:
+    0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 26px -12px rgba(0, 0, 0, 0.5);
 }
 
 /* ========================= BASE ========================= */
