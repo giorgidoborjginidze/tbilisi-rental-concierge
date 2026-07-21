@@ -447,6 +447,155 @@ async function BrokerageDashboard({
   );
 }
 
+// ——— Car rental: fleet status + today's handovers and returns. ———
+async function CarRentalDashboard({
+  locale,
+  operator,
+}: {
+  locale: Locale;
+  operator: SessionOperator;
+}) {
+  const now = new Date();
+  const today = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  );
+  const tomorrow = new Date(today.getTime() + DAY_MS);
+
+  const [vehicles, alertCount] = await Promise.all([
+    prisma.asset.findMany({
+      where: { operatorId: operator.id, category: "vehicle" },
+      include: { contracts: { orderBy: { endDate: "desc" } } },
+      orderBy: { name: "asc" },
+    }),
+    openAlertCount(operator.id),
+  ]);
+
+  const activeContract = (asset: (typeof vehicles)[number]) =>
+    asset.contracts.find(
+      (c) => c.status !== "ended" && c.startDate <= now && c.endDate >= now,
+    );
+  const rentedNow = vehicles.filter((v) => activeContract(v)).length;
+  const rentIncome = vehicles.reduce(
+    (sum, v) => sum + (activeContract(v)?.monthlyRent ?? 0),
+    0,
+  );
+
+  const inDay = (d: Date) => d >= today && d < tomorrow;
+  const withContracts = (pick: (c: { startDate: Date; endDate: Date }) => boolean) =>
+    vehicles.flatMap((vehicle) =>
+      vehicle.contracts
+        .filter((c) => c.status !== "ended" && pick(c))
+        .map((contract) => ({ vehicle, contract })),
+    );
+  const handovers = withContracts((c) => inDay(c.startDate));
+  const returns = withContracts((c) => inDay(c.endDate));
+
+  const displayName = (a: { name: string; nameKa: string | null }) =>
+    locale === "ka" && a.nameKa ? a.nameKa : a.name;
+
+  const moveList = (
+    rows: typeof handovers,
+    emptyKey: StringKey,
+  ) =>
+    rows.length === 0 ? (
+      <p style={{ color: "var(--color-text-muted)", fontSize: 13, marginTop: 10 }}>
+        {t(locale, emptyKey)}
+      </p>
+    ) : (
+      <div className="card card--stack" style={{ marginTop: 12 }}>
+        <table>
+          <thead>
+            <tr>
+              <th>{t(locale, "unit_name")}</th>
+              <th>{t(locale, "contract_tenant")}</th>
+              <th className="num">{t(locale, "contract_rent")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ vehicle, contract }) => (
+              <tr key={contract.id}>
+                <td>
+                  <Link href={`/assets/${vehicle.id}/edit`} className="link">
+                    {displayName(vehicle)}
+                  </Link>
+                </td>
+                <td data-label={t(locale, "contract_tenant")}>
+                  {contract.tenantName ?? "—"}
+                </td>
+                <td className="num" data-label={t(locale, "contract_rent")}>
+                  {contract.monthlyRent} {contract.currency}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+
+  return (
+    <main>
+      <DashboardHeader
+        locale={locale}
+        operator={operator}
+        sub={`🚗 ${t(locale, "profile_car")}`}
+      />
+
+      <section className="kpi-grid">
+        <Kpi label={t(locale, "dash_fleet")} value={String(vehicles.length)} />
+        <Kpi
+          label={t(locale, "dash_rented_now")}
+          value={`${rentedNow} / ${vehicles.length}`}
+        />
+        <Kpi label={t(locale, "dash_rent_month")} value={money(rentIncome)} />
+        <Kpi label={t(locale, "dash_open_alerts")} value={String(alertCount)} />
+      </section>
+
+      {vehicles.length === 0 && (
+        <div className="alert-card" style={{ alignItems: "center" }}>
+          <div className="alert-card__detail" style={{ marginTop: 0 }}>
+            {t(locale, "assets_empty")}
+          </div>
+          <Link href="/assets/new" className="btn-primary">
+            {t(locale, "assets_add")}
+          </Link>
+        </div>
+      )}
+
+      {vehicles.length > 0 && (
+        <>
+          <section>
+            <h2>{t(locale, "dash_handovers_today")}</h2>
+            {moveList(handovers, "dash_no_handovers")}
+          </section>
+
+          <section>
+            <h2>{t(locale, "dash_returns_today")}</h2>
+            {moveList(returns, "dash_no_returns")}
+          </section>
+        </>
+      )}
+
+      <section>
+        <h2>{t(locale, "dash_quick")}</h2>
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          <Link href="/assets" className="btn-chip">
+            {t(locale, "nav_assets")}
+          </Link>
+          <Link href="/assets/new" className="btn-chip">
+            {t(locale, "assets_add")}
+          </Link>
+          <Link href="/invest" className="btn-chip">
+            {t(locale, "car_title")}
+          </Link>
+          <Link href="/alerts" className="btn-chip">
+            {t(locale, "nav_alerts")}
+          </Link>
+        </div>
+      </section>
+    </main>
+  );
+}
+
 // ——— Personal: whole-portfolio overview across assets and income. ———
 async function PersonalDashboard({
   locale,
@@ -565,5 +714,7 @@ export default async function Home() {
     return <HotelDashboard locale={locale} operator={operator} />;
   if (operator.profile === "brokerage")
     return <BrokerageDashboard locale={locale} operator={operator} />;
+  if (operator.profile === "car_rental")
+    return <CarRentalDashboard locale={locale} operator={operator} />;
   return <PersonalDashboard locale={locale} operator={operator} />;
 }

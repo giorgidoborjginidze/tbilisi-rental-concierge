@@ -273,6 +273,24 @@ a:hover {
 .btn-chip--active:hover {
   color: var(--color-primary-contrast);
 }
+/* Selection chip (radio labels): grows with its text instead of clipping. */
+.btn-chip--select {
+  height: auto;
+  min-height: 26px;
+  padding: 5px 12px;
+  white-space: normal;
+  line-height: 1.35;
+  text-align: left;
+  border-radius: 14px;
+  gap: 7px;
+}
+.btn-chip--select input {
+  flex: none;
+  margin: 0;
+}
+.btn-chip--select span {
+  flex: 1;
+}
 .btn-chip--wa {
   border-color: color-mix(in srgb, #1fa855 45%, var(--color-bg));
   color: #128c46;
@@ -662,6 +680,16 @@ td:first-child {
   font-size: 12px;
   color: var(--color-text-muted);
   font-weight: 400;
+}
+/* Radios/checkboxes inside fields keep their natural size — the generic
+   .field input rule above would stretch them to the full row width. */
+.field input[type="radio"],
+.field input[type="checkbox"] {
+  width: 16px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0;
+  flex: none;
 }
 .auth-box {
   max-width: 400px;

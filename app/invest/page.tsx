@@ -6,6 +6,8 @@ import { t, type StringKey } from "@/lib/i18n/strings";
 import { KNOWN_DISTRICTS } from "@/lib/types";
 import { PRICE_PER_SQM } from "@/lib/invest/market";
 import Calculator from "./calculator";
+import CarCalculator from "./car-calculator";
+import InvestTabs from "./invest-tabs";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +23,11 @@ const LABEL_KEYS: StringKey[] = [
   "res_payback", "res_cash_payback", "res_years", "res_never",
   "res_deposit_income", "res_verdict_good", "res_verdict_ok",
   "res_verdict_poor", "invest_disclaimer",
+  "car_title", "car_intro", "car_model", "car_custom", "car_price",
+  "car_daily", "car_days", "car_costs", "car_costs_hint",
+  "car_compare_title", "car_market_price", "car_market_rate",
+  "car_vs_market_below", "car_vs_market_above", "car_vs_market_at",
+  "car_monthly_income", "car_gross", "car_annual_yield", "car_market_hint",
 ];
 
 export default async function InvestPage() {
@@ -64,11 +71,25 @@ export default async function InvestPage() {
           {operator ? t(locale, "wor_open") : t(locale, "register_free")}
         </Link>
       </div>
-      <Calculator
-        districts={[...KNOWN_DISTRICTS]}
-        rentPerSqm={rentPerSqm}
-        pricePerSqm={PRICE_PER_SQM}
-        labels={labels}
+      <InvestTabs
+        reLabel={t(locale, "invest_tab_re")}
+        carLabel={t(locale, "invest_tab_car")}
+        realEstate={
+          <Calculator
+            districts={[...KNOWN_DISTRICTS]}
+            rentPerSqm={rentPerSqm}
+            pricePerSqm={PRICE_PER_SQM}
+            labels={labels}
+          />
+        }
+        car={
+          <div>
+            <p className="mb-4" style={{ color: "var(--color-text-muted)", fontSize: 13, maxWidth: 640 }}>
+              {t(locale, "car_intro")}
+            </p>
+            <CarCalculator labels={labels} />
+          </div>
+        }
       />
     </main>
   );

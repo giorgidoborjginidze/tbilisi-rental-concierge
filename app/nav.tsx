@@ -12,11 +12,11 @@ export default async function Nav() {
   const other = locale === "en" ? "ka" : "en";
 
   // The Rentals section follows the workspace profile: hotels always see
-  // it, brokerages never do (they work in Assets), personal accounts see
-  // it once they actually have a rentable unit.
+  // it, brokerages and car rentals never do (they work in Assets),
+  // personal accounts see it once they actually have a rentable unit.
   const showRentals = operator
     ? operator.profile === "hotel" ||
-      (operator.profile !== "brokerage" &&
+      (!["brokerage", "car_rental"].includes(operator.profile) &&
         (await prisma.unit.count({ where: { operatorId: operator.id } })) > 0)
     : false;
 

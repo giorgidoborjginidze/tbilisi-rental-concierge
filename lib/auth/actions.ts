@@ -23,11 +23,13 @@ export async function register(
   const accountType =
     str(formData, "accountType") === "business" ? "business" : "personal";
   // Workspace profile: personal accounts are "personal"; business accounts
-  // pick hotel/aparthotel vs brokerage/property management (default hotel).
+  // pick hotel/aparthotel, brokerage/property management or car rental
+  // (default hotel).
+  const requestedProfile = str(formData, "profile");
   const profile =
     accountType === "business"
-      ? str(formData, "profile") === "brokerage"
-        ? "brokerage"
+      ? ["brokerage", "car_rental"].includes(requestedProfile)
+        ? requestedProfile
         : "hotel"
       : "personal";
   const inviteToken = str(formData, "invite");

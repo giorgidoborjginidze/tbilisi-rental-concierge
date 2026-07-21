@@ -41,27 +41,25 @@ export default function AuthForm({
         <div className="field">
           {labels.account_type}
           <div className="flex gap-1.5">
-            <label className="btn-chip" style={{ cursor: "pointer" }}>
+            <label className="btn-chip btn-chip--select" style={{ cursor: "pointer" }}>
               <input
                 type="radio"
                 name="accountType"
                 value="personal"
                 checked={accountType === "personal"}
                 onChange={() => setAccountType("personal")}
-                style={{ marginRight: 6 }}
               />
-              {labels.account_personal}
+              <span>{labels.account_personal}</span>
             </label>
-            <label className="btn-chip" style={{ cursor: "pointer" }}>
+            <label className="btn-chip btn-chip--select" style={{ cursor: "pointer" }}>
               <input
                 type="radio"
                 name="accountType"
                 value="business"
                 checked={accountType === "business"}
                 onChange={() => setAccountType("business")}
-                style={{ marginRight: 6 }}
               />
-              {labels.account_business}
+              <span>{labels.account_business}</span>
             </label>
           </div>
         </div>
@@ -69,14 +67,18 @@ export default function AuthForm({
       {mode === "register" && !invite && accountType === "business" && (
         <div className="field">
           {labels.profile_label}
-          <div className="flex flex-wrap gap-1.5">
-            <label className="btn-chip" style={{ cursor: "pointer" }}>
-              <input type="radio" name="profile" value="hotel" defaultChecked style={{ marginRight: 6 }} />
-              🏨 {labels.profile_hotel}
+          <div className="flex flex-col items-start gap-1.5">
+            <label className="btn-chip btn-chip--select" style={{ cursor: "pointer" }}>
+              <input type="radio" name="profile" value="hotel" defaultChecked />
+              <span>🏨 {labels.profile_hotel}</span>
             </label>
-            <label className="btn-chip" style={{ cursor: "pointer" }}>
-              <input type="radio" name="profile" value="brokerage" style={{ marginRight: 6 }} />
-              🏢 {labels.profile_brokerage}
+            <label className="btn-chip btn-chip--select" style={{ cursor: "pointer" }}>
+              <input type="radio" name="profile" value="brokerage" />
+              <span>🏢 {labels.profile_brokerage}</span>
+            </label>
+            <label className="btn-chip btn-chip--select" style={{ cursor: "pointer" }}>
+              <input type="radio" name="profile" value="car_rental" />
+              <span>🚗 {labels.profile_car}</span>
             </label>
           </div>
           <span className="hint">{labels.profile_hint}</span>

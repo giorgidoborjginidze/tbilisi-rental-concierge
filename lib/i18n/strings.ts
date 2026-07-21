@@ -297,8 +297,9 @@ const en = {
   profile_label: "Company profile",
   profile_hotel: "Hotel / aparthotel",
   profile_brokerage: "Brokerage / property management",
+  profile_car: "Car rental / fleet",
   profile_hint:
-    "Shapes your dashboard and menu: a hotel sees today's arrivals and occupancy, a brokerage sees managed objects and contracts.",
+    "Shapes your dashboard and menu: a hotel sees today's arrivals and occupancy, a brokerage sees managed objects and contracts, a car rental sees its fleet and handovers.",
   invited_to_company: "You are joining a company team.",
 
   dash_arrivals_today: "Arrivals today",
@@ -317,6 +318,36 @@ const en = {
   analytics_title: "Rental analytics",
   analytics_intro:
     "Detailed occupancy, rate and revenue breakdowns — by month and by unit.",
+  dash_fleet: "Fleet",
+  dash_rented_now: "Rented out now",
+  dash_handovers_today: "Handovers today",
+  dash_returns_today: "Returns today",
+  dash_no_handovers: "No handovers today.",
+  dash_no_returns: "No returns today.",
+
+  invest_tab_re: "Real estate",
+  invest_tab_car: "Vehicle",
+  car_title: "Car rental calculator",
+  car_intro:
+    "Buying a car to rent out daily? Enter the model and your numbers — income, payback, and how your price compares to the market average for that model.",
+  car_model: "Model",
+  car_custom: "Other / custom model",
+  car_price: "Purchase price (GEL)",
+  car_daily: "Daily rate (GEL)",
+  car_days: "Rented days per month",
+  car_costs: "Running costs (% of income)",
+  car_costs_hint: "Insurance, service, cleaning, amortization.",
+  car_compare_title: "Market comparison",
+  car_market_price: "Market average price",
+  car_market_rate: "Market daily rate",
+  car_vs_market_below: "below market",
+  car_vs_market_above: "above market",
+  car_vs_market_at: "in line with the market",
+  car_monthly_income: "Net monthly income",
+  car_gross: "Gross",
+  car_annual_yield: "Annual yield",
+  car_market_hint:
+    "Market figures are approximate reference averages for Georgia, not live listings.",
   error_limit_assets:
     "Your plan's asset limit is reached \u2014 upgrade on the Plan page.",
   error_limit_units:
@@ -738,8 +769,9 @@ const ka: Record<StringKey, string> = {
   profile_label: "კომპანიის პროფილი",
   profile_hotel: "სასტუმრო / აპარტოტელი",
   profile_brokerage: "სამაკლერო / ქონების მართვა",
+  profile_car: "მანქანების გაქირავება / ავტოპარკი",
   profile_hint:
-    "განსაზღვრავს მთავარ დაფას და მენიუს: სასტუმრო ხედავს დღევანდელ ჩასახლებებს და დატვირთულობას, სამაკლერო — სამართავ ობიექტებს და ხელშეკრულებებს.",
+    "განსაზღვრავს მთავარ დაფას და მენიუს: სასტუმრო ხედავს დღევანდელ ჩასახლებებს და დატვირთულობას, სამაკლერო — სამართავ ობიექტებს და ხელშეკრულებებს, მანქანების გაქირავება — ავტოპარკს და გაცემა-დაბრუნებას.",
   invited_to_company: "შენ უერთდები კომპანიის გუნდს.",
 
   dash_arrivals_today: "დღეს ჩასახლება",
@@ -758,6 +790,36 @@ const ka: Record<StringKey, string> = {
   analytics_title: "გაქირავების ანალიტიკა",
   analytics_intro:
     "დეტალური ანალიზი — დატვირთულობა, ფასი და შემოსავალი თვეებისა და ერთეულების მიხედვით.",
+  dash_fleet: "ავტოპარკი",
+  dash_rented_now: "ახლა გაქირავებული",
+  dash_handovers_today: "დღეს გაცემა",
+  dash_returns_today: "დღეს დაბრუნება",
+  dash_no_handovers: "დღეს გაცემა არ არის.",
+  dash_no_returns: "დღეს დაბრუნება არ არის.",
+
+  invest_tab_re: "უძრავი ქონება",
+  invest_tab_car: "ავტომობილი",
+  car_title: "მანქანის გაქირავების კალკულატორი",
+  car_intro:
+    "ყიდულობ მანქანას დღიურად გასაქირავებლად? შეიყვანე მოდელი და შენი ციფრები — შემოსავალი, ამოგების ვადა და შენი ფასის შედარება ამ მოდელის საბაზრო საშუალოსთან.",
+  car_model: "მოდელი",
+  car_custom: "სხვა მოდელი",
+  car_price: "შესყიდვის ფასი (₾)",
+  car_daily: "დღიური ტარიფი (₾)",
+  car_days: "გაქირავებული დღე თვეში",
+  car_costs: "ხარჯები (შემოსავლის %)",
+  car_costs_hint: "დაზღვევა, სერვისი, რეცხვა, ამორტიზაცია.",
+  car_compare_title: "საბაზრო შედარება",
+  car_market_price: "საბაზრო საშუალო ფასი",
+  car_market_rate: "საბაზრო დღიური ტარიფი",
+  car_vs_market_below: "საბაზროზე იაფი",
+  car_vs_market_above: "საბაზროზე ძვირი",
+  car_vs_market_at: "საბაზრო ფასის ფარგლებში",
+  car_monthly_income: "წმინდა თვიური შემოსავალი",
+  car_gross: "მთლიანი",
+  car_annual_yield: "წლიური შემოსავლიანობა",
+  car_market_hint:
+    "საბაზრო ციფრები საორიენტაციო საშუალოა საქართველოსთვის და არა ცოცხალი განცხადებები.",
   error_limit_assets:
     "პაკეტის აქტივების ლიმიტი ამოიწურა — გაზარდე პაკეტი გვერდზე «პაკეტი».",
   error_limit_units:
