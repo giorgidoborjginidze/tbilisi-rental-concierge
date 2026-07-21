@@ -850,8 +850,10 @@
     </div>
     <h2 style="font-size:14px; margin:18px 0 8px">გაქირავების კალენდარი — დღეების მიხედვით</h2>
     <p id="dPricing" style="font-size:12px; color:var(--muted); margin:0 0 8px" hidden></p>
-    <div id="dCal"></div>
+    <div id="dCal" style="touch-action:none; user-select:none"></div>
     <div class="legend" id="dLegend" style="margin-top:8px"></div>
+    <p class="hint" style="margin-top:8px">გადაატარე თითი ან მაუსი დღეებზე — მონიშნული პერიოდი გაქირავებულად ჩაიწერება.</p>
+    <p id="dSaved" style="font-size:12px; color:var(--rented-text); font-weight:600; margin-top:6px" hidden></p>
   </div>
 </div>
 </main>
@@ -1029,13 +1031,14 @@
         Math.round(base * (1 + ho / 100)) + " ₾</b>";
     }
     const months = D_CAL[calKey] || D_CAL.none;
+    $("#dSaved").hidden = true;
     $("#dCal").innerHTML = months.map((pat, mi) =>
       '<div style="display:flex; align-items:center; gap:2px; margin-bottom:6px">' +
       '<span style="width:32px; flex:none; font-size:11px; color:' + (mi === 0 ? "var(--primary)" : "var(--muted)") +
       '; font-weight:' + (mi === 0 ? 700 : 500) + '">' + D_MON[mi] + "</span>" +
-      [...pat].map((c) => {
+      [...pat].map((c, i) => {
         const kind = D_KIND[c];
-        return '<span style="flex:1; height:15px; border-radius:3px; background:' +
+        return '<span data-di="' + (mi * 40 + i) + '" style="flex:1; height:15px; border-radius:3px; background:' +
           (kind ? kind[0] : "var(--cal-vacant)") + (kind ? "" : "; border:1px solid var(--border)") + '"></span>';
       }).join("") +
       "</div>").join("");
@@ -1071,6 +1074,45 @@
     window.scrollTo({ top: 0 });
   }
   function dClose() { $("#dOverlay").style.display = "none"; }
+
+  // ── დეტალურ კალენდარზე ხელის გადატარებით დღეების მონიშვნა ──
+  let dDrag = null;
+  function dMarkSel() {
+    const [a, b] = [dDrag.a, dDrag.b].sort((x, y) => x - y);
+    document.querySelectorAll("#dCal [data-di]").forEach((el) => {
+      const di = +el.dataset.di;
+      el.style.outline = di >= a && di <= b ? "2px solid var(--primary)" : "";
+    });
+  }
+  $("#dCal").addEventListener("pointerdown", (e) => {
+    const di = e.target.dataset && e.target.dataset.di;
+    if (di == null) return;
+    e.preventDefault();
+    dDrag = { a: +di, b: +di };
+    dMarkSel();
+  });
+  $("#dCal").addEventListener("pointermove", (e) => {
+    if (!dDrag) return;
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const di = el && el.dataset && el.dataset.di;
+    if (di != null) { dDrag.b = +di; dMarkSel(); }
+  });
+  window.addEventListener("pointerup", () => {
+    if (!dDrag) return;
+    const [a, b] = [dDrag.a, dDrag.b].sort((x, y) => x - y);
+    document.querySelectorAll("#dCal [data-di]").forEach((el) => {
+      const di = +el.dataset.di;
+      el.style.outline = "";
+      if (di >= a && di <= b) {
+        el.style.background = "var(--cal-lease)";
+        el.style.border = "none";
+      }
+    });
+    const saved = $("#dSaved");
+    saved.hidden = false;
+    saved.textContent = "✓ " + (b - a + 1) + " დღე გაქირავებულად ჩაიწერა";
+    dDrag = null;
+  });
 
   function toast(btn, msg) { const t = btn.textContent; btn.textContent = msg; btn.disabled = true; setTimeout(() => { btn.textContent = t; btn.disabled = false; }, 1800); }
 
