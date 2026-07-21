@@ -294,45 +294,107 @@
       <input type="password" value="demo1234" readonly>
     </label>
     <button class="btn" style="width:100%" onclick="enter()">შესვლა</button>
-    <p class="hint" style="margin-top:14px">რეგისტრაციისას ირჩევ „პირადი / კომპანია" ტიპს — პირველი 30 დღე სრულად უფასოა.</p>
+    <p class="hint" style="margin-top:14px">რეგისტრაციისას ირჩევ „პირადი / კომპანია" ტიპს — კომპანია პროფილსაც ირჩევს (🏨 სასტუმრო ან 🏢 სამაკლერო) და დაფა მას ერგება. პირველი 30 დღე სრულად უფასოა.</p>
     <p class="hint" style="margin-top:8px">🔒 რეგისტრაცია ითხოვს მხოლოდ ელფოსტას და პაროლს — სახელი არასავალდებულოა. შენი მონაცემები მხოლოდ შენია.</p>
   </div>
 </section>
 
 <div id="app" hidden>
 
-<!-- ══ დაფა ══ -->
+<!-- ══ დაფა (პროფილის მიხედვით) ══ -->
 <section class="page on" id="p-dash">
   <h1>ქონების დაფა</h1>
-  <p style="color:var(--muted)">Kolkheti Stays · 12 ერთეული · თბილისი და ბათუმი</p>
-  <h2>მიმდინარე თვე</h2>
-  <div class="kpis kpis--5">
-    <div class="kpi"><b>დატვირთულობა</b><div class="v"><span class="cnt" data-to="69">0</span>%</div></div>
-    <div class="kpi"><b>ADR</b><div class="v"><span class="cnt" data-to="205">0</span> ₾</div></div>
-    <div class="kpi"><b>RevPAR</b><div class="v"><span class="cnt" data-to="142">0</span> ₾</div></div>
-    <div class="kpi"><b>შემოსავალი</b><div class="v"><span class="cnt" data-to="52787">0</span> ₾</div></div>
-    <div class="kpi"><b>მომდევნო 30 დღე</b><div class="v"><span class="cnt" data-to="70">0</span>%</div></div>
+  <div style="display:flex; flex-wrap:wrap; gap:6px; margin:12px 0 6px">
+    <button class="chip on" id="pfHotel" onclick="prof('hotel')">🏨 სასტუმრო / აპარტოტელი</button>
+    <button class="chip" id="pfBroker" onclick="prof('broker')">🏢 სამაკლერო / ქონების მართვა</button>
+    <button class="chip" id="pfPers" onclick="prof('pers')">👤 პირადი</button>
   </div>
-  <h2>თვეების მიხედვით</h2>
-  <div class="card"><table>
-    <thead><tr><th>თვე</th><th class="num">დატვირთულობა</th><th class="num">ღამეები</th><th class="num">ADR</th><th class="num">შემოსავალი (₾)</th></tr></thead>
-    <tbody>
-      <tr><td>თებ 26</td><td class="num">48%</td><td class="num">161</td><td class="num">136</td><td class="num">21,841</td></tr>
-      <tr><td>მარ 26</td><td class="num">46%</td><td class="num">170</td><td class="num">150</td><td class="num">25,567</td></tr>
-      <tr><td>აპრ 26</td><td class="num">50%</td><td class="num">180</td><td class="num">174</td><td class="num">31,335</td></tr>
-      <tr><td>მაი 26</td><td class="num">54%</td><td class="num">202</td><td class="num">174</td><td class="num">35,054</td></tr>
-      <tr><td>ივნ 26</td><td class="num">58%</td><td class="num">210</td><td class="num">192</td><td class="num">40,225</td></tr>
-      <tr style="background:var(--surface); font-weight:500"><td>ივლ 26</td><td class="num">69%</td><td class="num">257</td><td class="num">205</td><td class="num">52,787</td></tr>
-      <tr><td>აგვ 26</td><td class="num">77%</td><td class="num">287</td><td class="num">217</td><td class="num">62,239</td></tr>
-    </tbody>
-  </table></div>
+  <p class="hint" style="margin-bottom:16px">პროფილს ირჩევ რეგისტრაციისას — მთავარი დაფა და მენიუ მას ერგება. აქ გადართე და შეადარე.</p>
+
+  <!-- 🏨 სასტუმრო -->
+  <div id="prof-hotel">
+    <p style="color:var(--muted)">Kolkheti Stays · 🏨 სასტუმრო / აპარტოტელი · 12 ერთეული</p>
+    <h2>მიმდინარე თვე</h2>
+    <div class="kpis kpis--5">
+      <div class="kpi"><b>დატვირთულობა</b><div class="v"><span class="cnt" data-to="69">0</span>%</div></div>
+      <div class="kpi"><b>ADR</b><div class="v"><span class="cnt" data-to="205">0</span> ₾</div></div>
+      <div class="kpi"><b>RevPAR</b><div class="v"><span class="cnt" data-to="142">0</span> ₾</div></div>
+      <div class="kpi"><b>შემოსავალი</b><div class="v"><span class="cnt" data-to="52787">0</span> ₾</div></div>
+      <div class="kpi"><b>ახლა დაკავებული</b><div class="v"><span class="cnt" data-to="7">0</span> / 12</div></div>
+    </div>
+    <h2>დღეს ჩასახლება</h2>
+    <div class="card stack"><table>
+      <thead><tr><th>სახელი</th><th>სტუმარი</th><th class="num">ღამე</th></tr></thead>
+      <tbody>
+        <tr><td>საბურთალოს საოჯახო 3ს<div class="sub">საბურთალო</div></td><td data-l="სტუმარი">გიორგი მ.<div class="sub">პირდაპირი</div></td><td class="num" data-l="ღამე">7</td></tr>
+      </tbody>
+    </table></div>
+    <h2>დღეს გასვლა</h2>
+    <div class="card stack"><table>
+      <thead><tr><th>სახელი</th><th>სტუმარი</th><th class="num">ღამე</th></tr></thead>
+      <tbody>
+        <tr><td>მთაწმინდის პანორამა 2ს<div class="sub">მთაწმინდა</div></td><td data-l="სტუმარი">—<div class="sub">Booking.com</div></td><td class="num" data-l="ღამე">3</td></tr>
+        <tr><td>რუსთაველის კლასიკა 1ს<div class="sub">მთაწმინდა</div></td><td data-l="სტუმარი">—<div class="sub">Booking.com</div></td><td class="num" data-l="ღამე">2</td></tr>
+      </tbody>
+    </table></div>
+    <h2>სწრაფი მოქმედებები</h2>
+    <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:10px">
+      <button class="chip" onclick="go('analytics')">ანალიტიკა</button>
+      <button class="chip" onclick="go('cal')">კალენდარი</button>
+      <button class="chip" onclick="navTo('alerts')">აქტიური გაფრთხილებები: 3</button>
+    </div>
+  </div>
+
+  <!-- 🏢 სამაკლერო -->
+  <div id="prof-broker" hidden>
+    <p style="color:var(--muted)">თბილისი პროპერთიზ · 🏢 სამაკლერო / ქონების მართვა</p>
+    <div class="kpis" style="grid-template-columns:repeat(3,1fr)">
+      <div class="kpi"><b>სამართავი ობიექტები</b><div class="v">24</div></div>
+      <div class="kpi"><b>თვიური ქირის შემოსავალი</b><div class="v">18,400 ₾</div></div>
+      <div class="kpi"><b>აქტიური გაფრთხილებები</b><div class="v">3</div></div>
+    </div>
+    <h2>სტატუსების მიმოხილვა</h2>
+    <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:10px">
+      <button class="chip" onclick="navTo('assets')"><span class="badge b-rented" style="margin-right:6px">გაქირავებული</span>14</button>
+      <button class="chip" onclick="navTo('assets')"><span class="badge b-listed" style="margin-right:6px">განთავსებული</span>6</button>
+      <button class="chip" onclick="navTo('assets')"><span class="badge b-vacant" style="margin-right:6px">თავისუფალი</span>4</button>
+    </div>
+    <h2>ხელშეკრულებები, რომელთა ვადა 30 დღეში იწურება</h2>
+    <div class="card stack"><table>
+      <thead><tr><th>ობიექტი</th><th>ხელშეკრულება</th><th class="num">ვადა</th></tr></thead>
+      <tbody>
+        <tr><td>ვაკის ოფისი 85მ²<div class="sub">ვაკე · ჭავჭავაძის გამზ.</div></td><td data-l="ხელშეკრულება">2,400 ₾ · შპს „ალფა"</td><td class="num" data-l="ვადა">2 აგვ</td></tr>
+        <tr><td>საბურთალოს ბინა 2ს<div class="sub">საბურთალო</div></td><td data-l="ხელშეკრულება">1,350 ₾ · ნინო კ.</td><td class="num" data-l="ვადა">15 აგვ</td></tr>
+      </tbody>
+    </table></div>
+    <p class="hint" style="margin-top:10px">ვადის გასვლამდე სისტემა თავად შეგახსენებს — გაფრთხილება ავტომატურად ჩნდება.</p>
+  </div>
+
+  <!-- 👤 პირადი -->
+  <div id="prof-pers" hidden>
+    <p style="color:var(--muted)">👤 პირადი ანგარიში</p>
+    <div class="kpis" style="grid-template-columns:repeat(3,1fr)">
+      <div class="kpi"><b>თვიური შემოსავალი</b><div class="v">7,550 ₾</div><small>ქირა: 2,550 · სხვა: 5,000</small></div>
+      <div class="kpi"><b>ჯამური ღირებულება</b><div class="v">512,000 ₾</div></div>
+      <div class="kpi"><b>აქტივები</b><div class="v">4</div><small>აქტიური გაფრთხილებები: 1</small></div>
+    </div>
+    <h2>სწრაფი მოქმედებები</h2>
+    <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:10px">
+      <button class="chip" onclick="navTo('assets')">აქტივები</button>
+      <button class="chip" onclick="openAdd('income_source')">შემოსავლის დამატება</button>
+      <button class="chip" onclick="navTo('invest')">ინვესტიცია</button>
+      <button class="chip" onclick="navTo('alerts')">გაფრთხილებები</button>
+    </div>
+    <p class="hint" style="margin-top:12px">„გაქირავება" მენიუში მხოლოდ მაშინ ჩნდება, როცა გასაქირავებელი ერთეული გაქვს — ზედმეტი არაფერი.</p>
+  </div>
 </section>
 
 <!-- ══ ერთეულები ══ -->
 <section class="page" id="p-units">
-  <div style="display:flex; gap:6px; margin-bottom:16px">
+  <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px">
     <button class="chip on" onclick="go('units')">ერთეულები</button>
     <button class="chip" onclick="go('cal')">კალენდარი</button>
+    <button class="chip" onclick="go('analytics')">ანალიტიკა</button>
   </div>
   <h1>ერთეულები</h1>
   <div class="row" style="margin-bottom:14px">
@@ -355,9 +417,10 @@
 
 <!-- ══ კალენდარი ══ -->
 <section class="page" id="p-cal">
-  <div style="display:flex; gap:6px; margin-bottom:16px">
+  <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px">
     <button class="chip" onclick="go('units')">ერთეულები</button>
     <button class="chip on" onclick="go('cal')">კალენდარი</button>
+    <button class="chip" onclick="go('analytics')">ანალიტიკა</button>
   </div>
   <h1>კალენდარი — აგვისტო 2026</h1>
   <div class="legend">
@@ -383,6 +446,42 @@
       </div>
     </div>
   </div>
+</section>
+
+<!-- ══ ანალიტიკა ══ -->
+<section class="page" id="p-analytics">
+  <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px">
+    <button class="chip" onclick="go('units')">ერთეულები</button>
+    <button class="chip" onclick="go('cal')">კალენდარი</button>
+    <button class="chip on" onclick="go('analytics')">ანალიტიკა</button>
+  </div>
+  <h1>გაქირავების ანალიტიკა</h1>
+  <p style="color:var(--muted); font-size:13px">დეტალური ანალიზი — დატვირთულობა, ფასი და შემოსავალი თვეებისა და ერთეულების მიხედვით.</p>
+  <h2>თვეების მიხედვით</h2>
+  <div class="card"><table>
+    <thead><tr><th>თვე</th><th class="num">დატვირთულობა</th><th class="num">ღამეები</th><th class="num">ADR</th><th class="num">შემოსავალი (₾)</th></tr></thead>
+    <tbody>
+      <tr><td>თებ 26</td><td class="num">48%</td><td class="num">161</td><td class="num">136</td><td class="num">21,841</td></tr>
+      <tr><td>მარ 26</td><td class="num">46%</td><td class="num">170</td><td class="num">150</td><td class="num">25,567</td></tr>
+      <tr><td>აპრ 26</td><td class="num">50%</td><td class="num">180</td><td class="num">174</td><td class="num">31,335</td></tr>
+      <tr><td>მაი 26</td><td class="num">54%</td><td class="num">202</td><td class="num">174</td><td class="num">35,054</td></tr>
+      <tr><td>ივნ 26</td><td class="num">58%</td><td class="num">210</td><td class="num">192</td><td class="num">40,225</td></tr>
+      <tr style="background:var(--surface); font-weight:500"><td>ივლ 26</td><td class="num">69%</td><td class="num">257</td><td class="num">205</td><td class="num">52,787</td></tr>
+      <tr><td>აგვ 26</td><td class="num">77%</td><td class="num">287</td><td class="num">217</td><td class="num">62,239</td></tr>
+    </tbody>
+  </table></div>
+  <h2>ერთეულების მიხედვით (მიმდინარე თვე)</h2>
+  <div class="card stack"><table>
+    <thead><tr><th>სახელი</th><th data-l>უბანი</th><th class="num">დატვირთულობა</th><th class="num">ADR</th><th class="num">შემოსავალი (₾)</th></tr></thead>
+    <tbody>
+      <tr><td>ბათუმის ზღვის ხედი</td><td data-l="უბანი">ბულვარი</td><td class="num" data-l="დატვირთულობა">84%</td><td class="num" data-l="ADR">232</td><td class="num" data-l="შემოსავალი">6,027</td></tr>
+      <tr><td>ძველი ქალაქის მარანი</td><td data-l="უბანი">ძველი ქალაქი</td><td class="num" data-l="დატვირთულობა">81%</td><td class="num" data-l="ADR">214</td><td class="num" data-l="შემოსავალი">5,368</td></tr>
+      <tr><td>მთაწმინდის პანორამა 2ს</td><td data-l="უბანი">მთაწმინდა</td><td class="num" data-l="დატვირთულობა">74%</td><td class="num" data-l="ADR">259</td><td class="num" data-l="შემოსავალი">5,955</td></tr>
+      <tr><td>ვაკის პარკის ხედი 2ს</td><td data-l="უბანი">ვაკე</td><td class="num" data-l="დატვირთულობა">71%</td><td class="num" data-l="ADR">243</td><td class="num" data-l="შემოსავალი">5,341</td></tr>
+      <tr><td>ვერას ტერასა 1ს</td><td data-l="უბანი">ვერა</td><td class="num" data-l="დატვირთულობა">65%</td><td class="num" data-l="ADR">197</td><td class="num" data-l="შემოსავალი">3,972</td></tr>
+      <tr><td>საბურთალოს საოჯახო 3ს</td><td data-l="უბანი">საბურთალო</td><td class="num" data-l="დატვირთულობა">58%</td><td class="num" data-l="ADR">178</td><td class="num" data-l="შემოსავალი">3,201</td></tr>
+    </tbody>
+  </table></div>
 </section>
 
 <!-- ══ აქტივები ══ -->
@@ -712,11 +811,24 @@
     $("#themeBtn").textContent = dark ? "🌙" : "☀️";
   });
   function go(id) {
-    const navKey = id === "cal" ? "units" : id;
+    const navKey = id === "cal" || id === "analytics" ? "units" : id;
     document.querySelectorAll("#navlinks button").forEach((x) => x.classList.toggle("on", x.dataset.p === navKey));
     document.querySelectorAll(".page").forEach((pg) => pg.classList.remove("on"));
     document.querySelector("#p-" + id).classList.add("on");
     window.scrollTo({ top: 0 });
+  }
+  function navTo(key) {
+    const btn = document.querySelector('#navlinks button[data-p="' + key + '"]');
+    if (btn) btn.click();
+  }
+  // ── პროფილის დაფები (რეგისტრაციისას არჩეული პროფილი წყვეტს) ──
+  function prof(k) {
+    $("#prof-hotel").hidden = k !== "hotel";
+    $("#prof-broker").hidden = k !== "broker";
+    $("#prof-pers").hidden = k !== "pers";
+    $("#pfHotel").classList.toggle("on", k === "hotel");
+    $("#pfBroker").classList.toggle("on", k === "broker");
+    $("#pfPers").classList.toggle("on", k === "pers");
   }
 
   // ── დამატების ფორმა ──
@@ -987,4 +1099,5 @@
   calc();
   switchCat();
 </script>
+
 </body></html>
