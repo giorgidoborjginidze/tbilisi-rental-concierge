@@ -294,7 +294,7 @@
       <input type="password" value="demo1234" readonly>
     </label>
     <button class="btn" style="width:100%" onclick="enter()">შესვლა</button>
-    <p class="hint" style="margin-top:14px">რეგისტრაციისას ირჩევ „პირადი / კომპანია" ტიპს — კომპანია პროფილსაც ირჩევს (🏨 სასტუმრო ან 🏢 სამაკლერო) და დაფა მას ერგება. პირველი 30 დღე სრულად უფასოა.</p>
+    <p class="hint" style="margin-top:14px">რეგისტრაციისას ირჩევ „პირადი / კომპანია" ტიპს — კომპანია პროფილსაც ირჩევს (🏨 სასტუმრო, 🏢 სამაკლერო ან 🚗 მანქანების გაქირავება) და დაფა მას ერგება. პირველი 30 დღე სრულად უფასოა.</p>
     <p class="hint" style="margin-top:8px">🔒 რეგისტრაცია ითხოვს მხოლოდ ელფოსტას და პაროლს — სახელი არასავალდებულოა. შენი მონაცემები მხოლოდ შენია.</p>
   </div>
 </section>
@@ -307,6 +307,7 @@
   <div style="display:flex; flex-wrap:wrap; gap:6px; margin:12px 0 6px">
     <button class="chip on" id="pfHotel" onclick="prof('hotel')">🏨 სასტუმრო / აპარტოტელი</button>
     <button class="chip" id="pfBroker" onclick="prof('broker')">🏢 სამაკლერო / ქონების მართვა</button>
+    <button class="chip" id="pfCar" onclick="prof('car')">🚗 მანქანების გაქირავება</button>
     <button class="chip" id="pfPers" onclick="prof('pers')">👤 პირადი</button>
   </div>
   <p class="hint" style="margin-bottom:16px">პროფილს ირჩევ რეგისტრაციისას — მთავარი დაფა და მენიუ მას ერგება. აქ გადართე და შეადარე.</p>
@@ -368,6 +369,38 @@
       </tbody>
     </table></div>
     <p class="hint" style="margin-top:10px">ვადის გასვლამდე სისტემა თავად შეგახსენებს — გაფრთხილება ავტომატურად ჩნდება.</p>
+  </div>
+
+  <!-- 🚗 მანქანების გაქირავება -->
+  <div id="prof-car" hidden>
+    <p style="color:var(--muted)">ავტო რენტალი ჯორჯია · 🚗 მანქანების გაქირავება / ავტოპარკი</p>
+    <div class="kpis" style="grid-template-columns:repeat(4,1fr)">
+      <div class="kpi"><b>ავტოპარკი</b><div class="v">16</div></div>
+      <div class="kpi"><b>ახლა გაქირავებული</b><div class="v">11 / 16</div></div>
+      <div class="kpi"><b>თვიური ქირის შემოსავალი</b><div class="v">42,300 ₾</div></div>
+      <div class="kpi"><b>აქტიური გაფრთხილებები</b><div class="v">2</div></div>
+    </div>
+    <h2>დღეს გაცემა</h2>
+    <div class="card stack"><table>
+      <thead><tr><th>მანქანა</th><th>დამქირავებელი</th><th class="num">ქირა</th></tr></thead>
+      <tbody>
+        <tr><td>Toyota Camry 2022 · TB-707-TB</td><td data-l="დამქირავებელი">დ. წიკლაური</td><td class="num" data-l="ქირა">160 ₾ / დღე</td></tr>
+        <tr><td>Kia Sportage 2023 · GE-412-GG</td><td data-l="დამქირავებელი">ს. ბერიძე</td><td class="num" data-l="ქირა">170 ₾ / დღე</td></tr>
+      </tbody>
+    </table></div>
+    <h2>დღეს დაბრუნება</h2>
+    <div class="card stack"><table>
+      <thead><tr><th>მანქანა</th><th>დამქირავებელი</th><th class="num">ქირა</th></tr></thead>
+      <tbody>
+        <tr><td>Toyota Prius 2019 · TB-119-PR</td><td data-l="დამქირავებელი">გ. მაისურაძე</td><td class="num" data-l="ქირა">90 ₾ / დღე</td></tr>
+      </tbody>
+    </table></div>
+    <h2>სწრაფი მოქმედებები</h2>
+    <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:10px">
+      <button class="chip" onclick="navTo('assets')">აქტივები</button>
+      <button class="chip" onclick="navTo('invest'); invTab('car')">მანქანის კალკულატორი</button>
+      <button class="chip" onclick="navTo('alerts')">გაფრთხილებები</button>
+    </div>
   </div>
 
   <!-- 👤 პირადი -->
@@ -610,8 +643,9 @@
 <section class="page" id="p-invest">
   <h1>საინვესტიციო კალკულატორი</h1>
   <div style="display:flex; gap:6px; margin:12px 0 4px; align-items:center; flex-wrap:wrap">
-    <button class="chip on" id="tabBasic" onclick="invTab(false)">Basic — უფასო</button>
-    <button class="chip" id="tabAdv" onclick="invTab(true)">Advanced <span class="badge b-listed" style="height:20px; font-size:10px; margin-left:4px">PRO</span></button>
+    <button class="chip on" id="tabBasic" onclick="invTab('basic')">🏠 უძრავი ქონება — უფასო</button>
+    <button class="chip" id="tabCar" onclick="invTab('car')">🚗 ავტომობილი — უფასო</button>
+    <button class="chip" id="tabAdv" onclick="invTab('adv')">Advanced <span class="badge b-listed" style="height:20px; font-size:10px; margin-left:4px">PRO</span></button>
     <span style="font-size:12px; color:var(--muted)">Advanced შედის სტანდარტი პაკეტიდან (29₾) ზემოთ</span>
   </div>
   <div id="invBasic">
@@ -662,6 +696,43 @@
   </div>
   </div>
 
+  <div id="invCar" hidden>
+  <p style="color:var(--muted); max-width:620px; margin-bottom:16px">ყიდულობ მანქანას დღიურად გასაქირავებლად? შეიყვანე მოდელი და შენი ციფრები — შემოსავალი, ამოგების ვადა და შენი ფასის შედარება ამ მოდელის საბაზრო საშუალოსთან.</p>
+  <div class="cols">
+    <div class="card" style="padding:20px; overflow:visible">
+      <label class="field" style="margin-bottom:12px">მოდელი
+        <select id="cModel" onchange="carCalc(true)"></select>
+      </label>
+      <div class="grid2">
+        <label class="field">შესყიდვის ფასი (₾)<input id="cPrice" type="number" value="32000" oninput="carCalc()"></label>
+        <label class="field">დღიური ტარიფი (₾)<input id="cDaily" type="number" value="90" oninput="carCalc()"></label>
+        <label class="field">გაქირავებული დღე თვეში<input id="cDays" type="number" value="18" min="0" max="31" oninput="carCalc()"></label>
+        <label class="field">ხარჯები (შემოსავლის %)<input id="cCosts" type="number" value="30" min="0" max="100" oninput="carCalc()"></label>
+      </div>
+      <p class="hint" style="margin-top:10px">ხარჯებში: დაზღვევა, სერვისი, რეცხვა, ამორტიზაცია.</p>
+    </div>
+    <div>
+      <div class="card" style="padding:20px" id="cMarketCard">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap">
+          <h3 style="margin:0">საბაზრო შედარება</h3><span class="badge" id="cVerdict">—</span>
+        </div>
+        <div class="kpis" style="grid-template-columns:1fr 1fr; margin:14px 0 0">
+          <div class="kpi"><b>საბაზრო საშუალო ფასი</b><div class="v" id="cMktPrice">—</div><small id="cMktModel"></small></div>
+          <div class="kpi"><b>საბაზრო დღიური ტარიფი</b><div class="v" id="cMktRate">—</div></div>
+        </div>
+        <p class="hint" style="margin-top:10px">საბაზრო ციფრები საორიენტაციო საშუალოა საქართველოსთვის.</p>
+      </div>
+      <div class="card" style="padding:20px; margin-top:16px">
+        <h3 style="margin:0 0 14px">შედეგი</h3>
+        <div class="kpis" style="grid-template-columns:1fr 1fr">
+          <div class="kpi"><b>წმინდა თვიური შემოსავალი</b><div class="v" id="cNet">—</div><small id="cGross"></small></div>
+          <div class="kpi"><b>წლიური შემოსავლიანობა</b><div class="v" id="cYield">—</div></div>
+          <div class="kpi" style="grid-column:1/-1"><b>ამოგების ვადა</b><div class="v" id="cBack">—</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
   <div id="invAdv" hidden>
     <p style="color:var(--muted); font-size:13px; max-width:620px; margin-bottom:14px">სრული 5-წლიანი შეფასება: სესხის ამორტიზაცია, გადასახადები, ქეშ-ფლოუ და მკაფიო ვერდიქტი — ალგორითმი შიგნით ითვლის, შენ მხოლოდ გარიგებას იყვან.</p>
     <div class="cols">
@@ -818,13 +889,51 @@
     const btn = document.querySelector('#navlinks button[data-p="' + key + '"]');
     if (btn) btn.click();
   }
+  // ── მანქანის კალკულატორი (საბაზრო ციფრები საორიენტაციოა) ──
+  const CAR_MARKET = {
+    "Toyota Prius": [32000, 90], "Toyota Camry": [58000, 160], "Toyota RAV4": [75000, 180],
+    "Toyota Land Cruiser Prado": [145000, 320], "Kia Sportage": [68000, 170],
+    "Hyundai Tucson": [62000, 160], "Hyundai Elantra": [45000, 120], "Honda CR-V": [60000, 150],
+    "Mitsubishi Pajero": [55000, 170], "Mercedes-Benz E-Class": [95000, 250], "BMW X5": [130000, 300],
+    "სხვა მოდელი": null,
+  };
+  function carCalc(prefill) {
+    const model = $("#cModel").value;
+    const mkt = CAR_MARKET[model];
+    if (prefill && mkt) { $("#cPrice").value = mkt[0]; $("#cDaily").value = mkt[1]; }
+    const price = Number($("#cPrice").value) || 0;
+    const daily = Number($("#cDaily").value) || 0;
+    const days = Math.min(31, Number($("#cDays").value) || 0);
+    const costs = Math.min(100, Number($("#cCosts").value) || 0);
+    const gross = daily * days;
+    const net = gross * (1 - costs / 100);
+    const annual = net * 12;
+    $("#cNet").textContent = Math.round(net).toLocaleString("en-US") + " ₾";
+    $("#cGross").textContent = "მთლიანი: " + Math.round(gross).toLocaleString("en-US") + " ₾";
+    $("#cYield").textContent = price > 0 ? (annual / price * 100).toFixed(1) + "%" : "—";
+    $("#cBack").textContent = annual > 0 && price > 0 ? (price / annual).toFixed(1) + " წელი" : "—";
+    const card = $("#cMarketCard");
+    if (!mkt) { card.style.display = "none"; return; }
+    card.style.display = "";
+    $("#cMktPrice").textContent = mkt[0].toLocaleString("en-US") + " ₾";
+    $("#cMktModel").textContent = model;
+    $("#cMktRate").textContent = mkt[1] + " ₾";
+    const delta = (price - mkt[0]) / mkt[0] * 100;
+    const v = $("#cVerdict");
+    if (delta < -5) { v.className = "badge b-rented"; v.textContent = Math.abs(delta).toFixed(0) + "% საბაზროზე იაფი"; }
+    else if (delta > 5) { v.className = "badge b-danger"; v.textContent = delta.toFixed(0) + "% საბაზროზე ძვირი"; }
+    else { v.className = "badge b-listed"; v.textContent = "საბაზრო ფასის ფარგლებში"; }
+  }
+
   // ── პროფილის დაფები (რეგისტრაციისას არჩეული პროფილი წყვეტს) ──
   function prof(k) {
     $("#prof-hotel").hidden = k !== "hotel";
     $("#prof-broker").hidden = k !== "broker";
+    $("#prof-car").hidden = k !== "car";
     $("#prof-pers").hidden = k !== "pers";
     $("#pfHotel").classList.toggle("on", k === "hotel");
     $("#pfBroker").classList.toggle("on", k === "broker");
+    $("#pfCar").classList.toggle("on", k === "car");
     $("#pfPers").classList.toggle("on", k === "pers");
   }
 
@@ -1049,12 +1158,15 @@
     else if (yieldNet >= dep - 1) { v.className = "badge b-vacant"; v.textContent = "დაახლ. დეპოზიტის ტოლია"; }
     else { v.className = "badge b-danger"; v.textContent = "დეპოზიტი მეტს გამოიმუშავებს"; }
   }
-  function invTab(adv) {
-    $("#invBasic").hidden = adv;
-    $("#invAdv").hidden = !adv;
-    $("#tabBasic").classList.toggle("on", !adv);
-    $("#tabAdv").classList.toggle("on", adv);
-    if (adv) worth();
+  function invTab(tab) {
+    if (tab === true) tab = "adv"; if (tab === false) tab = "basic";
+    $("#invBasic").hidden = tab !== "basic";
+    $("#invCar").hidden = tab !== "car";
+    $("#invAdv").hidden = tab !== "adv";
+    $("#tabBasic").classList.toggle("on", tab === "basic");
+    $("#tabCar").classList.toggle("on", tab === "car");
+    $("#tabAdv").classList.toggle("on", tab === "adv");
+    if (tab === "adv") worth();
   }
   // Advanced engine — full amortization + 5-year projection; the
   // scoring stays internal, only the verdict is shown.
@@ -1120,6 +1232,8 @@
 
   calc();
   switchCat();
+  $("#cModel").innerHTML = Object.keys(CAR_MARKET).map((m) => "<option>" + m + "</option>").join("");
+  carCalc(true);
 </script>
 
 </body></html>
