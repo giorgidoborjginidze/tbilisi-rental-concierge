@@ -256,8 +256,7 @@
   <span class="nav__brand">ქონების დაფა</span>
   <div class="nav__links" id="navlinks" hidden>
     <button data-p="dash" class="on">მთავარი</button>
-    <button data-p="units">ერთეულები</button>
-    <button data-p="cal">კალენდარი</button>
+    <button data-p="units">გაქირავება</button>
     <button data-p="assets">აქტივები</button>
     <button data-p="invest">ინვესტიცია</button>
     <button data-p="alerts">გაფრთხილებები</button>
@@ -273,10 +272,21 @@
 <main>
 
 <!-- ══ შესვლა ══ -->
-<section id="gate">
-  <h1>შესვლა</h1>
-  <p style="color:var(--muted); margin-bottom:16px">სადემონსტრაციო ანგარიში უკვე შევსებულია — უბრალოდ შედი.</p>
-  <div class="card">
+<section id="gate" style="max-width:760px">
+  <div style="margin:20px 0 26px">
+    <h1 style="font-size:30px">მთელი შენი ქონება — ერთ დაფაზე</h1>
+    <p style="color:var(--muted); font-size:14.5px; max-width:560px">ბინები, კომერციული ფართები, ავტომობილები, დღიური და გრძელვადიანი გაქირავება: სტატუსები, ხელშეკრულებები, ჯავშნები, შემოსავალი და საინვესტიციო ანალიზი — ქართულად, ტელეფონიდანაც.</p>
+    <p style="color:var(--muted); font-size:13px; margin-top:8px">პირველი თვე უფასოა სრული წვდომით — შემდეგ პაკეტები 15₾/თვიდან.</p>
+  </div>
+  <div class="kpis" style="grid-template-columns:1fr 1fr; margin:0 0 22px">
+    <div class="kpi"><b>ყველაფერი ერთ ადგილას</b><small style="font-size:13px; margin-top:8px">უძრავი ქონება, ავტომობილები და შემოსავლის წყაროები.</small></div>
+    <div class="kpi"><b>ჯავშნების სინქრონიზაცია</b><small style="font-size:13px; margin-top:8px">Airbnb და Booking ერთ კალენდარში — ორმაგი ჯავშანი იჭერს თავს.</small></div>
+    <div class="kpi"><b>საქართველოსთვის</b><small style="font-size:13px; margin-top:8px">myhome.ge, ss.ge, myauto.ge, ლარი, WhatsApp კარის კოდები.</small></div>
+    <div class="kpi"><b>ინვესტიცია ციფრებით</b><small style="font-size:13px; margin-top:8px">უფასო კალკულატორი ყიდვამდე — Advanced ანალიზი პაკეტში.</small></div>
+  </div>
+  <h2 style="margin-top:0">სცადე დემო</h2>
+  <p style="color:var(--muted); font-size:13px; margin-bottom:12px">სადემონსტრაციო ანგარიში უკვე შევსებულია — უბრალოდ შედი.</p>
+  <div class="card" style="max-width:400px">
     <label class="field">ელფოსტა
       <input value="ops@kolkhetistays.ge" readonly>
     </label>
@@ -293,7 +303,7 @@
 
 <!-- ══ დაფა ══ -->
 <section class="page on" id="p-dash">
-  <h1>STR ოპერატორის დაფა</h1>
+  <h1>ქონების დაფა</h1>
   <p style="color:var(--muted)">Kolkheti Stays · 12 ერთეული · თბილისი და ბათუმი</p>
   <h2>მიმდინარე თვე</h2>
   <div class="kpis kpis--5">
@@ -320,6 +330,10 @@
 
 <!-- ══ ერთეულები ══ -->
 <section class="page" id="p-units">
+  <div style="display:flex; gap:6px; margin-bottom:16px">
+    <button class="chip on" onclick="go('units')">ერთეულები</button>
+    <button class="chip" onclick="go('cal')">კალენდარი</button>
+  </div>
   <h1>ერთეულები</h1>
   <div class="row" style="margin-bottom:14px">
     <button class="btn--ghost btn" onclick="toast(this,'სინქრონიზაცია დასრულდა — 3 ახალი ჯავშანი ჩამოვიდა ✓')">კალენდრების სინქრონიზაცია</button>
@@ -341,6 +355,10 @@
 
 <!-- ══ კალენდარი ══ -->
 <section class="page" id="p-cal">
+  <div style="display:flex; gap:6px; margin-bottom:16px">
+    <button class="chip" onclick="go('units')">ერთეულები</button>
+    <button class="chip on" onclick="go('cal')">კალენდარი</button>
+  </div>
   <h1>კალენდარი — აგვისტო 2026</h1>
   <div class="legend">
     <span><i style="background:var(--cal-airbnb)"></i>Airbnb</span>
@@ -358,10 +376,10 @@
     </div>
     <div>
       <h2 style="margin-top:0">ორმაგი ჯავშნები</h2>
-      <div class="alert alert--green" id="noOverlap" hidden><div><p style="color:var(--rented-text)">გადაფარვა მოგვარებულია ✓</p></div></div>
+      <div class="alert alert--green" id="noOverlap" hidden><div><p style="color:var(--rented-text)">გადაფარვა შესრულებულია ✓</p></div></div>
       <div class="alert" style="border-color:color-mix(in srgb, var(--danger-text) 25%, var(--bg)); background:color-mix(in srgb, var(--danger-bg) 40%, var(--bg))" id="ovl">
         <div><h3>ბათუმის ზღვის ხედი <span style="font-weight:400; font-size:12px; color:var(--muted)">(airbnb + booking)</span></h3><p>14 აგვ – 15 აგვ · 1 ღამე</p><div class="act"><b>რეკომენდაცია:</b> გადაამოწმე არხებზე და გააუქმე ერთ-ერთი.</div></div>
-        <button class="chip" onclick="ovl.hidden=true; noOverlap.hidden=false">მოგვარებულია</button>
+        <button class="chip" onclick="ovl.hidden=true; noOverlap.hidden=false">შესრულებულია</button>
       </div>
     </div>
   </div>
@@ -376,11 +394,10 @@
       <button class="btn" onclick="openAdd('real_estate')">აქტივის დამატება</button>
     </div>
   </div>
-  <div class="kpis">
+  <div class="kpis" style="grid-template-columns:repeat(3,1fr)">
     <div class="kpi"><b>ჯამური ღირებულება</b><div class="v">3,065,000 ₾</div></div>
-    <div class="kpi"><b>თვიური შემოსავალი</b><div class="v" id="incKpi">68,337 ₾</div><small id="incSub">ქირა: 2,550 · STR: 52,787 · სხვა: 13,000</small></div>
-    <div class="kpi"><b>გაქირავებული</b><div class="v" id="rentedCnt">3 / 13</div></div>
-    <div class="kpi"><b>STR (მიმდინარე თვე)</b><div class="v">52,787 ₾</div></div>
+    <div class="kpi"><b>თვიური შემოსავალი</b><div class="v" id="incKpi">68,337 ₾</div><small id="incSub">ქირა: 2,550 · მოკლევადიანი: 52,787 · სხვა: 13,000</small></div>
+    <div class="kpi"><b>მოკლევადიანი ქირა (მიმდინარე თვე)</b><div class="v">52,787 ₾</div></div>
   </div>
   <p style="color:var(--muted); font-size:13px">შედი ნებისმიერ აქტივში (სახელზე დაჭერით) — ნახავ სტატუსს, კარის კოდს და გაქირავების კალენდარს.</p>
 
@@ -546,10 +563,19 @@
   <div class="row" style="margin-bottom:14px">
     <button class="btn--ghost btn" onclick="toast(this,'სკანირება დასრულდა ✓')">სკანირება ახლა</button>
   </div>
-  <div class="alert alert--contract"><div><h3>ხელშეკრულება იწურება — ნუცუბიძის ბინა</h3><p>ლ. გელაშვილი · 1,400 ₾ · 10 აგვ 2026 · 22 დღე დარჩა</p><div class="act"><b>რეკომენდაცია:</b> დაუკავშირდი დამქირავებელს განახლებაზე, ან დაგეგმე ხელახლა განთავსება.</div></div><div style="display:flex; gap:8px"><button class="chip" onclick="this.closest('.alert').remove()">მოგვარებულია</button><button class="chip" onclick="this.closest('.alert').remove()">დახურვა</button></div></div>
-  <div class="alert alert--gap"><div><h3>თავისუფალი ფანჯარა — ორბი ბიჩი 1ს</h3><p>2026-08-11 → 2026-08-13 · 2 ღამე</p><div class="act"><b>რეკომენდაცია:</b> დაწიე ღამის ტარიფი ან შესთავაზე last-minute ფასდაკლება.</div></div><div style="display:flex; gap:8px"><button class="chip" onclick="this.closest('.alert').remove()">მოგვარებულია</button><button class="chip" onclick="this.closest('.alert').remove()">დახურვა</button></div></div>
-  <div class="alert alert--lease"><div><h3>ფასი ბენჩმარკზე დაბალია — საბურთალოს მეტრო 1ს</h3><p>145 ₾ → რეკომენდებული 172 ₾ · უბნის ADR 180 ₾</p><div class="act"><b>რეკომენდაცია:</b> ასწიე ღამის ტარიფი უბნის საშუალომდე.</div></div><div style="display:flex; gap:8px"><button class="chip" onclick="this.closest('.alert').remove()">მოგვარებულია</button><button class="chip" onclick="this.closest('.alert').remove()">დახურვა</button></div></div>
-  <p class="hint">სრულ ვერსიაში სკანირება ავტომატურად ეშვება: ცარიელი ფანჯრები, ვადის ამოწურვა და დაბალი ფასები თავად გიპოვის.</p>
+  <div style="display:flex; gap:6px; margin-bottom:16px">
+    <button class="chip on" id="tabActive" onclick="alertTab(false)">აქტიური</button>
+    <button class="chip" id="tabDone" onclick="alertTab(true)">შესრულებული</button>
+  </div>
+  <div id="alertsActive">
+  <div class="alert alert--contract"><div><h3>ხელშეკრულება იწურება — ნუცუბიძის ბინა</h3><p>ლ. გელაშვილი · 1,400 ₾ · 10 აგვ 2026 · 22 დღე დარჩა</p><div class="act"><b>რეკომენდაცია:</b> დაუკავშირდი დამქირავებელს განახლებაზე, ან დაგეგმე ხელახლა განთავსება.</div></div><div style="display:flex; gap:8px"><button class="chip" onclick="resolveAlert(this)">შესრულებულია</button><button class="chip" onclick="this.closest('.alert').remove()">დახურვა</button></div></div>
+  <div class="alert alert--gap"><div><h3>თავისუფალი ფანჯარა — ორბი ბიჩი 1ს</h3><p>2026-08-11 → 2026-08-13 · 2 ღამე</p><div class="act"><b>რეკომენდაცია:</b> დაწიე ღამის ტარიფი ან შესთავაზე last-minute ფასდაკლება.</div></div><div style="display:flex; gap:8px"><button class="chip" onclick="resolveAlert(this)">შესრულებულია</button><button class="chip" onclick="this.closest('.alert').remove()">დახურვა</button></div></div>
+  <div class="alert alert--lease"><div><h3>ფასი ბენჩმარკზე დაბალია — საბურთალოს მეტრო 1ს</h3><p>145 ₾ → რეკომენდებული 172 ₾ · უბნის ADR 180 ₾</p><div class="act"><b>რეკომენდაცია:</b> ასწიე ღამის ტარიფი უბნის საშუალომდე.</div></div><div style="display:flex; gap:8px"><button class="chip" onclick="resolveAlert(this)">შესრულებულია</button><button class="chip" onclick="this.closest('.alert').remove()">დახურვა</button></div></div>
+  </div>
+  <div id="alertsDone" hidden>
+    <p style="color:var(--muted)" id="doneEmpty">შესრულებული ჯერ არ არის.</p>
+  </div>
+  <p class="hint">სრულ ვერსიაში სკანირება ავტომატურად ეშვება: ცარიელი ფანჯრები, ვადის ამოწურვა და დაბალი ფასები თავად გიპოვის. „შესრულებულია" ღილაკი ჩანაწერს შესრულებულებში გადაიტანს.</p>
 </section>
 
 <!-- ══ პაკეტი ══ -->
@@ -561,9 +587,9 @@
   </div>
   <h2>პირადი</h2>
   <div class="kpis" style="grid-template-columns:repeat(3,1fr); margin:0">
-    <div class="kpi"><b>სტარტი</b><div class="v">15 ₾/თვე</div><small>✓ 5 აქტივი<br>✓ 3 STR ერთეული</small><button class="chip planbtn" style="margin-top:12px" onclick="pick(this)">არჩევა</button></div>
-    <div class="kpi"><b>სტანდარტი</b><div class="v">29 ₾/თვე</div><small>✓ 20 აქტივი<br>✓ 10 STR ერთეული</small><button class="chip planbtn" style="margin-top:12px" onclick="pick(this)">არჩევა</button></div>
-    <div class="kpi" style="border-color:var(--primary); box-shadow:0 0 0 1px var(--primary), var(--shadow)"><b>პრო</b><div class="v">49 ₾/თვე</div><small>✓ 50 აქტივი<br>✓ 30 STR ერთეული</small><button class="chip planbtn on" style="margin-top:12px" onclick="pick(this)">არჩეულია</button></div>
+    <div class="kpi"><b>სტარტი</b><div class="v">15 ₾/თვე</div><small>✓ 5 აქტივი<br>✓ 3 გასაქირავებელი ერთეული</small><button class="chip planbtn" style="margin-top:12px" onclick="pick(this)">არჩევა</button></div>
+    <div class="kpi"><b>სტანდარტი</b><div class="v">29 ₾/თვე</div><small>✓ 20 აქტივი<br>✓ 10 გასაქირავებელი ერთეული</small><button class="chip planbtn" style="margin-top:12px" onclick="pick(this)">არჩევა</button></div>
+    <div class="kpi" style="border-color:var(--primary); box-shadow:0 0 0 1px var(--primary), var(--shadow)"><b>პრო</b><div class="v">49 ₾/თვე</div><small>✓ 50 აქტივი<br>✓ 30 გასაქირავებელი ერთეული</small><button class="chip planbtn on" style="margin-top:12px" onclick="pick(this)">არჩეულია</button></div>
   </div>
   <h2>კომპანიებისთვის</h2>
   <div class="kpis" style="grid-template-columns:repeat(2,1fr); margin:0">
@@ -644,7 +670,8 @@
     $("#themeBtn").textContent = dark ? "🌙" : "☀️";
   });
   function go(id) {
-    document.querySelectorAll("#navlinks button").forEach((x) => x.classList.toggle("on", x.dataset.p === id));
+    const navKey = id === "cal" ? "units" : id;
+    document.querySelectorAll("#navlinks button").forEach((x) => x.classList.toggle("on", x.dataset.p === navKey));
     document.querySelectorAll(".page").forEach((pg) => pg.classList.remove("on"));
     document.querySelector("#p-" + id).classList.add("on");
     window.scrollTo({ top: 0 });
@@ -684,7 +711,7 @@
         '<tr><td>' + name + '</td><td data-l="ტიპი"><span class="badge b-rented">' + type +
         '</span></td><td class="num" data-l="თანხა" style="font-weight:600">' + amt.toLocaleString("en-US") + ' ₾ / თვე</td></tr>');
       $("#incKpi").textContent = (68337 + extraIncome).toLocaleString("en-US") + " ₾";
-      $("#incSub").textContent = "ქირა: 2,550 · STR: 52,787 · სხვა: " + (13000 + extraIncome).toLocaleString("en-US");
+      $("#incSub").textContent = "ქირა: 2,550 · მოკლევადიანი: 52,787 · სხვა: " + (13000 + extraIncome).toLocaleString("en-US");
     } else {
       const val = Number($("#aValue").value) || 0;
       const tbl = cat === "vehicle" ? "#tbl-veh" : "#tbl-re";
@@ -720,6 +747,24 @@
     $("#dCode").textContent = code;
     const wa = $("#dWa"); wa.hidden = false;
     wa.href = "https://wa.me/?text=" + encodeURIComponent("კარის კოდი: " + code);
+  }
+  function alertTab(done) {
+    $("#alertsActive").hidden = done;
+    $("#alertsDone").hidden = !done;
+    $("#tabActive").classList.toggle("on", !done);
+    $("#tabDone").classList.toggle("on", done);
+  }
+  function resolveAlert(btn) {
+    const card = btn.closest(".alert");
+    btn.parentElement.remove();
+    const badge = document.createElement("span");
+    badge.className = "badge b-rented";
+    badge.textContent = "შესრულდა · დღეს";
+    card.appendChild(badge);
+    const dn = $("#doneEmpty"); if (dn) dn.remove();
+    $("#alertsDone").appendChild(card);
+    alertTab(true);
+    window.scrollTo({ top: 0 });
   }
   function dClose() { $("#dOverlay").style.display = "none"; }
 
