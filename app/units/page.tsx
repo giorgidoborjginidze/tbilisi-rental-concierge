@@ -6,6 +6,7 @@ import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
 import { parseChannelLinks } from "@/lib/types";
 import { syncNow } from "@/lib/bookings/actions";
+import RentalsSubnav from "../rentals-subnav";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ export default async function UnitsPage() {
 
   return (
     <main>
+      <RentalsSubnav active="units" />
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <h1 style={{ marginBottom: 0 }}>{t(locale, "units_title")}</h1>
         <div className="flex flex-wrap items-center gap-2">

@@ -3,7 +3,7 @@ export type Locale = "en" | "ka";
 export const LOCALES: Locale[] = ["en", "ka"];
 
 const en = {
-  appName: "STR Operator Dashboard",
+  appName: "Property Dashboard",
   nav_dashboard: "Dashboard",
   nav_units: "Units",
   nav_calendar: "Calendar",
@@ -121,11 +121,11 @@ const en = {
   status_vacant: "Vacant",
   status_personal_use: "Personal use",
   status_listed: "Listed",
-  status_str: "On STR",
+  status_str: "Short-term rental",
   asset_area: "Area (m²)",
   asset_value: "Estimated value",
   asset_notes: "Notes",
-  asset_link_unit: "Linked STR unit (optional)",
+  asset_link_unit: "Linked rental unit (optional)",
   asset_none: "— none —",
   asset_delete_confirm: "Delete this asset and its contracts?",
   rental_mode: "Rental mode",
@@ -148,7 +148,7 @@ const en = {
   assets_monthly_income: "Monthly income",
   assets_rented_count: "Rented",
   income_rent_derived: "Long-term rent",
-  income_str_derived: "STR (this month)",
+  income_str_derived: "Short-term rent (this month)",
   income_manual: "Other income (this month)",
 
   contracts_title: "Rental contracts",
@@ -279,7 +279,7 @@ const en = {
   plan_biz_m: "Business M",
   per_month: "\u20be/mo",
   billing_assets: "assets",
-  billing_units: "STR units",
+  billing_units: "rental units",
   billing_members: "team seats",
   usage_title: "Usage",
   team_title: "Team",
@@ -333,10 +333,34 @@ const en = {
   action_underpriced:
     "Raise the nightly rate toward the district benchmark.",
   alert_dismiss: "Dismiss",
-  alert_resolve: "Resolve",
+  alert_resolve: "Done",
   days_left: "days left",
 
   nav_pricing: "Pricing",
+  nav_rentals: "Rentals",
+  income_str_short: "Short-term",
+  alerts_active_tab: "Active",
+  alerts_done_tab: "Completed",
+  alerts_done_empty: "Nothing completed yet.",
+  alert_done_at: "completed",
+  wor_register_first:
+    "Advanced analysis needs a free account first \u2014 register, then pick a plan (the free month unlocks it immediately).",
+  register_free: "Create free account",
+  land_hero: "All your property \u2014 one dashboard",
+  land_sub:
+    "Apartments, commercial space, vehicles, short-term and long-term rentals: statuses, contracts, bookings, income and investment analysis \u2014 in Georgian, from your phone too.",
+  land_b1_t: "Everything in one place",
+  land_b1: "Real estate, vehicles and income sources with statuses and contracts.",
+  land_b2_t: "Automatic booking sync",
+  land_b2: "Airbnb and Booking.com calendars merge into one \u2014 double bookings get caught.",
+  land_b3_t: "Built for Georgia",
+  land_b3: "myhome.ge, ss.ge, myauto.ge links, GEL, WhatsApp door codes.",
+  land_b4_t: "Invest with numbers",
+  land_b4: "A free calculator shows yield and payback before you buy.",
+  land_try_calc: "Try the free calculator",
+  land_pricing:
+    "First month free with full access \u2014 then plans from 15\u20be/month.",
+
   pricing_title: "Price suggestions",
   pricing_intro:
     "Rule-based suggestions for the next 14 days: base rate × seasonality × demand, nudged toward the district benchmark.",
@@ -397,7 +421,7 @@ const en = {
 };
 
 const ka: Record<StringKey, string> = {
-  appName: "STR ოპერატორის დაფა",
+  appName: "ქონების დაფა",
   nav_dashboard: "მთავარი",
   nav_units: "ერთეულები",
   nav_calendar: "კალენდარი",
@@ -515,11 +539,11 @@ const ka: Record<StringKey, string> = {
   status_vacant: "თავისუფალი",
   status_personal_use: "პირადი მოხმარება",
   status_listed: "განთავსებული",
-  status_str: "STR-ზე",
+  status_str: "მოკლევადიან გაქირავებაზე",
   asset_area: "ფართობი (მ²)",
   asset_value: "შეფასებული ღირებულება",
   asset_notes: "შენიშვნები",
-  asset_link_unit: "მიბმული STR ერთეული (არასავალდებულო)",
+  asset_link_unit: "მიბმული გასაქირავებელი ერთეული (არასავალდებულო)",
   asset_none: "— არცერთი —",
   asset_delete_confirm: "წაიშალოს აქტივი და მისი ხელშეკრულებები?",
   rental_mode: "გაქირავების რეჟიმი",
@@ -542,7 +566,7 @@ const ka: Record<StringKey, string> = {
   assets_monthly_income: "თვიური შემოსავალი",
   assets_rented_count: "გაქირავებული",
   income_rent_derived: "გრძელვადიანი ქირა",
-  income_str_derived: "STR (მიმდინარე თვე)",
+  income_str_derived: "მოკლევადიანი ქირა (მიმდინარე თვე)",
   income_manual: "სხვა შემოსავალი (მიმდინარე თვე)",
 
   contracts_title: "ქირავნობის ხელშეკრულებები",
@@ -673,7 +697,7 @@ const ka: Record<StringKey, string> = {
   plan_biz_m: "ბიზნესი M",
   per_month: "₾/თვე",
   billing_assets: "აქტივი",
-  billing_units: "STR ერთეული",
+  billing_units: "გასაქირავებელი ერთეული",
   billing_members: "გუნდის წევრი",
   usage_title: "მოხმარება",
   team_title: "გუნდი",
@@ -726,10 +750,34 @@ const ka: Record<StringKey, string> = {
     "დაუკავშირდით დამქირავებელს განახლებაზე, ან დააბრუნეთ ერთეული მოკლევადიან გაქირავებაში.",
   action_underpriced: "აწიეთ ღამის ტარიფი უბნის ბენჩმარკისკენ.",
   alert_dismiss: "დახურვა",
-  alert_resolve: "მოგვარებულია",
+  alert_resolve: "შესრულებულია",
   days_left: "დღე დარჩა",
 
   nav_pricing: "ფასები",
+  nav_rentals: "გაქირავება",
+  income_str_short: "მოკლევადიანი",
+  alerts_active_tab: "აქტიური",
+  alerts_done_tab: "შესრულებული",
+  alerts_done_empty: "შესრულებული ჯერ არ არის.",
+  alert_done_at: "შესრულდა",
+  wor_register_first:
+    "Advanced ანალიზს ჯერ უფასო ანგარიში სჭირდება — დარეგისტრირდი და შემდეგ აირჩიე პაკეტი (უფასო თვე მაშინვე ხსნის).",
+  register_free: "უფასო ანგარიშის შექმნა",
+  land_hero: "მთელი შენი ქონება — ერთ დაფაზე",
+  land_sub:
+    "ბინები, კომერციული ფართები, ავტომობილები, დღიური და გრძელვადიანი გაქირავება: სტატუსები, ხელშეკრულებები, ჯავშნები, შემოსავალი და საინვესტიციო ანალიზი — ქართულად, ტელეფონიდანაც.",
+  land_b1_t: "ყველაფერი ერთ ადგილას",
+  land_b1: "უძრავი ქონება, ავტომობილები და შემოსავლის წყაროები სტატუსებითა და ხელშეკრულებებით.",
+  land_b2_t: "ჯავშნების ავტომატური სინქრონიზაცია",
+  land_b2: "Airbnb-სა და Booking.com-ის კალენდრები ერთში ერთიანდება — ორმაგი ჯავშანი აღარ გამოგეპარება.",
+  land_b3_t: "შექმნილია საქართველოსთვის",
+  land_b3: "myhome.ge, ss.ge, myauto.ge ბმულები, ლარი, WhatsApp კარის კოდები.",
+  land_b4_t: "ინვესტიცია ციფრებით",
+  land_b4: "უფასო კალკულატორი ყიდვამდე გაჩვენებს შემოსავლიანობასა და ამოგების ვადას.",
+  land_try_calc: "სცადე უფასო კალკულატორი",
+  land_pricing:
+    "პირველი თვე უფასოა სრული წვდომით — შემდეგ პაკეტები 15₾/თვიდან.",
+
   pricing_title: "ფასების რეკომენდაციები",
   pricing_intro:
     "წესებზე დაფუძნებული რეკომენდაციები მომდევნო 14 დღისთვის: საბაზო ტარიფი × სეზონურობა × მოთხოვნა, უბნის ბენჩმარკისკენ მიზიდვით.",

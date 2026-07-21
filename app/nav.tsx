@@ -10,17 +10,20 @@ export default async function Nav() {
   const operator = await getSessionOperator();
   const other = locale === "en" ? "ka" : "en";
 
+  // Signed in: grouped sections (rentals gets sub-tabs on its pages).
+  // Signed out: informational only — home and the free calculator.
   const links = operator
     ? [
         { href: "/", label: t(locale, "nav_dashboard") },
-        { href: "/units", label: t(locale, "nav_units") },
-        { href: "/calendar", label: t(locale, "nav_calendar") },
-        { href: "/pricing", label: t(locale, "nav_pricing") },
+        { href: "/units", label: t(locale, "nav_rentals") },
         { href: "/assets", label: t(locale, "nav_assets") },
         { href: "/invest", label: t(locale, "nav_invest") },
         { href: "/alerts", label: t(locale, "nav_alerts") },
       ]
-    : [];
+    : [
+        { href: "/", label: t(locale, "nav_dashboard") },
+        { href: "/invest", label: t(locale, "nav_invest") },
+      ];
 
   return (
     <nav className="nav">

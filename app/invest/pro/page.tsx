@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireOperator } from "@/lib/auth/session";
+import { getSessionOperator } from "@/lib/auth/session";
 import { getBillingContext } from "@/lib/billing/context";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
@@ -21,8 +21,31 @@ const LABEL_KEYS: StringKey[] = [
 ];
 
 export default async function ProAnalysisPage() {
-  const operator = await requireOperator();
+  const operator = await getSessionOperator();
   const locale = await getLocale();
+
+  // Advanced needs an account first; the plan comes after registration.
+  if (!operator) {
+    return (
+      <main>
+        <h1>{t(locale, "wor_title")}</h1>
+        <div className="alert-card alert-card--contract" style={{ display: "block", maxWidth: 640 }}>
+          <p className="alert-card__detail" style={{ marginTop: 0 }}>
+            {t(locale, "wor_register_first")}
+          </p>
+          <div style={{ marginTop: 14, display: "flex", gap: 10 }}>
+            <Link href="/register" className="btn-primary">
+              {t(locale, "register_free")}
+            </Link>
+            <Link href="/login" className="btn-secondary">
+              {t(locale, "login_title")}
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   const context = await getBillingContext(operator);
 
   if (!context.plan.analysis) {

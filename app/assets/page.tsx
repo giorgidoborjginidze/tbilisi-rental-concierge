@@ -108,7 +108,6 @@ export default async function AssetsPage() {
     rentIncome + strIncome + manualIncomeThisMonth + otherIncomeSources;
 
   const totalValue = assets.reduce((sum, a) => sum + (a.estimatedValue ?? 0), 0);
-  const rentedCount = assets.filter((a) => effectiveStatus(a) === "rented").length;
 
   // Market-rent benchmarks per district (current month).
   const districts = [...new Set(assets.map((a) => a.district).filter(Boolean))] as string[];
@@ -141,16 +140,12 @@ export default async function AssetsPage() {
         </div>
       </div>
 
-      <section className="kpi-grid">
+      <section className="kpi-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
         <Kpi label={t(locale, "assets_total_value")} value={money(totalValue)} />
         <Kpi
           label={t(locale, "assets_monthly_income")}
           value={money(totalMonthly)}
-          sub={`${t(locale, "income_rent_short")}: ${money(rentIncome)} · STR: ${money(strIncome)} · ${t(locale, "income_other_short")}: ${money(manualIncomeThisMonth + otherIncomeSources)}`}
-        />
-        <Kpi
-          label={t(locale, "assets_rented_count")}
-          value={`${rentedCount} / ${assets.length}`}
+          sub={`${t(locale, "income_rent_short")}: ${money(rentIncome)} · ${t(locale, "income_str_short")}: ${money(strIncome)} · ${t(locale, "income_other_short")}: ${money(manualIncomeThisMonth + otherIncomeSources)}`}
         />
         <Kpi label={t(locale, "income_str_derived")} value={money(strIncome)} />
       </section>

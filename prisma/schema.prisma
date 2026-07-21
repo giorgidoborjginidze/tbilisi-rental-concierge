@@ -271,8 +271,9 @@ model Alert {
   unitId     String?
   type       String // "vacancy_gap" | "lease_expiry" | "underpriced"
   payload    Json // type-specific details + { suggestedAction: string }
-  status     String   @default("open") // "open" | "dismissed" | "resolved"
-  createdAt  DateTime @default(now())
+  status     String    @default("open") // "open" | "dismissed" | "resolved"
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
 
   operator Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
   unit     Unit?    @relation(fields: [unitId], references: [id], onDelete: Cascade)

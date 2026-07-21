@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireOperator } from "@/lib/auth/session";
 import { scanAlerts } from "./scan";
@@ -12,9 +13,11 @@ export async function setAlertStatus(formData: FormData) {
     const operator = await requireOperator();
     await prisma.alert.updateMany({
       where: { id, operatorId: operator.id },
-      data: { status },
+      data: { status, resolvedAt: new Date() },
     });
     revalidatePath("/alerts");
+    // Marking done takes you to the completed list, as confirmation.
+    if (status === "resolved") redirect("/alerts?view=done");
   }
 }
 

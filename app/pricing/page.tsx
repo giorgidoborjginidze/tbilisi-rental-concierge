@@ -5,6 +5,7 @@ import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 import { computeSuggestionsForUnit } from "@/lib/pricing/run";
 import UnitFilter from "../calendar/unit-filter";
+import RentalsSubnav from "../rentals-subnav";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +39,7 @@ export default async function PricingPage({
 
   return (
     <main>
+      <RentalsSubnav active="pricing" />
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
         <h1 style={{ marginBottom: 0 }}>{t(locale, "pricing_title")}</h1>
         <UnitFilter

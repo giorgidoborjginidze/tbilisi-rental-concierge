@@ -31,14 +31,21 @@ interface AlertPayload {
   monthlyRent?: number;
 }
 
-export default async function AlertsPage() {
+export default async function AlertsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string }>;
+}) {
   const operator = await requireOperator();
 
+  const { view } = await searchParams;
+  const done = view === "done";
   const locale = await getLocale();
   const alerts = await prisma.alert.findMany({
-    where: { operatorId: operator.id, status: "open" },
+    where: { operatorId: operator.id, status: done ? "resolved" : "open" },
     include: { unit: { select: { id: true, name: true, nameKa: true, currency: true } } },
-    orderBy: { createdAt: "desc" },
+    orderBy: done ? { resolvedAt: "desc" } : { createdAt: "desc" },
+    take: done ? 50 : undefined,
   });
 
   const displayName = (unit: { name: string; nameKa: string | null } | null) =>
@@ -61,17 +68,30 @@ export default async function AlertsPage() {
 
   return (
     <main>
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 style={{ marginBottom: 0 }}>{t(locale, "alerts_title")}</h1>
-        <form action={runAlertScan}>
-          <button type="submit" className="btn-secondary">
-            {t(locale, "alerts_scan")}
-          </button>
-        </form>
+        {!done && (
+          <form action={runAlertScan}>
+            <button type="submit" className="btn-secondary">
+              {t(locale, "alerts_scan")}
+            </button>
+          </form>
+        )}
+      </div>
+
+      <div className="mb-5 flex flex-wrap gap-1.5">
+        <Link href="/alerts" className={`btn-chip ${done ? "" : "btn-chip--active"}`}>
+          {t(locale, "alerts_active_tab")}
+        </Link>
+        <Link href="/alerts?view=done" className={`btn-chip ${done ? "btn-chip--active" : ""}`}>
+          {t(locale, "alerts_done_tab")}
+        </Link>
       </div>
 
       {alerts.length === 0 ? (
-        <p style={{ color: "var(--color-text-muted)" }}>{t(locale, "alerts_empty")}</p>
+        <p style={{ color: "var(--color-text-muted)" }}>
+          {t(locale, done ? "alerts_done_empty" : "alerts_empty")}
+        </p>
       ) : (
         alerts.map((alert) => {
           const payload = alert.payload as AlertPayload;
@@ -98,22 +118,31 @@ export default async function AlertsPage() {
                   {t(locale, `action_${alert.type}` as StringKey)}
                 </div>
               </div>
-              <div className="flex gap-2">
-                <form action={setAlertStatus}>
-                  <input type="hidden" name="alertId" value={alert.id} />
-                  <input type="hidden" name="status" value="resolved" />
-                  <button type="submit" className="btn-chip">
-                    {t(locale, "alert_resolve")}
-                  </button>
-                </form>
-                <form action={setAlertStatus}>
-                  <input type="hidden" name="alertId" value={alert.id} />
-                  <input type="hidden" name="status" value="dismissed" />
-                  <button type="submit" className="btn-chip">
-                    {t(locale, "alert_dismiss")}
-                  </button>
-                </form>
-              </div>
+              {done ? (
+                <span className="badge badge--rented">
+                  {t(locale, "alert_done_at")}
+                  {alert.resolvedAt
+                    ? ` · ${new Intl.DateTimeFormat(locale === "ka" ? "ka-GE" : "en-GB", { day: "numeric", month: "short" }).format(alert.resolvedAt)}`
+                    : ""}
+                </span>
+              ) : (
+                <div className="flex gap-2">
+                  <form action={setAlertStatus}>
+                    <input type="hidden" name="alertId" value={alert.id} />
+                    <input type="hidden" name="status" value="resolved" />
+                    <button type="submit" className="btn-chip">
+                      {t(locale, "alert_resolve")}
+                    </button>
+                  </form>
+                  <form action={setAlertStatus}>
+                    <input type="hidden" name="alertId" value={alert.id} />
+                    <input type="hidden" name="status" value="dismissed" />
+                    <button type="submit" className="btn-chip">
+                      {t(locale, "alert_dismiss")}
+                    </button>
+                  </form>
+                </div>
+              )}
             </div>
           );
         })

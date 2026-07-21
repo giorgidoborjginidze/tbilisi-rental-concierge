@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { requireOperator } from "@/lib/auth/session";
+import { getSessionOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
 import { KNOWN_DISTRICTS } from "@/lib/types";
@@ -24,7 +24,7 @@ const LABEL_KEYS: StringKey[] = [
 ];
 
 export default async function InvestPage() {
-  await requireOperator();
+  const operator = await getSessionOperator();
 
   const locale = await getLocale();
   const now = new Date();
@@ -56,8 +56,12 @@ export default async function InvestPage() {
           </div>
           <div className="alert-card__detail">{t(locale, "wor_teaser")}</div>
         </div>
-        <Link href="/invest/pro" className="btn-primary" style={{ whiteSpace: "nowrap" }}>
-          {t(locale, "wor_open")}
+        <Link
+          href={operator ? "/invest/pro" : "/register"}
+          className="btn-primary"
+          style={{ whiteSpace: "nowrap" }}
+        >
+          {operator ? t(locale, "wor_open") : t(locale, "register_free")}
         </Link>
       </div>
       <Calculator

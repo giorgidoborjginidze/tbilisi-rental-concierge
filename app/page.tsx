@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { requireOperator } from "@/lib/auth/session";
+import { getSessionOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
-import { t } from "@/lib/i18n/strings";
+import { t, type StringKey } from "@/lib/i18n/strings";
 import {
   aggregateMetrics,
   monthWindows,
@@ -29,10 +29,53 @@ function Kpi({ label, value }: { label: string; value: string }) {
   );
 }
 
-export default async function Home() {
-  const operator = await requireOperator();
+// Public, informational landing for signed-out visitors: what the
+// product is, four benefits, the free calculator, one price line.
+function Landing({ locale }: { locale: "en" | "ka" }) {
+  const benefits: [StringKey, StringKey][] = [
+    ["land_b1_t", "land_b1"],
+    ["land_b2_t", "land_b2"],
+    ["land_b3_t", "land_b3"],
+    ["land_b4_t", "land_b4"],
+  ];
+  return (
+    <main>
+      <section style={{ maxWidth: 640, margin: "24px 0 8px" }}>
+        <h1 style={{ fontSize: 32 }}>{t(locale, "land_hero")}</h1>
+        <p style={{ color: "var(--color-text-muted)", fontSize: 15 }}>
+          {t(locale, "land_sub")}
+        </p>
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <Link href="/register" className="btn-primary">
+            {t(locale, "register_free")}
+          </Link>
+          <Link href="/invest" className="btn-secondary">
+            {t(locale, "land_try_calc")}
+          </Link>
+        </div>
+        <p style={{ color: "var(--color-text-muted)", fontSize: 13, marginTop: 12 }}>
+          {t(locale, "land_pricing")}
+        </p>
+      </section>
 
+      <section className="kpi-grid" style={{ marginTop: 28 }}>
+        {benefits.map(([titleKey, bodyKey]) => (
+          <div key={titleKey} className="kpi">
+            <div className="kpi__label">{t(locale, titleKey)}</div>
+            <div className="kpi__sub" style={{ fontSize: 13, marginTop: 8 }}>
+              {t(locale, bodyKey)}
+            </div>
+          </div>
+        ))}
+      </section>
+    </main>
+  );
+}
+
+export default async function Home() {
   const locale = await getLocale();
+  const operator = await getSessionOperator();
+  if (!operator) return <Landing locale={locale} />;
   const now = new Date();
   const today = new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),

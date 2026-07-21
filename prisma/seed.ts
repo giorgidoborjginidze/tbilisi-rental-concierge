@@ -446,7 +446,7 @@ async function main() {
     },
     // 8) Linked to an STR unit
     {
-      name: "Vake Park View 2BR (STR)", nameKa: "ვაკის პარკის ხედი (STR)",
+      name: "Vake Park View 2BR (short-term)", nameKa: "ვაკის პარკის ხედი (დღიური)",
       category: "real_estate", type: "apartment",
       city: "Tbilisi", district: "Vake", address: "12 Ilia Chavchavadze Ave",
       areaSqm: 85, estimatedValue: 700000, status: "vacant",

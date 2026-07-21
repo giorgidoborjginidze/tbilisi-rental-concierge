@@ -10,6 +10,7 @@ import {
   type Stay,
 } from "@/lib/calendar/occupancy";
 import UnitFilter from "./unit-filter";
+import RentalsSubnav from "../rentals-subnav";
 
 export const dynamic = "force-dynamic";
 
@@ -147,6 +148,7 @@ export default async function CalendarPage({
 
   return (
     <main>
+      <RentalsSubnav active="calendar" />
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
         <h1 style={{ marginBottom: 0 }}>
           {t(locale, "nav_calendar")} — {monthLabel}
