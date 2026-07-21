@@ -350,7 +350,7 @@ async function BrokerageDashboard({
         sub={`🏢 ${t(locale, "profile_brokerage")}`}
       />
 
-      <section className="kpi-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
+      <section className="kpi-grid kpi-grid--3">
         <Kpi label={t(locale, "dash_managed")} value={String(assets.length)} />
         <Kpi label={t(locale, "dash_rent_month")} value={money(rentIncome)} />
         <Kpi label={t(locale, "dash_open_alerts")} value={String(alertCount)} />
@@ -655,7 +655,7 @@ async function PersonalDashboard({
         sub={`👤 ${t(locale, "account_personal")}`}
       />
 
-      <section className="kpi-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
+      <section className="kpi-grid kpi-grid--3">
         <Kpi
           label={t(locale, "assets_monthly_income")}
           value={money(totalMonthly)}

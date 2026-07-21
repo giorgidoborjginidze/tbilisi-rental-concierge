@@ -5,6 +5,7 @@ import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
 import { deleteContract } from "@/lib/assets/actions";
+import { dayPrice } from "@/lib/assets/daily-price";
 import { LISTING_PLATFORMS } from "@/lib/types";
 import AssetForm from "../../asset-form";
 import ContractForm from "../../contract-form";
@@ -88,15 +89,34 @@ export default async function EditAssetPage({
           checkIn: { lt: calEnd },
           checkOut: { gt: calStart },
         },
-        select: { source: true, checkIn: true, checkOut: true },
+        select: { source: true, checkIn: true, checkOut: true, amount: true, nights: true },
       })
     : [];
   const stays = [
     ...asset.contracts
       .filter((c) => c.status !== "ended")
-      .map((c) => ({ kind: "lease", start: c.startDate, end: c.endDate })),
-    ...bookings.map((b) => ({ kind: b.source, start: b.checkIn, end: b.checkOut })),
+      .map((c) => ({
+        kind: "lease",
+        start: c.startDate,
+        end: c.endDate,
+        // For daily-mode assets the contract amount IS the day price.
+        dayAmount: asset.rentalMode === "daily" ? c.monthlyRent : null,
+      })),
+    ...bookings.map((b) => ({
+      kind: b.source,
+      start: b.checkIn,
+      end: b.checkOut,
+      dayAmount:
+        b.amount != null && b.nights > 0 ? Math.round(b.amount / b.nights) : null,
+    })),
   ];
+
+  // Daily pricing: base rate + weekend/holiday premiums → per-day price
+  // tooltips (rented days show the actual booked/contracted price).
+  const hasDailyPricing =
+    asset.rentalMode === "daily" && asset.dailyRate != null && asset.dailyRate > 0;
+  const weekendPct = asset.weekendPct ?? 0;
+  const holidayPct = asset.holidayPct ?? 0;
 
   const intl = locale === "ka" ? "ka-GE" : "en-GB";
   const fmtMonth = new Intl.DateTimeFormat(intl, { month: "short", year: "2-digit" });
@@ -104,7 +124,8 @@ export default async function EditAssetPage({
     day: "numeric", month: "short", year: "numeric",
   });
 
-  const months: { label: string; days: string[] }[] = [];
+  const fmtDay = new Intl.DateTimeFormat(intl, { day: "numeric", month: "short" });
+  const months: { label: string; days: { cls: string; title: string }[] }[] = [];
   if (showCalendar) {
     for (let m = 0; m < 6; m++) {
       const mStart = new Date(Date.UTC(calStart.getUTCFullYear(), calStart.getUTCMonth() + m, 1));
@@ -114,11 +135,24 @@ export default async function EditAssetPage({
         const dayStart = new Date(mStart.getTime() + i * DAY_MS);
         const dayEnd = new Date(dayStart.getTime() + DAY_MS);
         const covering = stays.filter((s) => s.start < dayEnd && s.end > dayStart);
-        return covering.length > 1
-          ? "cal-cell--overlap"
-          : covering.length === 1
-            ? KIND_CLASS[covering[0].kind] ?? KIND_CLASS.direct
+        const cls =
+          covering.length > 1
+            ? "cal-cell--overlap"
+            : covering.length === 1
+              ? KIND_CLASS[covering[0].kind] ?? KIND_CLASS.direct
+              : "";
+        const rented = covering.length > 0;
+        const priceText = rented
+          ? covering[0].dayAmount != null
+            ? ` · ${covering[0].dayAmount} GEL`
+            : ""
+          : hasDailyPricing
+            ? ` · ${dayPrice(dayStart, asset.dailyRate!, weekendPct, holidayPct)} GEL`
             : "";
+        const statusText = rented
+          ? t(locale, "status_rented")
+          : t(locale, "calendar_vacant");
+        return { cls, title: `${fmtDay.format(dayStart)} — ${statusText}${priceText}` };
       });
       months.push({ label: fmtMonth.format(mStart), days });
     }
@@ -181,6 +215,7 @@ export default async function EditAssetPage({
           />
         )}
         {asset.category === "real_estate" && status !== "personal_use" && (
+          <div style={{ marginTop: 8 }}>
           <DoorKey
             assetId={asset.id}
             code={asset.doorCode}
@@ -191,6 +226,7 @@ export default async function EditAssetPage({
               generate: t(locale, "door_generate"),
             }}
           />
+          </div>
         )}
       </div>
 
@@ -198,6 +234,17 @@ export default async function EditAssetPage({
       {showCalendar && (
         <section>
           <h2>{t(locale, "nav_calendar")}</h2>
+          {hasDailyPricing && (
+            <p style={{ color: "var(--color-text-muted)", fontSize: 13, margin: "0 0 10px" }}>
+              {t(locale, "price_base")}: <b>{Math.round(asset.dailyRate!)} GEL</b>
+              {" · "}
+              {t(locale, "price_weekend")} (+{Math.round(weekendPct)}%):{" "}
+              <b>{Math.round(asset.dailyRate! * (1 + weekendPct / 100))} GEL</b>
+              {" · "}
+              {t(locale, "price_holiday")} (+{Math.round(holidayPct)}%):{" "}
+              <b>{Math.round(asset.dailyRate! * (1 + holidayPct / 100))} GEL</b>
+            </p>
+          )}
           <div className="legend">
             <span><i style={{ background: "var(--cal-lease)" }} />{t(locale, "calendar_lease")}</span>
             {asset.unitId && (
@@ -225,8 +272,8 @@ export default async function EditAssetPage({
                 >
                   {month.label}
                 </span>
-                {month.days.map((cls, i) => (
-                  <span key={i} className={`cal-cell ${cls}`} />
+                {month.days.map((day, i) => (
+                  <span key={i} className={`cal-cell ${day.cls}`} title={day.title} />
                 ))}
               </div>
             ))}
@@ -255,6 +302,9 @@ export default async function EditAssetPage({
           airbnbUrl: asset.airbnbUrl ?? "",
           bookingUrl: asset.bookingUrl ?? "",
           rentalMode: asset.rentalMode,
+          dailyRate: asset.dailyRate?.toString() ?? "",
+          weekendPct: asset.weekendPct?.toString() ?? "",
+          holidayPct: asset.holidayPct?.toString() ?? "",
           status: asset.status,
           unitId: asset.unitId ?? "",
           notes: asset.notes ?? "",

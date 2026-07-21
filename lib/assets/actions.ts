@@ -42,10 +42,16 @@ export async function saveAsset(
   const areaSqm = optionalNumber(formData, "areaSqm");
   const estimatedValue = optionalNumber(formData, "estimatedValue");
   const monthlyIncome = optionalNumber(formData, "monthlyIncome");
+  const dailyRate = optionalNumber(formData, "dailyRate");
+  const weekendPct = optionalNumber(formData, "weekendPct");
+  const holidayPct = optionalNumber(formData, "holidayPct");
   if (
     Number.isNaN(areaSqm) ||
     Number.isNaN(estimatedValue) ||
-    Number.isNaN(monthlyIncome)
+    Number.isNaN(monthlyIncome) ||
+    Number.isNaN(dailyRate) ||
+    Number.isNaN(weekendPct) ||
+    Number.isNaN(holidayPct)
   ) {
     return { error: "error_invalid_number" };
   }
@@ -66,6 +72,9 @@ export async function saveAsset(
     status,
     unitId,
     rentalMode: str(formData, "rentalMode") === "daily" ? "daily" : "long_term",
+    dailyRate,
+    weekendPct,
+    holidayPct,
     myhomeUrl: str(formData, "myhomeUrl") || null,
     ssUrl: str(formData, "ssUrl") || null,
     myautoUrl: str(formData, "myautoUrl") || null,

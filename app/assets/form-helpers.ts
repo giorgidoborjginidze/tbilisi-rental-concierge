@@ -19,6 +19,7 @@ export async function assetFormProps(
     "asset_notes", "asset_link_unit", "asset_none", "asset_delete_confirm",
     "myhome_url", "myhome_hint", "ss_url", "myauto_url", "unit_airbnb_url",
     "unit_booking_url", "rental_mode", "mode_long_term", "mode_daily",
+    "daily_rate", "weekend_pct", "holiday_pct", "daily_pricing_hint",
     "income_monthly", "income_source_hint",
     "save", "cancel", "delete", "error_required", "error_invalid_number",
     "error_email_taken", "error_dates",

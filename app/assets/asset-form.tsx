@@ -23,6 +23,9 @@ export interface AssetFormValues {
   airbnbUrl: string;
   bookingUrl: string;
   rentalMode: string;
+  dailyRate: string;
+  weekendPct: string;
+  holidayPct: string;
   status: string;
   unitId: string;
   notes: string;
@@ -56,7 +59,51 @@ export default function AssetForm({
   const [category, setCategory] = useState(
     asset?.category ?? initialCategory ?? "real_estate",
   );
+  const [rentalMode, setRentalMode] = useState(asset?.rentalMode ?? "long_term");
   const types = typesByCategory[category] ?? [];
+
+  // Cars and real estate can both rent by the day; daily mode unlocks
+  // per-day pricing (base rate + weekend/holiday premiums).
+  const rentable = category === "real_estate" || category === "vehicle";
+  const rentalModeField = (
+    <label className="field">
+      {labels.rental_mode}
+      <select
+        name="rentalMode"
+        value={rentalMode}
+        onChange={(event) => setRentalMode(event.target.value)}
+      >
+        <option value="long_term">{labels.mode_long_term}</option>
+        <option value="daily">{labels.mode_daily}</option>
+      </select>
+    </label>
+  );
+  const dailyPricingFields = rentable && rentalMode === "daily" && (
+    <>
+      <label className="field">
+        {labels.daily_rate}
+        <input
+          name="dailyRate" type="number" min={0} step="1"
+          defaultValue={asset?.dailyRate}
+        />
+      </label>
+      <label className="field">
+        {labels.weekend_pct}
+        <input
+          name="weekendPct" type="number" min={0} max={500} step="1"
+          defaultValue={asset?.weekendPct || "20"}
+        />
+      </label>
+      <label className="field">
+        {labels.holiday_pct}
+        <input
+          name="holidayPct" type="number" min={0} max={500} step="1"
+          defaultValue={asset?.holidayPct || "30"}
+        />
+      </label>
+      <span className="hint">{labels.daily_pricing_hint}</span>
+    </>
+  );
 
   return (
     <form action={formAction} className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -146,13 +193,8 @@ export default function AssetForm({
               defaultValue={asset?.areaSqm}
             />
           </label>
-          <label className="field">
-            {labels.rental_mode}
-            <select name="rentalMode" defaultValue={asset?.rentalMode ?? "long_term"}>
-              <option value="long_term">{labels.mode_long_term}</option>
-              <option value="daily">{labels.mode_daily}</option>
-            </select>
-          </label>
+          {rentalModeField}
+          {dailyPricingFields}
           <label className="field">
             {labels.myhome_url}
             <input
@@ -186,13 +228,17 @@ export default function AssetForm({
       )}
 
       {category === "vehicle" && (
-        <label className="field sm:col-span-2">
-          {labels.myauto_url}
-          <input
-            name="myautoUrl" type="url" placeholder="https://www.myauto.ge/pr/..."
-            defaultValue={asset?.myautoUrl}
-          />
-        </label>
+        <>
+          {rentalModeField}
+          {dailyPricingFields}
+          <label className="field sm:col-span-2">
+            {labels.myauto_url}
+            <input
+              name="myautoUrl" type="url" placeholder="https://www.myauto.ge/pr/..."
+              defaultValue={asset?.myautoUrl}
+            />
+          </label>
+        </>
       )}
 
       {category === "income_source" ? (

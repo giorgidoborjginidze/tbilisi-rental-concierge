@@ -325,6 +325,15 @@ const en = {
   dash_no_handovers: "No handovers today.",
   dash_no_returns: "No returns today.",
 
+  daily_rate: "Daily rate (GEL)",
+  weekend_pct: "Weekend premium (%)",
+  holiday_pct: "Holiday premium (%)",
+  daily_pricing_hint:
+    "The calendar prices each day automatically: weekends and Georgian public holidays get the premium on top of the base rate.",
+  price_base: "Base",
+  price_weekend: "Weekend",
+  price_holiday: "Holiday",
+
   invest_tab_re: "Real estate",
   invest_tab_car: "Vehicle",
   car_title: "Car rental calculator",
@@ -796,6 +805,15 @@ const ka: Record<StringKey, string> = {
   dash_returns_today: "დღეს დაბრუნება",
   dash_no_handovers: "დღეს გაცემა არ არის.",
   dash_no_returns: "დღეს დაბრუნება არ არის.",
+
+  daily_rate: "დღიური ტარიფი (₾)",
+  weekend_pct: "შაბათ-კვირის დანამატი (%)",
+  holiday_pct: "დღესასწაულის დანამატი (%)",
+  daily_pricing_hint:
+    "კალენდარი დღეებს ავტომატურად აფასებს: შაბათ-კვირას და საქართველოს უქმე დღეებზე საბაზო ტარიფს დანამატი ემატება.",
+  price_base: "ჩვეულებრივი",
+  price_weekend: "შაბათ-კვირა",
+  price_holiday: "დღესასწაული",
 
   invest_tab_re: "უძრავი ქონება",
   invest_tab_car: "ავტომობილი",

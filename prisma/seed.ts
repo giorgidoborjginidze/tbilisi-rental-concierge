@@ -434,7 +434,7 @@ async function main() {
       category: "real_estate", type: "apartment",
       city: "Tbilisi", district: "Old Town", address: "6 Shardeni St",
       areaSqm: 38, estimatedValue: 210000, status: "vacant",
-      rentalMode: "daily",
+      rentalMode: "daily", dailyRate: 195, weekendPct: 20, holidayPct: 30,
       myhomeUrl: "https://www.myhome.ge/pr/21437654/",
       airbnbUrl: "https://www.airbnb.com/rooms/41120097",
       doorCode: "483920", doorCodeGeneratedAt: utc(2026, 7, 15),
@@ -483,6 +483,19 @@ async function main() {
         tenantName: "G. Tsiklauri", tenantPhone: "+995 555 44 33 22",
         startDate: utc(2026, 5, 1), endDate: utc(2027, 5, 1),
         monthlyRent: 900, deposit: 900, status: "active",
+      },
+    },
+    // 11b) Daily-rental car: per-day pricing with weekend/holiday premiums
+    {
+      name: "Toyota Prius 2019 (daily)", nameKa: "ტოიოტა პრიუსი 2019 (დღიური)",
+      category: "vehicle", type: "car",
+      status: "rented", estimatedValue: 33000,
+      rentalMode: "daily", dailyRate: 90, weekendPct: 20, holidayPct: 30,
+      myautoUrl: "https://www.myauto.ge/ka/pr/118234568",
+      contract: {
+        tenantName: "L. Kapanadze", tenantPhone: "+995 599 11 22 33",
+        startDate: utc(2026, 7, 20), endDate: utc(2026, 7, 23),
+        monthlyRent: 95, deposit: null, status: "active",
       },
     },
     // 12) Recurring income stream — amount only, no payer details

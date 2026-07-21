@@ -140,7 +140,7 @@ export default async function AssetsPage() {
         </div>
       </div>
 
-      <section className="kpi-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
+      <section className="kpi-grid kpi-grid--3">
         <Kpi label={t(locale, "assets_total_value")} value={money(totalValue)} />
         <Kpi
           label={t(locale, "assets_monthly_income")}
@@ -246,32 +246,34 @@ export default async function AssetsPage() {
                             />
                           )}
                         </td>
-                        <td data-label={t(locale, "contracts_col")} style={{ fontWeight: 400 }}>
-                          {contract ? (
-                            <div>
+                        <td data-label={t(locale, "contracts_col")} style={{ fontWeight: 400, maxWidth: 280 }}>
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            {contract ? (
                               <div>
-                                {contract.monthlyRent} {contract.currency} ·{" "}
-                                {contract.tenantName ?? "—"}
+                                <div>
+                                  {contract.monthlyRent} {contract.currency} ·{" "}
+                                  {contract.tenantName ?? "—"}
+                                </div>
+                                <div className="cell-sub">
+                                  {t(locale, "contract_until")}: {fmtDate.format(contract.endDate)}
+                                </div>
                               </div>
-                              <div className="cell-sub">
-                                {t(locale, "contract_until")}: {fmtDate.format(contract.endDate)}
-                              </div>
-                            </div>
-                          ) : (
-                            <span style={{ color: "var(--color-text-muted)" }}>—</span>
-                          )}
-                          {asset.category === "real_estate" && status !== "personal_use" && (
-                            <DoorKey
-                              assetId={asset.id}
-                              code={asset.doorCode}
-                              phone={contract?.tenantPhone?.replace(/\D/g, "") || null}
-                              message={`${displayName(asset)}${asset.address ? ` (${asset.address})` : ""} — ${t(locale, "door_key")}:`}
-                              labels={{
-                                key: t(locale, "door_key"),
-                                generate: t(locale, "door_generate"),
-                              }}
-                            />
-                          )}
+                            ) : (
+                              <span style={{ color: "var(--color-text-muted)" }}>—</span>
+                            )}
+                            {asset.category === "real_estate" && status !== "personal_use" && (
+                              <DoorKey
+                                assetId={asset.id}
+                                code={asset.doorCode}
+                                phone={contract?.tenantPhone?.replace(/\D/g, "") || null}
+                                message={`${displayName(asset)}${asset.address ? ` (${asset.address})` : ""} — ${t(locale, "door_key")}:`}
+                                labels={{
+                                  key: t(locale, "door_key"),
+                                  generate: t(locale, "door_generate"),
+                                }}
+                              />
+                            )}
+                          </div>
                         </td>
                         {showMarket && (
                           <td className="num" data-label={t(locale, "market_rent_est")}>

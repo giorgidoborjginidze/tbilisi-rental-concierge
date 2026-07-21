@@ -192,6 +192,11 @@ model Asset {
   currency       String   @default("GEL")
   status         String   @default("personal_use") // "rented" | "vacant" | "personal_use" | "listed"
   rentalMode     String   @default("long_term") // "long_term" | "daily"
+  // Daily-rental pricing: base rate plus weekend/holiday premiums (%).
+  // Effective day price = dailyRate × (1 + premium/100).
+  dailyRate      Float?
+  weekendPct     Float?
+  holidayPct     Float?
   unitId         String?  @unique // optional link to an STR Unit (same property)
   // Per-platform listing URLs for this asset's own announcements.
   // Real estate: myhome/ss/airbnb/booking; vehicles: myauto.

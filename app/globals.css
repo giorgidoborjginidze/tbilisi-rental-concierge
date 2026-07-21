@@ -381,11 +381,15 @@ a:hover {
   gap: 14px;
   margin: 20px 0 36px;
 }
+.kpi-grid--3 {
+  grid-template-columns: repeat(3, 1fr);
+}
 .kpi-grid--5 {
   grid-template-columns: repeat(5, 1fr);
 }
 @media (max-width: 720px) {
   .kpi-grid,
+  .kpi-grid--3,
   .kpi-grid--5 {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -424,6 +428,19 @@ a:hover {
   box-shadow: var(--shadow-card);
   overflow: hidden;
   overflow-x: auto;
+}
+/* The trailing action column ("Edit") must never clip mid-word. */
+.card th:last-child,
+.card td:last-child {
+  white-space: nowrap;
+}
+/* Dense stacked tables (assets): slightly tighter cells so all columns
+   fit the card width on desktop. */
+.card--stack th {
+  padding: 12px 13px;
+}
+.card--stack td {
+  padding: 15px 13px;
 }
 table {
   width: 100%;
@@ -739,6 +756,7 @@ td:first-child {
   }
 
   .kpi-grid,
+  .kpi-grid--3,
   .kpi-grid--5 {
     grid-template-columns: repeat(2, 1fr);
     gap: 10px;

@@ -37,8 +37,12 @@ export default function DoorKey({
     : `https://wa.me/?text=${text}`;
 
   return (
-    <div className="mt-1.5 flex flex-wrap items-center gap-1.5" style={{ fontSize: 12 }}>
-      <span style={{ color: "var(--color-text-muted)" }}>🔑 {labels.key}:</span>
+    <div
+      className="flex flex-wrap items-center gap-1.5"
+      style={{ fontSize: 12 }}
+      title={labels.key}
+    >
+      <span style={{ color: "var(--color-text-muted)" }}>🔑</span>
       {code ? (
         <span
           className="font-mono"
