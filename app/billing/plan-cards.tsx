@@ -11,6 +11,7 @@ export interface PlanCard {
   maxUnits: number;
   maxMembers: number;
   isBusiness: boolean;
+  analysis: boolean;
 }
 
 export default function PlanCards({
@@ -65,6 +66,7 @@ export default function PlanCards({
                 {plan.isBusiness && (
                   <li>✓ {plan.maxMembers} {labels.billing_members}</li>
                 )}
+                {plan.analysis && <li>✓ {labels.billing_analysis}</li>}
               </ul>
               <form action={formAction} style={{ marginTop: 14 }}>
                 <input type="hidden" name="plan" value={plan.id} />

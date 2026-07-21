@@ -36,7 +36,7 @@ export default async function BillingPage() {
     "billing_choose", "billing_chosen", "billing_current", "per_month",
     "billing_assets", "billing_units", "billing_members",
     "plan_starter", "plan_standard", "plan_pro", "plan_biz_s", "plan_biz_m",
-    "team_invite", "team_invite_hint", "team_remove", "copy_link",
+    "team_invite", "team_invite_hint", "team_remove", "copy_link", "billing_analysis",
     "operator_email", "error_required", "error_limit_members",
     "error_owner_only", "save",
   ];
@@ -116,6 +116,7 @@ export default async function BillingPage() {
             maxUnits: plan.maxUnits,
             maxMembers: plan.maxMembers,
             isBusiness: plan.kind === "business",
+            analysis: plan.analysis,
           }))}
           currentPlan={operator.plan}
           effectivePlanId={context.plan.id}

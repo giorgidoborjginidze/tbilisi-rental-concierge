@@ -212,10 +212,10 @@ const en = {
   res_verdict_poor: "A deposit earns more",
   wor_title: "Pro analysis — is it worth it?",
   wor_teaser:
-    "Full 5-year underwriting: loan amortization, taxes, cash flow, cap rate, cash-on-cash and a clear verdict. Included from the Pro plan up.",
+    "Full 5-year underwriting: loan amortization, taxes, cash flow, cap rate, cash-on-cash and a clear verdict. Included from the Standard plan up.",
   wor_open: "Open Pro analysis",
   wor_locked:
-    "Pro analysis is available on the Pro and Business plans. Upgrade on the Plan page \u2014 during your free trial it is already unlocked.",
+    "Advanced analysis is available from the Standard plan up. Upgrade on the Plan page \u2014 during your free trial it is already unlocked.",
   wor_intro:
     "Enter the deal \u2014 the engine runs the full 5-year underwriting and gives a verdict. Every field is editable; the essentials are enough to start.",
   wor_deal: "The deal",
@@ -281,6 +281,7 @@ const en = {
   billing_assets: "assets",
   billing_units: "rental units",
   billing_members: "team seats",
+  billing_analysis: "Advanced investment analysis",
   usage_title: "Usage",
   team_title: "Team",
   team_invite: "Invite employee",
@@ -630,10 +631,10 @@ const ka: Record<StringKey, string> = {
   res_verdict_poor: "დეპოზიტი მეტს გამოიმუშავებს",
   wor_title: "პრო ანალიზი — ღირს თუ არა?",
   wor_teaser:
-    "სრული 5-წლიანი შეფასება: სესხის ამორტიზაცია, გადასახადები, ქეშ-ფლოუ, Cap Rate, Cash-on-Cash და მკაფიო ვერდიქტი. შედის პრო პაკეტიდან ზემოთ.",
+    "სრული 5-წლიანი შეფასება: სესხის ამორტიზაცია, გადასახადები, ქეშ-ფლოუ, Cap Rate, Cash-on-Cash და მკაფიო ვერდიქტი. შედის სტანდარტი პაკეტიდან ზემოთ.",
   wor_open: "პრო ანალიზის გახსნა",
   wor_locked:
-    "პრო ანალიზი ხელმისაწვდომია პრო და ბიზნეს პაკეტებზე. გაზარდე პაკეტი გვერდზე «პაკეტი» — უფასო პერიოდში უკვე ჩართულია.",
+    "Advanced ანალიზი ხელმისაწვდომია სტანდარტი პაკეტიდან ზემოთ. გაზარდე პაკეტი გვერდზე «პაკეტი» — უფასო პერიოდში უკვე ჩართულია.",
   wor_intro:
     "შეიყვანე გარიგება — ძრავი სრულ 5-წლიან შეფასებას გააკეთებს და ვერდიქტს გამოიტანს. ყველა ველი შეცვლადია; დასაწყისისთვის ძირითადებიც საკმარისია.",
   wor_deal: "გარიგება",
@@ -699,6 +700,7 @@ const ka: Record<StringKey, string> = {
   billing_assets: "აქტივი",
   billing_units: "გასაქირავებელი ერთეული",
   billing_members: "გუნდის წევრი",
+  billing_analysis: "Advanced საინვესტიციო ანალიზი",
   usage_title: "მოხმარება",
   team_title: "გუნდი",
   team_invite: "თანამშრომლის მოწვევა",

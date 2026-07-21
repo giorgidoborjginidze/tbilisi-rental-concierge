@@ -510,6 +510,12 @@
 <!-- ══ ინვესტიცია ══ -->
 <section class="page" id="p-invest">
   <h1>საინვესტიციო კალკულატორი</h1>
+  <div style="display:flex; gap:6px; margin:12px 0 4px; align-items:center; flex-wrap:wrap">
+    <button class="chip on" id="tabBasic" onclick="invTab(false)">Basic — უფასო</button>
+    <button class="chip" id="tabAdv" onclick="invTab(true)">Advanced <span class="badge b-listed" style="height:20px; font-size:10px; margin-left:4px">PRO</span></button>
+    <span style="font-size:12px; color:var(--muted)">Advanced შედის სტანდარტი პაკეტიდან (29₾) ზემოთ</span>
+  </div>
+  <div id="invBasic">
   <p style="color:var(--muted); max-width:620px; margin-bottom:16px">შეაფასე, რამდენად მომგებიანია ქონების ყიდვა გასაქირავებლად. ფასები მიახლოებითი საბაზრო საშუალოა — ყველა ველი შეცვლადია და შედეგი მყისვე გადაითვლება.</p>
   <div class="cols">
     <div class="card" style="padding:20px; overflow:visible">
@@ -555,6 +561,42 @@
       <p class="hint plan-note">მიახლოებითი შეფასება — არ არის ფინანსური რჩევა. ინვესტიციამდე გადაამოწმე ფასები და განაკვეთები.</p>
     </div>
   </div>
+  </div>
+
+  <div id="invAdv" hidden>
+    <p style="color:var(--muted); font-size:13px; max-width:620px; margin-bottom:14px">სრული 5-წლიანი შეფასება: სესხის ამორტიზაცია, გადასახადები, ქეშ-ფლოუ და მკაფიო ვერდიქტი — ალგორითმი შიგნით ითვლის, შენ მხოლოდ გარიგებას იყვან.</p>
+    <div class="cols">
+      <div class="card" style="padding:20px; overflow:visible">
+        <h2 style="margin:0 0 14px">გარიგება</h2>
+        <div class="grid2">
+          <label class="field">შესყიდვის ფასი (₾)<input id="wPrice" type="number" value="258000" oninput="worth()"></label>
+          <label class="field">პირველადი შენატანი (%)<input id="wEq" type="number" value="20" oninput="worth()"></label>
+          <label class="field">რემონტი / გაფორმება (₾)<input id="wOther" type="number" value="15000" oninput="worth()"></label>
+          <label class="field">სესხის განაკვეთი (%)<input id="wRate" type="number" value="11.5" step="0.1" oninput="worth()"></label>
+          <label class="field">სესხის ვადა (წელი)<input id="wYears" type="number" value="10" oninput="worth()"></label>
+          <label class="field">თვიური ქირა (₾)<input id="wRent" type="number" value="1980" oninput="worth()"></label>
+          <label class="field">ქირის წლიური ზრდა (%)<input id="wGrowth" type="number" value="4" step="0.5" oninput="worth()"></label>
+          <label class="field">ვაკანტურობა (%)<input id="wVac" type="number" value="8" oninput="worth()"></label>
+        </div>
+        <p class="hint" style="margin-top:14px">დამატებითი ხარჯები (დაზღვევა, მოვლა, გადასახადი…) ნაგულისხმევად ითვლება — სრულ ვერსიაში ყველა შეცვლადია.</p>
+      </div>
+      <div>
+        <div class="alert" style="align-items:center; margin-bottom:14px">
+          <h3 id="wVerdict">—</h3><span class="badge" id="wCapBadge">—</span>
+        </div>
+        <div class="kpis" style="grid-template-columns:1fr 1fr; margin:0 0 14px">
+          <div class="kpi"><b>ქეშ-ფლოუ / თვე (წ1)</b><div class="v" id="wCf">—</div><small id="wPay"></small></div>
+          <div class="kpi"><b>Cash-on-Cash (წ1)</b><div class="v" id="wCoc">—</div><small id="wCap"></small></div>
+          <div class="kpi"><b>ამოგების ვადა</b><div class="v" id="wBack">—</div><small id="wInv"></small></div>
+          <div class="kpi"><b>კაპიტალი 5 წლის შემდეგ</b><div class="v" id="wEq5">—</div><small id="wEq5p"></small></div>
+        </div>
+        <div class="card"><table>
+          <thead><tr><th>წელი</th><th class="num">ქირა/თვე</th><th class="num">NOI</th><th class="num">ქეშ-ფლოუ</th><th class="num">CoC %</th></tr></thead>
+          <tbody id="wRows"></tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>
 </section>
 
 <!-- ══ გაფრთხილებები ══ -->
@@ -588,13 +630,13 @@
   <h2>პირადი</h2>
   <div class="kpis" style="grid-template-columns:repeat(3,1fr); margin:0">
     <div class="kpi"><b>სტარტი</b><div class="v">15 ₾/თვე</div><small>✓ 5 აქტივი<br>✓ 3 გასაქირავებელი ერთეული</small><button class="chip planbtn" style="margin-top:12px" onclick="pick(this)">არჩევა</button></div>
-    <div class="kpi"><b>სტანდარტი</b><div class="v">29 ₾/თვე</div><small>✓ 20 აქტივი<br>✓ 10 გასაქირავებელი ერთეული</small><button class="chip planbtn" style="margin-top:12px" onclick="pick(this)">არჩევა</button></div>
-    <div class="kpi" style="border-color:var(--primary); box-shadow:0 0 0 1px var(--primary), var(--shadow)"><b>პრო</b><div class="v">49 ₾/თვე</div><small>✓ 50 აქტივი<br>✓ 30 გასაქირავებელი ერთეული</small><button class="chip planbtn on" style="margin-top:12px" onclick="pick(this)">არჩეულია</button></div>
+    <div class="kpi"><b>სტანდარტი</b><div class="v">29 ₾/თვე</div><small>✓ 20 აქტივი<br>✓ 10 გასაქირავებელი ერთეული<br>✓ Advanced ანალიზი</small><button class="chip planbtn" style="margin-top:12px" onclick="pick(this)">არჩევა</button></div>
+    <div class="kpi" style="border-color:var(--primary); box-shadow:0 0 0 1px var(--primary), var(--shadow)"><b>პრო</b><div class="v">49 ₾/თვე</div><small>✓ 50 აქტივი<br>✓ 30 გასაქირავებელი ერთეული<br>✓ Advanced ანალიზი</small><button class="chip planbtn on" style="margin-top:12px" onclick="pick(this)">არჩეულია</button></div>
   </div>
   <h2>კომპანიებისთვის</h2>
   <div class="kpis" style="grid-template-columns:repeat(2,1fr); margin:0">
-    <div class="kpi"><b>ბიზნესი S</b><div class="v">99 ₾/თვე</div><small>✓ 100 აქტივი · 60 ერთეული<br>✓ 5 თანამშრომელი</small><button class="chip planbtn" style="margin-top:12px" onclick="pick(this)">არჩევა</button></div>
-    <div class="kpi"><b>ბიზნესი M</b><div class="v">199 ₾/თვე</div><small>✓ 300 აქტივი · 200 ერთეული<br>✓ 15 თანამშრომელი</small><button class="chip planbtn" style="margin-top:12px" onclick="pick(this)">არჩევა</button></div>
+    <div class="kpi"><b>ბიზნესი S</b><div class="v">99 ₾/თვე</div><small>✓ 100 აქტივი · 60 ერთეული<br>✓ 5 თანამშრომელი<br>✓ Advanced ანალიზი</small><button class="chip planbtn" style="margin-top:12px" onclick="pick(this)">არჩევა</button></div>
+    <div class="kpi"><b>ბიზნესი M</b><div class="v">199 ₾/თვე</div><small>✓ 300 აქტივი · 200 ერთეული<br>✓ 15 თანამშრომელი<br>✓ Advanced ანალიზი</small><button class="chip planbtn" style="margin-top:12px" onclick="pick(this)">არჩევა</button></div>
   </div>
   <p class="hint" style="margin-top:14px">ბიზნეს-პაკეტებში მფლობელი მოწვევის ლინკით ამატებს თანამშრომლებს — თითოეული საკუთარ ობიექტებს აწარმოებს, ლიმიტები კი მთელ კომპანიაზე ჯამურად ითვლება.</p>
 </section>
@@ -873,6 +915,75 @@
     else if (yieldNet >= dep - 1) { v.className = "badge b-vacant"; v.textContent = "დაახლ. დეპოზიტის ტოლია"; }
     else { v.className = "badge b-danger"; v.textContent = "დეპოზიტი მეტს გამოიმუშავებს"; }
   }
+  function invTab(adv) {
+    $("#invBasic").hidden = adv;
+    $("#invAdv").hidden = !adv;
+    $("#tabBasic").classList.toggle("on", !adv);
+    $("#tabAdv").classList.toggle("on", adv);
+    if (adv) worth();
+  }
+  // Advanced engine — full amortization + 5-year projection; the
+  // scoring stays internal, only the verdict is shown.
+  function worth() {
+    const price = +$("#wPrice").value || 0;
+    const dp = price * (+$("#wEq").value || 0) / 100;
+    const loan = price - dp;
+    const inv = dp + (+$("#wOther").value || 0);
+    const n = Math.round((+$("#wYears").value || 0) * 12);
+    const r = (+$("#wRate").value || 0) / 100 / 12;
+    const pay = loan <= 0 || n === 0 ? 0 : r === 0 ? loan / n : loan * r / (1 - Math.pow(1 + r, -n));
+    const iy = [0,0,0,0,0], py = [0,0,0,0,0];
+    let bal = loan;
+    for (let m = 0; m < n; m++) {
+      const it = bal * r, pr = Math.min(pay - it, bal);
+      bal -= pr;
+      const y = Math.floor(m / 12);
+      if (y < 5) { iy[y] += it; py[y] += pr; }
+    }
+    const dep = price * 0.6 / 27.5;
+    let rent = +$("#wRent").value || 0, cum = 0;
+    const grow = (+$("#wGrowth").value || 0) / 100, vac = (+$("#wVac").value || 0) / 100;
+    const rows = [];
+    for (let y = 0; y < 5; y++) {
+      if (y > 0) rent *= 1 + grow;
+      const yr = rent * 12, goi = yr * (1 - vac);
+      const exp = 140 + yr * 0.06 + yr * 0.03; // დაზღვევა + მოვლა 6% + კომუნალური 3%
+      const noi = goi - exp;
+      const bt = noi - iy[y] - dep, tax = Math.max(0, bt) * 0.05;
+      const btcf = noi - iy[y] - py[y], atcf = btcf - tax;
+      cum += py[y];
+      rows.push({ y: y + 1, rent, noi, atcf, coc: inv > 0 ? atcf / inv * 100 : 0,
+        cap: price > 0 ? noi / price * 100 : 0, rtp: price > 0 ? rent / price * 100 : 0,
+        eqv: dp + cum, eqp: price > 0 ? (dp + cum) / price * 100 : 0, btcf });
+    }
+    const y1 = rows[0];
+    const payback = y1.btcf > 0 ? inv / y1.btcf : null;
+    let sc = 0;
+    if (y1.cap >= 8) sc += 2; else if (y1.cap >= 5) sc += 1;
+    if (y1.coc >= 10) sc += 2; else if (y1.coc >= 6) sc += 1;
+    if (y1.atcf > 0) sc += 1;
+    if (y1.rtp >= 1) sc += 1;
+    if (payback != null && payback <= 6) sc += 2; else if (payback != null && payback <= 10) sc += 1;
+    const verdict = sc >= 6 ? ["ღირს", "b-rented"] : sc >= 3 ? ["ზღვარზეა — ივაჭრე ფასზე", "b-vacant"] : ["არ ღირს", "b-danger"];
+    const F = (v) => Math.round(v).toLocaleString("en-US") + " ₾";
+    $("#wVerdict").textContent = verdict[0];
+    const cb = $("#wCapBadge"); cb.className = "badge " + verdict[1]; cb.textContent = y1.cap.toFixed(1) + "% Cap";
+    $("#wCf").textContent = F(y1.atcf / 12);
+    $("#wCf").style.color = y1.atcf >= 0 ? "var(--rented-text)" : "var(--danger-text)";
+    $("#wPay").textContent = "სესხის შენატანი: " + F(pay);
+    $("#wCoc").textContent = y1.coc.toFixed(1) + "%";
+    $("#wCap").textContent = "Cap Rate: " + y1.cap.toFixed(1) + "%";
+    $("#wBack").textContent = payback ? payback.toFixed(1) + " წელი" : "ვერასდროს";
+    $("#wInv").textContent = "ჩადებული: " + F(inv);
+    $("#wEq5").textContent = F(rows[4].eqv);
+    $("#wEq5p").textContent = rows[4].eqp.toFixed(1) + "%";
+    $("#wRows").innerHTML = rows.map((w) =>
+      '<tr><td>' + w.y + '</td><td class="num" style="font-weight:400">' + F(w.rent) +
+      '</td><td class="num" style="font-weight:400">' + F(w.noi) +
+      '</td><td class="num" style="font-weight:500; color:' + (w.atcf >= 0 ? "var(--rented-text)" : "var(--danger-text)") + '">' + F(w.atcf) +
+      '</td><td class="num" style="font-weight:400">' + w.coc.toFixed(1) + '%</td></tr>').join("");
+  }
+
   calc();
   switchCat();
 </script>
