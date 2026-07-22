@@ -35,8 +35,9 @@ if (!isPostgres) {
   run("npx prisma generate --schema prisma/schema.postgres.prisma");
   if (process.env.VERCEL) {
     // Managed deploy: sync the schema (no migration history needed yet).
+    // (Prisma 7 dropped --skip-generate; the extra generate is harmless.)
     run(
-      "npx prisma db push --schema prisma/schema.postgres.prisma --skip-generate --accept-data-loss",
+      "npx prisma db push --schema prisma/schema.postgres.prisma --accept-data-loss",
     );
   }
 }

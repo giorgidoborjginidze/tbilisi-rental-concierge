@@ -1,12 +1,16 @@
 import "dotenv/config";
 import { PrismaClient } from "../app/generated/prisma/client";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { seasonalityFactor } from "../lib/pricing/seasonality";
 import { hashPassword } from "../lib/auth/password";
 
-const adapter = new PrismaBetterSqlite3({
-  url: process.env.DATABASE_URL ?? "file:./prisma/dev.db",
-});
+// Same adapter selection as lib/db.ts: Postgres when DATABASE_URL says
+// so (Neon / local Postgres), otherwise the local SQLite file.
+const url = process.env.DATABASE_URL ?? "file:./prisma/dev.db";
+const adapter = url.startsWith("postgres")
+  ? new PrismaPg({ connectionString: url })
+  : new PrismaBetterSqlite3({ url });
 const prisma = new PrismaClient({ adapter });
 
 // Deterministic PRNG (mulberry32) so the seed is reproducible.
