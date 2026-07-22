@@ -428,6 +428,8 @@ const en = {
   land_pricing:
     "First month free with full access \u2014 then plans from 15\u20be/month.",
   land_video_title: "See Activo in action",
+  land_demo: "Want to see it filled in first? Try the ready-made demo —",
+  land_demo_cta: "Open the demo",
 
   pricing_title: "Price suggestions",
   pricing_intro:
@@ -913,6 +915,8 @@ const ka: Record<StringKey, string> = {
   land_pricing:
     "პირველი თვე უფასოა სრული წვდომით — შემდეგ პაკეტები 15₾/თვიდან.",
   land_video_title: "იხილე Activo მოქმედებაში",
+  land_demo: "ჯერ შევსებული ნახვა გინდა? სცადე მზა დემო —",
+  land_demo_cta: "დემოს გახსნა",
 
   pricing_title: "ფასების რეკომენდაციები",
   pricing_intro:

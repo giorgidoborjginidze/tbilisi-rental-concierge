@@ -233,18 +233,34 @@ function generateBookings(
 }
 
 async function main() {
-  // Idempotent re-seed: wipe in FK-safe order.
-  await prisma.alert.deleteMany();
-  await prisma.pricingSuggestion.deleteMany();
-  await prisma.incomeRecord.deleteMany();
-  await prisma.rentalContract.deleteMany();
-  await prisma.asset.deleteMany();
-  await prisma.rentBenchmark.deleteMany();
-  await prisma.booking.deleteMany();
-  await prisma.lease.deleteMany();
-  await prisma.marketBenchmark.deleteMany();
-  await prisma.unit.deleteMany();
-  await prisma.operator.deleteMany();
+  const isPostgres = (process.env.DATABASE_URL ?? "").startsWith("postgres");
+
+  if (isPostgres) {
+    // Production (Neon): additive and idempotent. Only create the demo
+    // account if it's missing, and NEVER wipe — real accounts must be
+    // untouched. On repeat deploys this is a no-op.
+    const existing = await prisma.operator.findUnique({
+      where: { email: "ops@kolkhetistays.ge" },
+    });
+    if (existing) {
+      console.log("Demo account already present — skipping seed.");
+      await prisma.$disconnect();
+      return;
+    }
+  } else {
+    // Local (SQLite): full reset so `db seed` gives a clean slate.
+    await prisma.alert.deleteMany();
+    await prisma.pricingSuggestion.deleteMany();
+    await prisma.incomeRecord.deleteMany();
+    await prisma.rentalContract.deleteMany();
+    await prisma.asset.deleteMany();
+    await prisma.rentBenchmark.deleteMany();
+    await prisma.booking.deleteMany();
+    await prisma.lease.deleteMany();
+    await prisma.marketBenchmark.deleteMany();
+    await prisma.unit.deleteMany();
+    await prisma.operator.deleteMany();
+  }
 
   const operator = await prisma.operator.create({
     data: {

@@ -39,5 +39,12 @@ if (!isPostgres) {
     run(
       "npx prisma db push --schema prisma/schema.postgres.prisma --accept-data-loss",
     );
+    // Ensure the demo account exists (idempotent, additive — the seed
+    // skips itself if the demo is already there and never wipes data).
+    try {
+      run("npx tsx prisma/seed.ts");
+    } catch {
+      console.warn("[prepare-db] demo seed skipped (non-fatal)");
+    }
   }
 }

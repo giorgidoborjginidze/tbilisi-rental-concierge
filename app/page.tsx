@@ -55,6 +55,19 @@ function Landing({ locale }: { locale: Locale }) {
         <p style={{ color: "var(--color-text-muted)", fontSize: 13, marginTop: 12 }}>
           {t(locale, "land_pricing")}
         </p>
+        <div
+          className="alert-card alert-card--lease"
+          style={{ marginTop: 16, alignItems: "center", maxWidth: 560 }}
+        >
+          <div className="alert-card__detail" style={{ marginTop: 0 }}>
+            {t(locale, "land_demo")}{" "}
+            <code style={{ fontWeight: 600 }}>ops@kolkhetistays.ge</code> /{" "}
+            <code style={{ fontWeight: 600 }}>demo1234</code>
+          </div>
+          <Link href="/login" className="btn-secondary" style={{ whiteSpace: "nowrap" }}>
+            {t(locale, "land_demo_cta")}
+          </Link>
+        </div>
       </section>
 
       {/* Promo video — shown once NEXT_PUBLIC_DEMO_VIDEO_URL is set to the
