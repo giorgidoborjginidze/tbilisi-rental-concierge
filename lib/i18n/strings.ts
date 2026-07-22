@@ -20,8 +20,8 @@ const en = {
   units_title: "Units",
   units_add: "Add unit",
   units_empty: "No units yet. Add your first unit to get started.",
-  unit_new_title: "New unit",
-  unit_edit_title: "Edit unit",
+  unit_new_title: "New Unit",
+  unit_edit_title: "Edit Unit",
 
   unit_name: "Name",
   unit_name_ka: "Name (Georgian)",
@@ -56,11 +56,11 @@ const en = {
   delete_confirm: "Delete this unit and all its bookings?",
 
   nav_assets: "Assets",
-  assets_title: "My assets",
+  assets_title: "My Assets",
   assets_add: "Add asset",
   assets_empty: "No assets yet. Add your first asset to get started.",
-  asset_new_title: "New asset",
-  asset_edit_title: "Edit asset",
+  asset_new_title: "New Asset",
+  asset_edit_title: "Edit Asset",
   asset_category: "Category",
   category_real_estate: "Real Estate",
   category_vehicle: "Vehicle",
@@ -151,7 +151,7 @@ const en = {
   income_str_derived: "Short-term rent (this month)",
   income_manual: "Other income (this month)",
 
-  contracts_title: "Rental contracts",
+  contracts_title: "Rental Contracts",
   contracts_col: "Contract",
   asset_value_col: "Value",
   income_rent_short: "Rent",
@@ -169,10 +169,10 @@ const en = {
   market_rent_est: "Market rent",
 
   nav_invest: "Invest",
-  invest_title: "Investment calculator",
+  invest_title: "Investment Calculator",
   invest_intro:
     "Estimate how a property purchase performs as a buy-to-let investment. Prefilled prices, rents and renovation costs are approximate mock market averages — adjust everything to your deal.",
-  inv_params: "Property & deal",
+  inv_params: "Property & Deal",
   inv_district: "District",
   inv_area: "Area (m\u00b2)",
   inv_price: "Purchase price (GEL)",
@@ -210,7 +210,7 @@ const en = {
   res_verdict_good: "Better than a deposit",
   res_verdict_ok: "About par with a deposit",
   res_verdict_poor: "A deposit earns more",
-  wor_title: "Pro analysis — is it worth it?",
+  wor_title: "Pro Analysis — Is It Worth It?",
   wor_teaser:
     "Full 5-year underwriting: loan amortization, taxes, cash flow, cap rate, cash-on-cash and a clear verdict. Included from the Standard plan up.",
   wor_open: "Open Pro analysis",
@@ -218,7 +218,7 @@ const en = {
     "Advanced analysis is available from the Standard plan up. Upgrade on the Plan page \u2014 during your free trial it is already unlocked.",
   wor_intro:
     "Enter the deal \u2014 the engine runs the full 5-year underwriting and gives a verdict. Every field is editable; the essentials are enough to start.",
-  wor_deal: "The deal",
+  wor_deal: "The Deal",
   wor_price: "Purchase price",
   wor_equity: "Down payment (%)",
   wor_other_costs: "Renovation / closing costs",
@@ -227,7 +227,7 @@ const en = {
   wor_rent: "Monthly rent",
   wor_growth: "Yearly rent increase (%)",
   wor_vacancy: "Vacancy (%)",
-  wor_more: "More expenses & settings",
+  wor_more: "More Expenses & Settings",
   wor_insurance: "Insurance / year",
   wor_maintenance: "Maintenance (% of rent)",
   wor_management: "Property management (% of rent)",
@@ -261,7 +261,7 @@ const en = {
     "Approximate estimate based on mock market averages. Not financial advice \u2014 verify prices, rates and costs before investing.",
 
   nav_billing: "Plan",
-  billing_title: "Plan & subscription",
+  billing_title: "Plan & Subscription",
   billing_intro:
     "The first month is free with full access. From the second month, pick the plan that fits your portfolio. Payments launch soon \u2014 until then the selected plan activates immediately.",
   billing_trial: "Free trial",
@@ -302,26 +302,26 @@ const en = {
     "Shapes your dashboard and menu: a hotel sees today's arrivals and occupancy, a brokerage sees managed objects and contracts, a car rental sees its fleet and handovers.",
   invited_to_company: "You are joining a company team.",
 
-  dash_arrivals_today: "Arrivals today",
-  dash_departures_today: "Departures today",
+  dash_arrivals_today: "Arrivals Today",
+  dash_departures_today: "Departures Today",
   dash_occupied_now: "Occupied now",
   dash_no_arrivals: "No arrivals today.",
   dash_no_departures: "No departures today.",
   dash_open_alerts: "Open alerts",
   dash_guest: "Guest",
   dash_managed: "Objects under management",
-  dash_status_title: "Status overview",
-  dash_expiring_30: "Contracts expiring within 30 days",
+  dash_status_title: "Status Overview",
+  dash_expiring_30: "Contracts Expiring Within 30 Days",
   dash_no_expiring: "No contracts expire in the next 30 days.",
   dash_rent_month: "Monthly rent income",
-  dash_quick: "Quick actions",
-  analytics_title: "Rental analytics",
+  dash_quick: "Quick Actions",
+  analytics_title: "Rental Analytics",
   analytics_intro:
     "Detailed occupancy, rate and revenue breakdowns — by month and by unit.",
   dash_fleet: "Fleet",
   dash_rented_now: "Rented out now",
-  dash_handovers_today: "Handovers today",
-  dash_returns_today: "Returns today",
+  dash_handovers_today: "Handovers Today",
+  dash_returns_today: "Returns Today",
   dash_no_handovers: "No handovers today.",
   dash_no_returns: "No returns today.",
 
@@ -340,7 +340,7 @@ const en = {
 
   invest_tab_re: "Real estate",
   invest_tab_car: "Vehicle",
-  car_title: "Car rental calculator",
+  car_title: "Car Rental Calculator",
   car_intro:
     "Buying a car to rent out daily? Enter the model and your numbers — income, payback, and how your price compares to the market average for that model.",
   car_model: "Model",
@@ -350,7 +350,7 @@ const en = {
   car_days: "Rented days per month",
   car_costs: "Running costs (% of income)",
   car_costs_hint: "Insurance, service, cleaning, amortization.",
-  car_compare_title: "Market comparison",
+  car_compare_title: "Market Comparison",
   car_market_price: "Market average price",
   car_market_rate: "Market daily rate",
   car_vs_market_below: "below market",
@@ -371,7 +371,7 @@ const en = {
 
   below_market: "below market",
 
-  income_title: "Income records",
+  income_title: "Income Records",
   income_add: "Add income",
   income_source: "Source",
   income_amount: "Amount",
@@ -431,7 +431,7 @@ const en = {
   land_demo: "Want to see it filled in first? Try the ready-made demo —",
   land_demo_cta: "Open the demo",
 
-  pricing_title: "Price suggestions",
+  pricing_title: "Price Suggestions",
   pricing_intro:
     "Rule-based suggestions for the next 14 days: base rate × seasonality × demand, nudged toward the district benchmark.",
   pricing_date: "Date",
@@ -442,10 +442,10 @@ const en = {
 
   kpi_occupancy: "Occupancy",
   kpi_revenue: "Revenue",
-  this_month: "This month",
-  next_30_occupancy: "Next 30 days occupancy",
-  monthly_title: "By month",
-  per_unit_title: "By unit (this month)",
+  this_month: "This Month",
+  next_30_occupancy: "Next 30 Days Occupancy",
+  monthly_title: "By Month",
+  per_unit_title: "By Unit (This Month)",
   month_col: "Month",
   nights_sold: "Nights sold",
 
@@ -462,7 +462,7 @@ const en = {
 
   sync_now: "Sync calendars",
   bookings_add: "Add booking",
-  booking_new_title: "New booking",
+  booking_new_title: "New Booking",
   booking_unit: "Unit",
   booking_source: "Source",
   source_manual: "Manual",
