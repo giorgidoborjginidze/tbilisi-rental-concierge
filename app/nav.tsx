@@ -6,6 +6,7 @@ import { t } from "@/lib/i18n/strings";
 import { toggleLocale } from "@/lib/i18n/actions";
 import { logout } from "@/lib/auth/actions";
 import ThemeToggle from "./theme-toggle";
+import ActivoLogo from "./activo-logo";
 
 export default async function Nav() {
   const locale = await getLocale();
@@ -40,8 +41,8 @@ export default async function Nav() {
 
   return (
     <nav className="nav">
-      <Link href="/" className="nav__brand">
-        {t(locale, "appName")}
+      <Link href="/" className="nav__brand" aria-label={t(locale, "appName")}>
+        <ActivoLogo height={24} />
       </Link>
       <div className="nav__links">
         {links.map((link) => (
