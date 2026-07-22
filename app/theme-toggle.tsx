@@ -9,19 +9,18 @@ export default function ThemeToggle() {
   const [dark, setDark] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const forced = document.documentElement.dataset.theme;
-    setDark(
-      forced
-        ? forced === "dark"
-        : window.matchMedia("(prefers-color-scheme: dark)").matches,
-    );
+    // Light is the default; dark only when explicitly chosen.
+    setDark(document.documentElement.dataset.theme === "dark");
   }, []);
 
   const toggle = () => {
-    const next = dark ? "light" : "dark";
+    // Read the live attribute so a click never depends on hydration
+    // timing (default with no attribute counts as light).
+    const isDark = document.documentElement.dataset.theme === "dark";
+    const next = isDark ? "light" : "dark";
     document.documentElement.dataset.theme = next;
     document.cookie = `theme=${next}; path=/; max-age=31536000; samesite=lax`;
-    setDark(!dark);
+    setDark(next === "dark");
   };
 
   return (

@@ -3,7 +3,7 @@ export type Locale = "en" | "ka";
 export const LOCALES: Locale[] = ["en", "ka"];
 
 const en = {
-  appName: "Property Dashboard",
+  appName: "Activo",
   nav_dashboard: "Dashboard",
   nav_units: "Units",
   nav_calendar: "Calendar",
@@ -488,7 +488,7 @@ const en = {
 };
 
 const ka: Record<StringKey, string> = {
-  appName: "ქონების დაფა",
+  appName: "Activo",
   nav_dashboard: "მთავარი",
   nav_units: "ერთეულები",
   nav_calendar: "კალენდარი",

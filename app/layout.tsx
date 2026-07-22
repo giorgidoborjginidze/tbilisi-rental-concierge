@@ -23,9 +23,9 @@ const notoGeorgian = Noto_Sans_Georgian({
 });
 
 export const metadata: Metadata = {
-  title: "STR Operator Dashboard",
+  title: "Activo — ქონების დაფა",
   description:
-    "Portfolio, calendar, pricing and alerts for STR / aparthotel operators in Georgia",
+    "მთელი შენი ქონება ერთ დაფაზე — უძრავი ქონება, გაქირავება, შემოსავალი და საინვესტიციო ანალიზი.",
 };
 
 export default async function RootLayout({
