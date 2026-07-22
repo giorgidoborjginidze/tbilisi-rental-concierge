@@ -57,6 +57,33 @@ function Landing({ locale }: { locale: Locale }) {
         </p>
       </section>
 
+      {/* Promo video — shown once NEXT_PUBLIC_DEMO_VIDEO_URL is set to the
+          MP4 (self-hosted in /public or an external URL). Poster optional. */}
+      {process.env.NEXT_PUBLIC_DEMO_VIDEO_URL && (
+        <section style={{ maxWidth: 860, marginTop: 34 }}>
+          <h2 style={{ marginTop: 0 }}>{t(locale, "land_video_title")}</h2>
+          <div
+            style={{
+              borderRadius: 16,
+              overflow: "hidden",
+              border: "1px solid var(--color-border)",
+              boxShadow: "var(--shadow-card)",
+              background: "#000",
+            }}
+          >
+            <video
+              controls
+              playsInline
+              preload="metadata"
+              poster={process.env.NEXT_PUBLIC_DEMO_VIDEO_POSTER}
+              style={{ width: "100%", display: "block" }}
+            >
+              <source src={process.env.NEXT_PUBLIC_DEMO_VIDEO_URL} type="video/mp4" />
+            </video>
+          </div>
+        </section>
+      )}
+
       <section className="kpi-grid" style={{ marginTop: 28 }}>
         {benefits.map(([titleKey, bodyKey]) => (
           <div key={titleKey} className="kpi">

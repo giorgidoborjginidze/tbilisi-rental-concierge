@@ -427,6 +427,7 @@ const en = {
   land_try_calc: "Try the free calculator",
   land_pricing:
     "First month free with full access \u2014 then plans from 15\u20be/month.",
+  land_video_title: "See Activo in action",
 
   pricing_title: "Price suggestions",
   pricing_intro:
@@ -911,6 +912,7 @@ const ka: Record<StringKey, string> = {
   land_try_calc: "სცადე უფასო კალკულატორი",
   land_pricing:
     "პირველი თვე უფასოა სრული წვდომით — შემდეგ პაკეტები 15₾/თვიდან.",
+  land_video_title: "იხილე Activo მოქმედებაში",
 
   pricing_title: "ფასების რეკომენდაციები",
   pricing_intro:
