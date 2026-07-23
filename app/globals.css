@@ -1085,3 +1085,48 @@ td:first-child {
     width: 100%;
   }
 }
+
+/* Occupancy calendar: one grid — a name column + 31 equal day columns, so
+   every month lines up (short months get blank cells) and cells are square
+   and evenly sized. */
+.cal-grid {
+  display: grid;
+  grid-template-columns: 48px repeat(31, minmax(0, 1fr));
+  align-items: center;
+  gap: 5px 4px;
+  padding: 14px 16px;
+}
+.cal-grid .cal-name {
+  width: auto;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.cal-grid .cal-daynum {
+  width: auto;
+  font-size: 11px;
+  line-height: 1;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+.cal-grid .cal-cell {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  border-radius: 3px;
+}
+.cal-grid .cal-cell--blank {
+  background: transparent;
+}
+@media (max-width: 760px) {
+  .cal-grid {
+    grid-template-columns: 28px repeat(31, minmax(0, 1fr));
+    gap: 3px 2px;
+    padding: 12px 8px;
+  }
+  .cal-grid .cal-name {
+    font-size: 9px;
+  }
+  .cal-grid .cal-daynum {
+    font-size: 7px;
+  }
+}

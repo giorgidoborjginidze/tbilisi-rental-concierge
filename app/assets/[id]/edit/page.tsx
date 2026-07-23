@@ -151,7 +151,7 @@ export default async function EditAssetPage({
   const holidayPct = asset.holidayPct ?? 0;
 
   const intl = locale === "ka" ? "ka-GE" : "en-GB";
-  const fmtMonth = new Intl.DateTimeFormat(intl, { month: "short", year: "2-digit" });
+  const fmtMonth = new Intl.DateTimeFormat(intl, { month: "short" });
   const fmtDate = new Intl.DateTimeFormat(intl, {
     day: "numeric", month: "short", year: "numeric",
   });

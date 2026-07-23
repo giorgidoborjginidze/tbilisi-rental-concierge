@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useActionState } from "react";
 import { saveContract } from "@/lib/assets/actions";
 import type { FormState } from "@/lib/units/actions";
@@ -116,28 +116,21 @@ export default function OccupancyCalendar({
   return (
     <div>
       <div
-        className="card"
-        style={{ padding: "12px 16px", touchAction: "none", userSelect: "none" }}
+        className="card cal-grid"
+        style={{ touchAction: "none", userSelect: "none" }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
       >
-        {/* Day-number header, aligned with the columns below. */}
-        <div className="cal-row cal-row--head">
-          <span className="cal-name" />
-          {Array.from(
-            { length: Math.max(0, ...months.map((m) => m.days.length)) },
-            (_, i) => {
-              const d = i + 1;
-              return (
-                <span key={i} className="cal-daynum">
-                  {d === 1 || d % 5 === 0 ? d : ""}
-                </span>
-              );
-            },
-          )}
-        </div>
+        {/* Header: day numbers 1–31, one per column. */}
+        <span className="cal-name" />
+        {Array.from({ length: 31 }, (_, i) => (
+          <span key={`h${i}`} className="cal-daynum">{i + 1}</span>
+        ))}
+
+        {/* One row per month; every month is padded to 31 columns so the
+            grid is perfectly aligned (short months get blank cells). */}
         {months.map((month) => (
-          <div key={month.label} className="cal-row">
+          <Fragment key={month.label}>
             <span
               className="cal-name"
               style={{
@@ -147,15 +140,19 @@ export default function OccupancyCalendar({
             >
               {month.label}
             </span>
-            {month.days.map((day) => (
-              <span
-                key={day.iso}
-                data-iso={day.iso}
-                className={`cal-cell ${day.cls} ${inSelection(day.iso) ? "cal-cell--sel" : ""}`}
-                title={day.title}
-              />
-            ))}
-          </div>
+            {Array.from({ length: 31 }, (_, i) => {
+              const day = month.days[i];
+              if (!day) return <span key={i} className="cal-cell cal-cell--blank" />;
+              return (
+                <span
+                  key={day.iso}
+                  data-iso={day.iso}
+                  className={`cal-cell ${day.cls} ${inSelection(day.iso) ? "cal-cell--sel" : ""}`}
+                  title={day.title}
+                />
+              );
+            })}
+          </Fragment>
         ))}
       </div>
       <p className="hint" style={{ marginTop: 8 }}>{labels.drag_hint}</p>
