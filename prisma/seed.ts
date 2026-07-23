@@ -544,6 +544,38 @@ async function main() {
     }
   }
 
+  // Crypto holdings — quantity/avg-buy tracked; live price fetched at render.
+  const cryptoHoldings = [
+    {
+      name: "Bitcoin", symbol: "BTC", coingeckoId: "bitcoin",
+      trades: [
+        { side: "buy", quantity: 0.15, unitPrice: 43000, tradedAt: utc(2024, 3, 12) },
+        { side: "buy", quantity: 0.1, unitPrice: 61000, tradedAt: utc(2024, 11, 8) },
+        { side: "sell", quantity: 0.05, unitPrice: 92000, tradedAt: utc(2025, 1, 20) },
+      ],
+    },
+    {
+      name: "Ethereum", symbol: "ETH", coingeckoId: "ethereum",
+      trades: [
+        { side: "buy", quantity: 2, unitPrice: 2350, tradedAt: utc(2024, 2, 5) },
+        { side: "buy", quantity: 1.5, unitPrice: 3100, tradedAt: utc(2024, 12, 1) },
+      ],
+    },
+  ];
+  for (const { trades, ...cryptoData } of cryptoHoldings) {
+    const asset = await prisma.asset.create({
+      data: {
+        ...cryptoData,
+        category: "crypto", type: "coin",
+        status: "personal_use",
+        operatorId: operator.id, currency: "USD",
+      },
+    });
+    for (const tr of trades) {
+      await prisma.cryptoTrade.create({ data: { ...tr, assetId: asset.id } });
+    }
+  }
+
   // Manual income entries (rent + STR income are derived automatically).
   const incomes = [
     { source: "salary", description: "Monthly salary", date: utc(2026, 5, 30), amount: 5000 },
@@ -562,7 +594,8 @@ async function main() {
     `Seeded: 1 operator, ${units.length} units, ${bookingCount} bookings, ` +
       `${leases.length} leases, ${benchmarkCount} benchmark rows, ` +
       `${assets.length} assets, ${contractCount} contracts, ` +
-      `${rentBenchmarkCount} rent benchmarks, ${incomes.length} income records.`,
+      `${rentBenchmarkCount} rent benchmarks, ${incomes.length} income records, ` +
+      `${cryptoHoldings.length} crypto holdings.`,
   );
 }
 

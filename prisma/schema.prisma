@@ -181,8 +181,12 @@ model Asset {
   operatorId     String
   name           String
   nameKa         String?
-  category       String // "real_estate" | "vehicle" | "income_source" | "other"
-  type           String // apartment | house | commercial | land | garage | car | equipment | salary | dividend | ...
+  category       String // "real_estate" | "vehicle" | "income_source" | "other" | "crypto"
+  type           String // apartment | house | commercial | land | garage | car | equipment | salary | dividend | crypto | ...
+  // Crypto holdings: coin ticker (e.g. "BTC") + CoinGecko id for live
+  // pricing. Quantity and average cost are derived from CryptoTrade.
+  symbol         String?
+  coingeckoId    String?
   city           String?
   district       String?
   address        String?
@@ -215,8 +219,26 @@ model Asset {
   unit      Unit?            @relation(fields: [unitId], references: [id], onDelete: SetNull)
   contracts RentalContract[]
   incomes   IncomeRecord[]
+  trades    CryptoTrade[]
 
   @@index([operatorId])
+}
+
+// A single crypto buy or sell on a crypto Asset. Holdings, average buy
+// price and P/L are derived from these (lib/crypto/holdings.ts). Prices
+// are per-coin in USD (crypto convention).
+model CryptoTrade {
+  id        String   @id @default(cuid())
+  assetId   String
+  side      String // "buy" | "sell"
+  quantity  Float // coins
+  unitPrice Float // USD per coin at the trade
+  tradedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId, tradedAt])
 }
 
 // A long-term rental contract on an asset (apartment lease, car rental...).

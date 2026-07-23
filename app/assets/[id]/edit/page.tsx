@@ -7,6 +7,7 @@ import { t, type StringKey } from "@/lib/i18n/strings";
 import { deleteContract } from "@/lib/assets/actions";
 import { dayPrice } from "@/lib/assets/daily-price";
 import OccupancyCalendar from "./occupancy-calendar";
+import CryptoView from "./crypto-view";
 import { LISTING_PLATFORMS } from "@/lib/types";
 import AssetForm from "../../asset-form";
 import ContractForm from "../../contract-form";
@@ -52,6 +53,16 @@ export default async function EditAssetPage({
   if (!asset) notFound();
 
   const locale = await getLocale();
+
+  // Crypto holdings have their own view (live valuation + buy/sell).
+  if (asset.category === "crypto") {
+    return (
+      <CryptoView
+        asset={{ id: asset.id, name: asset.name, symbol: asset.symbol, coingeckoId: asset.coingeckoId }}
+        locale={locale}
+      />
+    );
+  }
   const props = await assetFormProps(locale, operator.id, asset.id);
   const isIncome = asset.category === "income_source";
 
