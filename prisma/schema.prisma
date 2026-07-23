@@ -30,6 +30,8 @@ model Operator {
   plan        String? // "starter" | "standard" | "pro" | "biz_s" | "biz_m"
   trialEndsAt DateTime?
   planSetAt   DateTime?
+  // Subscription paid through this date (set on a successful payment).
+  paidUntil   DateTime?
 
   // Team (business accounts): members belong to an owner's company and
   // enter their own listings; limits are counted company-wide.
@@ -44,8 +46,31 @@ model Operator {
   incomes  IncomeRecord[]
   sessions Session[]
   invites  Invite[]
+  payments Payment[]
 
   @@index([companyId])
+}
+
+// A subscription payment attempt through a payment provider (Flitt).
+// One row per checkout; status advances to "approved" via the provider's
+// server callback, which is when the plan is actually activated.
+model Payment {
+  id          String    @id @default(cuid())
+  operatorId  String
+  provider    String    @default("flitt")
+  plan        String // plan id being purchased
+  amountMinor Int // amount in minor units (tetri) — 49 GEL = 4900
+  currency    String    @default("GEL")
+  // "pending" → "approved" | "declined". Activation happens on "approved".
+  status      String    @default("pending")
+  orderId     String    @unique // our id sent to the provider
+  providerRef String? // provider's payment id (from the callback)
+  createdAt   DateTime  @default(now())
+  paidAt      DateTime?
+
+  operator Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+
+  @@index([operatorId])
 }
 
 // A pending team invitation (business plans). The invite link is

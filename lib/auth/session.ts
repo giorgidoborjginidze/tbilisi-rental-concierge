@@ -38,6 +38,7 @@ export type SessionOperator = {
   profile: string; // "personal" | "hotel" | "brokerage"
   plan: string | null;
   trialEndsAt: Date | null;
+  paidUntil: Date | null;
   companyId: string | null;
   role: string;
 };
@@ -54,7 +55,7 @@ export async function getSessionOperator(): Promise<SessionOperator | null> {
         select: {
           id: true, name: true, email: true, locale: true,
           accountType: true, profile: true, plan: true, trialEndsAt: true,
-          companyId: true, role: true,
+          paidUntil: true, companyId: true, role: true,
         },
       },
     },

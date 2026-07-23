@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { requireOperator } from "@/lib/auth/session";
 import { getBillingContext } from "@/lib/billing/context";
 import { plansFor, type AccountType } from "@/lib/billing/plans";
+import { isFlittSandbox } from "@/lib/billing/flitt";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
 import PlanCards from "./plan-cards";
@@ -9,10 +10,22 @@ import TeamSection from "./team-section";
 
 export const dynamic = "force-dynamic";
 
-export default async function BillingPage() {
+export default async function BillingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const operator = await requireOperator();
   const locale = await getLocale();
   const context = await getBillingContext(operator);
+  const justReturned = (await searchParams).paid === "1";
+  const sandbox = isFlittSandbox();
+
+  const fmtDate = new Intl.DateTimeFormat(locale === "ka" ? "ka-GE" : "en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 
   const isMember = operator.companyId != null;
   const accountType = (isMember ? "business" : operator.accountType) as AccountType;
@@ -38,7 +51,7 @@ export default async function BillingPage() {
     "plan_starter", "plan_standard", "plan_pro", "plan_biz_s", "plan_biz_m",
     "team_invite", "team_invite_hint", "team_remove", "copy_link", "billing_analysis",
     "operator_email", "error_required", "error_limit_members",
-    "error_owner_only", "save",
+    "error_owner_only", "save", "billing_pay", "error_payment",
   ];
   const labels = Object.fromEntries(labelKeys.map((key) => [key, t(locale, key)]));
 
@@ -48,6 +61,14 @@ export default async function BillingPage() {
       <p className="mb-5" style={{ color: "var(--color-text-muted)", fontSize: 13, maxWidth: 640 }}>
         {t(locale, "billing_intro")}
       </p>
+
+      {justReturned && (
+        <div className="alert-card alert-card--underpriced">
+          <div className="alert-card__detail" style={{ marginTop: 0 }}>
+            {t(locale, "billing_pay_return")}
+          </div>
+        </div>
+      )}
 
       {isMember && (
         <div className="alert-card alert-card--lease">
@@ -83,6 +104,11 @@ export default async function BillingPage() {
             <div className="kpi__value">
               {t(locale, `plan_${context.plan.id}` as StringKey)}
             </div>
+            {operator.paidUntil && (
+              <div className="kpi__sub">
+                {t(locale, "billing_paid_until")}: {fmtDate.format(operator.paidUntil)}
+              </div>
+            )}
           </div>
           <div className="kpi">
             <div className="kpi__label">{t(locale, "nav_assets")}</div>
@@ -106,6 +132,15 @@ export default async function BillingPage() {
           )}
         </div>
       </section>
+
+      {!isMember && sandbox && (
+        <div className="alert-card alert-card--gap" style={{ marginTop: 8 }}>
+          <div className="alert-card__title">{t(locale, "billing_sandbox")}</div>
+          <div className="alert-card__detail" style={{ marginTop: 4 }}>
+            {t(locale, "billing_sandbox_card")}
+          </div>
+        </div>
+      )}
 
       {!isMember && (
         <PlanCards

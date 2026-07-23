@@ -265,13 +265,20 @@ const en = {
   nav_billing: "Plan",
   billing_title: "Plan & Subscription",
   billing_intro:
-    "The first month is free with full access. From the second month, pick the plan that fits your portfolio. Payments launch soon \u2014 until then the selected plan activates immediately.",
+    "The first month is free with full access. From the second month, pick the plan that fits your portfolio. Card payments are handled securely by Flitt.",
   billing_trial: "Free Trial",
   billing_trial_over:
     "Your free month is over \u2014 choose a plan to keep adding records.",
   billing_current: "Current Plan",
   billing_choose: "Choose",
   billing_chosen: "Selected",
+  billing_pay: "Subscribe",
+  billing_paid_until: "Paid Until",
+  billing_pay_return:
+    "Thanks! Once your payment is confirmed, your plan activates automatically \u2014 it may take a few seconds.",
+  billing_sandbox: "Test Mode",
+  billing_sandbox_card:
+    "Payments run in Flitt's sandbox. Use test card 4444 5555 6666 1111, any future expiry, CVV 123 \u2014 no real money moves.",
   billing_member_account:
     "Your account is part of a company team \u2014 the company's plan applies.",
   plan_starter: "Starter",
@@ -490,6 +497,7 @@ const en = {
   error_invalid_number: "Rates, capacity and bedrooms must be valid numbers.",
   error_email_taken: "An operator with this email already exists.",
   error_dates: "Check-out must be after check-in.",
+  error_payment: "Couldn't start the payment. Please try again in a moment.",
 
   // Crypto holdings
   section_crypto: "Crypto Holdings",
@@ -801,13 +809,20 @@ const ka: Record<StringKey, string> = {
   nav_billing: "პაკეტი",
   billing_title: "პაკეტი და გამოწერა",
   billing_intro:
-    "პირველი თვე უფასოა სრული წვდომით. მეორე თვიდან აირჩიე შენს პორტფელზე მორგებული პაკეტი. გადახდები მალე ჩაირთვება — მანამდე არჩეული პაკეტი მაშინვე აქტიურდება.",
+    "პირველი თვე უფასოა სრული წვდომით. მეორე თვიდან აირჩიე შენს პორტფელზე მორგებული პაკეტი. ბარათით გადახდას უსაფრთხოდ ამუშავებს Flitt.",
   billing_trial: "უფასო პერიოდი",
   billing_trial_over:
     "უფასო თვე დასრულდა — ჩანაწერების დამატების გასაგრძელებლად აირჩიე პაკეტი.",
   billing_current: "მიმდინარე პაკეტი",
   billing_choose: "არჩევა",
   billing_chosen: "არჩეულია",
+  billing_pay: "გამოწერა",
+  billing_paid_until: "გადახდილია",
+  billing_pay_return:
+    "მადლობა! გადახდის დადასტურებისთანავე პაკეტი ავტომატურად აქტიურდება — შესაძლოა რამდენიმე წამი დასჭირდეს.",
+  billing_sandbox: "სატესტო რეჟიმი",
+  billing_sandbox_card:
+    "გადახდები მუშაობს Flitt-ის sandbox-ში. გამოიყენე სატესტო ბარათი 4444 5555 6666 1111, ნებისმიერი მომავალი ვადა, CVV 123 — ნამდვილი ფული არ იხარჯება.",
   billing_member_account:
     "შენი ანგარიში კომპანიის გუნდშია — მოქმედებს კომპანიის პაკეტი.",
   plan_starter: "სტარტი",
@@ -1026,6 +1041,7 @@ const ka: Record<StringKey, string> = {
     "ტარიფი, ტევადობა და საძინებლების რაოდენობა უნდა იყოს რიცხვები.",
   error_email_taken: "ოპერატორი ამ ელფოსტით უკვე არსებობს.",
   error_dates: "გასვლის თარიღი შესვლის თარიღის შემდეგ უნდა იყოს.",
+  error_payment: "გადახდის დაწყება ვერ მოხერხდა. სცადე ცოტა ხანში.",
 
   // Crypto holdings
   section_crypto: "კრიპტო აქტივები",

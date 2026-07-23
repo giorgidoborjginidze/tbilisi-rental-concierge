@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { choosePlan } from "@/lib/billing/actions";
+import { startCheckout } from "@/lib/billing/actions";
 import type { FormState } from "@/lib/units/actions";
 
 export interface PlanCard {
@@ -28,7 +28,7 @@ export default function PlanCards({
   labels: Record<string, string>;
 }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(
-    choosePlan,
+    startCheckout,
     null,
   );
 
@@ -76,7 +76,7 @@ export default function PlanCards({
                   className={isChosen ? "btn-secondary" : "btn-primary"}
                   style={{ width: "100%", textAlign: "center" }}
                 >
-                  {isChosen ? labels.billing_chosen : labels.billing_choose}
+                  {isChosen ? labels.billing_chosen : (pending ? "…" : labels.billing_pay)}
                 </button>
               </form>
             </div>

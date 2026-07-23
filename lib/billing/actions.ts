@@ -1,18 +1,22 @@
 "use server";
 
 import { randomBytes } from "node:crypto";
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireOperator } from "@/lib/auth/session";
+import { siteUrl } from "@/lib/site";
+import { createFlittCheckout } from "./flitt";
 import { planById, plansFor, type AccountType } from "./plans";
 import type { FormState } from "@/lib/units/actions";
 
 const str = (formData: FormData, key: string) =>
   String(formData.get(key) ?? "").trim();
 
-// Payments arrive in a later stage; until then choosing a plan
-// activates it immediately (still fully limit-enforced).
-export async function choosePlan(
+// Starts a Flitt checkout for the chosen plan. A pending Payment is
+// recorded, then the buyer is redirected to the hosted payment page. The
+// plan is only activated later, by the provider's verified callback.
+export async function startCheckout(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
@@ -24,12 +28,38 @@ export async function choosePlan(
     return { error: "error_required" };
   }
 
-  await prisma.operator.update({
-    where: { id: operator.id },
-    data: { plan: plan.id, planSetAt: new Date() },
+  const orderId = `activo-${operator.id}-${Date.now()}-${randomBytes(4).toString("hex")}`;
+  const amountMinor = Math.round(plan.priceGel * 100);
+
+  await prisma.payment.create({
+    data: {
+      operatorId: operator.id,
+      plan: plan.id,
+      amountMinor,
+      status: "pending",
+      orderId,
+    },
   });
-  revalidatePath("/billing");
-  return { ok: true };
+
+  let checkoutUrl: string;
+  try {
+    checkoutUrl = await createFlittCheckout({
+      orderId,
+      amountMinor,
+      description: `Activo — ${plan.id} (${plan.priceGel} GEL/mo)`,
+      callbackUrl: `${siteUrl()}/api/payments/flitt/callback`,
+      responseUrl: `${siteUrl()}/billing?paid=1`,
+    });
+  } catch {
+    await prisma.payment.update({
+      where: { orderId },
+      data: { status: "declined" },
+    });
+    return { error: "error_payment" };
+  }
+
+  // redirect throws — must be outside the try/catch above.
+  redirect(checkoutUrl);
 }
 
 export async function createInvite(
