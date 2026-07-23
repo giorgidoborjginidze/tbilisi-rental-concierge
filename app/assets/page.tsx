@@ -369,14 +369,14 @@ export default async function AssetsPage() {
                             {displayName(asset)}
                           </Link>
                           <div className="cell-sub">
-                            {[asset.district, asset.address].filter(Boolean).join(" · ")}
+                            {asset.district && <div>{asset.district}</div>}
+                            {asset.address && <div>{asset.address}</div>}
                             {asset.unit && (
-                              <>
-                                {" "}
+                              <div>
                                 <Link href={`/calendar?unit=${asset.unit.id}`} className="link">
                                   ({asset.unit.name})
                                 </Link>
-                              </>
+                              </div>
                             )}
                           </div>
                         </td>

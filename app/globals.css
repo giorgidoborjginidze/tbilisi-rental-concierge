@@ -899,7 +899,6 @@ td:first-child {
     padding: 6px 0;
   }
   .card--stack td:first-child {
-    column-span: all;
     padding-top: 6px;
     padding-bottom: 4px;
   }
