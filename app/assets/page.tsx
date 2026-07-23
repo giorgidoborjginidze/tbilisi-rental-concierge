@@ -11,7 +11,6 @@ import { fetchStockPrices } from "@/lib/stocks/prices";
 import { fetchMetalPrices } from "@/lib/metals/prices";
 import { value as cryptoValue } from "@/lib/crypto/holdings";
 import { LISTING_PLATFORMS } from "@/lib/types";
-import IncomeSection from "./income-section";
 import ListingControls, { type ListingLink } from "./listing-controls";
 import DoorKey from "./door-key";
 
@@ -559,17 +558,6 @@ export default async function AssetsPage() {
         );
       })()}
 
-      <IncomeSection
-        locale={locale}
-        incomes={monthIncomes.map((r) => ({
-          id: r.id,
-          source: r.source,
-          description: r.description,
-          date: fmtDate.format(r.date),
-          amount: r.amount,
-          currency: r.currency,
-        }))}
-      />
     </main>
   );
 }

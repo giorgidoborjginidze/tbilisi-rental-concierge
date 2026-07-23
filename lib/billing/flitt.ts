@@ -32,7 +32,7 @@ export function flittConfig(): FlittConfig {
     currency: process.env.FLITT_CURRENCY?.trim() || defaultCurrency,
     apiUrl:
       process.env.FLITT_API_URL?.trim() ||
-      "https://pay.flitt.com/api/checkout/url",
+      "https://pay.flitt.com/api/checkout/url/",
   };
 }
 
@@ -94,7 +94,8 @@ export async function createFlittCheckout(
       signal: controller.signal,
       cache: "no-store",
     });
-    const data = (await res.json()) as {
+    const text = await res.text();
+    let data: {
       response?: {
         response_status?: string;
         checkout_url?: string;
@@ -102,11 +103,22 @@ export async function createFlittCheckout(
         error_code?: number;
       };
     };
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new Error(
+        `HTTP ${res.status} from Flitt (non-JSON): ${text.slice(0, 120)}`,
+      );
+    }
     const r = data.response;
     if (r?.response_status === "success" && r.checkout_url) {
       return r.checkout_url;
     }
-    throw new Error(r?.error_message || "Flitt did not return a checkout URL");
+    throw new Error(
+      r?.error_message
+        ? `${r.error_message}${r.error_code ? ` (code ${r.error_code})` : ""}`
+        : `Flitt did not return a checkout URL (HTTP ${res.status})`,
+    );
   } finally {
     clearTimeout(timer);
   }
