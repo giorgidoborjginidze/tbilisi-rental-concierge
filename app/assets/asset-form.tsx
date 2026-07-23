@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 import { saveAsset, deleteAsset } from "@/lib/assets/actions";
 import type { FormState } from "@/lib/units/actions";
+import ListingInput from "./listing-input";
 
 export interface AssetFormValues {
   id?: string;
@@ -61,6 +62,11 @@ export default function AssetForm({
   );
   const [rentalMode, setRentalMode] = useState(asset?.rentalMode ?? "long_term");
   const types = typesByCategory[category] ?? [];
+
+  // Existing listing URLs (edit mode) seed the smart link field.
+  const initialLinks = [
+    asset?.myhomeUrl, asset?.ssUrl, asset?.myautoUrl, asset?.airbnbUrl, asset?.bookingUrl,
+  ].filter((u): u is string => Boolean(u));
 
   // Cars and real estate can both rent by the day; daily mode unlocks
   // per-day pricing (base rate + weekend/holiday premiums).
@@ -195,35 +201,7 @@ export default function AssetForm({
           </label>
           {rentalModeField}
           {dailyPricingFields}
-          <label className="field">
-            {labels.myhome_url}
-            <input
-              name="myhomeUrl" type="url" placeholder="https://www.myhome.ge/pr/..."
-              defaultValue={asset?.myhomeUrl}
-            />
-          </label>
-          <label className="field">
-            {labels.ss_url}
-            <input
-              name="ssUrl" type="url" placeholder="https://home.ss.ge/..."
-              defaultValue={asset?.ssUrl}
-            />
-          </label>
-          <label className="field">
-            {labels.unit_airbnb_url}
-            <input
-              name="airbnbUrl" type="url" placeholder="https://www.airbnb.com/rooms/..."
-              defaultValue={asset?.airbnbUrl}
-            />
-          </label>
-          <label className="field">
-            {labels.unit_booking_url}
-            <input
-              name="bookingUrl" type="url" placeholder="https://www.booking.com/hotel/ge/..."
-              defaultValue={asset?.bookingUrl}
-            />
-          </label>
-          <span className="hint sm:col-span-2">{labels.myhome_hint}</span>
+          <ListingInput initial={initialLinks} labels={labels} />
         </>
       )}
 
@@ -231,13 +209,7 @@ export default function AssetForm({
         <>
           {rentalModeField}
           {dailyPricingFields}
-          <label className="field sm:col-span-2">
-            {labels.myauto_url}
-            <input
-              name="myautoUrl" type="url" placeholder="https://www.myauto.ge/pr/..."
-              defaultValue={asset?.myautoUrl}
-            />
-          </label>
+          <ListingInput initial={initialLinks} labels={labels} />
         </>
       )}
 

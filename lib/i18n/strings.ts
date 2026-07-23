@@ -145,6 +145,11 @@ const en = {
   myhome_open: "Open on myhome.ge",
   mark_rented: "Rented",
   mark_vacant: "Vacant",
+  listing_links: "Listing Links",
+  listing_add: "Add Link",
+  listing_unknown: "Unknown Platform",
+  listing_hint:
+    "Just paste the listing URL — we detect the platform (myhome.ge, ss.ge, myauto.ge, Airbnb, Booking) automatically. Add more than one if it's listed in several places.",
 
   assets_total_value: "Total Value",
   assets_monthly_income: "Monthly Income",
@@ -689,6 +694,11 @@ const ka: Record<StringKey, string> = {
   myhome_open: "myhome.ge-ზე გახსნა",
   mark_rented: "გაქირავებულია",
   mark_vacant: "თავისუფალია",
+  listing_links: "განცხადების ბმულები",
+  listing_add: "ბმულის დამატება",
+  listing_unknown: "უცნობი პლატფორმა",
+  listing_hint:
+    "უბრალოდ ჩასვი განცხადების ბმული — პლატფორმას (myhome.ge, ss.ge, myauto.ge, Airbnb, Booking) თავად ამოვიცნობთ. დაამატე რამდენიმე, თუ რამდენიმე საიტზეა განთავსებული.",
 
   assets_total_value: "ჯამური ღირებულება",
   assets_monthly_income: "თვიური შემოსავალი",
