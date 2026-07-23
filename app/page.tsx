@@ -61,8 +61,8 @@ function Landing({ locale }: { locale: Locale }) {
         >
           <div className="alert-card__detail" style={{ marginTop: 0 }}>
             {t(locale, "land_demo")}{" "}
-            <code style={{ fontWeight: 600 }}>ops@kolkhetistays.ge</code> /{" "}
-            <code style={{ fontWeight: 600 }}>demo1234</code>
+            <code style={{ fontWeight: 600 }}>test@activo.world</code> /{" "}
+            <code style={{ fontWeight: 600 }}>test1234</code>
           </div>
           <Link href="/login" className="btn-secondary" style={{ whiteSpace: "nowrap" }}>
             {t(locale, "land_demo_cta")}

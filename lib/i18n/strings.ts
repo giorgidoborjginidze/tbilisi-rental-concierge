@@ -502,7 +502,7 @@ const en = {
   auth_no_account: "No account yet?",
   auth_have_account: "Already have an account?",
   logout: "Sign Out",
-  demo_hint: "Demo account: ops@kolkhetistays.ge / demo1234",
+  demo_hint: "Demo account: test@activo.world / test1234",
 
   error_password_short: "Password must be at least 8 characters.",
   error_invalid_credentials: "Incorrect email or password.",
@@ -1072,7 +1072,7 @@ const ka: Record<StringKey, string> = {
   auth_no_account: "ჯერ არ გაქვთ ანგარიში?",
   auth_have_account: "უკვე გაქვთ ანგარიში?",
   logout: "გასვლა",
-  demo_hint: "სადემონსტრაციო ანგარიში: ops@kolkhetistays.ge / demo1234",
+  demo_hint: "სადემონსტრაციო ანგარიში: test@activo.world / test1234",
 
   error_password_short: "პაროლი მინიმუმ 8 სიმბოლო უნდა იყოს.",
   error_invalid_credentials: "ელფოსტა ან პაროლი არასწორია.",

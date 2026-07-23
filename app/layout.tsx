@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { Geist, Geist_Mono, Noto_Sans_Georgian } from "next/font/google";
 import "./globals.css";
 import Nav from "./nav";
-import ActivoLogo from "./activo-logo";
+import AppMark from "./app-mark";
 import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 import { siteUrl } from "@/lib/site";
@@ -83,9 +83,7 @@ export default async function RootLayout({
             color: "var(--color-ink-muted)",
           }}
         >
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-            🔒 <ActivoLogo height={16} />
-          </span>
+          <AppMark size={18} />
           <Link href="/privacy" className="link">
             {t(locale, "privacy_title")}
           </Link>

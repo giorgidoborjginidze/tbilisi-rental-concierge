@@ -236,14 +236,21 @@ async function main() {
   const isPostgres = (process.env.DATABASE_URL ?? "").startsWith("postgres");
 
   if (isPostgres) {
-    // Production (Neon): additive and idempotent. Only create the demo
-    // account if it's missing, and NEVER wipe — real accounts must be
-    // untouched. On repeat deploys this is a no-op.
-    const existing = await prisma.operator.findUnique({
-      where: { email: "ops@kolkhetistays.ge" },
+    // Production (Neon): additive and idempotent. Ensure the demo account
+    // exists with the current credentials — rotating/renaming an earlier
+    // demo if needed — and NEVER wipe real accounts.
+    const existing = await prisma.operator.findFirst({
+      where: { email: { in: ["ops@kolkhetistays.ge", "test@activo.world"] } },
     });
     if (existing) {
-      console.log("Demo account already present — skipping seed.");
+      await prisma.operator.update({
+        where: { id: existing.id },
+        data: {
+          email: "test@activo.world",
+          passwordHash: hashPassword("test1234"),
+        },
+      });
+      console.log("Demo account present — credentials ensured (test@activo.world).");
       await prisma.$disconnect();
       return;
     }
@@ -265,8 +272,8 @@ async function main() {
   const operator = await prisma.operator.create({
     data: {
       name: "Kolkheti Stays",
-      email: "ops@kolkhetistays.ge",
-      passwordHash: hashPassword("demo1234"),
+      email: "test@activo.world",
+      passwordHash: hashPassword("test1234"),
       locale: "en",
       // Demo account: personal Pro plan (12 units / 11 assets need it).
       accountType: "personal",
