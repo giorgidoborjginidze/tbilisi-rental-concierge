@@ -792,6 +792,7 @@ td:first-child {
   }
   .nav__mobile {
     display: inline-flex;
+    margin-left: 8px; /* same gap as between theme and language */
   }
   .nav__desktop-only {
     display: none !important;
