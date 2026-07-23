@@ -462,7 +462,7 @@ export default async function AssetsPage() {
                         <td className="num" data-label={t(locale, "asset_value_col")}>
                           {asset.estimatedValue ? money(asset.estimatedValue) : "—"}
                         </td>
-                        <td className="num card-actions">
+                        <td className="num">
                           <Link href={`/assets/${asset.id}/edit`} className="link">
                             {t(locale, "edit")}
                           </Link>
@@ -552,7 +552,7 @@ export default async function AssetsPage() {
                         <td className="num" data-label={t(locale, "income_monthly")} style={{ fontWeight: 600 }}>
                           {money(asset.monthlyIncome ?? 0)} / {t(locale, "per_month_word")}
                         </td>
-                        <td className="num card-actions">
+                        <td className="num">
                           <Link href={`/assets/${asset.id}/edit`} className="link">
                             {t(locale, "edit")}
                           </Link>
