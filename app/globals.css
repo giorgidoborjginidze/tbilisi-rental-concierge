@@ -860,26 +860,34 @@ td:first-child {
     display: none;
   }
   .card--stack table,
-  .card--stack tbody,
-  .card--stack tr,
-  .card--stack td {
+  .card--stack tbody {
     display: block;
     width: 100%;
   }
+  /* Two columns per card so it's compact, not one tall stack. The title
+     (first cell) and the trailing action (last cell) span both columns. */
   .card--stack tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+    column-gap: 4px;
+    width: 100%;
     padding: 8px 0;
   }
   .card--stack tr + tr {
     border-top: 1px solid var(--color-border);
   }
   .card--stack td {
+    display: block;
     border: none;
     padding: 6px 16px;
   }
   .card--stack td:first-child {
+    grid-column: 1 / -1;
     padding-top: 12px;
   }
   .card--stack tr > td:last-child {
+    grid-column: 1 / -1;
     padding-bottom: 14px;
   }
   .card--stack td.num {
