@@ -121,12 +121,26 @@ export default function OccupancyCalendar({
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
       >
+        {/* Day-number header, aligned with the columns below. */}
+        <div className="cal-row cal-row--head">
+          <span className="cal-name" />
+          {Array.from(
+            { length: Math.max(0, ...months.map((m) => m.days.length)) },
+            (_, i) => {
+              const d = i + 1;
+              return (
+                <span key={i} className="cal-daynum">
+                  {d === 1 || d % 5 === 0 ? d : ""}
+                </span>
+              );
+            },
+          )}
+        </div>
         {months.map((month) => (
           <div key={month.label} className="cal-row">
             <span
               className="cal-name"
               style={{
-                width: 64,
                 fontWeight: month.current ? 700 : 500,
                 color: month.current ? "var(--color-primary)" : undefined,
               }}

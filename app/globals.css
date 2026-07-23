@@ -635,10 +635,14 @@ td:first-child {
   padding: 7px 0;
 }
 .cal-name {
-  width: 180px;
+  width: 64px;
   flex-shrink: 0;
   font-size: 13px;
   font-weight: 500;
+}
+.cal-row--head {
+  padding-top: 0;
+  padding-bottom: 2px;
 }
 .cal-cell {
   width: 22px;
@@ -822,9 +826,25 @@ td:first-child {
     flex-direction: column;
     padding: 14px 16px;
   }
+  /* Shrink the occupancy calendar so a full month fits without scrolling
+     (drag-to-select needs touchAction:none, which would block scrolling). */
+  .cal-row {
+    gap: 1px;
+    padding: 3px 0;
+  }
   .cal-name {
-    width: 108px;
-    font-size: 12px;
+    width: 34px;
+    font-size: 10px;
+  }
+  .cal-cell {
+    width: 7px;
+    height: 7px;
+    border-radius: 2px;
+  }
+  .cal-daynum {
+    width: 7px;
+    font-size: 8px;
+    overflow: visible;
   }
   .btn-primary,
   .btn-secondary,
