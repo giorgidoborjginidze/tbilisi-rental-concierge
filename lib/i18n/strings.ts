@@ -4,6 +4,7 @@ export const LOCALES: Locale[] = ["en", "ka"];
 
 const en = {
   appName: "Activo",
+  greeting: "Hello",
   nav_dashboard: "Dashboard",
   nav_units: "Units",
   nav_calendar: "Calendar",
@@ -583,6 +584,7 @@ const en = {
 
 const ka: Record<StringKey, string> = {
   appName: "Activo",
+  greeting: "გამარჯობა",
   nav_dashboard: "მთავარი",
   nav_units: "ერთეულები",
   nav_calendar: "კალენდარი",
