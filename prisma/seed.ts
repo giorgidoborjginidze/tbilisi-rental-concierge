@@ -246,6 +246,7 @@ async function main() {
       await prisma.operator.update({
         where: { id: existing.id },
         data: {
+          name: "Activo",
           email: "test@activo.world",
           passwordHash: hashPassword("test1234"),
         },
@@ -271,7 +272,7 @@ async function main() {
 
   const operator = await prisma.operator.create({
     data: {
-      name: "Kolkheti Stays",
+      name: "Activo",
       email: "test@activo.world",
       passwordHash: hashPassword("test1234"),
       locale: "en",
