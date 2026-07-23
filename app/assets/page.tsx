@@ -330,10 +330,9 @@ export default async function AssetsPage() {
               { key: "vehicle", title: "section_vehicles", showMarket: false },
               { key: "other", title: "section_general", showMarket: false },
             ] as const
-          ).flatMap(({ key, title, showMarket }) => {
+          ).map(({ key, title, showMarket }) => {
             const group = assets.filter((a) => a.category === key);
-            if (group.length === 0) return [];
-            return [{ group: key, node: (
+            return { group: key, empty: group.length === 0, addHref: `/assets/new?category=${key}`, node: group.length === 0 ? null : (
           <section key={key}>
             <h2>{t(locale, title)}</h2>
             <div className="card card--stack">
@@ -475,9 +474,9 @@ export default async function AssetsPage() {
               </table>
             </div>
           </section>
-          ) }];
+          ) };
           }),
-          { group: "digital", node: (
+          { group: "digital", empty: cryptoRows.length === 0 && stockRows.length === 0 && metalRows.length === 0, addHref: "/assets/new?category=crypto", node: (
       <section>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 style={{ marginBottom: 0 }}>
@@ -515,7 +514,7 @@ export default async function AssetsPage() {
         )}
       </section>
           ) },
-          { group: "income", node: (() => {
+          { group: "income", empty: assets.filter((a) => a.category === "income_source").length === 0, addHref: "/assets/new?category=income_source", node: (() => {
         const incomeAssets = assets.filter((a) => a.category === "income_source");
         return (
           <section>
@@ -568,6 +567,7 @@ export default async function AssetsPage() {
         );
       })() },
         ]}
+        ctaText={t(locale, "add_cta")}
       />
     </main>
   );
