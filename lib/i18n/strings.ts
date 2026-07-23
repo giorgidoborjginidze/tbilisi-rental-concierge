@@ -513,7 +513,14 @@ const en = {
   error_payment: "Couldn't start the payment. Please try again in a moment.",
 
   // Crypto holdings
-  section_crypto: "Crypto Holdings",
+  section_crypto: "Crypto",
+  holding_name: "Name",
+  holding_quantity: "Quantity",
+  seg_all: "All Assets",
+  seg_real_estate: "Real Estate",
+  seg_vehicle: "Movable Property",
+  seg_income: "Salary / Dividend",
+  seg_digital: "Digital Assets",
   crypto_new_title: "Add a Crypto Holding",
   crypto_new_intro: "Pick a coin, then log your buys and sells. We show the live price and your profit or loss automatically.",
   crypto_coin: "Coin",
@@ -1076,7 +1083,14 @@ const ka: Record<StringKey, string> = {
   error_payment: "გადახდის დაწყება ვერ მოხერხდა. სცადე ცოტა ხანში.",
 
   // Crypto holdings
-  section_crypto: "კრიპტო აქტივები",
+  section_crypto: "კრიპტო",
+  holding_name: "დასახელება",
+  holding_quantity: "რაოდენობა",
+  seg_all: "ყველა აქტივი",
+  seg_real_estate: "უძრავი ქონება",
+  seg_vehicle: "მოძრავი ქონება",
+  seg_income: "ხელფასი / დივიდენდი",
+  seg_digital: "ციფრული აქტივები",
   crypto_new_title: "კრიპტო აქტივის დამატება",
   crypto_new_intro: "აირჩიეთ მონეტა, შემდეგ ჩაწერეთ ყიდვები და გაყიდვები. ცოცხალ ფასს და თქვენს მოგება-ზარალს ავტომატურად გაჩვენებთ.",
   crypto_coin: "მონეტა",

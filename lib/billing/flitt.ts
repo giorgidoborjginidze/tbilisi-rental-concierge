@@ -23,16 +23,20 @@ const SANDBOX_MERCHANT_ID = "1396424";
 
 export function flittConfig(): FlittConfig {
   const merchantId = process.env.FLITT_MERCHANT_ID?.trim() || SANDBOX_MERCHANT_ID;
+  const isSandbox = merchantId === SANDBOX_MERCHANT_ID;
   // The public sandbox merchant doesn't support GEL, so default it to USD
   // (amounts are the same numbers, just test money). Real merchants → GEL.
-  const defaultCurrency = merchantId === SANDBOX_MERCHANT_ID ? "USD" : "GEL";
+  const defaultCurrency = isSandbox ? "USD" : "GEL";
+  // The 1396424 test merchant lives on Fondy's gateway; real Flitt merchants
+  // use pay.flitt.com. Both speak the same API.
+  const defaultApiUrl = isSandbox
+    ? "https://pay.fondy.eu/api/checkout/url/"
+    : "https://pay.flitt.com/api/checkout/url/";
   return {
     merchantId,
     secretKey: process.env.FLITT_SECRET_KEY?.trim() || "test",
     currency: process.env.FLITT_CURRENCY?.trim() || defaultCurrency,
-    apiUrl:
-      process.env.FLITT_API_URL?.trim() ||
-      "https://pay.flitt.com/api/checkout/url/",
+    apiUrl: process.env.FLITT_API_URL?.trim() || defaultApiUrl,
   };
 }
 

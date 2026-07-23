@@ -45,11 +45,13 @@ export default function PlanCards({
             <div
               key={plan.id}
               className="kpi"
-              style={
-                isActive
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                ...(isActive
                   ? { borderColor: "var(--color-primary)", boxShadow: "0 0 0 1px var(--color-primary), var(--shadow-card)" }
-                  : undefined
-              }
+                  : {}),
+              }}
             >
               <div className="flex items-center justify-between">
                 <div className="kpi__label">{labels[`plan_${plan.id}`]}</div>
@@ -68,7 +70,7 @@ export default function PlanCards({
                 )}
                 {plan.analysis && <li>✓ {labels.billing_analysis}</li>}
               </ul>
-              <form action={formAction} style={{ marginTop: 14 }}>
+              <form action={formAction} style={{ marginTop: "auto", paddingTop: 14 }}>
                 <input type="hidden" name="plan" value={plan.id} />
                 <button
                   type="submit"

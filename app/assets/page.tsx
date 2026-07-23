@@ -13,6 +13,7 @@ import { value as cryptoValue } from "@/lib/crypto/holdings";
 import { LISTING_PLATFORMS } from "@/lib/types";
 import ListingControls, { type ListingLink } from "./listing-controls";
 import DoorKey from "./door-key";
+import AssetSegments from "./asset-segments";
 
 export const dynamic = "force-dynamic";
 
@@ -76,7 +77,7 @@ function HoldingTable({
         <table>
           <thead>
             <tr>
-              <th>{t(locale, "unit_name")}</th>
+              <th>{t(locale, "holding_name")}</th>
               <th className="num">{holdingsLabel}</th>
               <th className="num">{t(locale, "crypto_avg_price")}</th>
               <th className="num">{t(locale, "crypto_current_price")}</th>
@@ -314,16 +315,25 @@ export default async function AssetsPage() {
         </p>
       )}
 
-      {(
-        [
-          { key: "real_estate", title: "section_real_estate", showMarket: true },
-          { key: "vehicle", title: "section_vehicles", showMarket: false },
-          { key: "other", title: "section_general", showMarket: false },
-        ] as const
-      ).map(({ key, title, showMarket }) => {
-        const group = assets.filter((a) => a.category === key);
-        if (group.length === 0) return null;
-        return (
+      <AssetSegments
+        options={[
+          { value: "all", label: t(locale, "seg_all") },
+          { value: "real_estate", label: t(locale, "seg_real_estate") },
+          { value: "vehicle", label: t(locale, "seg_vehicle") },
+          { value: "income", label: t(locale, "seg_income") },
+          { value: "digital", label: t(locale, "seg_digital") },
+        ]}
+        segments={[
+          ...(
+            [
+              { key: "real_estate", title: "section_real_estate", showMarket: true },
+              { key: "vehicle", title: "section_vehicles", showMarket: false },
+              { key: "other", title: "section_general", showMarket: false },
+            ] as const
+          ).flatMap(({ key, title, showMarket }) => {
+            const group = assets.filter((a) => a.category === key);
+            if (group.length === 0) return [];
+            return [{ group: key, node: (
           <section key={key}>
             <h2>{t(locale, title)}</h2>
             <div className="card card--stack">
@@ -465,9 +475,9 @@ export default async function AssetsPage() {
               </table>
             </div>
           </section>
-        );
-      })}
-
+          ) }];
+          }),
+          { group: "digital", node: (
       <section>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 style={{ marginBottom: 0 }}>
@@ -487,25 +497,25 @@ export default async function AssetsPage() {
         <HoldingTable
           locale={locale} money={money} heading={t(locale, "section_crypto")}
           subUsd={cryptoValueUsd} subGel={cryptoValueGel}
-          holdingsLabel={t(locale, "crypto_holdings")} qtyDigits={8} rows={cryptoRows}
+          holdingsLabel={t(locale, "holding_quantity")} qtyDigits={8} rows={cryptoRows}
         />
         <HoldingTable
           locale={locale} money={money} heading={t(locale, "section_stock")}
           subUsd={stockValueUsd} subGel={stockValueGel}
-          holdingsLabel={t(locale, "stock_holdings")} qtyDigits={4} rows={stockRows}
+          holdingsLabel={t(locale, "holding_quantity")} qtyDigits={4} rows={stockRows}
         />
         <HoldingTable
           locale={locale} money={money} heading={t(locale, "section_metal")}
           subUsd={metalValueUsd} subGel={metalValueGel}
-          holdingsLabel={t(locale, "metal_holdings")} qtyDigits={4} rows={metalRows}
+          holdingsLabel={t(locale, "holding_quantity")} qtyDigits={4} rows={metalRows}
         />
 
         {(cryptoRows.length > 0 || stockRows.length > 0 || metalRows.length > 0) && (
           <p className="hint" style={{ marginTop: 10 }}>{t(locale, "digital_footnote")}</p>
         )}
       </section>
-
-      {(() => {
+          ) },
+          { group: "income", node: (() => {
         const incomeAssets = assets.filter((a) => a.category === "income_source");
         return (
           <section>
@@ -556,8 +566,9 @@ export default async function AssetsPage() {
             )}
           </section>
         );
-      })()}
-
+      })() },
+        ]}
+      />
     </main>
   );
 }
