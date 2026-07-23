@@ -4,20 +4,22 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
-// Nav links: inline on desktop, behind a hamburger dropdown on mobile.
+// Mobile-only menu: a top-right button that opens a dropdown with the nav
+// links (and Sign In when signed out). Hidden on desktop, where the links
+// render inline instead.
 export default function NavMenu({
   links,
+  signIn,
 }: {
   links: { href: string; label: string }[];
+  signIn?: { href: string; label: string } | null;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
 
-  // Close on navigation.
   useEffect(() => setOpen(false), [pathname]);
 
-  // Close on outside click / Esc.
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
@@ -33,7 +35,7 @@ export default function NavMenu({
   }, [open]);
 
   return (
-    <div className="nav__nav" ref={ref}>
+    <div className="nav__mobile" ref={ref}>
       <button
         type="button"
         className="nav__burger"
@@ -43,13 +45,24 @@ export default function NavMenu({
       >
         {open ? "✕" : "☰"}
       </button>
-      <div className={`nav__links${open ? " nav__links--open" : ""}`}>
-        {links.map((link) => (
-          <Link key={link.href} href={link.href} onClick={() => setOpen(false)}>
-            {link.label}
-          </Link>
-        ))}
-      </div>
+      {open && (
+        <div className="nav__drawer" role="menu">
+          {links.map((link) => (
+            <Link key={link.href} href={link.href} onClick={() => setOpen(false)}>
+              {link.label}
+            </Link>
+          ))}
+          {signIn && (
+            <Link
+              href={signIn.href}
+              className="nav__drawer-cta"
+              onClick={() => setOpen(false)}
+            >
+              {signIn.label}
+            </Link>
+          )}
+        </div>
+      )}
     </div>
   );
 }

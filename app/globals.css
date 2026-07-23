@@ -155,29 +155,58 @@ a:hover {
 .nav__brand:hover {
   color: var(--color-text);
 }
-.nav__nav {
-  display: flex;
-  align-items: center;
-  flex: 1;
-  min-width: 0;
-  margin-left: 12px;
-}
-.nav__burger {
-  display: none;
-  background: none;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 5px 10px;
-  font-size: 15px;
-  line-height: 1;
-  color: var(--color-text);
-  cursor: pointer;
-}
 .nav__links {
   display: flex;
   flex-wrap: wrap;
   gap: 2px;
   flex: 1;
+  min-width: 0;
+  margin-left: 12px;
+}
+/* Mobile menu button + dropdown, anchored top-right. Hidden on desktop. */
+.nav__mobile {
+  display: none;
+  position: relative;
+}
+.nav__burger {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 5px 11px;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--color-text);
+  cursor: pointer;
+}
+.nav__drawer {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 190px;
+  padding: 6px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 60;
+}
+.nav__drawer a {
+  color: var(--color-text);
+  text-decoration: none;
+  font-size: 14.5px;
+  padding: 10px 12px;
+  border-radius: 9px;
+}
+.nav__drawer a:hover {
+  background: var(--color-surface);
+}
+.nav__drawer-cta {
+  margin-top: 2px;
+  color: var(--color-primary) !important;
+  font-weight: 600;
 }
 .nav__links a {
   color: var(--color-text-muted);
@@ -746,41 +775,21 @@ td:first-child {
     margin-top: 28px;
   }
 
-  /* Nav: brand + burger + action chips on one row; links in a dropdown. */
+  /* Nav: brand left, menu button top-right; links move into the dropdown. */
   .nav {
     padding: 10px 14px;
   }
   .nav__brand {
     font-size: 14px;
   }
-  .nav__nav {
-    flex: none;
-    margin-left: 4px;
+  .nav__links--desktop {
+    display: none;
   }
-  .nav__burger {
+  .nav__mobile {
     display: inline-flex;
   }
-  .nav__links {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    display: none;
-    flex-direction: column;
-    gap: 2px;
-    margin: 0;
-    padding: 8px 14px 12px;
-    background: var(--color-bg);
-    border-bottom: 1px solid var(--color-border);
-    box-shadow: var(--shadow-card);
-  }
-  .nav__links--open {
-    display: flex;
-  }
-  .nav__links a {
-    padding: 11px 12px;
-    font-size: 15px;
-    border-radius: 10px;
+  .nav__desktop-only {
+    display: none !important;
   }
 
   .kpi-grid,

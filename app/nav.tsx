@@ -55,7 +55,13 @@ export default async function Nav() {
       <Link href="/" className="nav__brand" aria-label={t(locale, "appName")}>
         <ActivoLogo height={24} />
       </Link>
-      <NavMenu links={links} />
+      <div className="nav__links nav__links--desktop">
+        {links.map((link) => (
+          <Link key={link.href} href={link.href}>
+            {link.label}
+          </Link>
+        ))}
+      </div>
       <div className="nav__meta">
         <ThemeToggle />
         <form action={toggleLocale}>
@@ -88,11 +94,15 @@ export default async function Nav() {
             );
           })()
         ) : (
-          <Link href="/login" className="btn-chip">
+          <Link href="/login" className="btn-chip nav__desktop-only">
             {t(locale, "login_title")}
           </Link>
         )}
       </div>
+      <NavMenu
+        links={links}
+        signIn={operator ? null : { href: "/login", label: t(locale, "login_title") }}
+      />
     </nav>
   );
 }
