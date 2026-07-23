@@ -902,6 +902,12 @@ td:first-child {
     padding-top: 6px;
     padding-bottom: 4px;
   }
+  /* Force the second column to start here, so the split is deterministic
+     (browser auto-balancing can divide the fields unevenly). */
+  .card--stack .col-break {
+    break-before: column;
+    -webkit-column-break-before: always;
+  }
   .card--stack td.num {
     text-align: left;
   }

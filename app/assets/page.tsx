@@ -410,7 +410,7 @@ export default async function AssetsPage() {
                             />
                           )}
                         </td>
-                        <td data-label={t(locale, "contracts_col")} style={{ fontWeight: 400, maxWidth: 280 }}>
+                        <td className="col-break" data-label={t(locale, "contracts_col")} style={{ fontWeight: 400, maxWidth: 280 }}>
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             {contract ? (
                               <div>
