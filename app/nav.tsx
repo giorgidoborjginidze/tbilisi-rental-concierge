@@ -7,6 +7,7 @@ import { toggleLocale } from "@/lib/i18n/actions";
 import ThemeToggle from "./theme-toggle";
 import ActivoLogo from "./activo-logo";
 import AccountMenu from "./account-menu";
+import NavMenu from "./nav-menu";
 import { planById } from "@/lib/billing/plans";
 
 // Plan names always shown in Latin, per design.
@@ -54,13 +55,7 @@ export default async function Nav() {
       <Link href="/" className="nav__brand" aria-label={t(locale, "appName")}>
         <ActivoLogo height={24} />
       </Link>
-      <div className="nav__links">
-        {links.map((link) => (
-          <Link key={link.href} href={link.href}>
-            {link.label}
-          </Link>
-        ))}
-      </div>
+      <NavMenu links={links} />
       <div className="nav__meta">
         <ThemeToggle />
         <form action={toggleLocale}>

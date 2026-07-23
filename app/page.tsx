@@ -9,6 +9,7 @@ import {
   proratedRevenue,
   unitWindowMetrics,
 } from "@/lib/analytics/metrics";
+import SplashIntro from "./splash-intro";
 
 export const dynamic = "force-dynamic";
 
@@ -31,11 +32,11 @@ function Kpi({ label, value, sub }: { label: string; value: string; sub?: string
 // Public, informational landing for signed-out visitors: what the
 // product is, four benefits, the free calculator, one price line.
 function Landing({ locale }: { locale: Locale }) {
-  const benefits: [StringKey, StringKey][] = [
-    ["land_b1_t", "land_b1"],
-    ["land_b2_t", "land_b2"],
-    ["land_b3_t", "land_b3"],
-    ["land_b4_t", "land_b4"],
+  const benefits: { t: StringKey; b: StringKey; icon: string; color: string }[] = [
+    { t: "land_b1_t", b: "land_b1", icon: "🏠", color: "#4f46e5" },
+    { t: "land_b2_t", b: "land_b2", icon: "🔄", color: "#23c185" },
+    { t: "land_b3_t", b: "land_b3", icon: "🇬🇪", color: "#f97316" },
+    { t: "land_b4_t", b: "land_b4", icon: "📈", color: "#3b82f6" },
   ];
   return (
     <main>
@@ -97,13 +98,14 @@ function Landing({ locale }: { locale: Locale }) {
         </section>
       )}
 
-      <section className="kpi-grid" style={{ marginTop: 28 }}>
-        {benefits.map(([titleKey, bodyKey]) => (
-          <div key={titleKey} className="kpi">
-            <div className="kpi__label">{t(locale, titleKey)}</div>
-            <div className="kpi__sub" style={{ fontSize: 13, marginTop: 8 }}>
-              {t(locale, bodyKey)}
-            </div>
+      <section className="feature-grid" style={{ marginTop: 28 }}>
+        {benefits.map((f) => (
+          <div key={f.t} className="feature-card">
+            <span className="feature-card__icon" style={{ background: f.color }}>
+              {f.icon}
+            </span>
+            <div className="feature-card__title">{t(locale, f.t)}</div>
+            <div className="feature-card__body">{t(locale, f.b)}</div>
           </div>
         ))}
       </section>
@@ -749,12 +751,21 @@ async function PersonalDashboard({
 export default async function Home() {
   const locale = await getLocale();
   const operator = await getSessionOperator();
-  if (!operator) return <Landing locale={locale} />;
-  if (operator.profile === "hotel")
-    return <HotelDashboard locale={locale} operator={operator} />;
-  if (operator.profile === "brokerage")
-    return <BrokerageDashboard locale={locale} operator={operator} />;
-  if (operator.profile === "car_rental")
-    return <CarRentalDashboard locale={locale} operator={operator} />;
-  return <PersonalDashboard locale={locale} operator={operator} />;
+  const content = !operator ? (
+    <Landing locale={locale} />
+  ) : operator.profile === "hotel" ? (
+    <HotelDashboard locale={locale} operator={operator} />
+  ) : operator.profile === "brokerage" ? (
+    <BrokerageDashboard locale={locale} operator={operator} />
+  ) : operator.profile === "car_rental" ? (
+    <CarRentalDashboard locale={locale} operator={operator} />
+  ) : (
+    <PersonalDashboard locale={locale} operator={operator} />
+  );
+  return (
+    <>
+      <SplashIntro tapHint={t(locale, "splash_hint")} />
+      {content}
+    </>
+  );
 }
