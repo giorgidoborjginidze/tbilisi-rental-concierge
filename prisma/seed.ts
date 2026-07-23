@@ -576,6 +576,37 @@ async function main() {
     }
   }
 
+  // Stock holdings — same trade table, live US price fetched at render.
+  const stockHoldings = [
+    {
+      name: "Apple", symbol: "AAPL",
+      trades: [
+        { side: "buy", quantity: 10, unitPrice: 172, tradedAt: utc(2024, 4, 3) },
+        { side: "buy", quantity: 5, unitPrice: 226, tradedAt: utc(2024, 10, 15) },
+      ],
+    },
+    {
+      name: "NVIDIA", symbol: "NVDA",
+      trades: [
+        { side: "buy", quantity: 20, unitPrice: 88, tradedAt: utc(2024, 6, 10) },
+        { side: "sell", quantity: 5, unitPrice: 135, tradedAt: utc(2025, 1, 7) },
+      ],
+    },
+  ];
+  for (const { trades, ...stockData } of stockHoldings) {
+    const asset = await prisma.asset.create({
+      data: {
+        ...stockData,
+        category: "stock", type: "share",
+        status: "personal_use",
+        operatorId: operator.id, currency: "USD",
+      },
+    });
+    for (const tr of trades) {
+      await prisma.cryptoTrade.create({ data: { ...tr, assetId: asset.id } });
+    }
+  }
+
   // Manual income entries (rent + STR income are derived automatically).
   const incomes = [
     { source: "salary", description: "Monthly salary", date: utc(2026, 5, 30), amount: 5000 },
@@ -595,7 +626,7 @@ async function main() {
       `${leases.length} leases, ${benchmarkCount} benchmark rows, ` +
       `${assets.length} assets, ${contractCount} contracts, ` +
       `${rentBenchmarkCount} rent benchmarks, ${incomes.length} income records, ` +
-      `${cryptoHoldings.length} crypto holdings.`,
+      `${cryptoHoldings.length} crypto holdings, ${stockHoldings.length} stock holdings.`,
   );
 }
 

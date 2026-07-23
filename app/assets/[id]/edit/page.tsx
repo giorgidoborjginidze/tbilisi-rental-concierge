@@ -8,6 +8,7 @@ import { deleteContract } from "@/lib/assets/actions";
 import { dayPrice } from "@/lib/assets/daily-price";
 import OccupancyCalendar from "./occupancy-calendar";
 import CryptoView from "./crypto-view";
+import StockView from "./stock-view";
 import { LISTING_PLATFORMS } from "@/lib/types";
 import AssetForm from "../../asset-form";
 import ContractForm from "../../contract-form";
@@ -59,6 +60,15 @@ export default async function EditAssetPage({
     return (
       <CryptoView
         asset={{ id: asset.id, name: asset.name, symbol: asset.symbol, coingeckoId: asset.coingeckoId }}
+        locale={locale}
+      />
+    );
+  }
+  // Stock holdings share the same live-valuation + buy/sell view.
+  if (asset.category === "stock") {
+    return (
+      <StockView
+        asset={{ id: asset.id, name: asset.name, symbol: asset.symbol }}
         locale={locale}
       />
     );

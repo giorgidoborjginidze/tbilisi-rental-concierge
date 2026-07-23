@@ -65,6 +65,8 @@ const en = {
   category_real_estate: "Real Estate",
   category_vehicle: "Vehicle",
   category_income_source: "Income Source",
+  category_crypto: "Crypto",
+  category_stock: "Stock",
   category_other: "Other",
   type_salary: "Salary",
   type_dividend: "Dividend",
@@ -516,6 +518,19 @@ const en = {
   crypto_hint: "The average buy price is calculated automatically across all your purchases. Sells reduce your holdings without changing the average.",
   crypto_trades: "Buys & Sells",
   crypto_footnote: "Crypto values use the live price from CoinGecko, converted to GEL at the current rate.",
+
+  // Stock holdings
+  section_stock: "Stock Holdings",
+  stock_new_title: "Add a Stock Holding",
+  stock_new_intro: "Pick a stock, then log your buys and sells. We show the live price and your profit or loss automatically. US-listed tickers only.",
+  stock_ticker: "Stock",
+  stock_custom_ticker: "Ticker",
+  stock_add: "Add Stock",
+  stock_add_hint: "You can log buys and sells on the next screen.",
+  stock_holdings: "Shares",
+  stock_unit_price: "Price per Share (USD)",
+  stock_hint: "The average buy price is calculated automatically across all your purchases. Sells reduce your shares without changing the average.",
+  stock_footnote: "Stock values use the latest US-market price from Stooq, converted to GEL at the current rate.",
 };
 
 const ka: Record<StringKey, string> = {
@@ -581,6 +596,8 @@ const ka: Record<StringKey, string> = {
   category_real_estate: "უძრავი ქონება",
   category_vehicle: "სატრანსპორტო საშუალება",
   category_income_source: "შემოსავლის წყარო",
+  category_crypto: "კრიპტო",
+  category_stock: "აქცია",
   category_other: "სხვა",
   type_salary: "ხელფასი",
   type_dividend: "დივიდენდი",
@@ -1032,6 +1049,19 @@ const ka: Record<StringKey, string> = {
   crypto_hint: "საშუალო ყიდვის ფასი ავტომატურად გამოითვლება ყველა თქვენი შესყიდვის მიხედვით. გაყიდვა ამცირებს მარაგს საშუალო ფასის შეცვლის გარეშე.",
   crypto_trades: "ყიდვები და გაყიდვები",
   crypto_footnote: "კრიპტოს ღირებულება იყენებს ცოცხალ ფასს CoinGecko-დან, გადაყვანილს ლარში მიმდინარე კურსით.",
+
+  // Stock holdings
+  section_stock: "აქციები",
+  stock_new_title: "აქციის დამატება",
+  stock_new_intro: "აირჩიეთ აქცია, შემდეგ ჩაწერეთ ყიდვები და გაყიდვები. ცოცხალ ფასს და თქვენს მოგება-ზარალს ავტომატურად გაჩვენებთ. მხოლოდ US ბირჟის ტიკერები.",
+  stock_ticker: "აქცია",
+  stock_custom_ticker: "ტიკერი",
+  stock_add: "აქციის დამატება",
+  stock_add_hint: "ყიდვებსა და გაყიდვებს შემდეგ ეკრანზე ჩაწერთ.",
+  stock_holdings: "აქციები",
+  stock_unit_price: "ფასი აქციაზე (USD)",
+  stock_hint: "საშუალო ყიდვის ფასი ავტომატურად გამოითვლება ყველა თქვენი შესყიდვის მიხედვით. გაყიდვა ამცირებს აქციების რაოდენობას საშუალო ფასის შეცვლის გარეშე.",
+  stock_footnote: "აქციების ღირებულება იყენებს ბოლო US-ბირჟის ფასს Stooq-დან, გადაყვანილს ლარში მიმდინარე კურსით.",
 };
 
 export type StringKey = keyof typeof en;

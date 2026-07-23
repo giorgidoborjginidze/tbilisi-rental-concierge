@@ -52,7 +52,11 @@ export async function assetFormProps(
   return {
     labels,
     typesByCategory,
-    categories: ASSET_CATEGORIES.map((value) => ({
+    // Crypto and stock have dedicated add flows (they capture a ticker and
+    // wire up live pricing), so they're excluded from the generic selector.
+    categories: ASSET_CATEGORIES.filter(
+      (value) => value !== "crypto" && value !== "stock",
+    ).map((value) => ({
       value,
       label: t(locale, `category_${value}` as StringKey),
     })),

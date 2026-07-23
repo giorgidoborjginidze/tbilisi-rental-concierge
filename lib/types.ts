@@ -33,6 +33,7 @@ export const ASSET_CATEGORIES = [
   "vehicle",
   "income_source",
   "crypto",
+  "stock",
   "other",
 ] as const;
 
@@ -49,6 +50,7 @@ export const ASSET_TYPES: Record<string, readonly string[]> = {
     "other",
   ],
   crypto: ["coin"],
+  stock: ["share"],
   other: ["equipment", "other"],
 };
 
@@ -79,6 +81,7 @@ export const LISTING_PLATFORMS: Record<
   vehicle: [{ key: "myauto", label: "myauto.ge", field: "myautoUrl" }],
   income_source: [],
   crypto: [],
+  stock: [],
   other: [],
 };
 

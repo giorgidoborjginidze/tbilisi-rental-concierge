@@ -62,7 +62,7 @@ export async function addTrade(
   if (!Number.isFinite(unitPrice) || unitPrice < 0) return { error: "error_invalid_number" };
 
   const asset = await prisma.asset.findFirst({
-    where: { id: assetId, operatorId: operator.id, category: "crypto" },
+    where: { id: assetId, operatorId: operator.id, category: { in: ["crypto", "stock"] } },
   });
   if (!asset) return { error: "error_required" };
 
