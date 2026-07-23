@@ -1123,6 +1123,10 @@ td:first-child {
 .cal-grid .cal-cell--blank {
   background: transparent;
 }
+.cal-grid .cal-cell--sel {
+  outline-width: 1px;
+  outline-offset: 1px;
+}
 @media (max-width: 760px) {
   .cal-grid {
     grid-template-columns: 28px repeat(31, minmax(0, 1fr));
