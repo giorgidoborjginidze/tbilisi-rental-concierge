@@ -1073,16 +1073,22 @@ td:first-child {
   .account-menu__nav { display: block; }
 }
 
-/* Mark-range form: full-width fields on mobile (not right-aligned). */
+/* Mark-range form on mobile: two columns (dates side by side, rent/tenant
+   side by side) so it uses the width instead of one tall right-shifted
+   column. The header, buttons and error span both columns. */
 @media (max-width: 760px) {
   .mark-form {
-    align-items: stretch !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 8px;
+    align-items: start;
   }
   .mark-form .field {
-    width: 100% !important;
+    width: auto !important;
   }
-  .mark-form .flex {
-    width: 100%;
+  .mark-form > div,
+  .mark-form > p {
+    grid-column: 1 / -1;
   }
 }
 
