@@ -52,7 +52,7 @@ export default async function UnitsPage() {
                 <th>{t(locale, "unit_type")}</th>
                 <th className="num">{t(locale, "base_rate_short")}</th>
                 <th className="num">{t(locale, "bookings")}</th>
-                <th style={{ textAlign: "center" }}>iCal</th>
+                <th className="ical-cell">iCal</th>
                 <th />
               </tr>
             </thead>
@@ -75,7 +75,7 @@ export default async function UnitsPage() {
                       {unit.baseNightlyRate} {unit.currency}
                     </td>
                     <td className="num" data-label={t(locale, "bookings")}>{unit._count.bookings}</td>
-                    <td data-label="iCal" style={{ textAlign: "center" }}>
+                    <td data-label="iCal" className="ical-cell">
                       {links.icalUrls.length > 0 ? links.icalUrls.length : "—"}
                     </td>
                     <td className="num">

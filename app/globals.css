@@ -534,6 +534,9 @@ td:first-child {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+.ical-cell {
+  text-align: center;
+}
 
 .badge {
   display: inline-flex;
@@ -908,7 +911,8 @@ td:first-child {
     break-before: column;
     -webkit-column-break-before: always;
   }
-  .card--stack td.num {
+  .card--stack td.num,
+  .card--stack td.ical-cell {
     text-align: left;
   }
   .card--stack td[data-label]::before {
@@ -1158,5 +1162,51 @@ td:first-child {
   }
   .cal-grid .cal-daynum {
     font-size: 7px;
+  }
+}
+
+/* Portfolio calendar (all units × days of the month). A grid keeps every
+   day column equal width and aligns the day-number header exactly above
+   the cells, on any screen size. --days is set inline (28–31). */
+.cal-board {
+  display: grid;
+  grid-template-columns: 72px repeat(var(--days, 31), minmax(0, 1fr));
+  align-items: center;
+  gap: 5px 3px;
+  padding: 14px 16px;
+}
+.cal-board .cal-name {
+  width: auto;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cal-board .cal-daynum {
+  width: auto;
+  font-size: 9px;
+  line-height: 1;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+.cal-board .cal-cell {
+  width: 100%;
+  height: 18px;
+  border-radius: 3px;
+}
+@media (max-width: 760px) {
+  .cal-board {
+    grid-template-columns: 30px repeat(var(--days, 31), minmax(0, 1fr));
+    gap: 3px 1.5px;
+    padding: 12px 8px;
+  }
+  .cal-board .cal-name {
+    font-size: 8px;
+  }
+  .cal-board .cal-daynum {
+    font-size: 6.5px;
+  }
+  .cal-board .cal-cell {
+    height: 10px;
   }
 }

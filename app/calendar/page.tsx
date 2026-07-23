@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
@@ -190,18 +191,19 @@ export default async function CalendarPage({
         ))}
       </div>
 
-      <div className="card" style={{ padding: "12px 16px" }}>
-        <div className="cal-row">
-          <span className="cal-name" />
-          {Array.from({ length: daysInMonth }, (_, i) => (
-            <span key={i} className="cal-daynum">
-              {i + 1}
-            </span>
-          ))}
-        </div>
+      <div
+        className="card cal-board"
+        style={{ "--days": daysInMonth } as React.CSSProperties}
+      >
+        <span className="cal-name" />
+        {Array.from({ length: daysInMonth }, (_, i) => (
+          <span key={`h${i}`} className="cal-daynum">
+            {i + 1}
+          </span>
+        ))}
         {rows.map(({ unit, days }) => (
-          <div key={unit.id} className="cal-row">
-            <span className="cal-name" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <Fragment key={unit.id}>
+            <span className="cal-name">
               <Link
                 href={`/calendar?month=${monthParam(year, month)}&unit=${unit.id}`}
                 style={{ color: "inherit", textDecoration: "none" }}
@@ -212,7 +214,7 @@ export default async function CalendarPage({
             {days.map((day, i) => (
               <span key={i} className={`cal-cell ${day.className}`} />
             ))}
-          </div>
+          </Fragment>
         ))}
       </div>
 
