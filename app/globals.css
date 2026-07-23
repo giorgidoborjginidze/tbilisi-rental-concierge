@@ -785,6 +785,11 @@ td:first-child {
   .nav__links--desktop {
     display: none;
   }
+  /* Theme + language sit with the menu on the right, not floating middle. */
+  .nav__meta {
+    margin-left: auto;
+    gap: 8px;
+  }
   .nav__mobile {
     display: inline-flex;
   }
