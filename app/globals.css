@@ -1124,8 +1124,10 @@ td:first-child {
   background: transparent;
 }
 .cal-grid .cal-cell--sel {
-  outline-width: 1px;
-  outline-offset: 1px;
+  /* Fill instead of an outline so selected cells stay exactly the same size
+     as the others — an outline sits outside the box and makes them bulge. */
+  background: var(--color-primary);
+  outline: none;
 }
 @media (max-width: 760px) {
   .cal-grid {
