@@ -183,7 +183,7 @@ const en = {
   cstatus_ended: "Ended",
   market_rent_est: "Market Rent",
 
-  nav_invest: "Invest",
+  nav_invest: "Investment Calculator",
   invest_title: "Investment Calculator",
   invest_intro:
     "Estimate how a property purchase performs as a buy-to-let investment. Prefilled prices, rents and renovation costs are approximate mock market averages — adjust everything to your deal.",
@@ -762,7 +762,7 @@ const ka: Record<StringKey, string> = {
   cstatus_ended: "დასრულებული",
   market_rent_est: "საბაზრო ქირა",
 
-  nav_invest: "ინვესტიცია",
+  nav_invest: "საინვესტიციო კალკულატორი",
   invest_title: "საინვესტიციო კალკულატორი",
   invest_intro:
     "შეაფასე, რამდენად მომგებიანია უძრავი ქონების ყიდვა გასაქირავებლად. წინასწარ შევსებული ფასები, ქირა და რემონტის ღირებულება მიახლოებითი საბაზრო საშუალოა — ყველაფერი შეცვალე შენი გარიგების მიხედვით.",
