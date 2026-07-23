@@ -166,7 +166,7 @@ export default function OccupancyCalendar({
           onSubmit={() => {
             submitted.current = true;
           }}
-          className="alert-card"
+          className="alert-card mark-form"
           style={{ marginTop: 10, alignItems: "flex-end", flexWrap: "wrap", gap: 12 }}
         >
           <input type="hidden" name="assetId" value={assetId} />

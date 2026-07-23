@@ -1072,3 +1072,16 @@ td:first-child {
 @media (max-width: 760px) {
   .account-menu__nav { display: block; }
 }
+
+/* Mark-range form: full-width fields on mobile (not right-aligned). */
+@media (max-width: 760px) {
+  .mark-form {
+    align-items: stretch !important;
+  }
+  .mark-form .field {
+    width: 100% !important;
+  }
+  .mark-form .flex {
+    width: 100%;
+  }
+}
