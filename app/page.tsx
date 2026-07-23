@@ -122,12 +122,15 @@ function DashboardHeader({
   operator: SessionOperator;
   sub: string;
 }) {
+  const name = operator.name ?? operator.email;
+  // The nav logo already shows the brand — don't repeat it as the page
+  // title. When the workspace name equals the brand, fall back to a generic
+  // heading so "Activo" doesn't appear twice.
+  const title = name === t(locale, "appName") ? t(locale, "nav_dashboard") : name;
   return (
     <header>
-      <h1>{t(locale, "appName")}</h1>
-      <p style={{ color: "var(--color-text-muted)" }}>
-        {operator.name ?? operator.email} · {sub}
-      </p>
+      <h1>{title}</h1>
+      <p style={{ color: "var(--color-text-muted)" }}>{sub}</p>
     </header>
   );
 }
