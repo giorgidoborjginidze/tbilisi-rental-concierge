@@ -519,6 +519,11 @@ const en = {
   crypto_trades: "Buys & Sells",
   crypto_footnote: "Crypto values use the live price from CoinGecko, converted to GEL at the current rate.",
 
+  // Digital assets segment (crypto + stocks together)
+  section_digital: "Digital Assets",
+  digital_empty: "No crypto or stocks yet. Add your holdings to track their live value.",
+  digital_footnote: "Live prices: crypto from CoinGecko, US stocks from Stooq — converted to GEL at the current rate.",
+
   // Stock holdings
   section_stock: "Stock Holdings",
   stock_new_title: "Add a Stock Holding",
@@ -1049,6 +1054,11 @@ const ka: Record<StringKey, string> = {
   crypto_hint: "საშუალო ყიდვის ფასი ავტომატურად გამოითვლება ყველა თქვენი შესყიდვის მიხედვით. გაყიდვა ამცირებს მარაგს საშუალო ფასის შეცვლის გარეშე.",
   crypto_trades: "ყიდვები და გაყიდვები",
   crypto_footnote: "კრიპტოს ღირებულება იყენებს ცოცხალ ფასს CoinGecko-დან, გადაყვანილს ლარში მიმდინარე კურსით.",
+
+  // Digital assets segment (crypto + stocks together)
+  section_digital: "ციფრული აქტივები",
+  digital_empty: "ჯერ არ გაქვთ კრიპტო ან აქცია. დაამატეთ თქვენი აქტივები ცოცხალი ღირებულების სანახავად.",
+  digital_footnote: "ცოცხალი ფასები: კრიპტო — CoinGecko-დან, US აქციები — Stooq-დან, გადაყვანილი ლარში მიმდინარე კურსით.",
 
   // Stock holdings
   section_stock: "აქციები",

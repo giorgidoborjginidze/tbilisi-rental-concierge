@@ -156,6 +156,10 @@ export default async function AssetsPage() {
   const stockValueUsd = stockRows.reduce((s, r) => s + (r.v.currentValue ?? 0), 0);
   const stockValueGel = stockValueUsd * usdGel;
 
+  // Digital assets = crypto + stocks, shown together in one segment.
+  const digitalValueUsd = cryptoValueUsd + stockValueUsd;
+  const digitalValueGel = cryptoValueGel + stockValueGel;
+
   const totalValue =
     assets.reduce((sum, a) => sum + (a.estimatedValue ?? 0), 0) +
     cryptoValueGel +
@@ -183,12 +187,6 @@ export default async function AssetsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 style={{ marginBottom: 0 }}>{t(locale, "assets_title")}</h1>
         <div className="flex flex-wrap items-center gap-2">
-          <Link href="/assets/crypto/new" className="btn-secondary">
-            {t(locale, "crypto_add")}
-          </Link>
-          <Link href="/assets/stocks/new" className="btn-secondary">
-            {t(locale, "stock_add")}
-          </Link>
           <Link href="/assets/new?category=income_source" className="btn-secondary">
             {t(locale, "add_income_source")}
           </Link>
@@ -371,131 +369,148 @@ export default async function AssetsPage() {
         );
       })}
 
-      {cryptoRows.length > 0 && (
-        <section>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 style={{ marginBottom: 0 }}>
+      <section>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 style={{ marginBottom: 0 }}>
+            {t(locale, "section_digital")}
+            {digitalValueUsd > 0 && (
+              <span style={{ color: "var(--color-text-muted)", fontWeight: 400, fontSize: 14 }}>
+                {" "}· ${Math.round(digitalValueUsd).toLocaleString("en-US")} ≈ {money(digitalValueGel)}
+              </span>
+            )}
+          </h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link href="/assets/crypto/new" className="btn-secondary">{t(locale, "crypto_add")}</Link>
+            <Link href="/assets/stocks/new" className="btn-secondary">{t(locale, "stock_add")}</Link>
+          </div>
+        </div>
+
+        {cryptoRows.length === 0 && stockRows.length === 0 && (
+          <p className="hint" style={{ marginTop: 10 }}>{t(locale, "digital_empty")}</p>
+        )}
+
+        {cryptoRows.length > 0 && (
+          <div style={{ marginTop: 18 }}>
+            <h3 style={{ marginBottom: 0 }}>
               {t(locale, "section_crypto")}
               {cryptoValueUsd > 0 && (
-                <span style={{ color: "var(--color-text-muted)", fontWeight: 400, fontSize: 14 }}>
+                <span style={{ color: "var(--color-text-muted)", fontWeight: 400, fontSize: 13 }}>
                   {" "}· ${Math.round(cryptoValueUsd).toLocaleString("en-US")} ≈ {money(cryptoValueGel)}
                 </span>
               )}
-            </h2>
-            <Link href="/assets/crypto/new" className="btn-secondary">{t(locale, "crypto_add")}</Link>
+            </h3>
+            <div className="card card--stack" style={{ marginTop: 10 }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>{t(locale, "unit_name")}</th>
+                    <th className="num">{t(locale, "crypto_holdings")}</th>
+                    <th className="num">{t(locale, "crypto_avg_price")}</th>
+                    <th className="num">{t(locale, "crypto_current_price")}</th>
+                    <th className="num">{t(locale, "crypto_value")}</th>
+                    <th className="num">{t(locale, "crypto_pnl")}</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {cryptoRows.map(({ asset, price, v }) => {
+                    const pc = v.profit == null ? undefined : v.profit >= 0 ? "var(--status-rented-text)" : "var(--status-danger-text)";
+                    const d = (n: number | null, dp = 2) => n == null ? "—" : `$${n.toLocaleString("en-US", { maximumFractionDigits: dp })}`;
+                    return (
+                      <tr key={asset.id}>
+                        <td>
+                          <Link href={`/assets/${asset.id}/edit`} className="link">{asset.name}</Link>
+                          <div className="cell-sub">{asset.symbol}</div>
+                        </td>
+                        <td className="num" data-label={t(locale, "crypto_holdings")}>
+                          {v.quantity.toLocaleString("en-US", { maximumFractionDigits: 8 })}
+                        </td>
+                        <td className="num" data-label={t(locale, "crypto_avg_price")}>{d(v.avgBuyPrice)}</td>
+                        <td className="num" data-label={t(locale, "crypto_current_price")}>{d(price)}</td>
+                        <td className="num" data-label={t(locale, "crypto_value")}>{d(v.currentValue, 0)}</td>
+                        <td className="num" data-label={t(locale, "crypto_pnl")} style={{ color: pc, fontWeight: 600 }}>
+                          {v.profit == null ? "—" : `${v.profit >= 0 ? "+" : ""}${d(v.profit, 0)}`}
+                          {v.profitPct != null && (
+                            <div className="cell-sub" style={{ color: pc }}>
+                              {v.profitPct >= 0 ? "+" : ""}{(v.profitPct * 100).toFixed(1)}%
+                            </div>
+                          )}
+                        </td>
+                        <td className="num">
+                          <Link href={`/assets/${asset.id}/edit`} className="link">{t(locale, "edit")}</Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
-          <div className="card card--stack" style={{ marginTop: 14 }}>
-            <table>
-              <thead>
-                <tr>
-                  <th>{t(locale, "unit_name")}</th>
-                  <th className="num">{t(locale, "crypto_holdings")}</th>
-                  <th className="num">{t(locale, "crypto_avg_price")}</th>
-                  <th className="num">{t(locale, "crypto_current_price")}</th>
-                  <th className="num">{t(locale, "crypto_value")}</th>
-                  <th className="num">{t(locale, "crypto_pnl")}</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {cryptoRows.map(({ asset, price, v }) => {
-                  const pc = v.profit == null ? undefined : v.profit >= 0 ? "var(--status-rented-text)" : "var(--status-danger-text)";
-                  const d = (n: number | null, dp = 2) => n == null ? "—" : `$${n.toLocaleString("en-US", { maximumFractionDigits: dp })}`;
-                  return (
-                    <tr key={asset.id}>
-                      <td>
-                        <Link href={`/assets/${asset.id}/edit`} className="link">{asset.name}</Link>
-                        <div className="cell-sub">{asset.symbol}</div>
-                      </td>
-                      <td className="num" data-label={t(locale, "crypto_holdings")}>
-                        {v.quantity.toLocaleString("en-US", { maximumFractionDigits: 8 })}
-                      </td>
-                      <td className="num" data-label={t(locale, "crypto_avg_price")}>{d(v.avgBuyPrice)}</td>
-                      <td className="num" data-label={t(locale, "crypto_current_price")}>{d(price)}</td>
-                      <td className="num" data-label={t(locale, "crypto_value")}>{d(v.currentValue, 0)}</td>
-                      <td className="num" data-label={t(locale, "crypto_pnl")} style={{ color: pc, fontWeight: 600 }}>
-                        {v.profit == null ? "—" : `${v.profit >= 0 ? "+" : ""}${d(v.profit, 0)}`}
-                        {v.profitPct != null && (
-                          <div className="cell-sub" style={{ color: pc }}>
-                            {v.profitPct >= 0 ? "+" : ""}{(v.profitPct * 100).toFixed(1)}%
-                          </div>
-                        )}
-                      </td>
-                      <td className="num">
-                        <Link href={`/assets/${asset.id}/edit`} className="link">{t(locale, "edit")}</Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          <p className="hint" style={{ marginTop: 8 }}>{t(locale, "crypto_footnote")}</p>
-        </section>
-      )}
+        )}
 
-      {stockRows.length > 0 && (
-        <section>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 style={{ marginBottom: 0 }}>
+        {stockRows.length > 0 && (
+          <div style={{ marginTop: 18 }}>
+            <h3 style={{ marginBottom: 0 }}>
               {t(locale, "section_stock")}
               {stockValueUsd > 0 && (
-                <span style={{ color: "var(--color-text-muted)", fontWeight: 400, fontSize: 14 }}>
+                <span style={{ color: "var(--color-text-muted)", fontWeight: 400, fontSize: 13 }}>
                   {" "}· ${Math.round(stockValueUsd).toLocaleString("en-US")} ≈ {money(stockValueGel)}
                 </span>
               )}
-            </h2>
-            <Link href="/assets/stocks/new" className="btn-secondary">{t(locale, "stock_add")}</Link>
+            </h3>
+            <div className="card card--stack" style={{ marginTop: 10 }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>{t(locale, "unit_name")}</th>
+                    <th className="num">{t(locale, "stock_holdings")}</th>
+                    <th className="num">{t(locale, "crypto_avg_price")}</th>
+                    <th className="num">{t(locale, "crypto_current_price")}</th>
+                    <th className="num">{t(locale, "crypto_value")}</th>
+                    <th className="num">{t(locale, "crypto_pnl")}</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {stockRows.map(({ asset, price, v }) => {
+                    const pc = v.profit == null ? undefined : v.profit >= 0 ? "var(--status-rented-text)" : "var(--status-danger-text)";
+                    const d = (n: number | null, dp = 2) => n == null ? "—" : `$${n.toLocaleString("en-US", { maximumFractionDigits: dp })}`;
+                    return (
+                      <tr key={asset.id}>
+                        <td>
+                          <Link href={`/assets/${asset.id}/edit`} className="link">{asset.name}</Link>
+                          <div className="cell-sub">{asset.symbol}</div>
+                        </td>
+                        <td className="num" data-label={t(locale, "stock_holdings")}>
+                          {v.quantity.toLocaleString("en-US", { maximumFractionDigits: 4 })}
+                        </td>
+                        <td className="num" data-label={t(locale, "crypto_avg_price")}>{d(v.avgBuyPrice)}</td>
+                        <td className="num" data-label={t(locale, "crypto_current_price")}>{d(price)}</td>
+                        <td className="num" data-label={t(locale, "crypto_value")}>{d(v.currentValue, 0)}</td>
+                        <td className="num" data-label={t(locale, "crypto_pnl")} style={{ color: pc, fontWeight: 600 }}>
+                          {v.profit == null ? "—" : `${v.profit >= 0 ? "+" : ""}${d(v.profit, 0)}`}
+                          {v.profitPct != null && (
+                            <div className="cell-sub" style={{ color: pc }}>
+                              {v.profitPct >= 0 ? "+" : ""}{(v.profitPct * 100).toFixed(1)}%
+                            </div>
+                          )}
+                        </td>
+                        <td className="num">
+                          <Link href={`/assets/${asset.id}/edit`} className="link">{t(locale, "edit")}</Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
-          <div className="card card--stack" style={{ marginTop: 14 }}>
-            <table>
-              <thead>
-                <tr>
-                  <th>{t(locale, "unit_name")}</th>
-                  <th className="num">{t(locale, "stock_holdings")}</th>
-                  <th className="num">{t(locale, "crypto_avg_price")}</th>
-                  <th className="num">{t(locale, "crypto_current_price")}</th>
-                  <th className="num">{t(locale, "crypto_value")}</th>
-                  <th className="num">{t(locale, "crypto_pnl")}</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {stockRows.map(({ asset, price, v }) => {
-                  const pc = v.profit == null ? undefined : v.profit >= 0 ? "var(--status-rented-text)" : "var(--status-danger-text)";
-                  const d = (n: number | null, dp = 2) => n == null ? "—" : `$${n.toLocaleString("en-US", { maximumFractionDigits: dp })}`;
-                  return (
-                    <tr key={asset.id}>
-                      <td>
-                        <Link href={`/assets/${asset.id}/edit`} className="link">{asset.name}</Link>
-                        <div className="cell-sub">{asset.symbol}</div>
-                      </td>
-                      <td className="num" data-label={t(locale, "stock_holdings")}>
-                        {v.quantity.toLocaleString("en-US", { maximumFractionDigits: 4 })}
-                      </td>
-                      <td className="num" data-label={t(locale, "crypto_avg_price")}>{d(v.avgBuyPrice)}</td>
-                      <td className="num" data-label={t(locale, "crypto_current_price")}>{d(price)}</td>
-                      <td className="num" data-label={t(locale, "crypto_value")}>{d(v.currentValue, 0)}</td>
-                      <td className="num" data-label={t(locale, "crypto_pnl")} style={{ color: pc, fontWeight: 600 }}>
-                        {v.profit == null ? "—" : `${v.profit >= 0 ? "+" : ""}${d(v.profit, 0)}`}
-                        {v.profitPct != null && (
-                          <div className="cell-sub" style={{ color: pc }}>
-                            {v.profitPct >= 0 ? "+" : ""}{(v.profitPct * 100).toFixed(1)}%
-                          </div>
-                        )}
-                      </td>
-                      <td className="num">
-                        <Link href={`/assets/${asset.id}/edit`} className="link">{t(locale, "edit")}</Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          <p className="hint" style={{ marginTop: 8 }}>{t(locale, "stock_footnote")}</p>
-        </section>
-      )}
+        )}
+
+        {(cryptoRows.length > 0 || stockRows.length > 0) && (
+          <p className="hint" style={{ marginTop: 10 }}>{t(locale, "digital_footnote")}</p>
+        )}
+      </section>
 
       {(() => {
         const incomeAssets = assets.filter((a) => a.category === "income_source");
