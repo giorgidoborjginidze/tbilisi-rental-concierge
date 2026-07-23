@@ -1,24 +1,31 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { logout } from "@/lib/auth/actions";
 
-// Account chip + dropdown (Claude-style): avatar, Latin username · plan, and
-// a menu with Settings / Billing / Log Out. Closes on outside click or Esc.
+// Unified account menu: avatar + Latin "username · plan". The dropdown
+// carries the app navigation (shown on mobile, where the inline nav is
+// hidden) plus account actions — Settings, Plan & Billing, Log Out.
 export default function AccountMenu({
   name,
   plan,
   initial,
+  links,
   labels,
 }: {
   name: string;
   plan: string;
   initial: string;
+  links: { href: string; label: string }[];
   labels: { settings: string; billing: string; logout: string };
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
+
+  useEffect(() => setOpen(false), [pathname]);
 
   useEffect(() => {
     if (!open) return;
@@ -33,6 +40,8 @@ export default function AccountMenu({
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
+
+  const close = () => setOpen(false);
 
   return (
     <div ref={ref} style={{ position: "relative" }}>
@@ -52,10 +61,20 @@ export default function AccountMenu({
 
       {open && (
         <div className="account-menu" role="menu">
-          <Link href="/settings" className="account-menu__item" onClick={() => setOpen(false)}>
+          {/* Navigation — visible on mobile (inline nav is hidden there). */}
+          <div className="account-menu__nav">
+            {links.map((link) => (
+              <Link key={link.href} href={link.href} className="account-menu__item" onClick={close}>
+                {link.label}
+              </Link>
+            ))}
+            <div className="account-menu__divider" />
+          </div>
+
+          <Link href="/settings" className="account-menu__item" onClick={close}>
             {labels.settings}
           </Link>
-          <Link href="/billing" className="account-menu__item" onClick={() => setOpen(false)}>
+          <Link href="/billing" className="account-menu__item" onClick={close}>
             {labels.billing}
           </Link>
           <form action={logout}>

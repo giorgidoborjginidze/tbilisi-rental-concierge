@@ -85,6 +85,7 @@ export default async function Nav() {
                 name={username}
                 plan={plan}
                 initial={username.charAt(0).toUpperCase()}
+                links={links}
                 labels={{
                   settings: t(locale, "nav_settings"),
                   billing: t(locale, "nav_billing"),
@@ -99,10 +100,14 @@ export default async function Nav() {
           </Link>
         )}
       </div>
-      <NavMenu
-        links={links}
-        signIn={operator ? null : { href: "/login", label: t(locale, "login_title") }}
-      />
+      {/* Signed-out visitors keep a plain hamburger; signed-in users get
+          their navigation inside the unified account menu instead. */}
+      {!operator && (
+        <NavMenu
+          links={links}
+          signIn={{ href: "/login", label: t(locale, "login_title") }}
+        />
+      )}
     </nav>
   );
 }

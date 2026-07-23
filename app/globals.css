@@ -1033,3 +1033,14 @@ td:first-child {
 @media (prefers-reduced-motion: reduce) {
   .splash, .splash__logo, .splash__hint { animation: none; }
 }
+
+/* Account menu: navigation group shows only on mobile (inline nav hidden) */
+.account-menu__nav { display: none; }
+.account-menu__divider {
+  height: 1px;
+  background: var(--color-border);
+  margin: 6px 4px;
+}
+@media (max-width: 760px) {
+  .account-menu__nav { display: block; }
+}
