@@ -7,6 +7,7 @@ import Nav from "./nav";
 import ActivoLogo from "./activo-logo";
 import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
+import { siteUrl } from "@/lib/site";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,10 +24,32 @@ const notoGeorgian = Noto_Sans_Georgian({
   subsets: ["georgian", "latin"],
 });
 
+const SITE_NAME = "Activo";
+const SITE_TITLE = "Activo — შენი აქტივები ერთ ადგილას";
+const SITE_DESCRIPTION =
+  "მთელი შენი ქონება ერთ დაფაზე — უძრავი ქონება, გაქირავება, ავტოპარკი, შემოსავალი და ციფრული აქტივები (კრიპტო და აქციები).";
+
 export const metadata: Metadata = {
-  title: "Activo — ქონების დაფა",
-  description:
-    "მთელი შენი ქონება ერთ დაფაზე — უძრავი ქონება, გაქირავება, შემოსავალი და საინვესტიციო ანალიზი.",
+  // Absolute base for every relative URL below → canonical points at the
+  // custom domain (or Vercel production URL) rather than any preview host.
+  metadataBase: new URL(siteUrl()),
+  title: { default: SITE_TITLE, template: `%s · ${SITE_NAME}` },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    url: "/",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+  },
+  robots: { index: true, follow: true },
 };
 
 export default async function RootLayout({
