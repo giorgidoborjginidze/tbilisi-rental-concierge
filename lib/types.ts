@@ -34,6 +34,7 @@ export const ASSET_CATEGORIES = [
   "income_source",
   "crypto",
   "stock",
+  "metal",
   "other",
 ] as const;
 
@@ -51,6 +52,7 @@ export const ASSET_TYPES: Record<string, readonly string[]> = {
   ],
   crypto: ["coin"],
   stock: ["share"],
+  metal: ["gold", "silver", "platinum", "palladium"],
   other: ["equipment", "other"],
 };
 
@@ -82,6 +84,7 @@ export const LISTING_PLATFORMS: Record<
   income_source: [],
   crypto: [],
   stock: [],
+  metal: [],
   other: [],
 };
 

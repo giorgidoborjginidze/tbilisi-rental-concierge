@@ -9,6 +9,7 @@ import { dayPrice } from "@/lib/assets/daily-price";
 import OccupancyCalendar from "./occupancy-calendar";
 import CryptoView from "./crypto-view";
 import StockView from "./stock-view";
+import MetalView from "./metal-view";
 import { LISTING_PLATFORMS } from "@/lib/types";
 import AssetForm from "../../asset-form";
 import ContractForm from "../../contract-form";
@@ -68,6 +69,15 @@ export default async function EditAssetPage({
   if (asset.category === "stock") {
     return (
       <StockView
+        asset={{ id: asset.id, name: asset.name, symbol: asset.symbol }}
+        locale={locale}
+      />
+    );
+  }
+  // Precious-metal holdings use the same holding view (per-ounce pricing).
+  if (asset.category === "metal") {
+    return (
+      <MetalView
         asset={{ id: asset.id, name: asset.name, symbol: asset.symbol }}
         locale={locale}
       />

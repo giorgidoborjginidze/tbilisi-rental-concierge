@@ -7,10 +7,65 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireOperator } from "@/lib/auth/session";
 import { ASSET_CATEGORIES, ASSET_STATUSES } from "@/lib/types";
+import { COINS } from "@/lib/crypto/prices";
+import { POPULAR_STOCKS } from "@/lib/stocks/prices";
+import { METALS } from "@/lib/metals/prices";
 import type { FormState } from "@/lib/units/actions";
+import type { SessionOperator } from "@/lib/auth/session";
 
 const str = (formData: FormData, key: string) =>
   String(formData.get(key) ?? "").trim();
+
+// Categories tracked as holdings (quantity + buy price + live value) rather
+// than the generic property/income form. Created here, then the buyer lands
+// on the asset's edit page to log buys and sells.
+const HOLDING_CATEGORIES = ["crypto", "stock", "metal"] as const;
+
+async function createHolding(
+  operator: SessionOperator,
+  category: "crypto" | "stock" | "metal",
+  formData: FormData,
+): Promise<FormState> {
+  const symbol = str(formData, "symbol").toUpperCase();
+  if (!symbol) return { error: "error_required" };
+
+  const { getBillingContext } = await import("@/lib/billing/context");
+  if (!(await getBillingContext(operator)).canAddAsset) {
+    return { error: "error_limit_assets" };
+  }
+
+  let name: string;
+  let type: string;
+  let coingeckoId: string | null = null;
+
+  if (category === "crypto") {
+    const known = COINS[symbol];
+    coingeckoId = known?.id || str(formData, "coingeckoId").toLowerCase() || null;
+    name = known?.name || str(formData, "name") || symbol;
+    type = "coin";
+  } else if (category === "stock") {
+    name = POPULAR_STOCKS[symbol] || str(formData, "name") || symbol;
+    type = "share";
+  } else {
+    name = METALS[symbol]?.name || str(formData, "name") || symbol;
+    type = METALS[symbol]?.type || "gold";
+  }
+
+  const asset = await prisma.asset.create({
+    data: {
+      operatorId: operator.id,
+      name,
+      category,
+      type,
+      symbol,
+      coingeckoId,
+      currency: "USD",
+      status: "personal_use",
+    },
+  });
+  revalidatePath("/assets");
+  redirect(`/assets/${asset.id}/edit`);
+}
 
 const optionalNumber = (formData: FormData, key: string): number | null => {
   const raw = str(formData, key);
@@ -31,10 +86,23 @@ export async function saveAsset(
   const type = str(formData, "type");
   const status = str(formData, "status");
 
-  if (!name) return { error: "error_required" };
   if (!(ASSET_CATEGORIES as readonly string[]).includes(category)) {
     return { error: "error_required" };
   }
+
+  // New crypto/stock/metal go through the holdings path (redirects on success).
+  if (
+    !assetId &&
+    (HOLDING_CATEGORIES as readonly string[]).includes(category)
+  ) {
+    return createHolding(
+      operator,
+      category as "crypto" | "stock" | "metal",
+      formData,
+    );
+  }
+
+  if (!name) return { error: "error_required" };
   if (!(ASSET_STATUSES as readonly string[]).includes(status)) {
     return { error: "error_required" };
   }

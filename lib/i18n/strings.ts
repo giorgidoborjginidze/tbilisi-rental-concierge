@@ -67,7 +67,15 @@ const en = {
   category_income_source: "Income Source",
   category_crypto: "Crypto",
   category_stock: "Stock",
+  category_metal: "Precious Metal",
   category_other: "Other",
+  type_gold: "Gold",
+  type_silver: "Silver",
+  type_platinum: "Platinum",
+  type_palladium: "Palladium",
+  metal_type: "Metal",
+  metal_hint: "Pick a metal, then log your purchases on the next screen. Prices are USD per troy ounce.",
+  holding_next_hint: "You'll log your buys and sells on the next screen, with the live price.",
   type_salary: "Salary",
   type_dividend: "Dividend",
   type_business: "Business",
@@ -549,6 +557,12 @@ const en = {
   stock_unit_price: "Price per Share (USD)",
   stock_hint: "The average buy price is calculated automatically across all your purchases. Sells reduce your shares without changing the average.",
   stock_footnote: "Stock values use the latest US-market price from Stooq, converted to GEL at the current rate.",
+
+  // Precious metals
+  section_metal: "Precious Metals",
+  metal_holdings: "Amount (oz)",
+  metal_unit_price: "Price per oz (USD)",
+  metal_footnote: "Metal prices are the live USD spot price per troy ounce, converted to GEL at the current rate.",
 };
 
 const ka: Record<StringKey, string> = {
@@ -616,7 +630,15 @@ const ka: Record<StringKey, string> = {
   category_income_source: "შემოსავლის წყარო",
   category_crypto: "კრიპტო",
   category_stock: "აქცია",
+  category_metal: "ძვირფასი ლითონი",
   category_other: "სხვა",
+  type_gold: "ოქრო",
+  type_silver: "ვერცხლი",
+  type_platinum: "პლატინა",
+  type_palladium: "პალადიუმი",
+  metal_type: "ლითონი",
+  metal_hint: "აირჩიე ლითონი, შემდეგ ეკრანზე ჩაწერე შესყიდვები. ფასი USD უნცია-ზე (troy oz).",
+  holding_next_hint: "ყიდვებსა და გაყიდვებს შემდეგ ეკრანზე ჩაწერ, ცოცხალი ფასით.",
   type_salary: "ხელფასი",
   type_dividend: "დივიდენდი",
   type_business: "ბიზნესი",
@@ -1098,6 +1120,12 @@ const ka: Record<StringKey, string> = {
   stock_unit_price: "ფასი აქციაზე (USD)",
   stock_hint: "საშუალო ყიდვის ფასი ავტომატურად გამოითვლება ყველა თქვენი შესყიდვის მიხედვით. გაყიდვა ამცირებს აქციების რაოდენობას საშუალო ფასის შეცვლის გარეშე.",
   stock_footnote: "აქციების ღირებულება იყენებს ბოლო US-ბირჟის ფასს Stooq-დან, გადაყვანილს ლარში მიმდინარე კურსით.",
+
+  // Precious metals
+  section_metal: "ძვირფასი ლითონები",
+  metal_holdings: "რაოდენობა (უნც.)",
+  metal_unit_price: "ფასი უნცია-ზე (USD)",
+  metal_footnote: "ლითონის ფასი — ცოცხალი USD spot ფასი troy უნცია-ზე, გადაყვანილი ლარში მიმდინარე კურსით.",
 };
 
 export type StringKey = keyof typeof en;

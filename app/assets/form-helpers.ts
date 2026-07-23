@@ -5,6 +5,9 @@ import {
   ASSET_TYPES,
   KNOWN_DISTRICTS,
 } from "@/lib/types";
+import { COINS } from "@/lib/crypto/prices";
+import { POPULAR_STOCKS } from "@/lib/stocks/prices";
+import { METALS } from "@/lib/metals/prices";
 import { prisma } from "@/lib/db";
 
 // Everything an AssetForm (client component) needs, resolved server-side.
@@ -23,6 +26,10 @@ export async function assetFormProps(
     "income_monthly", "income_source_hint",
     "save", "cancel", "delete", "error_required", "error_invalid_number",
     "error_email_taken", "error_dates",
+    "crypto_coin", "crypto_custom", "crypto_custom_symbol", "crypto_custom_id",
+    "crypto_custom_id_hint", "crypto_add_hint", "stock_ticker",
+    "stock_custom_ticker", "stock_add_hint", "metal_type", "metal_hint",
+    "holding_next_hint",
   ];
   const labels = Object.fromEntries(labelKeys.map((key) => [key, t(locale, key)]));
 
@@ -52,11 +59,8 @@ export async function assetFormProps(
   return {
     labels,
     typesByCategory,
-    // Crypto and stock have dedicated add flows (they capture a ticker and
-    // wire up live pricing), so they're excluded from the generic selector.
-    categories: ASSET_CATEGORIES.filter(
-      (value) => value !== "crypto" && value !== "stock",
-    ).map((value) => ({
+    // One form for everything — including crypto/stock/metal holdings.
+    categories: ASSET_CATEGORIES.map((value) => ({
       value,
       label: t(locale, `category_${value}` as StringKey),
     })),
@@ -66,5 +70,9 @@ export async function assetFormProps(
     })),
     districts: KNOWN_DISTRICTS,
     units: units.map((unit) => ({ id: unit.id, label: unit.name })),
+    // Holding pickers (crypto coins, US stocks, precious metals).
+    coins: Object.entries(COINS).map(([symbol, c]) => ({ symbol, name: c.name })),
+    stocks: Object.entries(POPULAR_STOCKS).map(([symbol, name]) => ({ symbol, name })),
+    metals: Object.entries(METALS).map(([symbol, m]) => ({ symbol, name: m.name })),
   };
 }

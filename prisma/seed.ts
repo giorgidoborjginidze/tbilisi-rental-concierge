@@ -607,6 +607,36 @@ async function main() {
     }
   }
 
+  // Precious-metal holdings — amount in troy ounces, price USD/oz.
+  const metalHoldings = [
+    {
+      name: "Gold", symbol: "XAU", type: "gold",
+      trades: [
+        { side: "buy", quantity: 3, unitPrice: 2050, tradedAt: utc(2024, 5, 2) },
+        { side: "buy", quantity: 2, unitPrice: 2400, tradedAt: utc(2024, 11, 20) },
+      ],
+    },
+    {
+      name: "Silver", symbol: "XAG", type: "silver",
+      trades: [
+        { side: "buy", quantity: 100, unitPrice: 24, tradedAt: utc(2024, 6, 18) },
+      ],
+    },
+  ];
+  for (const { trades, ...metalData } of metalHoldings) {
+    const asset = await prisma.asset.create({
+      data: {
+        ...metalData,
+        category: "metal",
+        status: "personal_use",
+        operatorId: operator.id, currency: "USD",
+      },
+    });
+    for (const tr of trades) {
+      await prisma.cryptoTrade.create({ data: { ...tr, assetId: asset.id } });
+    }
+  }
+
   // Manual income entries (rent + STR income are derived automatically).
   const incomes = [
     { source: "salary", description: "Monthly salary", date: utc(2026, 5, 30), amount: 5000 },
@@ -626,7 +656,8 @@ async function main() {
       `${leases.length} leases, ${benchmarkCount} benchmark rows, ` +
       `${assets.length} assets, ${contractCount} contracts, ` +
       `${rentBenchmarkCount} rent benchmarks, ${incomes.length} income records, ` +
-      `${cryptoHoldings.length} crypto holdings, ${stockHoldings.length} stock holdings.`,
+      `${cryptoHoldings.length} crypto holdings, ${stockHoldings.length} stock holdings, ` +
+      `${metalHoldings.length} metal holdings.`,
   );
 }
 

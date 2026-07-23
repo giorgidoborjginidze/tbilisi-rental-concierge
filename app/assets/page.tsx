@@ -3,11 +3,12 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
-import { t, type StringKey } from "@/lib/i18n/strings";
+import { t, type StringKey, type Locale } from "@/lib/i18n/strings";
 import { proratedRevenue } from "@/lib/analytics/metrics";
 import { estimateMarketRent, getRentBenchmark } from "@/lib/market/rent";
 import { fetchUsdGel, fetchUsdPrices, FALLBACK_USD_GEL } from "@/lib/crypto/prices";
 import { fetchStockPrices } from "@/lib/stocks/prices";
+import { fetchMetalPrices } from "@/lib/metals/prices";
 import { value as cryptoValue } from "@/lib/crypto/holdings";
 import { LISTING_PLATFORMS } from "@/lib/types";
 import IncomeSection from "./income-section";
@@ -30,6 +31,93 @@ function Kpi({ label, value, sub }: { label: string; value: string; sub?: string
       <div className="kpi__label">{label}</div>
       <div className="kpi__value">{value}</div>
       {sub && <div className="kpi__sub">{sub}</div>}
+    </div>
+  );
+}
+
+interface HoldingRow {
+  asset: { id: string; name: string; symbol: string | null };
+  price: number | null;
+  v: {
+    quantity: number;
+    avgBuyPrice: number | null;
+    currentValue: number | null;
+    profit: number | null;
+    profitPct: number | null;
+  };
+}
+
+// One holding sub-table (crypto / stock / metal) inside Digital Assets.
+function HoldingTable({
+  locale, money, heading, subUsd, subGel, holdingsLabel, qtyDigits, rows,
+}: {
+  locale: Locale;
+  money: (v: number) => string;
+  heading: string;
+  subUsd: number;
+  subGel: number;
+  holdingsLabel: string;
+  qtyDigits: number;
+  rows: HoldingRow[];
+}) {
+  if (rows.length === 0) return null;
+  const d = (n: number | null, dp = 2) =>
+    n == null ? "—" : `$${n.toLocaleString("en-US", { maximumFractionDigits: dp })}`;
+  return (
+    <div style={{ marginTop: 18 }}>
+      <h3 style={{ marginBottom: 0 }}>
+        {heading}
+        {subUsd > 0 && (
+          <span style={{ color: "var(--color-text-muted)", fontWeight: 400, fontSize: 13 }}>
+            {" "}· ${Math.round(subUsd).toLocaleString("en-US")} ≈ {money(subGel)}
+          </span>
+        )}
+      </h3>
+      <div className="card card--stack" style={{ marginTop: 10 }}>
+        <table>
+          <thead>
+            <tr>
+              <th>{t(locale, "unit_name")}</th>
+              <th className="num">{holdingsLabel}</th>
+              <th className="num">{t(locale, "crypto_avg_price")}</th>
+              <th className="num">{t(locale, "crypto_current_price")}</th>
+              <th className="num">{t(locale, "crypto_value")}</th>
+              <th className="num">{t(locale, "crypto_pnl")}</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ asset, price, v }) => {
+              const pc = v.profit == null ? undefined : v.profit >= 0 ? "var(--status-rented-text)" : "var(--status-danger-text)";
+              return (
+                <tr key={asset.id}>
+                  <td>
+                    <Link href={`/assets/${asset.id}/edit`} className="link">{asset.name}</Link>
+                    <div className="cell-sub">{asset.symbol}</div>
+                  </td>
+                  <td className="num" data-label={holdingsLabel}>
+                    {v.quantity.toLocaleString("en-US", { maximumFractionDigits: qtyDigits })}
+                  </td>
+                  <td className="num" data-label={t(locale, "crypto_avg_price")}>{d(v.avgBuyPrice)}</td>
+                  <td className="num" data-label={t(locale, "crypto_current_price")}>{d(price)}</td>
+                  <td className="num" data-label={t(locale, "crypto_value")}>{d(v.currentValue, 0)}</td>
+                  <td className="num" data-label={t(locale, "crypto_pnl")} style={{ color: pc, fontWeight: 600 }}>
+                    {v.profit == null ? "—" : `${v.profit >= 0 ? "+" : ""}${d(v.profit, 0)}`}
+                    {v.profitPct != null && (
+                      <div className="cell-sub" style={{ color: pc }}>
+                        {v.profitPct >= 0 ? "+" : ""}{(v.profitPct * 100).toFixed(1)}%
+                      </div>
+                    )}
+                  </td>
+                  <td className="num">
+                    <Link href={`/assets/${asset.id}/edit`} className="link">{t(locale, "edit")}</Link>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -110,8 +198,8 @@ export default async function AssetsPage() {
   const totalMonthly =
     rentIncome + strIncome + manualIncomeThisMonth + otherIncomeSources;
 
-  // ── Crypto & stock holdings: live valuation in USD, converted to GEL. ──
-  const [cryptoAssets, stockAssets] = await Promise.all([
+  // ── Crypto, stock & metal holdings: live valuation in USD → GEL. ──
+  const [cryptoAssets, stockAssets, metalAssets] = await Promise.all([
     prisma.asset.findMany({
       where: { operatorId: operator.id, category: "crypto" },
       include: { trades: true },
@@ -122,48 +210,65 @@ export default async function AssetsPage() {
       include: { trades: true },
       orderBy: { name: "asc" },
     }),
+    prisma.asset.findMany({
+      where: { operatorId: operator.id, category: "metal" },
+      include: { trades: true },
+      orderBy: { name: "asc" },
+    }),
   ]);
-  const needRate = cryptoAssets.length > 0 || stockAssets.length > 0;
-  const [cryptoPrices, stockPrices, usdGel] = await Promise.all([
+  const needRate = cryptoAssets.length > 0 || stockAssets.length > 0 || metalAssets.length > 0;
+  const [cryptoPrices, stockPrices, metalPrices, usdGel] = await Promise.all([
     cryptoAssets.length
       ? fetchUsdPrices(cryptoAssets.map((c) => c.coingeckoId).filter(Boolean) as string[])
       : Promise.resolve<Record<string, number>>({}),
     stockAssets.length
       ? fetchStockPrices(stockAssets.map((s) => s.symbol).filter(Boolean) as string[])
       : Promise.resolve<Record<string, number>>({}),
+    metalAssets.length
+      ? fetchMetalPrices(metalAssets.map((m) => m.symbol).filter(Boolean) as string[])
+      : Promise.resolve<Record<string, number>>({}),
     needRate ? fetchUsdGel() : Promise.resolve(FALLBACK_USD_GEL),
   ]);
 
-  const cryptoRows = cryptoAssets.map((c) => {
-    const price = c.coingeckoId ? cryptoPrices[c.coingeckoId] ?? null : null;
-    const v = cryptoValue(
-      c.trades.map((tr) => ({ side: tr.side as "buy" | "sell", quantity: tr.quantity, unitPrice: tr.unitPrice })),
-      price,
-    );
-    return { asset: c, price, v };
-  });
-  const cryptoValueUsd = cryptoRows.reduce((s, r) => s + (r.v.currentValue ?? 0), 0);
+  const holdingRows = (
+    list: typeof cryptoAssets,
+    priceOf: (a: (typeof cryptoAssets)[number]) => number | null,
+  ) =>
+    list.map((a) => {
+      const price = priceOf(a);
+      const v = cryptoValue(
+        a.trades.map((tr) => ({ side: tr.side as "buy" | "sell", quantity: tr.quantity, unitPrice: tr.unitPrice })),
+        price,
+      );
+      return { asset: a, price, v };
+    });
+
+  const cryptoRows = holdingRows(cryptoAssets, (c) =>
+    c.coingeckoId ? cryptoPrices[c.coingeckoId] ?? null : null,
+  );
+  const stockRows = holdingRows(stockAssets, (s) =>
+    s.symbol ? stockPrices[s.symbol.toUpperCase()] ?? null : null,
+  );
+  const metalRows = holdingRows(metalAssets, (m) =>
+    m.symbol ? metalPrices[m.symbol.toUpperCase()] ?? null : null,
+  );
+
+  const sumUsd = (rows: { v: { currentValue: number | null } }[]) =>
+    rows.reduce((s, r) => s + (r.v.currentValue ?? 0), 0);
+  const cryptoValueUsd = sumUsd(cryptoRows);
+  const stockValueUsd = sumUsd(stockRows);
+  const metalValueUsd = sumUsd(metalRows);
   const cryptoValueGel = cryptoValueUsd * usdGel;
-
-  const stockRows = stockAssets.map((s) => {
-    const price = s.symbol ? stockPrices[s.symbol.toUpperCase()] ?? null : null;
-    const v = cryptoValue(
-      s.trades.map((tr) => ({ side: tr.side as "buy" | "sell", quantity: tr.quantity, unitPrice: tr.unitPrice })),
-      price,
-    );
-    return { asset: s, price, v };
-  });
-  const stockValueUsd = stockRows.reduce((s, r) => s + (r.v.currentValue ?? 0), 0);
   const stockValueGel = stockValueUsd * usdGel;
+  const metalValueGel = metalValueUsd * usdGel;
 
-  // Digital assets = crypto + stocks, shown together in one segment.
-  const digitalValueUsd = cryptoValueUsd + stockValueUsd;
-  const digitalValueGel = cryptoValueGel + stockValueGel;
+  // Digital assets = crypto + stocks + metals, shown together in one segment.
+  const digitalValueUsd = cryptoValueUsd + stockValueUsd + metalValueUsd;
+  const digitalValueGel = cryptoValueGel + stockValueGel + metalValueGel;
 
   const totalValue =
     assets.reduce((sum, a) => sum + (a.estimatedValue ?? 0), 0) +
-    cryptoValueGel +
-    stockValueGel;
+    digitalValueGel;
 
   // Market-rent benchmarks per district (current month).
   const districts = [...new Set(assets.map((a) => a.district).filter(Boolean))] as string[];
@@ -186,14 +291,9 @@ export default async function AssetsPage() {
     <main>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 style={{ marginBottom: 0 }}>{t(locale, "assets_title")}</h1>
-        <div className="flex flex-wrap items-center gap-2">
-          <Link href="/assets/new?category=income_source" className="btn-secondary">
-            {t(locale, "add_income_source")}
-          </Link>
-          <Link href="/assets/new" className="btn-primary">
-            {t(locale, "assets_add")}
-          </Link>
-        </div>
+        <Link href="/assets/new" className="btn-primary">
+          {t(locale, "assets_add")}
+        </Link>
       </div>
 
       <section className="kpi-grid kpi-grid--3">
@@ -379,135 +479,29 @@ export default async function AssetsPage() {
               </span>
             )}
           </h2>
-          <div className="flex flex-wrap items-center gap-2">
-            <Link href="/assets/crypto/new" className="btn-secondary">{t(locale, "crypto_add")}</Link>
-            <Link href="/assets/stocks/new" className="btn-secondary">{t(locale, "stock_add")}</Link>
-          </div>
         </div>
 
-        {cryptoRows.length === 0 && stockRows.length === 0 && (
+        {cryptoRows.length === 0 && stockRows.length === 0 && metalRows.length === 0 && (
           <p className="hint" style={{ marginTop: 10 }}>{t(locale, "digital_empty")}</p>
         )}
 
-        {cryptoRows.length > 0 && (
-          <div style={{ marginTop: 18 }}>
-            <h3 style={{ marginBottom: 0 }}>
-              {t(locale, "section_crypto")}
-              {cryptoValueUsd > 0 && (
-                <span style={{ color: "var(--color-text-muted)", fontWeight: 400, fontSize: 13 }}>
-                  {" "}· ${Math.round(cryptoValueUsd).toLocaleString("en-US")} ≈ {money(cryptoValueGel)}
-                </span>
-              )}
-            </h3>
-            <div className="card card--stack" style={{ marginTop: 10 }}>
-              <table>
-                <thead>
-                  <tr>
-                    <th>{t(locale, "unit_name")}</th>
-                    <th className="num">{t(locale, "crypto_holdings")}</th>
-                    <th className="num">{t(locale, "crypto_avg_price")}</th>
-                    <th className="num">{t(locale, "crypto_current_price")}</th>
-                    <th className="num">{t(locale, "crypto_value")}</th>
-                    <th className="num">{t(locale, "crypto_pnl")}</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {cryptoRows.map(({ asset, price, v }) => {
-                    const pc = v.profit == null ? undefined : v.profit >= 0 ? "var(--status-rented-text)" : "var(--status-danger-text)";
-                    const d = (n: number | null, dp = 2) => n == null ? "—" : `$${n.toLocaleString("en-US", { maximumFractionDigits: dp })}`;
-                    return (
-                      <tr key={asset.id}>
-                        <td>
-                          <Link href={`/assets/${asset.id}/edit`} className="link">{asset.name}</Link>
-                          <div className="cell-sub">{asset.symbol}</div>
-                        </td>
-                        <td className="num" data-label={t(locale, "crypto_holdings")}>
-                          {v.quantity.toLocaleString("en-US", { maximumFractionDigits: 8 })}
-                        </td>
-                        <td className="num" data-label={t(locale, "crypto_avg_price")}>{d(v.avgBuyPrice)}</td>
-                        <td className="num" data-label={t(locale, "crypto_current_price")}>{d(price)}</td>
-                        <td className="num" data-label={t(locale, "crypto_value")}>{d(v.currentValue, 0)}</td>
-                        <td className="num" data-label={t(locale, "crypto_pnl")} style={{ color: pc, fontWeight: 600 }}>
-                          {v.profit == null ? "—" : `${v.profit >= 0 ? "+" : ""}${d(v.profit, 0)}`}
-                          {v.profitPct != null && (
-                            <div className="cell-sub" style={{ color: pc }}>
-                              {v.profitPct >= 0 ? "+" : ""}{(v.profitPct * 100).toFixed(1)}%
-                            </div>
-                          )}
-                        </td>
-                        <td className="num">
-                          <Link href={`/assets/${asset.id}/edit`} className="link">{t(locale, "edit")}</Link>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+        <HoldingTable
+          locale={locale} money={money} heading={t(locale, "section_crypto")}
+          subUsd={cryptoValueUsd} subGel={cryptoValueGel}
+          holdingsLabel={t(locale, "crypto_holdings")} qtyDigits={8} rows={cryptoRows}
+        />
+        <HoldingTable
+          locale={locale} money={money} heading={t(locale, "section_stock")}
+          subUsd={stockValueUsd} subGel={stockValueGel}
+          holdingsLabel={t(locale, "stock_holdings")} qtyDigits={4} rows={stockRows}
+        />
+        <HoldingTable
+          locale={locale} money={money} heading={t(locale, "section_metal")}
+          subUsd={metalValueUsd} subGel={metalValueGel}
+          holdingsLabel={t(locale, "metal_holdings")} qtyDigits={4} rows={metalRows}
+        />
 
-        {stockRows.length > 0 && (
-          <div style={{ marginTop: 18 }}>
-            <h3 style={{ marginBottom: 0 }}>
-              {t(locale, "section_stock")}
-              {stockValueUsd > 0 && (
-                <span style={{ color: "var(--color-text-muted)", fontWeight: 400, fontSize: 13 }}>
-                  {" "}· ${Math.round(stockValueUsd).toLocaleString("en-US")} ≈ {money(stockValueGel)}
-                </span>
-              )}
-            </h3>
-            <div className="card card--stack" style={{ marginTop: 10 }}>
-              <table>
-                <thead>
-                  <tr>
-                    <th>{t(locale, "unit_name")}</th>
-                    <th className="num">{t(locale, "stock_holdings")}</th>
-                    <th className="num">{t(locale, "crypto_avg_price")}</th>
-                    <th className="num">{t(locale, "crypto_current_price")}</th>
-                    <th className="num">{t(locale, "crypto_value")}</th>
-                    <th className="num">{t(locale, "crypto_pnl")}</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {stockRows.map(({ asset, price, v }) => {
-                    const pc = v.profit == null ? undefined : v.profit >= 0 ? "var(--status-rented-text)" : "var(--status-danger-text)";
-                    const d = (n: number | null, dp = 2) => n == null ? "—" : `$${n.toLocaleString("en-US", { maximumFractionDigits: dp })}`;
-                    return (
-                      <tr key={asset.id}>
-                        <td>
-                          <Link href={`/assets/${asset.id}/edit`} className="link">{asset.name}</Link>
-                          <div className="cell-sub">{asset.symbol}</div>
-                        </td>
-                        <td className="num" data-label={t(locale, "stock_holdings")}>
-                          {v.quantity.toLocaleString("en-US", { maximumFractionDigits: 4 })}
-                        </td>
-                        <td className="num" data-label={t(locale, "crypto_avg_price")}>{d(v.avgBuyPrice)}</td>
-                        <td className="num" data-label={t(locale, "crypto_current_price")}>{d(price)}</td>
-                        <td className="num" data-label={t(locale, "crypto_value")}>{d(v.currentValue, 0)}</td>
-                        <td className="num" data-label={t(locale, "crypto_pnl")} style={{ color: pc, fontWeight: 600 }}>
-                          {v.profit == null ? "—" : `${v.profit >= 0 ? "+" : ""}${d(v.profit, 0)}`}
-                          {v.profitPct != null && (
-                            <div className="cell-sub" style={{ color: pc }}>
-                              {v.profitPct >= 0 ? "+" : ""}{(v.profitPct * 100).toFixed(1)}%
-                            </div>
-                          )}
-                        </td>
-                        <td className="num">
-                          <Link href={`/assets/${asset.id}/edit`} className="link">{t(locale, "edit")}</Link>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {(cryptoRows.length > 0 || stockRows.length > 0) && (
+        {(cryptoRows.length > 0 || stockRows.length > 0 || metalRows.length > 0) && (
           <p className="hint" style={{ marginTop: 10 }}>{t(locale, "digital_footnote")}</p>
         )}
       </section>
@@ -518,9 +512,6 @@ export default async function AssetsPage() {
           <section>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 style={{ marginBottom: 0 }}>{t(locale, "section_income")}</h2>
-              <Link href="/assets/new?category=income_source" className="btn-secondary">
-                {t(locale, "add_income_source")}
-              </Link>
             </div>
             {incomeAssets.length === 0 ? (
               <p style={{ color: "var(--color-text-muted)", marginTop: 12 }}>
