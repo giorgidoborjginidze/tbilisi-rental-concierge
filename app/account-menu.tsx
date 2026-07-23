@@ -74,9 +74,6 @@ export default function AccountMenu({
           <Link href="/settings" className="account-menu__item" onClick={close}>
             {labels.settings}
           </Link>
-          <Link href="/billing" className="account-menu__item" onClick={close}>
-            {labels.billing}
-          </Link>
           <form action={logout}>
             <button type="submit" className="account-menu__item account-menu__item--danger">
               {labels.logout}

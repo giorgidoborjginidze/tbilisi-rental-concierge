@@ -48,7 +48,7 @@ export async function startCheckout(
       amountMinor,
       description: `Activo — ${plan.id} (${plan.priceGel} GEL/mo)`,
       callbackUrl: `${siteUrl()}/api/payments/flitt/callback`,
-      responseUrl: `${siteUrl()}/billing?paid=1`,
+      responseUrl: `${siteUrl()}/settings?paid=1`,
     });
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
