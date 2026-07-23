@@ -276,6 +276,13 @@ const en = {
     "Approximate estimate based on mock market averages. Not financial advice \u2014 verify prices, rates and costs before investing.",
 
   nav_billing: "Plan",
+  nav_settings: "Settings",
+  settings_title: "Settings",
+  settings_account: "Account",
+  settings_interface: "Interface",
+  settings_language: "Language",
+  settings_theme: "Theme",
+  settings_manage_plan: "Manage Plan",
   billing_title: "Plan & Subscription",
   billing_intro:
     "The first month is free with full access. From the second month, pick the plan that fits your portfolio. Card payments are handled securely by Flitt.",
@@ -613,7 +620,7 @@ const ka: Record<StringKey, string> = {
 
   type_apartment: "ბინა",
   type_studio: "სტუდია",
-  type_aparthotel_room: "აპარტოტელის ნომერი",
+  type_aparthotel_room: "აპარტ ჰოტელის ნომერი",
   type_house: "სახლი",
 
   bookings: "ჯავშნები",
@@ -847,6 +854,13 @@ const ka: Record<StringKey, string> = {
     "მიახლოებითი შეფასება mock საბაზრო საშუალოებით. ეს არ არის ფინანსური რჩევა — ინვესტიციამდე გადაამოწმე ფასები, განაკვეთები და ხარჯები.",
 
   nav_billing: "პაკეტი",
+  nav_settings: "პარამეტრები",
+  settings_title: "პარამეტრები",
+  settings_account: "ანგარიში",
+  settings_interface: "ინტერფეისი",
+  settings_language: "ენა",
+  settings_theme: "თემა",
+  settings_manage_plan: "პაკეტის მართვა",
   billing_title: "პაკეტი და გამოწერა",
   billing_intro:
     "პირველი თვე უფასოა სრული წვდომით. მეორე თვიდან აირჩიე შენს პორტფელზე მორგებული პაკეტი. ბარათით გადახდას უსაფრთხოდ ამუშავებს Flitt.",
@@ -888,7 +902,7 @@ const ka: Record<StringKey, string> = {
   account_personal: "პირადი",
   account_business: "კომპანია",
   profile_label: "კომპანიის პროფილი",
-  profile_hotel: "სასტუმრო / აპარტოტელი",
+  profile_hotel: "სასტუმრო / აპარტ ჰოტელი",
   profile_brokerage: "სამაკლერო / ქონების მართვა",
   profile_car: "მანქანების გაქირავება / ავტოპარკი",
   profile_hint:

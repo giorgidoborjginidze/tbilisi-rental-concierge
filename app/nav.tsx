@@ -4,9 +4,19 @@ import { getSessionOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 import { toggleLocale } from "@/lib/i18n/actions";
-import { logout } from "@/lib/auth/actions";
 import ThemeToggle from "./theme-toggle";
 import ActivoLogo from "./activo-logo";
+import AccountMenu from "./account-menu";
+import { planById } from "@/lib/billing/plans";
+
+// Plan names always shown in Latin, per design.
+const PLAN_LATIN: Record<string, string> = {
+  starter: "Starter",
+  standard: "Standard",
+  pro: "Pro",
+  biz_s: "Business S",
+  biz_m: "Business M",
+};
 
 export default async function Nav() {
   const locale = await getLocale();
@@ -52,25 +62,36 @@ export default async function Nav() {
         ))}
       </div>
       <div className="nav__meta">
-        {operator && <span className="hidden sm:inline">{operator.email}</span>}
-        {operator && (
-          <Link href="/billing" className="btn-chip">
-            {t(locale, "nav_billing")}
-          </Link>
-        )}
         <ThemeToggle />
         <form action={toggleLocale}>
           <input type="hidden" name="locale" value={other} />
-          <button type="submit" className="btn-chip">
-            {other === "ka" ? "ქართული" : "English"}
+          <button type="submit" className="btn-chip" aria-label="Language" title="Language">
+            {locale === "ka" ? "KA" : "EN"}
           </button>
         </form>
         {operator ? (
-          <form action={logout}>
-            <button type="submit" className="btn-chip">
-              {t(locale, "logout")}
-            </button>
-          </form>
+          (() => {
+            const rawName = operator.name?.trim() || operator.email.split("@")[0];
+            // Always Latin: fall back to the email local-part for non-Latin names.
+            const username = /^[\x00-\x7F]+$/.test(rawName)
+              ? rawName
+              : operator.email.split("@")[0];
+            const plan = operator.plan
+              ? PLAN_LATIN[operator.plan] ?? planById(operator.plan)?.id ?? "—"
+              : "Trial";
+            return (
+              <AccountMenu
+                name={username}
+                plan={plan}
+                initial={username.charAt(0).toUpperCase()}
+                labels={{
+                  settings: t(locale, "nav_settings"),
+                  billing: t(locale, "nav_billing"),
+                  logout: t(locale, "logout"),
+                }}
+              />
+            );
+          })()
         ) : (
           <Link href="/login" className="btn-chip">
             {t(locale, "login_title")}
