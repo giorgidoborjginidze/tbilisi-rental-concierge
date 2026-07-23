@@ -8,7 +8,6 @@ import { requireOperator } from "@/lib/auth/session";
 import { siteUrl } from "@/lib/site";
 import { createFlittCheckout } from "./flitt";
 import { planById, plansFor, type AccountType } from "./plans";
-import type { StringKey } from "@/lib/i18n/strings";
 import type { FormState } from "@/lib/units/actions";
 
 const str = (formData: FormData, key: string) =>
@@ -53,14 +52,13 @@ export async function startCheckout(
     });
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
+    // Logged for diagnosis; the user sees a friendly message.
     console.error("[flitt] checkout failed:", detail);
     await prisma.payment.update({
       where: { orderId },
       data: { status: "declined" },
     });
-    // Surface the provider's reason so it can be diagnosed from the UI.
-    // (Cast: the UI falls back to showing the raw string when it's not a key.)
-    return { error: `Flitt: ${detail}` as StringKey };
+    return { error: "error_payment" };
   }
 
   // redirect throws — must be outside the try/catch above.
