@@ -119,6 +119,67 @@ const en = {
   privacy_h_control: "You are in control",
   privacy_p_control:
     "Delete any asset, contract or income record at any time \u2014 it is removed for good. Remove a team member and their access ends immediately.",
+  footer_about: "About Us",
+  footer_contact: "Contact Us",
+  // \u2500\u2500 About page \u2500\u2500
+  about_title: "About Activo",
+  about_intro:
+    "Activo is a Georgian platform that brings every asset you own \u2014 property, vehicles, rentals, income and digital investments \u2014 into a single, simple dashboard you can run from your phone.",
+  about_h_mission: "Our mission",
+  about_p_mission:
+    "Managing property in Georgia usually means juggling spreadsheets, chat messages and a handful of listing sites. We built Activo to replace all of that with one calm place where you always know what you own, what it earns and what needs your attention.",
+  about_h_what: "What Activo does",
+  about_p_what:
+    "Track real estate, vehicles and other assets with their status and contracts; sync Airbnb and Booking.com calendars to avoid double bookings; follow rental and other income month by month; and value crypto, stocks and precious metals with live prices \u2014 all in one view.",
+  about_h_georgia: "Built for Georgia",
+  about_p_georgia:
+    "Activo speaks Georgian, works in GEL, and understands local platforms like myhome.ge, ss.ge and myauto.ge, WhatsApp door-code sharing and the way rentals actually work here.",
+  about_h_who: "Who it is for",
+  about_p_who:
+    "Property owners, short-term rental hosts, small agencies and anyone who wants a clear, honest picture of their assets and income without hiring an accountant.",
+  // \u2500\u2500 Contact page \u2500\u2500
+  contact_title: "Contact Us",
+  contact_intro:
+    "Questions, ideas or need a hand getting started? We would love to hear from you.",
+  contact_email_label: "Email",
+  contact_wa_label: "WhatsApp",
+  contact_wa_note: "Message us and we usually reply within a few hours.",
+  contact_bot_note:
+    "In a hurry? The support chat in the bottom-right corner answers common questions instantly.",
+  contact_placeholder_note:
+    "These contact details are placeholders for now and will be updated soon.",
+  // \u2500\u2500 Support bot \u2500\u2500
+  bot_launcher: "Support",
+  bot_title: "Support",
+  bot_subtitle: "Answers in seconds",
+  bot_greeting:
+    "Hi! I can answer a few common questions. Pick one below or type your own.",
+  bot_placeholder: "Type your question\u2026",
+  bot_send: "Send",
+  bot_no_answer:
+    "Sorry, I don\u2019t have an answer for that yet. Would you like to talk to a person?",
+  bot_operator_intro: "You can reach our team on WhatsApp:",
+  bot_operator_cta: "Chat on WhatsApp",
+  bot_close: "Close",
+  bot_q_what: "What is Activo?",
+  bot_a_what:
+    "Activo brings all your property into one dashboard \u2014 real estate, vehicles, rentals, income and digital assets (crypto, stocks, metals), with live values.",
+  bot_q_pricing: "How much does it cost?",
+  bot_a_pricing:
+    "Your first month is free with full access. After that, plans start from 15\u20be per month. You can cancel any time.",
+  bot_q_sync: "How does calendar sync work?",
+  bot_a_sync:
+    "Connect your Airbnb and Booking.com iCal links and Activo shows every reservation in one calendar, so you never double-book.",
+  bot_q_payment: "How can I pay?",
+  bot_a_payment:
+    "You can pay by card through our secure checkout, including Apple Pay and Google Pay.",
+  bot_q_security: "Is my data safe?",
+  bot_a_security:
+    "Yes. Every account is fully isolated, passwords are hashed, and we never sell or share your data. See the Privacy page for details.",
+  bot_q_calc: "Is the calculator free?",
+  bot_a_calc:
+    "Yes \u2014 the investment calculator is free to try and needs no account.",
+  bot_q_human: "Talk to a person",
   type_commercial: "Commercial Space",
   type_land: "Land",
   type_garage: "Garage",
@@ -699,6 +760,67 @@ const ka: Record<StringKey, string> = {
   privacy_h_control: "კონტროლი შენ გაქვს",
   privacy_p_control:
     "ნებისმიერი აქტივი, ხელშეკრულება თუ შემოსავალი ნებისმიერ დროს წაშალე \u2014 სამუდამოდ იშლება. თანამშრომლის მოშორებისთანავე მისი წვდომა წყდება.",
+  footer_about: "ჩვენ შესახებ",
+  footer_contact: "კონტაქტი",
+  // ── About page ──
+  about_title: "Activo-ს შესახებ",
+  about_intro:
+    "Activo ქართული პლატფორმაა, რომელიც შენს ყველა აქტივს — ქონებას, ავტომობილებს, გაქირავებას, შემოსავალსა და ციფრულ ინვესტიციებს — ერთ მარტივ დაფაზე კრებს, რომელსაც ტელეფონიდან მართავ.",
+  about_h_mission: "ჩვენი მისია",
+  about_p_mission:
+    "საქართველოში ქონების მართვა ჩვეულებრივ ცხრილებს, მესიჯებსა და რამდენიმე განცხადების საიტს შორის ხტუნვას ნიშნავს. Activo სწორედ ამის ჩასანაცვლებლად შევქმენით — ერთი მშვიდი ადგილი, სადაც ყოველთვის იცი რა გაქვს, რას გამოიმუშავებს და რას სჭირდება ყურადღება.",
+  about_h_what: "რას აკეთებს Activo",
+  about_p_what:
+    "თვალი ადევნე უძრავ ქონებას, ავტომობილებსა და სხვა აქტივებს სტატუსითა და ხელშეკრულებებით; დააკავშირე Airbnb-ისა და Booking.com-ის კალენდრები ორმაგი ჯავშნის თავიდან ასაცილებლად; აკონტროლე ქირისა და სხვა შემოსავალი თვიდან თვემდე; და შეაფასე კრიპტო, აქციები და ძვირფასი ლითონები ცოცხალი ფასებით — ყველაფერი ერთ ხედში.",
+  about_h_georgia: "შექმნილია საქართველოსთვის",
+  about_p_georgia:
+    "Activo ქართულად საუბრობს, ლარში მუშაობს და იცნობს ადგილობრივ პლატფორმებს — myhome.ge, ss.ge, myauto.ge, WhatsApp-ით კოდის გაზიარებას და იმას, როგორც აქ გაქირავება რეალურად მუშაობს.",
+  about_h_who: "ვისთვისაა",
+  about_p_who:
+    "ქონების მფლობელებისთვის, დღიური გაქირავების მასპინძლებისთვის, მცირე სააგენტოებისა და ყველასთვის, ვისაც სურს აქტივებისა და შემოსავლის ნათელი, გულწრფელი სურათი ბუღალტრის დაქირავების გარეშე.",
+  // ── Contact page ──
+  contact_title: "დაგვიკავშირდი",
+  contact_intro:
+    "გაქვს კითხვები, იდეები ან დახმარება გჭირდება დასაწყებად? სიამოვნებით მოგისმენთ.",
+  contact_email_label: "ელფოსტა",
+  contact_wa_label: "WhatsApp",
+  contact_wa_note: "მოგვწერე და ჩვეულებრივ რამდენიმე საათში გიპასუხებთ.",
+  contact_bot_note:
+    "გეჩქარება? ქვედა მარჯვენა კუთხეში მხარდაჭერის ჩატი ხშირ კითხვებზე მყისვე პასუხობს.",
+  contact_placeholder_note:
+    "ეს საკონტაქტო მონაცემები ჯერ პირობითია და მალე განახლდება.",
+  // ── Support bot ──
+  bot_launcher: "მხარდაჭერა",
+  bot_title: "მხარდაჭერა",
+  bot_subtitle: "პასუხი წამებში",
+  bot_greeting:
+    "გამარჯობა! რამდენიმე ხშირ კითხვაზე გიპასუხებ. აირჩიე ქვემოთ ან დაწერე შენი.",
+  bot_placeholder: "დაწერე კითხვა…",
+  bot_send: "გაგზავნა",
+  bot_no_answer:
+    "უკაცრავად, ამ კითხვაზე პასუხი ჯერ არ მაქვს. გნებავს ადამიანთან საუბარი?",
+  bot_operator_intro: "ჩვენს გუნდს WhatsApp-ზე დაუკავშირდები:",
+  bot_operator_cta: "მისწერე WhatsApp-ზე",
+  bot_close: "დახურვა",
+  bot_q_what: "რა არის Activo?",
+  bot_a_what:
+    "Activo მთელ შენს ქონებას ერთ დაფაზე კრებს — უძრავი ქონება, ავტომობილები, გაქირავება, შემოსავალი და ციფრული აქტივები (კრიპტო, აქციები, ლითონები) ცოცხალი ღირებულებით.",
+  bot_q_pricing: "რა ღირს?",
+  bot_a_pricing:
+    "პირველი თვე უფასოა სრული წვდომით. შემდეგ პაკეტები იწყება 15₾-დან თვეში. გაუქმება ნებისმიერ დროს შეგიძლია.",
+  bot_q_sync: "როგორ მუშაობს კალენდრის სინქრონი?",
+  bot_a_sync:
+    "დააკავშირე Airbnb-ისა და Booking.com-ის iCal ბმულები და Activo ყველა ჯავშანს ერთ კალენდარში აჩვენებს — ასე ორმაგ ჯავშანს არასდროს დაუშვებ.",
+  bot_q_payment: "როგორ გადავიხადო?",
+  bot_a_payment:
+    "გადახდა ბარათით შეგიძლია ჩვენი დაცული გვერდიდან, მათ შორის Apple Pay-ითა და Google Pay-ით.",
+  bot_q_security: "ჩემი მონაცემები დაცულია?",
+  bot_a_security:
+    "დიახ. თითოეული ანგარიში იზოლირებულია, პაროლები დაჰეშილია და მონაცემებს არასდროს ვყიდით ან ვუზიარებთ. დეტალები იხილე კონფიდენციალურობის გვერდზე.",
+  bot_q_calc: "კალკულატორი უფასოა?",
+  bot_a_calc:
+    "დიახ — საინვესტიციო კალკულატორის ცდა უფასოა და ანგარიში არ სჭირდება.",
+  bot_q_human: "ადამიანთან დაკავშირება",
   type_commercial: "კომერციული ფართი",
   type_land: "მიწის ნაკვეთი",
   type_garage: "გარაჟი",

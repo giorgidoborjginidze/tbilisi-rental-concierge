@@ -5,9 +5,11 @@ import { Geist, Geist_Mono, Noto_Sans_Georgian } from "next/font/google";
 import "./globals.css";
 import Nav from "./nav";
 import AppMark from "./app-mark";
+import SupportBot from "./support-bot";
 import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 import { siteUrl } from "@/lib/site";
+import { whatsappUrl } from "@/lib/contact";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -84,10 +86,17 @@ export default async function RootLayout({
           }}
         >
           <AppMark size={18} />
+          <Link href="/about" className="link">
+            {t(locale, "footer_about")}
+          </Link>
+          <Link href="/contact" className="link">
+            {t(locale, "footer_contact")}
+          </Link>
           <Link href="/privacy" className="link">
             {t(locale, "privacy_title")}
           </Link>
         </footer>
+        <SupportBot locale={locale} waUrl={whatsappUrl()} />
       </body>
     </html>
   );
