@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { getSessionOperator, type SessionOperator } from "@/lib/auth/session";
@@ -32,11 +33,70 @@ function Kpi({ label, value, sub }: { label: string; value: string; sub?: string
 // Public, informational landing for signed-out visitors: what the
 // product is, four benefits, the free calculator, one price line.
 function Landing({ locale }: { locale: Locale }) {
-  const benefits: { t: StringKey; b: StringKey; icon: string; color: string }[] = [
-    { t: "land_b1_t", b: "land_b1", icon: "🏠", color: "#4f46e5" },
-    { t: "land_b2_t", b: "land_b2", icon: "🔄", color: "#23c185" },
-    { t: "land_b3_t", b: "land_b3", icon: "🇬🇪", color: "#f97316" },
-    { t: "land_b4_t", b: "land_b4", icon: "📈", color: "#3b82f6" },
+  const iconProps = {
+    width: 22,
+    height: 22,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 2,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+  };
+  const benefits: { t: StringKey; b: StringKey; icon: ReactNode; color: string }[] = [
+    {
+      t: "land_b1_t",
+      b: "land_b1",
+      color: "#4f46e5",
+      // Everything in one place — a dashboard of tiles.
+      icon: (
+        <svg {...iconProps} aria-hidden>
+          <rect x="3" y="3" width="7.5" height="7.5" rx="1.6" />
+          <rect x="13.5" y="3" width="7.5" height="7.5" rx="1.6" />
+          <rect x="3" y="13.5" width="7.5" height="7.5" rx="1.6" />
+          <rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.6" />
+        </svg>
+      ),
+    },
+    {
+      t: "land_b2_t",
+      b: "land_b2",
+      color: "#23c185",
+      // Automatic sync — two looping arrows.
+      icon: (
+        <svg {...iconProps} aria-hidden>
+          <path d="M21 3v6h-6" />
+          <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+          <path d="M3 21v-6h6" />
+          <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+        </svg>
+      ),
+    },
+    {
+      t: "land_b3_t",
+      b: "land_b3",
+      color: "#f97316",
+      // Georgia first, then everywhere — a globe.
+      icon: (
+        <svg {...iconProps} aria-hidden>
+          <circle cx="12" cy="12" r="9" />
+          <path d="M3 12h18" />
+          <path d="M12 3c2.5 2.4 3.9 5.6 3.9 9s-1.4 6.6-3.9 9c-2.5-2.4-3.9-5.6-3.9-9S9.5 5.4 12 3Z" />
+        </svg>
+      ),
+    },
+    {
+      t: "land_b4_t",
+      b: "land_b4",
+      color: "#3b82f6",
+      // Invest with numbers — a rising trend line.
+      icon: (
+        <svg {...iconProps} aria-hidden>
+          <path d="M3 17l6-6 4 4 8-8" />
+          <path d="M15 7h6v6" />
+        </svg>
+      ),
+    },
   ];
   return (
     <main>

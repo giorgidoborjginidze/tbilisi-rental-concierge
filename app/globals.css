@@ -1028,7 +1028,7 @@ td:first-child {
   width: 40px;
   height: 40px;
   border-radius: 12px;
-  font-size: 20px;
+  color: #fff;
   line-height: 1;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
