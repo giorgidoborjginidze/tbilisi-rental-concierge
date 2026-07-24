@@ -91,9 +91,25 @@ export default function SupportBot({
         onClick={() => setOpen((v) => !v)}
       >
         {open ? (
-          <span aria-hidden style={{ fontSize: 20, lineHeight: 1 }}>×</span>
+          <span aria-hidden style={{ fontSize: 30, lineHeight: 1 }}>×</span>
         ) : (
-          <span aria-hidden style={{ fontSize: 20, lineHeight: 1 }}>💬</span>
+          <svg
+            width="34"
+            height="34"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.9"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            {/* Headset — the universal "support / operator" mark. */}
+            <path d="M4 14v-2a8 8 0 0 1 16 0v2" />
+            <path d="M4 14h2.5a1 1 0 0 1 1 1v3.5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z" />
+            <path d="M20 14h-2.5a1 1 0 0 0-1 1v3.5a1 1 0 0 0 1 1H19a1 1 0 0 0 1-1z" />
+            <path d="M20 19v.5a3 3 0 0 1-3 3h-3" />
+          </svg>
         )}
       </button>
 

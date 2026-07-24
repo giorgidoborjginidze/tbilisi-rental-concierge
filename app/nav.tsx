@@ -50,12 +50,28 @@ export default async function Nav() {
         { href: "/invest", label: t(locale, "nav_invest") },
       ];
 
+  // Marketing/info links live by the logo on the left; the app links move
+  // to the right, next to the theme/language/account controls.
+  const infoLinks = [
+    { href: "/about", label: t(locale, "footer_about") },
+    { href: "/contact", label: t(locale, "footer_contact") },
+  ];
+  const menuLinks = [...links, ...infoLinks];
+
   return (
     <nav className="nav">
       <Link href="/" className="nav__brand" aria-label={t(locale, "appName")}>
         <ActivoLogo height={24} />
       </Link>
-      <div className="nav__links nav__links--desktop">
+      <div className="nav__links nav__links--desktop nav__links--info">
+        {infoLinks.map((link) => (
+          <Link key={link.href} href={link.href}>
+            {link.label}
+          </Link>
+        ))}
+      </div>
+      <div className="nav__spacer" aria-hidden />
+      <div className="nav__links nav__links--desktop nav__links--app">
         {links.map((link) => (
           <Link key={link.href} href={link.href}>
             {link.label}
@@ -85,7 +101,7 @@ export default async function Nav() {
                 name={username}
                 plan={plan}
                 initial={username.charAt(0).toUpperCase()}
-                links={links}
+                links={menuLinks}
                 labels={{
                   settings: t(locale, "nav_settings"),
                   billing: t(locale, "nav_billing"),
@@ -104,7 +120,7 @@ export default async function Nav() {
           their navigation inside the unified account menu instead. */}
       {!operator && (
         <NavMenu
-          links={links}
+          links={menuLinks}
           signIn={{ href: "/login", label: t(locale, "login_title") }}
         />
       )}

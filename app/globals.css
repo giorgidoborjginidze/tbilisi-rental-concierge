@@ -163,6 +163,20 @@ a:hover {
   min-width: 0;
   margin-left: 12px;
 }
+/* Info links hug the logo on the left; app links sit on the right. A
+   flexible spacer between them pushes the app links + controls right. */
+.nav__links--info {
+  flex: 0 0 auto;
+  margin-left: 18px;
+}
+.nav__links--app {
+  flex: 0 0 auto;
+  margin-left: 0;
+}
+.nav__spacer {
+  flex: 1 1 auto;
+  min-width: 0;
+}
 /* Mobile menu button + dropdown, anchored top-right. Hidden on desktop. */
 .nav__mobile {
   display: none;
@@ -1216,8 +1230,8 @@ td:first-child {
   position: fixed;
   right: 20px;
   bottom: 20px;
-  width: 56px;
-  height: 56px;
+  width: 68px;
+  height: 68px;
   border-radius: 50%;
   border: none;
   cursor: pointer;
@@ -1377,13 +1391,13 @@ td:first-child {
   .bot-launcher {
     right: 14px;
     bottom: 14px;
-    width: 50px;
-    height: 50px;
+    width: 60px;
+    height: 60px;
   }
   .bot-panel {
     right: 12px;
     left: 12px;
-    bottom: 74px;
+    bottom: 84px;
     width: auto;
     max-width: none;
   }

@@ -86,12 +86,6 @@ export default async function RootLayout({
           }}
         >
           <AppMark size={18} />
-          <Link href="/about" className="link">
-            {t(locale, "footer_about")}
-          </Link>
-          <Link href="/contact" className="link">
-            {t(locale, "footer_contact")}
-          </Link>
           <Link href="/privacy" className="link">
             {t(locale, "privacy_title")}
           </Link>
