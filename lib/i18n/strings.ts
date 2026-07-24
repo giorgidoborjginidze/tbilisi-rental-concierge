@@ -133,7 +133,7 @@ const en = {
     "Track real estate, vehicles and other assets with their status and contracts; sync Airbnb and Booking.com calendars to avoid double bookings; follow rental and other income month by month; and value crypto, stocks and precious metals with live prices \u2014 all in one view.",
   about_h_georgia: "Built for Georgia",
   about_p_georgia:
-    "Activo speaks Georgian, works in GEL, and understands local platforms like myhome.ge, ss.ge and myauto.ge, WhatsApp door-code sharing and the way rentals actually work here.",
+    "Activo speaks Georgian, works in GEL, and understands local platforms like myhome.ge, ss.ge and myauto.ge, WhatsApp door-code sharing and the way rentals actually work here. We are starting in Georgia and expanding globally from there.",
   about_h_who: "Who it is for",
   about_p_who:
     "Property owners, short-term rental hosts, small agencies and anyone who wants a clear, honest picture of their assets and income without hiring an accountant.",
@@ -511,8 +511,8 @@ const en = {
   land_b1: "Real estate, vehicles and income \u2014 statuses and contracts.",
   land_b2_t: "Automatic Booking Sync",
   land_b2: "Airbnb & Booking in one calendar \u2014 no double bookings.",
-  land_b3_t: "Built for Georgia",
-  land_b3: "myhome.ge, ss.ge, myauto.ge, GEL, WhatsApp door codes.",
+  land_b3_t: "Georgia first, then global",
+  land_b3: "Tailored to Georgia today — myhome.ge, ss.ge, myauto.ge, GEL, WhatsApp door codes — and going worldwide next.",
   land_b4_t: "Invest with Numbers",
   land_b4: "Free calculator: yield & payback before you buy.",
   splash_hint: "Tap to enter",
@@ -774,7 +774,7 @@ const ka: Record<StringKey, string> = {
     "თვალი ადევნე უძრავ ქონებას, ავტომობილებსა და სხვა აქტივებს სტატუსითა და ხელშეკრულებებით; დააკავშირე Airbnb-ისა და Booking.com-ის კალენდრები ორმაგი ჯავშნის თავიდან ასაცილებლად; აკონტროლე ქირისა და სხვა შემოსავალი თვიდან თვემდე; და შეაფასე კრიპტო, აქციები და ძვირფასი ლითონები ცოცხალი ფასებით — ყველაფერი ერთ ხედში.",
   about_h_georgia: "შექმნილია საქართველოსთვის",
   about_p_georgia:
-    "Activo ქართულად საუბრობს, ლარში მუშაობს და იცნობს ადგილობრივ პლატფორმებს — myhome.ge, ss.ge, myauto.ge, WhatsApp-ით კოდის გაზიარებას და იმას, როგორც აქ გაქირავება რეალურად მუშაობს.",
+    "Activo ქართულად საუბრობს, ლარში მუშაობს და იცნობს ადგილობრივ პლატფორმებს — myhome.ge, ss.ge, myauto.ge, WhatsApp-ით კოდის გაზიარებას და იმას, როგორც აქ გაქირავება რეალურად მუშაობს. საქართველოდან ვიწყებთ და აქედან გლობალურად ვიზრდებით.",
   about_h_who: "ვისთვისაა",
   about_p_who:
     "ქონების მფლობელებისთვის, დღიური გაქირავების მასპინძლებისთვის, მცირე სააგენტოებისა და ყველასთვის, ვისაც სურს აქტივებისა და შემოსავლის ნათელი, გულწრფელი სურათი ბუღალტრის დაქირავების გარეშე.",
@@ -1151,8 +1151,8 @@ const ka: Record<StringKey, string> = {
   land_b1: "უძრავი ქონება, ავტომობილები და შემოსავალი — სტატუსებით.",
   land_b2_t: "ჯავშნების ავტო-სინქრონი",
   land_b2: "Airbnb და Booking ერთ კალენდარში — ორმაგი ჯავშნის გარეშე.",
-  land_b3_t: "შექმნილია საქართველოსთვის",
-  land_b3: "myhome.ge, ss.ge, myauto.ge, ლარი, WhatsApp კარის კოდი.",
+  land_b3_t: "ჯერ საქართველო, შემდეგ მსოფლიო",
+  land_b3: "ახლა საქართველოზეა მორგებული — myhome.ge, ss.ge, myauto.ge, ლარი, WhatsApp კარის კოდები — შემდეგ კი გლობალურად გავიზრდებით.",
   land_b4_t: "ინვესტიცია ციფრებით",
   land_b4: "უფასო კალკულატორი: შემოსავალი და ამოგება ყიდვამდე.",
   splash_hint: "შეეხე შესასვლელად",
