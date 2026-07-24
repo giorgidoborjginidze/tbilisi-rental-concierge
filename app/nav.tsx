@@ -63,16 +63,9 @@ export default async function Nav() {
       <Link href="/" className="nav__brand" aria-label={t(locale, "appName")}>
         <ActivoLogo height={24} />
       </Link>
-      <div className="nav__links nav__links--desktop nav__links--info">
-        {infoLinks.map((link) => (
-          <Link key={link.href} href={link.href}>
-            {link.label}
-          </Link>
-        ))}
-      </div>
       <div className="nav__spacer" aria-hidden />
       <div className="nav__links nav__links--desktop nav__links--app">
-        {links.map((link) => (
+        {[...links, ...infoLinks].map((link) => (
           <Link key={link.href} href={link.href}>
             {link.label}
           </Link>
