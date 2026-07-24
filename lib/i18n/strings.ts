@@ -120,7 +120,7 @@ const en = {
   privacy_p_control:
     "Delete any asset, contract or income record at any time \u2014 it is removed for good. Remove a team member and their access ends immediately.",
   footer_about: "About Us",
-  footer_contact: "Contact Us",
+  footer_contact: "Contact",
   // \u2500\u2500 About page \u2500\u2500
   about_title: "About Activo",
   about_intro:

@@ -46,7 +46,7 @@ export default async function Nav() {
         { href: "/alerts", label: t(locale, "nav_alerts") },
       ]
     : [
-        { href: "/", label: t(locale, "nav_dashboard") },
+        // Signed out: no Dashboard — it just lands back on this same page.
         { href: "/invest", label: t(locale, "nav_invest") },
       ];
 
