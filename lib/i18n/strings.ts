@@ -346,6 +346,7 @@ const en = {
   settings_theme: "Theme",
   settings_manage_plan: "Manage Plan",
   billing_title: "Plan & Subscription",
+  billing_upgrade: "Upgrade Plan",
   billing_intro:
     "The first month is free with full access. From the second month, pick the plan that fits your portfolio. Card payments are handled securely by Flitt.",
   billing_trial: "Free Trial",
@@ -987,6 +988,7 @@ const ka: Record<StringKey, string> = {
   settings_theme: "თემა",
   settings_manage_plan: "პაკეტის მართვა",
   billing_title: "პაკეტი და გამოწერა",
+  billing_upgrade: "პაკეტის განახლება",
   billing_intro:
     "პირველი თვე უფასოა სრული წვდომით. მეორე თვიდან აირჩიე შენს პორტფელზე მორგებული პაკეტი. ბარათით გადახდას უსაფრთხოდ ამუშავებს Flitt.",
   billing_trial: "უფასო პერიოდი",

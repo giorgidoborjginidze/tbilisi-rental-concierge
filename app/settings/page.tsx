@@ -6,10 +6,8 @@ import { t, type StringKey } from "@/lib/i18n/strings";
 import { toggleLocale } from "@/lib/i18n/actions";
 import { updateProfileName } from "@/lib/account/actions";
 import { getBillingContext } from "@/lib/billing/context";
-import { plansFor, planById, type AccountType } from "@/lib/billing/plans";
-import { isFlittSandbox } from "@/lib/billing/flitt";
+import { planById, type AccountType } from "@/lib/billing/plans";
 import ThemeToggle from "../theme-toggle";
-import PlanCards from "../billing/plan-cards";
 import TeamSection from "../billing/team-section";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +27,6 @@ export default async function SettingsPage({
   const other = locale === "en" ? "ka" : "en";
   const context = await getBillingContext(operator);
   const justReturned = (await searchParams).paid === "1";
-  const sandbox = isFlittSandbox();
 
   const fmtDate = new Intl.DateTimeFormat(locale === "ka" ? "ka-GE" : "en-GB", {
     day: "numeric", month: "short", year: "numeric",
@@ -37,7 +34,6 @@ export default async function SettingsPage({
 
   const isMember = operator.companyId != null;
   const accountType = (isMember ? "business" : operator.accountType) as AccountType;
-  const plans = plansFor(accountType);
   const planLatin = operator.plan
     ? PLAN_LATIN[operator.plan] ?? planById(operator.plan)?.id ?? "—"
     : "Trial";
@@ -57,12 +53,9 @@ export default async function SettingsPage({
     : [[], []];
 
   const labelKeys: StringKey[] = [
-    "billing_choose", "billing_chosen", "billing_current", "per_month",
-    "billing_assets", "billing_units", "billing_members",
-    "plan_starter", "plan_standard", "plan_pro", "plan_biz_s", "plan_biz_m",
-    "team_invite", "team_invite_hint", "team_remove", "copy_link", "billing_analysis",
+    "team_invite", "team_invite_hint", "team_remove", "copy_link",
     "operator_email", "error_required", "error_limit_members",
-    "error_owner_only", "save", "billing_pay", "error_payment",
+    "error_owner_only", "save",
   ];
   const labels = Object.fromEntries(labelKeys.map((k) => [k, t(locale, k)]));
 
@@ -97,85 +90,22 @@ export default async function SettingsPage({
           </div>
           <div className="flex items-center justify-between gap-3">
             <span style={row}>{t(locale, "billing_current")}</span>
-            <span className="flex items-center gap-2">
+            <span className="flex flex-wrap items-center justify-end gap-2">
               <span className="badge badge--listed">{planLatin}</span>
               {operator.paidUntil && (
                 <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
                   {t(locale, "billing_paid_until")}: {fmtDate.format(operator.paidUntil)}
                 </span>
               )}
+              {!isMember && (
+                <Link href="/billing" className="btn-chip">
+                  {t(locale, "billing_upgrade")}
+                </Link>
+              )}
             </span>
           </div>
         </div>
       </section>
-
-      {/* ── Plan & Billing ── */}
-      {isMember ? (
-        <div className="alert-card alert-card--lease" style={{ marginTop: 20 }}>
-          <div className="alert-card__detail" style={{ marginTop: 0 }}>
-            {t(locale, "billing_member_account")}
-          </div>
-        </div>
-      ) : (
-        <section>
-          <h2>{t(locale, "billing_title")}</h2>
-
-          {context.trialDaysLeft > 0 && (
-            <div className="alert-card alert-card--underpriced" style={{ alignItems: "center" }}>
-              <div className="alert-card__title">
-                {t(locale, "billing_trial")}: {context.trialDaysLeft} {t(locale, "days_left")}
-              </div>
-              <span className="badge badge--rented">
-                {t(locale, `plan_${context.plan.id}` as StringKey)}
-              </span>
-            </div>
-          )}
-          {context.trialDaysLeft === 0 && !operator.plan && (
-            <div className="alert-card alert-card--gap">
-              <div className="alert-card__detail" style={{ marginTop: 0 }}>
-                {t(locale, "billing_trial_over")}
-              </div>
-            </div>
-          )}
-
-          <div className="kpi-grid" style={{ margin: "14px 0 8px" }}>
-            <div className="kpi">
-              <div className="kpi__label">{t(locale, "nav_assets")}</div>
-              <div className="kpi__value">{context.assetCount} / {context.plan.maxAssets}</div>
-            </div>
-            <div className="kpi">
-              <div className="kpi__label">{t(locale, "nav_units")}</div>
-              <div className="kpi__value">{context.unitCount} / {context.plan.maxUnits}</div>
-            </div>
-            {accountType === "business" && (
-              <div className="kpi">
-                <div className="kpi__label">{t(locale, "team_members")}</div>
-                <div className="kpi__value">{context.memberCount} / {context.plan.maxMembers}</div>
-              </div>
-            )}
-          </div>
-
-          {sandbox && (
-            <div className="alert-card alert-card--gap" style={{ marginTop: 8 }}>
-              <div className="alert-card__title">{t(locale, "billing_sandbox")}</div>
-              <div className="alert-card__detail" style={{ marginTop: 4 }}>
-                {t(locale, "billing_sandbox_card")}
-              </div>
-            </div>
-          )}
-
-          <PlanCards
-            plans={plans.map((plan) => ({
-              id: plan.id, priceGel: plan.priceGel,
-              maxAssets: plan.maxAssets, maxUnits: plan.maxUnits, maxMembers: plan.maxMembers,
-              isBusiness: plan.kind === "business", analysis: plan.analysis,
-            }))}
-            currentPlan={operator.plan}
-            effectivePlanId={context.plan.id}
-            labels={labels}
-          />
-        </section>
-      )}
 
       {/* ── Team ── */}
       {context.isOwner && accountType === "business" && (

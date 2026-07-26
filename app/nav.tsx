@@ -97,7 +97,7 @@ export default async function Nav() {
                 links={menuLinks}
                 labels={{
                   settings: t(locale, "nav_settings"),
-                  billing: t(locale, "nav_billing"),
+                  billing: t(locale, "billing_upgrade"),
                   logout: t(locale, "logout"),
                 }}
               />
