@@ -1064,14 +1064,12 @@ td:first-child {
   animation: splash-out 0.42s ease forwards;
 }
 .splash__logo {
+  /* The splash field is brand purple: draw the mark in white instead of
+     the theme primary, which would disappear into the background. */
+  --color-primary: #ffffff;
+  color: #ffffff;
   animation: splash-pop 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
   filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.35));
-}
-.splash__word {
-  color: #fff;
-  font-weight: 800;
-  font-size: 26px;
-  letter-spacing: 0.01em;
 }
 .splash__hint {
   color: rgba(255, 255, 255, 0.75);
@@ -1386,12 +1384,12 @@ td:first-child {
 }
 /* Rolls in from the left, turning the way a wheel actually would. */
 .mark-anim .mark-wheel {
-  transform-origin: 48px 63px;
+  transform-origin: var(--wheel-origin, 48px 63px);
   animation: mark-roll 0.75s cubic-bezier(0.3, 0.7, 0.35, 1) 0.7s backwards;
 }
 @keyframes mark-roll {
   from {
-    transform: translateX(-58px) rotate(-430deg);
+    transform: translateX(var(--roll-from, -58px)) rotate(var(--roll-spin, -430deg));
   }
   to {
     transform: none;
@@ -1412,7 +1410,7 @@ td:first-child {
 }
 .mark-anim .mark-hub {
   opacity: 0;
-  transform-origin: 48px 63px;
+  transform-origin: var(--wheel-origin, 48px 63px);
   animation: mark-pop 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) 1.4s forwards;
 }
 @keyframes mark-pop {
@@ -1425,11 +1423,32 @@ td:first-child {
     transform: none;
   }
 }
+.mark-anim .mark-window {
+  opacity: 0;
+  transform-origin: 38px 49px;
+  animation: mark-pop 0.26s cubic-bezier(0.34, 1.56, 0.64, 1) 0.72s forwards;
+}
+.mark-anim .mark-letters {
+  opacity: 0;
+  animation: mark-letters-in 0.4s ease-out 0.8s forwards;
+}
+@keyframes mark-letters-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .mark-anim .mark-wall,
   .mark-anim .mark-wheel,
   .mark-anim .mark-spokes,
-  .mark-anim .mark-hub {
+  .mark-anim .mark-hub,
+  .mark-anim .mark-window,
+  .mark-anim .mark-letters {
     animation: none;
     opacity: 1;
     stroke-dashoffset: 0;
