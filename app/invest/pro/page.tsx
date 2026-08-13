@@ -4,6 +4,7 @@ import { getBillingContext } from "@/lib/billing/context";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
 import ProCalculator from "./pro-calculator";
+import InvestSubnav from "../../invest-subnav";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,8 @@ export default async function ProAnalysisPage() {
   if (!operator) {
     return (
       <main>
-        <h1>{t(locale, "wor_title")}</h1>
+        <h1>{t(locale, "invest_title")}</h1>
+        <InvestSubnav active="pro" />
         <div className="alert-card alert-card--contract" style={{ display: "block", maxWidth: 640 }}>
           <p className="alert-card__detail" style={{ marginTop: 0 }}>
             {t(locale, "wor_register_first")}
@@ -51,7 +53,8 @@ export default async function ProAnalysisPage() {
   if (!context.plan.analysis) {
     return (
       <main>
-        <h1>{t(locale, "wor_title")}</h1>
+        <h1>{t(locale, "invest_title")}</h1>
+        <InvestSubnav active="pro" />
         <div className="alert-card alert-card--contract" style={{ display: "block", maxWidth: 640 }}>
           <p className="alert-card__detail" style={{ marginTop: 0 }}>
             {t(locale, "wor_locked")}
@@ -72,8 +75,10 @@ export default async function ProAnalysisPage() {
 
   return (
     <main>
+      <h1>{t(locale, "invest_title")}</h1>
+      <InvestSubnav active="pro" />
       <div className="flex flex-wrap items-center gap-2">
-        <h1 style={{ marginBottom: 0 }}>{t(locale, "wor_title")}</h1>
+        <h2 style={{ marginBottom: 0 }}>{t(locale, "wor_title")}</h2>
         <span className="badge badge--listed">PRO</span>
       </div>
       <p className="mb-5" style={{ color: "var(--color-text-muted)", fontSize: 13, maxWidth: 640, marginTop: 8 }}>

@@ -1,6 +1,4 @@
-import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { getSessionOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
 import { KNOWN_DISTRICTS } from "@/lib/types";
@@ -9,6 +7,7 @@ import Calculator from "./calculator";
 import CarCalculator from "./car-calculator";
 import FlipCalculator from "./flip-calculator";
 import InvestTabs from "./invest-tabs";
+import InvestSubnav from "../invest-subnav";
 
 export const dynamic = "force-dynamic";
 
@@ -47,8 +46,6 @@ const LABEL_KEYS: StringKey[] = [
 ];
 
 export default async function InvestPage() {
-  const operator = await getSessionOperator();
-
   const locale = await getLocale();
   const now = new Date();
   const monthKey = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
@@ -68,25 +65,11 @@ export default async function InvestPage() {
   return (
     <main>
       <h1>{t(locale, "invest_title")}</h1>
+      <InvestSubnav active="calc" />
       <p className="mb-5" style={{ color: "var(--color-text-muted)", fontSize: 13, maxWidth: 640 }}>
         {t(locale, "invest_intro")}
       </p>
 
-      <div className="alert-card alert-card--contract" style={{ alignItems: "center", marginBottom: 20 }}>
-        <div>
-          <div className="alert-card__title">
-            {t(locale, "wor_title")} <span className="badge badge--listed">PRO</span>
-          </div>
-          <div className="alert-card__detail">{t(locale, "wor_teaser")}</div>
-        </div>
-        <Link
-          href={operator ? "/invest/pro" : "/register"}
-          className="btn-primary"
-          style={{ whiteSpace: "nowrap" }}
-        >
-          {operator ? t(locale, "wor_open") : t(locale, "register_free")}
-        </Link>
-      </div>
       <InvestTabs
         reLabel={t(locale, "invest_tab_re")}
         carLabel={t(locale, "invest_tab_car")}

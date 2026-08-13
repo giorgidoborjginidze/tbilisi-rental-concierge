@@ -462,6 +462,8 @@ const en = {
   taxi_c_fuel: "Fuel",
   taxi_c_running: "Service & insurance",
   taxi_c_driver: "Driver",
+  invest_nav_calc: "Free Calculator",
+  invest_nav_pro: "Deep Analysis",
   invest_tab_flip: "Flip",
   flip_title: "Buy, renovate, sell",
   flip_intro:
@@ -1160,6 +1162,8 @@ const ka: Record<StringKey, string> = {
   taxi_c_fuel: "საწვავი",
   taxi_c_running: "სერვისი და დაზღვევა",
   taxi_c_driver: "მძღოლი",
+  invest_nav_calc: "უფასო კალკულატორი",
+  invest_nav_pro: "სიღრმისეული ანალიზი",
   invest_tab_flip: "ფლიპი",
   flip_title: "ყიდვა, რემონტი, გაყიდვა",
   flip_intro:
