@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
@@ -291,7 +290,7 @@ export default async function AssetsPage() {
   const flipLabels = Object.fromEntries(
     (
       [
-        "details", "back", "edit", "contracts_col", "contract_until",
+        "edit", "contracts_col", "contract_until",
         "market_rent_est", "below_market", "asset_value_col", "mode_daily",
       ] as StringKey[]
     ).map((k) => [k, t(locale, k)]),
@@ -336,16 +335,16 @@ export default async function AssetsPage() {
         segments={[
           ...(
             [
-              { key: "real_estate", title: "section_real_estate", showMarket: true },
-              { key: "vehicle", title: "section_vehicles", showMarket: false },
-              { key: "other", title: "section_general", showMarket: false },
+              { key: "real_estate", title: "section_real_estate" },
+              { key: "vehicle", title: "section_vehicles" },
+              { key: "other", title: "section_general" },
             ] as const
-          ).map(({ key, title, showMarket }) => {
+          ).map(({ key, title }) => {
             const group = assets.filter((a) => a.category === key);
             return { group: key, empty: group.length === 0, addHref: `/assets/new?category=${key}`, node: group.length === 0 ? null : (
           <section key={key}>
             <h2>{t(locale, title)}</h2>
-            <div>
+            <div className="aflip-grid">
               {group.map((asset) => {
                 const contract = activeContract(asset);
                 const status = effectiveStatus(asset);
@@ -380,147 +379,37 @@ export default async function AssetsPage() {
                     key={asset.id}
                     asset={flip}
                     labels={flipLabels}
+                    extras={
+                      <>
+                        {status !== "str" && (
+                          <ListingControls
+                            assetId={asset.id}
+                            status={status}
+                            showButtons={!contract && status !== "personal_use"}
+                            links={listingLinks(asset)}
+                            labels={{
+                              rented: t(locale, "mark_rented"),
+                              vacant: t(locale, "mark_vacant"),
+                            }}
+                          />
+                        )}
+                        {asset.category === "real_estate" && status !== "personal_use" && (
+                          <DoorKey
+                            assetId={asset.id}
+                            code={asset.doorCode}
+                            phone={contract?.tenantPhone?.replace(/\D/g, "") || null}
+                            message={`${displayName(asset)}${asset.address ? ` (${asset.address})` : ""} — ${t(locale, "door_key")}:`}
+                            labels={{
+                              key: t(locale, "door_key"),
+                              generate: t(locale, "door_generate"),
+                            }}
+                          />
+                        )}
+                      </>
+                    }
                   />
                 );
               })}
-            </div>
-            <div className="card card--stack assets-table--flip">
-              <table>
-                <thead>
-                  <tr>
-                    <th>{t(locale, "unit_name")}</th>
-                    <th>{t(locale, "unit_type")}</th>
-                    <th>{t(locale, "status_label")}</th>
-                    <th>{t(locale, "contracts_col")}</th>
-                    {showMarket && <th className="num">{t(locale, "market_rent_est")}</th>}
-                    <th className="num">{t(locale, "asset_value_col")}</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {group.map((asset) => {
-                    const contract = activeContract(asset);
-                    const status = effectiveStatus(asset);
-                    const benchmark = asset.district
-                      ? rentBenchmarks.get(asset.district) ?? null
-                      : null;
-                    const marketRent =
-                      asset.category === "real_estate"
-                        ? estimateMarketRent(asset.areaSqm, benchmark)
-                        : null;
-                    const belowMarket =
-                      contract && marketRent && contract.monthlyRent < marketRent * 0.85;
-
-                    return (
-                      <tr key={asset.id}>
-                        <td>
-                          <Link href={`/assets/${asset.id}/edit`} className="link">
-                            {displayName(asset)}
-                          </Link>
-                          <div className="cell-sub">
-                            {asset.district && <div>{asset.district}</div>}
-                            {asset.address && <div>{asset.address}</div>}
-                            {asset.unit && (
-                              <div>
-                                <Link href={`/calendar?unit=${asset.unit.id}`} className="link">
-                                  ({asset.unit.name})
-                                </Link>
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        <td data-label={t(locale, "unit_type")}>
-                          {t(locale, `type_${asset.type}` as StringKey)}
-                          {asset.rentalMode === "daily" && (
-                            <>
-                              {" "}
-                              <span className="badge badge--str">
-                                {t(locale, "mode_daily")}
-                              </span>
-                            </>
-                          )}
-                        </td>
-                        <td data-label={t(locale, "status_label")}>
-                          <span
-                            className={`badge ${STATUS_BADGE[status] ?? STATUS_BADGE.personal_use}`}
-                          >
-                            {t(locale, `status_${status}` as StringKey)}
-                          </span>
-                          {status !== "str" && (
-                            <ListingControls
-                              assetId={asset.id}
-                              status={status}
-                              showButtons={!contract && status !== "personal_use"}
-                              links={listingLinks(asset)}
-                              labels={{
-                                rented: t(locale, "mark_rented"),
-                                vacant: t(locale, "mark_vacant"),
-                              }}
-                            />
-                          )}
-                        </td>
-                        <td className="col-break" data-label={t(locale, "contracts_col")} style={{ fontWeight: 400, maxWidth: 280 }}>
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            {contract ? (
-                              <div>
-                                <div>
-                                  {contract.monthlyRent} {contract.currency} ·{" "}
-                                  {contract.tenantName ?? "—"}
-                                </div>
-                                <div className="cell-sub">
-                                  {t(locale, "contract_until")}: {fmtDate.format(contract.endDate)}
-                                </div>
-                              </div>
-                            ) : (
-                              <span style={{ color: "var(--color-text-muted)" }}>—</span>
-                            )}
-                            {asset.category === "real_estate" && status !== "personal_use" && (
-                              <DoorKey
-                                assetId={asset.id}
-                                code={asset.doorCode}
-                                phone={contract?.tenantPhone?.replace(/\D/g, "") || null}
-                                message={`${displayName(asset)}${asset.address ? ` (${asset.address})` : ""} — ${t(locale, "door_key")}:`}
-                                labels={{
-                                  key: t(locale, "door_key"),
-                                  generate: t(locale, "door_generate"),
-                                }}
-                              />
-                            )}
-                          </div>
-                        </td>
-                        {showMarket && (
-                          <td className="num" data-label={t(locale, "market_rent_est")}>
-                            {marketRent ? (
-                              <div>
-                                <span style={{ color: "var(--color-text-muted)" }}>
-                                  ~{marketRent} GEL
-                                </span>
-                                {belowMarket && (
-                                  <div style={{ marginTop: 4 }}>
-                                    <span className="badge badge--vacant">
-                                      {t(locale, "below_market")}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <span style={{ color: "var(--color-text-muted)" }}>—</span>
-                            )}
-                          </td>
-                        )}
-                        <td className="num" data-label={t(locale, "asset_value_col")}>
-                          {asset.estimatedValue ? money(asset.estimatedValue) : "—"}
-                        </td>
-                        <td className="num">
-                          <Link href={`/assets/${asset.id}/edit`} className="link">
-                            {t(locale, "edit")}
-                          </Link>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
             </div>
           </section>
           ) };

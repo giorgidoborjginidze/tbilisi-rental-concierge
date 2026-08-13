@@ -1387,125 +1387,142 @@ td:first-child {
   }
 }
 
-/* ── Flip asset card (phones) ──
-   Hidden entirely on wide screens, where the table has room to show every
-   column at once. On a phone the card carries the scanning information on
-   its face and turns over for the rest, instead of stacking a dozen
-   labelled rows. */
+/* ── Flip asset card ──
+   Replaces the assets table at every width: the face carries what you
+   scan a list for, the back the contract, market rent, listings and door
+   key. On wide screens they lay out as a grid, on a phone as one column. */
+.aflip-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+}
 .aflip {
-  display: none;
+  perspective: 1400px;
+}
+.aflip__inner {
+  position: relative;
+  cursor: pointer;
+  outline-offset: 3px;
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(0.3, 0.8, 0.3, 1);
+  min-height: 288px;
+  height: 100%;
+}
+.aflip--open .aflip__inner {
+  transform: rotateY(180deg);
+}
+/* The front sits in flow so the card grows with its content — a long name
+   must not push the button out through the bottom edge. The back is
+   overlaid on top of it. */
+.aflip__face {
+  position: relative;
+  height: 100%;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-card);
+}
+.aflip__face--back {
+  position: absolute;
+  inset: 0;
+  height: auto;
+  transform: rotateY(180deg);
+  justify-content: flex-start;
+  gap: 0;
+  overflow-y: auto;
+}
+/* Actions sit at the foot of the back, whatever it holds above them. */
+.aflip__face--back .aflip__actions {
+  margin-top: auto;
+  padding-top: 12px;
+}
+.aflip__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.aflip__name {
+  font-weight: 600;
+  font-size: 15px;
+}
+.aflip__sub {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+.aflip__value {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin-top: auto;
+}
+.aflip__type {
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+/* Footer of the face: type on the left, the turn hint on the right. */
+.aflip__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 2px;
+}
+.aflip__turn {
+  display: inline-flex;
+  color: var(--color-text-muted);
+  opacity: 0.55;
+  transition: opacity 0.2s ease, color 0.2s ease;
+}
+.aflip__inner:hover .aflip__turn {
+  opacity: 1;
+  color: var(--color-primary);
+}
+.aflip__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.aflip__row span {
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+.aflip__row b {
+  text-align: right;
+}
+.aflip__extras {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+.aflip__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+}
+.aflip__edit {
+  padding: 8px 18px;
+  font-size: 13px;
 }
 @media (max-width: 760px) {
-  .aflip {
-    display: block;
-    perspective: 1300px;
-    margin-bottom: 12px;
-  }
-  .aflip__inner {
-    position: relative;
-    transform-style: preserve-3d;
-    transition: transform 0.6s cubic-bezier(0.3, 0.8, 0.3, 1);
-    min-height: 186px;
-  }
-  .aflip--open .aflip__inner {
-    transform: rotateY(180deg);
-  }
-  /* The front sits in flow so the card grows with its content — a long
-     name must not push the button out through the bottom edge. The back
-     is overlaid on top of it. */
-  .aflip__face {
-    position: relative;
-    height: 100%;
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-    display: flex;
-    flex-direction: column;
-    padding: 16px;
-    border-radius: 16px;
-    background: var(--color-bg);
-    border: 1px solid var(--color-border);
-    box-shadow: var(--shadow-card);
-  }
-  .aflip__face--back {
-    position: absolute;
-    inset: 0;
-    height: auto;
-    transform: rotateY(180deg);
-    justify-content: center;
-    gap: 2px;
-  }
-  .aflip__top {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 10px;
-  }
-  .aflip__name {
-    font-weight: 600;
-    font-size: 15px;
-  }
-  .aflip__sub {
-    font-size: 12px;
-    color: var(--color-text-muted);
-    margin-top: 2px;
-  }
-  .aflip__value {
-    font-size: 24px;
-    font-weight: 700;
-    letter-spacing: -0.01em;
-    margin-top: auto;
-  }
-  .aflip__type {
-    font-size: 12.5px;
-    color: var(--color-text-muted);
-    margin-top: 2px;
-  }
-  .aflip__btn {
-    align-self: flex-start;
-    margin-top: 12px;
-    padding: 7px 14px;
-    border-radius: 9px;
-    border: 1px solid var(--color-border);
-    background: var(--color-surface);
-    color: var(--color-text);
-    font: inherit;
-    font-size: 12.5px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .aflip__row {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
+  .aflip-grid {
+    grid-template-columns: 1fr;
     gap: 12px;
-    font-size: 13px;
-    padding: 7px 0;
-    border-bottom: 1px solid var(--color-border);
-  }
-  .aflip__row span {
-    color: var(--color-text-muted);
-    white-space: nowrap;
-  }
-  .aflip__row b {
-    text-align: right;
-  }
-  .aflip__actions {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    margin-top: 12px;
-  }
-  .aflip__actions .aflip__btn {
-    margin-top: 0;
-  }
-  .aflip__edit {
-    padding: 8px 18px;
-    font-size: 13px;
-  }
-  /* The table is the wide-screen view; the cards replace it here. */
-  .assets-table--flip {
-    display: none;
   }
 }
 @media (prefers-reduced-motion: reduce) {

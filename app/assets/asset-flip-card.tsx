@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 export interface FlipAsset {
   id: string;
@@ -20,22 +20,70 @@ export interface FlipAsset {
   daily: boolean;
 }
 
-// Mobile-only asset card. The front carries what you scan a list for —
-// name, status, value — and the details live on the back, so the card
-// stays one screenful instead of a column of labels. The table is still
-// rendered for wider screens, where there is room to show everything.
+// A turn icon — the only affordance the card needs, since tapping it
+// anywhere turns it over. A labelled button would just take up room.
+function TurnIcon() {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+      <path d="M3 21v-5h5" />
+      <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+      <path d="M21 3v5h-5" />
+    </svg>
+  );
+}
+
+// Asset card that turns over: the face carries what you scan a list for,
+// the back the contract, market rent, listings and door key. Replaces the
+// wide table, which needed most of a screen per property on a phone.
 export default function AssetFlipCard({
   asset,
   labels,
+  extras,
 }: {
   asset: FlipAsset;
   labels: Record<string, string>;
+  /** Listing links, status buttons and the door key — server-rendered
+   *  and slotted onto the back, so the card loses nothing the table had. */
+  extras?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const toggle = () => setOpen((v) => !v);
+
+  // Anything actionable keeps its own behaviour; only the card's empty
+  // space turns it over.
+  const onClick = (event: React.MouseEvent) => {
+    if ((event.target as HTMLElement).closest("a,button,input,select")) return;
+    toggle();
+  };
 
   return (
     <div className={`aflip${open ? " aflip--open" : ""}`}>
-      <div className="aflip__inner">
+      <div
+        className="aflip__inner"
+        onClick={onClick}
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        aria-label={asset.name}
+        onKeyDown={(event) => {
+          if (event.target !== event.currentTarget) return;
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            toggle();
+          }
+        }}
+      >
         {/* ── front ── */}
         <div className="aflip__face">
           <div className="aflip__top">
@@ -52,19 +100,20 @@ export default function AssetFlipCard({
           </div>
 
           <div className="aflip__value">{asset.value ?? "—"}</div>
-          <div className="aflip__type">
-            {asset.typeLabel}
-            {asset.daily && (
-              <>
-                {" "}
-                <span className="badge badge--str">{labels.mode_daily}</span>
-              </>
-            )}
+          <div className="aflip__foot">
+            <span className="aflip__type">
+              {asset.typeLabel}
+              {asset.daily && (
+                <>
+                  {" "}
+                  <span className="badge badge--str">{labels.mode_daily}</span>
+                </>
+              )}
+            </span>
+            <span className="aflip__turn">
+              <TurnIcon />
+            </span>
           </div>
-
-          <button type="button" className="aflip__btn" onClick={() => setOpen(true)}>
-            {labels.details} →
-          </button>
         </div>
 
         {/* ── back ── */}
@@ -98,10 +147,12 @@ export default function AssetFlipCard({
             <b>{asset.value ?? "—"}</b>
           </div>
 
+          {extras && <div className="aflip__extras">{extras}</div>}
+
           <div className="aflip__actions">
-            <button type="button" className="aflip__btn" onClick={() => setOpen(false)}>
-              ← {labels.back}
-            </button>
+            <span className="aflip__turn">
+              <TurnIcon />
+            </span>
             <Link href={`/assets/${asset.id}/edit`} className="btn-primary aflip__edit">
               {labels.edit}
             </Link>
