@@ -29,6 +29,14 @@ const LABEL_KEYS: StringKey[] = [
   "car_compare_title", "car_market_price", "car_market_rate",
   "car_vs_market_below", "car_vs_market_above", "car_vs_market_at",
   "car_monthly_income", "car_gross", "car_annual_yield", "car_market_hint",
+  "car_intro", "car_mode_rental", "car_mode_taxi", "taxi_title", "taxi_intro",
+  "taxi_gross_day", "taxi_days", "taxi_platform", "taxi_platform_hint",
+  "taxi_fuel_day", "taxi_service", "taxi_insurance", "taxi_depreciation",
+  "taxi_depreciation_hint", "taxi_driver_share", "taxi_driver_share_hint",
+  "taxi_res_cash", "taxi_res_net", "taxi_res_net_hint", "taxi_res_gross",
+  "taxi_res_costs", "taxi_res_yield", "taxi_res_payback", "taxi_vs_rental",
+  "taxi_vs_taxi_better", "taxi_vs_rental_better", "taxi_vs_equal", "taxi_vs_hint",
+  "taxi_c_platform", "taxi_c_fuel", "taxi_c_running", "taxi_c_driver",
   "flip_title", "flip_intro", "flip_price", "flip_renovation",
   "flip_buying_costs", "flip_holding_cost", "flip_holding_cost_hint",
   "flip_months", "flip_sale_price", "flip_selling_fee", "flip_tax",
@@ -91,14 +99,7 @@ export default async function InvestPage() {
             labels={labels}
           />
         }
-        car={
-          <div>
-            <p className="mb-4" style={{ color: "var(--color-text-muted)", fontSize: 13, maxWidth: 640 }}>
-              {t(locale, "car_intro")}
-            </p>
-            <CarCalculator labels={labels} />
-          </div>
-        }
+        car={<CarCalculator labels={labels} />}
         flip={<FlipCalculator labels={labels} />}
       />
     </main>
