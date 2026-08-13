@@ -14,6 +14,7 @@ import { LISTING_PLATFORMS } from "@/lib/types";
 import ListingControls, { type ListingLink } from "./listing-controls";
 import DoorKey from "./door-key";
 import AssetSegments from "./asset-segments";
+import AssetFlipCard, { type FlipAsset } from "./asset-flip-card";
 
 export const dynamic = "force-dynamic";
 
@@ -287,6 +288,15 @@ export default async function AssetsPage() {
   const displayName = (a: { name: string; nameKa: string | null }) =>
     locale === "ka" && a.nameKa ? a.nameKa : a.name;
 
+  const flipLabels = Object.fromEntries(
+    (
+      [
+        "details", "back", "edit", "contracts_col", "contract_until",
+        "market_rent_est", "below_market", "asset_value_col", "mode_daily",
+      ] as StringKey[]
+    ).map((k) => [k, t(locale, k)]),
+  );
+
   return (
     <main>
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -335,7 +345,46 @@ export default async function AssetsPage() {
             return { group: key, empty: group.length === 0, addHref: `/assets/new?category=${key}`, node: group.length === 0 ? null : (
           <section key={key}>
             <h2>{t(locale, title)}</h2>
-            <div className="card card--stack">
+            <div>
+              {group.map((asset) => {
+                const contract = activeContract(asset);
+                const status = effectiveStatus(asset);
+                const benchmark = asset.district
+                  ? rentBenchmarks.get(asset.district) ?? null
+                  : null;
+                const marketRent =
+                  asset.category === "real_estate"
+                    ? estimateMarketRent(asset.areaSqm, benchmark)
+                    : null;
+                const flip: FlipAsset = {
+                  id: asset.id,
+                  name: displayName(asset),
+                  district: asset.district,
+                  address: asset.address,
+                  typeLabel: t(locale, `type_${asset.type}` as StringKey),
+                  statusLabel: t(locale, `status_${status}` as StringKey),
+                  statusClass: STATUS_BADGE[status] ?? STATUS_BADGE.personal_use,
+                  contract: contract
+                    ? `${contract.monthlyRent} ${contract.currency} · ${contract.tenantName ?? "—"}`
+                    : null,
+                  contractUntil: contract ? fmtDate.format(contract.endDate) : null,
+                  marketRent: marketRent ? `~${marketRent} GEL` : null,
+                  belowMarket: Boolean(
+                    contract && marketRent && contract.monthlyRent < marketRent * 0.85,
+                  ),
+                  value: asset.estimatedValue ? money(asset.estimatedValue) : null,
+                  daily: asset.rentalMode === "daily",
+                };
+                return (
+                  <AssetFlipCard
+                    key={asset.id}
+                    asset={flip}
+                    labels={flipLabels}
+                  />
+                );
+              })}
+            </div>
+            <div className="card card--stack assets-table--flip">
               <table>
                 <thead>
                   <tr>
