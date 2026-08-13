@@ -118,13 +118,13 @@ export default function CarCalculator({
                   : `${Math.abs(comparison.deltaPct).toFixed(0)}% ${comparisonLabel}`}
               </span>
             </div>
-            <div className="kpi-grid" style={{ gridTemplateColumns: "1fr 1fr", marginTop: 14 }}>
-              <div className="kpi">
+            <div className="kpi-grid kpi-grid--3d" style={{ gridTemplateColumns: "1fr 1fr", marginTop: 14 }}>
+              <div className="kpi" style={{ "--i": 0 } as React.CSSProperties}>
                 <div className="kpi__label">{labels.car_market_price}</div>
                 <div className="kpi__value">{fmt(market.avgPrice)}</div>
                 <div className="kpi__sub">{model}</div>
               </div>
-              <div className="kpi">
+              <div className="kpi" style={{ "--i": 1 } as React.CSSProperties}>
                 <div className="kpi__label">{labels.car_market_rate}</div>
                 <div className="kpi__value">{fmt(market.avgDailyRate)}</div>
               </div>
@@ -135,19 +135,19 @@ export default function CarCalculator({
 
         <div className="card" style={{ padding: 20 }}>
           <h2 style={{ margin: 0 }}>{labels.inv_results}</h2>
-          <div className="kpi-grid" style={{ gridTemplateColumns: "1fr 1fr", marginTop: 14 }}>
-            <div className="kpi">
+          <div className="kpi-grid kpi-grid--3d" style={{ gridTemplateColumns: "1fr 1fr", marginTop: 14 }}>
+            <div className="kpi" style={{ "--i": 0 } as React.CSSProperties}>
               <div className="kpi__label">{labels.car_monthly_income}</div>
               <div className="kpi__value">{fmt(result.netMonthly)}</div>
               <div className="kpi__sub">
                 {labels.car_gross}: {fmt(result.grossMonthly)}
               </div>
             </div>
-            <div className="kpi">
+            <div className="kpi" style={{ "--i": 1 } as React.CSSProperties}>
               <div className="kpi__label">{labels.car_annual_yield}</div>
               <div className="kpi__value">{result.annualYieldPct.toFixed(1)}%</div>
             </div>
-            <div className="kpi" style={{ gridColumn: "1 / -1" }}>
+            <div className="kpi" style={{ gridColumn: "1 / -1", "--i": 2 } as React.CSSProperties}>
               <div className="kpi__label">{labels.res_payback}</div>
               <div className="kpi__value">
                 {result.paybackYears == null

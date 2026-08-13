@@ -1323,10 +1323,42 @@ td:first-child {
   transform: translateZ(10px);
   word-break: break-word;
 }
+/* Same depth language applied to calculator result tiles. */
+.kpi-grid--3d {
+  perspective: 1200px;
+  perspective-origin: 50% 30%;
+}
+.kpi-grid--3d .kpi {
+  transform-style: preserve-3d;
+  will-change: transform;
+  transition:
+    transform 0.35s cubic-bezier(0.2, 0.7, 0.3, 1),
+    box-shadow 0.35s ease,
+    border-color 0.3s ease;
+  animation: card3d-in 0.55s cubic-bezier(0.2, 0.8, 0.3, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+.kpi-grid--3d .kpi__value {
+  transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+@media (hover: hover) {
+  .kpi-grid--3d .kpi:hover {
+    transform: translateY(-4px) translateZ(20px) rotateX(4deg) rotateY(-4deg);
+    border-color: color-mix(in srgb, var(--color-primary) 32%, var(--color-border));
+    box-shadow:
+      0 2px 4px rgba(24, 28, 55, 0.06),
+      0 22px 40px -20px rgba(24, 28, 55, 0.45);
+  }
+  .kpi-grid--3d .kpi:hover .kpi__value {
+    transform: translateZ(24px);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .card3d,
   .card3d__icon,
-  .card3d__title {
+  .card3d__title,
+  .kpi-grid--3d .kpi,
+  .kpi-grid--3d .kpi__value {
     animation: none;
     transition: none;
     transform: none;

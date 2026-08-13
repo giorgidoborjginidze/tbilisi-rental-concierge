@@ -188,8 +188,8 @@ export default function Calculator({
           </span>
         </div>
 
-        <div className="kpi-grid" style={{ margin: "14px 0", gridTemplateColumns: "repeat(2, 1fr)" }}>
-          <div className="kpi">
+        <div className="kpi-grid kpi-grid--3d" style={{ margin: "14px 0", gridTemplateColumns: "repeat(2, 1fr)" }}>
+          <div className="kpi" style={{ "--i": 0 } as React.CSSProperties}>
             <div className="kpi__label">{labels.res_total_investment}</div>
             <div className="kpi__value">{fmt(result.totalInvestment)}</div>
             {useLoan && (
@@ -198,7 +198,7 @@ export default function Calculator({
               </div>
             )}
           </div>
-          <div className="kpi">
+          <div className="kpi" style={{ "--i": 1 } as React.CSSProperties}>
             <div className="kpi__label">{labels.res_net_income}</div>
             <div className="kpi__value">{fmt(result.netMonthlyIncome)}</div>
             <div className="kpi__sub">
@@ -206,7 +206,7 @@ export default function Calculator({
             </div>
           </div>
           {useLoan && (
-            <div className="kpi">
+            <div className="kpi" style={{ "--i": 2 } as React.CSSProperties}>
               <div className="kpi__label">{labels.res_monthly_payment}</div>
               <div className="kpi__value">{fmt(result.monthlyPayment)}</div>
               <div className="kpi__sub">
@@ -215,7 +215,7 @@ export default function Calculator({
             </div>
           )}
           {useLoan && (
-            <div className="kpi">
+            <div className="kpi" style={{ "--i": 3 } as React.CSSProperties}>
               <div className="kpi__label">{labels.res_cash_flow}</div>
               <div
                 className="kpi__value"
@@ -233,14 +233,14 @@ export default function Calculator({
               </div>
             </div>
           )}
-          <div className="kpi">
+          <div className="kpi" style={{ "--i": 4 } as React.CSSProperties}>
             <div className="kpi__label">{labels.res_net_yield}</div>
             <div className="kpi__value">{pct(result.netYieldPct)}</div>
             <div className="kpi__sub">
               {labels.res_gross_yield}: {pct(result.grossYieldPct)}
             </div>
           </div>
-          <div className="kpi">
+          <div className="kpi" style={{ "--i": 5 } as React.CSSProperties}>
             <div className="kpi__label">{labels.res_payback}</div>
             <div className="kpi__value">{years(result.paybackYears)}</div>
           </div>
