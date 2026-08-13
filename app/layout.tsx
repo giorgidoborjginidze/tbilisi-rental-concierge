@@ -85,7 +85,7 @@ export default async function RootLayout({
             color: "var(--color-ink-muted)",
           }}
         >
-          <AppMark size={18} />
+          <AppMark size={20} />
           <Link href="/privacy" className="link">
             {t(locale, "privacy_title")}
           </Link>

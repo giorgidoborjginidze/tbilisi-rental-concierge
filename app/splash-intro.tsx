@@ -15,8 +15,10 @@ export default function SplashIntro({ tapHint }: { tapHint: string }) {
     setTimeout(() => setGone(true), 420);
   }, []);
 
+  // Long enough for the mark to finish building itself (~1.6s) before
+  // the screen fades; a tap still skips straight through.
   useEffect(() => {
-    const timer = setTimeout(dismiss, 1600);
+    const timer = setTimeout(dismiss, 2000);
     return () => clearTimeout(timer);
   }, [dismiss]);
 
@@ -30,7 +32,7 @@ export default function SplashIntro({ tapHint }: { tapHint: string }) {
       aria-label={tapHint}
     >
       <div className="splash__logo">
-        <AppMark size={104} />
+        <AppMark size={104} animated />
       </div>
       <div className="splash__word">Activo</div>
       <div className="splash__hint">{tapHint}</div>
