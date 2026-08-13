@@ -16,10 +16,14 @@ export default function SplashIntro({ tapHint }: { tapHint: string }) {
     setTimeout(() => setGone(true), 420);
   }, []);
 
-  // Long enough for the wordmark to finish building itself (~1.7s) before
-  // the screen fades; a tap still skips straight through.
   useEffect(() => {
-    const timer = setTimeout(dismiss, 2150);
+    // With reduced motion the mark renders finished, so there is nothing
+    // to watch — hold it just long enough to register, then move on
+    // rather than parking the visitor in front of a still image.
+    const stillImage = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    const timer = setTimeout(dismiss, stillImage ? 800 : 2150);
     return () => clearTimeout(timer);
   }, [dismiss]);
 
