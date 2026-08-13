@@ -566,6 +566,10 @@ const en = {
   land_hero: "All Your Property \u2014 One Dashboard",
   land_sub:
     "Real estate, vehicles, rentals, income and investment analysis \u2014 all in one place, from your phone.",
+  land_deck_re: "Real estate",
+  land_deck_car: "Vehicle",
+  land_deck_digital: "Digital assets",
+  land_deck_total: "Portfolio",
   land_b1_t: "Everything in One Place",
   land_b1: "Real estate, vehicles and income \u2014 statuses and contracts.",
   land_b2_t: "Automatic Booking Sync",
@@ -1265,6 +1269,10 @@ const ka: Record<StringKey, string> = {
   land_hero: "მთელი შენი ქონება — ერთ დაფაზე",
   land_sub:
     "უძრავი ქონება, ავტომობილები, გაქირავება, შემოსავალი და ინვესტ-ანალიზი — ერთ ადგილას, ტელეფონიდანაც.",
+  land_deck_re: "უძრავი ქონება",
+  land_deck_car: "ავტომობილი",
+  land_deck_digital: "ციფრული აქტივები",
+  land_deck_total: "პორტფელი",
   land_b1_t: "ყველაფერი ერთ ადგილას",
   land_b1: "უძრავი ქონება, ავტომობილები და შემოსავალი — სტატუსებით.",
   land_b2_t: "ჯავშნების ავტო-სინქრონი",

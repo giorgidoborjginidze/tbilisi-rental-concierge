@@ -14,6 +14,9 @@ export default function SplashIntro({ tapHint }: { tapHint: string }) {
   const dismiss = useCallback(() => {
     setLeaving(true);
     setTimeout(() => setGone(true), 420);
+    // The hero logo below waits for this before building itself — an
+    // animation played behind the splash would be over unseen.
+    window.dispatchEvent(new Event("activo:splash-done"));
   }, []);
 
   useEffect(() => {

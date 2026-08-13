@@ -11,6 +11,8 @@ import {
   unitWindowMetrics,
 } from "@/lib/analytics/metrics";
 import SplashIntro from "./splash-intro";
+import HeroLogo from "./hero-logo";
+import PortfolioDeck from "./portfolio-deck";
 
 export const dynamic = "force-dynamic";
 
@@ -100,8 +102,10 @@ function Landing({ locale }: { locale: Locale }) {
   ];
   return (
     <main>
-      <section style={{ maxWidth: 640, margin: "24px 0 8px" }}>
-        <h1 style={{ fontSize: 32 }}>{t(locale, "land_hero")}</h1>
+      <section className="land-hero">
+        <div className="land-hero__copy">
+        <HeroLogo />
+        <h1 style={{ fontSize: 32, marginTop: 14 }}>{t(locale, "land_hero")}</h1>
         <p style={{ color: "var(--color-text-muted)", fontSize: 15 }}>
           {t(locale, "land_sub")}
         </p>
@@ -129,6 +133,8 @@ function Landing({ locale }: { locale: Locale }) {
             {t(locale, "land_demo_cta")}
           </Link>
         </div>
+        </div>
+        <PortfolioDeck />
       </section>
 
       {/* Promo video — shown once NEXT_PUBLIC_DEMO_VIDEO_URL is set to the
