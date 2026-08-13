@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
+import { IconTarget, IconLayers, IconGlobe, IconUsers } from "../icons";
 
 export const dynamic = "force-dynamic";
 
@@ -9,35 +11,40 @@ export const metadata: Metadata = {
   alternates: { canonical: "/about" },
 };
 
-const SECTIONS: { h: StringKey; p: StringKey; icon: string }[] = [
-  { h: "about_h_mission", p: "about_p_mission", icon: "🎯" },
-  { h: "about_h_what", p: "about_p_what", icon: "🧭" },
-  { h: "about_h_georgia", p: "about_p_georgia", icon: "🇬🇪" },
-  { h: "about_h_who", p: "about_p_who", icon: "👥" },
+const SECTIONS: {
+  h: StringKey;
+  p: StringKey;
+  icon: ReactNode;
+  color: string;
+}[] = [
+  { h: "about_h_mission", p: "about_p_mission", icon: <IconTarget />, color: "#4f46e5" },
+  { h: "about_h_what", p: "about_p_what", icon: <IconLayers />, color: "#23c185" },
+  { h: "about_h_georgia", p: "about_p_georgia", icon: <IconGlobe />, color: "#f97316" },
+  { h: "about_h_who", p: "about_p_who", icon: <IconUsers />, color: "#3b82f6" },
 ];
 
 export default async function AboutPage() {
   const locale = await getLocale();
 
   return (
-    <main style={{ maxWidth: 760 }}>
-      <h1>ℹ️ {t(locale, "about_title")}</h1>
-      <p style={{ color: "var(--color-text-muted)", maxWidth: 640, marginBottom: 8 }}>
+    <main style={{ maxWidth: 860 }}>
+      <h1>{t(locale, "about_title")}</h1>
+      <p style={{ color: "var(--color-text-muted)", maxWidth: 640, marginBottom: 26 }}>
         {t(locale, "about_intro")}
       </p>
-      <div style={{ display: "grid", gap: 12, marginTop: 20 }}>
-        {SECTIONS.map((section) => (
+
+      <div className="deck">
+        {SECTIONS.map((section, i) => (
           <div
             key={section.h}
-            className="alert-card alert-card--underpriced"
-            style={{ display: "block" }}
+            className="card3d"
+            style={{ "--i": i } as React.CSSProperties}
           >
-            <h3 className="alert-card__title">
-              {section.icon} {t(locale, section.h)}
-            </h3>
-            <p className="alert-card__detail" style={{ marginTop: 6 }}>
-              {t(locale, section.p)}
-            </p>
+            <span className="card3d__icon" style={{ background: section.color }}>
+              {section.icon}
+            </span>
+            <div className="card3d__title">{t(locale, section.h)}</div>
+            <p className="card3d__body">{t(locale, section.p)}</p>
           </div>
         ))}
       </div>

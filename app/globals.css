@@ -1225,6 +1225,114 @@ td:first-child {
   }
 }
 
+/* ── 3D info cards (About / Contact) ──
+   Real depth, not a drop shadow: the grid owns the perspective, each card
+   tilts inside it, and the icon and heading sit on their own Z planes so
+   they physically stand off the surface. GPU transforms only, no library. */
+.deck {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  perspective: 1400px;
+  perspective-origin: 50% 20%;
+}
+.card3d {
+  position: relative;
+  display: block;
+  padding: 22px 20px 20px;
+  border-radius: 18px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  text-decoration: none;
+  color: inherit;
+  transform-style: preserve-3d;
+  will-change: transform;
+  box-shadow:
+    0 1px 2px rgba(24, 28, 55, 0.05),
+    0 10px 24px -16px rgba(24, 28, 55, 0.35);
+  transition:
+    transform 0.4s cubic-bezier(0.2, 0.7, 0.3, 1),
+    box-shadow 0.4s ease,
+    border-color 0.3s ease;
+  /* Staggered arrival, rotating up out of depth. */
+  animation: card3d-in 0.65s cubic-bezier(0.2, 0.8, 0.3, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 90ms);
+}
+@keyframes card3d-in {
+  from {
+    opacity: 0;
+    transform: translateY(22px) translateZ(-90px) rotateX(-12deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* A pointer that can hover gets the tilt; touch gets a press response. */
+@media (hover: hover) {
+  .card3d:hover {
+    transform: translateY(-6px) translateZ(26px) rotateX(5deg) rotateY(-5deg);
+    border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
+    box-shadow:
+      0 2px 4px rgba(24, 28, 55, 0.06),
+      0 28px 50px -22px rgba(24, 28, 55, 0.5);
+  }
+  .card3d:hover .card3d__icon {
+    transform: translateZ(52px) scale(1.06);
+  }
+  .card3d:hover .card3d__title {
+    transform: translateZ(30px);
+  }
+}
+.card3d:active {
+  transform: translateY(-2px) translateZ(8px);
+}
+/* Layers lifted off the card face. */
+.card3d__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  color: #fff;
+  margin-bottom: 14px;
+  transform: translateZ(26px);
+  transition: transform 0.4s cubic-bezier(0.2, 0.7, 0.3, 1);
+  box-shadow: 0 8px 18px -8px rgba(24, 28, 55, 0.55);
+}
+.card3d__title {
+  font-size: 15.5px;
+  font-weight: 700;
+  color: var(--color-text);
+  transform: translateZ(14px);
+  transition: transform 0.4s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+.card3d__body {
+  margin-top: 6px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--color-text-muted);
+  transform: translateZ(6px);
+}
+.card3d__value {
+  margin-top: 8px;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--color-primary);
+  transform: translateZ(10px);
+  word-break: break-word;
+}
+@media (prefers-reduced-motion: reduce) {
+  .card3d,
+  .card3d__icon,
+  .card3d__title {
+    animation: none;
+    transition: none;
+    transform: none;
+  }
+}
+
 /* ── Animated app mark (splash) ──
    The house builds one wall at a time, then the wheel rolls in. Only the
    .mark-anim variant animates; the plain mark renders static. */
