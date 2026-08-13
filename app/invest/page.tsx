@@ -7,6 +7,7 @@ import { KNOWN_DISTRICTS } from "@/lib/types";
 import { PRICE_PER_SQM } from "@/lib/invest/market";
 import Calculator from "./calculator";
 import CarCalculator from "./car-calculator";
+import FlipCalculator from "./flip-calculator";
 import InvestTabs from "./invest-tabs";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,13 @@ const LABEL_KEYS: StringKey[] = [
   "car_compare_title", "car_market_price", "car_market_rate",
   "car_vs_market_below", "car_vs_market_above", "car_vs_market_at",
   "car_monthly_income", "car_gross", "car_annual_yield", "car_market_hint",
+  "flip_title", "flip_intro", "flip_price", "flip_renovation",
+  "flip_buying_costs", "flip_holding_cost", "flip_holding_cost_hint",
+  "flip_months", "flip_sale_price", "flip_selling_fee", "flip_tax",
+  "flip_res_invested", "flip_res_holding", "flip_res_net_proceeds",
+  "flip_res_selling_fee", "flip_res_profit", "flip_res_tax", "flip_res_roi",
+  "flip_res_annual", "flip_res_per_month", "flip_res_breakeven",
+  "flip_res_breakeven_hint",
 ];
 
 export default async function InvestPage() {
@@ -74,6 +82,7 @@ export default async function InvestPage() {
       <InvestTabs
         reLabel={t(locale, "invest_tab_re")}
         carLabel={t(locale, "invest_tab_car")}
+        flipLabel={t(locale, "invest_tab_flip")}
         realEstate={
           <Calculator
             districts={[...KNOWN_DISTRICTS]}
@@ -90,6 +99,7 @@ export default async function InvestPage() {
             <CarCalculator labels={labels} />
           </div>
         }
+        flip={<FlipCalculator labels={labels} />}
       />
     </main>
   );
