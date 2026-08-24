@@ -22,9 +22,14 @@ export default async function LearnPage() {
   const operator = await getSessionOperator();
   const lessons = LESSONS[locale] ?? LESSONS.en;
 
+  const has = (rel: string) => existsSync(join(process.cwd(), "public", rel));
   const videoFor = (slug: string) => {
     const rel = `/tutorials/${slug}.mp4`;
-    return existsSync(join(process.cwd(), "public", rel)) ? rel : null;
+    return has(rel) ? rel : null;
+  };
+  const posterFor = (slug: string) => {
+    const rel = `/tutorials/${slug}.jpg`;
+    return has(rel) ? rel : undefined;
   };
 
   return (
@@ -68,6 +73,7 @@ export default async function LearnPage() {
                   muted
                   playsInline
                   preload="metadata"
+                  poster={posterFor(lesson.slug)}
                   src={video}
                 />
               ) : (
