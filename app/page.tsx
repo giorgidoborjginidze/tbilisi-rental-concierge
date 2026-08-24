@@ -14,6 +14,7 @@ import SplashIntro from "./splash-intro";
 import HeroLogo from "./hero-logo";
 import PortfolioDeck from "./portfolio-deck";
 import CountUp from "./count-up";
+import TourPrompt from "./tour-prompt";
 
 export const dynamic = "force-dynamic";
 
@@ -955,6 +956,16 @@ export default async function Home() {
   return (
     <>
       <SplashIntro tapHint={t(locale, "splash_hint")} />
+      {operator && (
+        <TourPrompt
+          labels={{
+            title: t(locale, "tour_prompt_title"),
+            body: t(locale, "tour_prompt_body"),
+            start: t(locale, "tour_prompt_start"),
+            later: t(locale, "tour_prompt_later"),
+          }}
+        />
+      )}
       {content}
     </>
   );

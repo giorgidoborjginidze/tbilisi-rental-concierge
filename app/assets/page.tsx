@@ -300,7 +300,7 @@ export default async function AssetsPage() {
     <main>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 style={{ marginBottom: 0 }}>{t(locale, "assets_title")}</h1>
-        <Link href="/assets/new" className="btn-primary">
+        <Link href="/assets/new" className="btn-primary" data-tour="new-asset">
           {t(locale, "assets_add")}
         </Link>
       </div>
@@ -415,7 +415,7 @@ export default async function AssetsPage() {
           ) };
           }),
           { group: "digital", empty: cryptoRows.length === 0 && stockRows.length === 0 && metalRows.length === 0, addHref: "/assets/new?category=crypto", node: (
-      <section>
+      <section data-tour="digital">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 style={{ marginBottom: 0 }}>
             {t(locale, "section_digital")}

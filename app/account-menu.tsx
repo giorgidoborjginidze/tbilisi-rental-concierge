@@ -48,6 +48,7 @@ export default function AccountMenu({
       <button
         type="button"
         className="account-btn"
+        data-tour="account"
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"
         aria-expanded={open}

@@ -7,6 +7,7 @@ import Nav from "./nav";
 import AppMark from "./app-mark";
 import SupportBot from "./support-bot";
 import TiltProvider from "./tilt-provider";
+import TourMount from "./tour-mount";
 import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 import { siteUrl } from "@/lib/site";
@@ -93,6 +94,7 @@ export default async function RootLayout({
           </Link>
         </footer>
         <SupportBot locale={locale} waUrl={whatsappUrl()} />
+        <TourMount />
       </body>
     </html>
   );

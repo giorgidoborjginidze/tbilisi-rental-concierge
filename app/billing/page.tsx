@@ -97,6 +97,7 @@ export default async function BillingPage({
             </div>
           )}
 
+          <div data-tour="plans">
           <PlanCards
             plans={plans.map((plan) => ({
               id: plan.id, priceGel: plan.priceGel,
@@ -107,6 +108,7 @@ export default async function BillingPage({
             effectivePlanId={context.plan.id}
             labels={labels}
           />
+          </div>
         </section>
       )}
     </main>

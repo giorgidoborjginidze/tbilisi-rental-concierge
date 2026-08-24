@@ -53,6 +53,7 @@ export default async function Nav() {
   // Marketing/info links live by the logo on the left; the app links move
   // to the right, next to the theme/language/account controls.
   const infoLinks = [
+    { href: "/learn", label: t(locale, "nav_learn") },
     { href: "/about", label: t(locale, "footer_about") },
     { href: "/contact", label: t(locale, "footer_contact") },
   ];

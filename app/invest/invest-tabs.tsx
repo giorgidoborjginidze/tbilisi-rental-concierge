@@ -75,7 +75,7 @@ export default function InvestTabs({
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap gap-1.5">
+      <div className="mb-4 flex flex-wrap gap-1.5" data-tour="invest-tabs">
         {tabs.map((t) => (
           <button
             key={t.id}
