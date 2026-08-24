@@ -6,6 +6,7 @@ import "./globals.css";
 import Nav from "./nav";
 import AppMark from "./app-mark";
 import SupportBot from "./support-bot";
+import TiltProvider from "./tilt-provider";
 import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 import { siteUrl } from "@/lib/site";
@@ -71,6 +72,7 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${notoGeorgian.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <TiltProvider />
         <Nav />
         <div className="flex-1">{children}</div>
         <footer

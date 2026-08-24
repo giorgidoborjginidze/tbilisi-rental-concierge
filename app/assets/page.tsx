@@ -305,7 +305,7 @@ export default async function AssetsPage() {
         </Link>
       </div>
 
-      <section className="kpi-grid kpi-grid--3">
+      <section className="kpi-grid kpi-grid--3d kpi-grid--3">
         <Kpi label={t(locale, "assets_total_value")} value={money(totalValue)} />
         <Kpi
           label={t(locale, "assets_monthly_income")}

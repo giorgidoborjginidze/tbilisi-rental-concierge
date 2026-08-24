@@ -71,7 +71,7 @@ export default async function BillingPage({
             </div>
           )}
 
-          <div className="kpi-grid" style={{ margin: "14px 0 8px" }}>
+          <div className="kpi-grid kpi-grid--3d" style={{ margin: "14px 0 8px" }}>
             <div className="kpi">
               <div className="kpi__label">{t(locale, "nav_assets")}</div>
               <div className="kpi__value">{context.assetCount} / {context.plan.maxAssets}</div>

@@ -1883,3 +1883,408 @@ td:first-child {
     max-width: none;
   }
 }
+
+/* ═══════════ Landing v2 — an alive page for signed-out visitors ═══════════ */
+
+/* Soft aurora orbs breathing behind the hero. Negative left/top overflow
+   never creates scrollbars; the right orb stays inside the box. */
+.land-hero::before,
+.land-hero::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  border-radius: 50%;
+  filter: blur(90px);
+  pointer-events: none;
+}
+.land-hero::before {
+  width: 420px;
+  height: 420px;
+  background: var(--color-primary);
+  opacity: 0.22;
+  top: -140px;
+  left: -120px;
+  animation: orb-a 16s ease-in-out infinite alternate;
+}
+.land-hero::after {
+  width: 340px;
+  height: 340px;
+  background: #23c185;
+  opacity: 0.14;
+  bottom: -120px;
+  right: 0;
+  animation: orb-b 18s ease-in-out infinite alternate;
+}
+@keyframes orb-a {
+  to {
+    transform: translate(60px, 40px) scale(1.15);
+  }
+}
+@keyframes orb-b {
+  to {
+    transform: translate(-50px, -30px) scale(1.1);
+  }
+}
+/* .land-hero already exists; it just needs to anchor the orbs. */
+.land-hero {
+  position: relative;
+}
+.land-hero__title {
+  background: linear-gradient(115deg, var(--color-text) 35%, var(--color-primary) 80%, #23c185 115%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ── Stats strip ── */
+.land-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 36px;
+}
+.land-stat {
+  text-align: center;
+  padding: 20px 10px 16px;
+  border-radius: 16px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+}
+.land-stat__n {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(120deg, var(--color-primary), #23c185);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.land-stat__l {
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+@media (max-width: 760px) {
+  .land-stats {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+}
+
+/* ── Living dashboard miniature ── */
+.land-preview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 34px;
+  align-items: center;
+  margin-top: 20px;
+}
+.pv {
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  background: var(--color-bg);
+  box-shadow: var(--shadow-card);
+  padding: 16px;
+}
+.pv__bar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.pv__bar span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-border);
+}
+.pv__bar span:nth-child(1) { background: #ff5f57; }
+.pv__bar span:nth-child(2) { background: #febc2e; }
+.pv__bar span:nth-child(3) { background: #28c840; }
+.pv__kpis {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.pv__kpi {
+  height: 64px;
+  border-radius: 10px;
+  background: var(--color-surface);
+  position: relative;
+  overflow: hidden;
+}
+.pv__fill {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  height: var(--h, 60%);
+  border-radius: 6px;
+  background: linear-gradient(180deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 45%, transparent));
+  transform-origin: bottom;
+  animation: pv-grow 6s ease-in-out infinite;
+  animation-delay: var(--d, 0s);
+}
+@keyframes pv-grow {
+  0% { transform: scaleY(0.15); }
+  30%, 80% { transform: scaleY(1); }
+  100% { transform: scaleY(0.15); }
+}
+.pv__spark {
+  width: 100%;
+  height: 48px;
+  margin: 12px 0 2px;
+}
+.pv__spark path {
+  stroke: #23c185;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-dasharray: 330;
+  stroke-dashoffset: 330;
+  animation: pv-draw 7s ease-in-out infinite;
+}
+@keyframes pv-draw {
+  0% { stroke-dashoffset: 330; opacity: 1; }
+  45%, 85% { stroke-dashoffset: 0; opacity: 1; }
+  97%, 100% { stroke-dashoffset: 0; opacity: 0; }
+}
+.pv__cal {
+  display: grid;
+  grid-template-columns: repeat(14, 1fr);
+  gap: 5px;
+  margin-top: 10px;
+}
+.pv__cell {
+  aspect-ratio: 1;
+  border-radius: 4px;
+  background: var(--cal-vacant);
+  opacity: 0.25;
+  animation: pv-pop 9s ease-in-out infinite;
+  animation-delay: var(--d, 0s);
+}
+.pv__cell--1 { background: var(--cal-airbnb); }
+.pv__cell--2 { background: var(--cal-booking); }
+.pv__cell--3 { background: var(--cal-direct); }
+@keyframes pv-pop {
+  0% { opacity: 0.15; transform: scale(0.7); }
+  10%, 80% { opacity: 1; transform: none; }
+  92%, 100% { opacity: 0.15; transform: scale(0.7); }
+}
+@media (max-width: 900px) {
+  .land-preview {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+/* ── How it works ── */
+.land-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.land-step {
+  padding: 20px;
+  border-radius: 16px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+}
+.land-step__n {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 15px;
+  color: #fff;
+  background: linear-gradient(135deg, #4f46e5, #23c185);
+  margin-bottom: 12px;
+}
+.land-step h3 {
+  font-size: 15px;
+  font-weight: 700;
+}
+.land-step p {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+  line-height: 1.55;
+}
+@media (max-width: 760px) {
+  .land-steps {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── FAQ accordion ── */
+.land-faq {
+  max-width: 760px;
+}
+details.faq {
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-bg);
+  padding: 0 18px;
+  margin-bottom: 10px;
+}
+.faq summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 0;
+  font-weight: 600;
+  font-size: 14px;
+}
+.faq summary::-webkit-details-marker {
+  display: none;
+}
+.faq__plus {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  transition: transform 0.25s ease, color 0.25s ease;
+}
+details[open] .faq__plus {
+  transform: rotate(45deg);
+  color: var(--color-primary);
+}
+.faq p {
+  padding: 0 0 15px;
+  color: var(--color-text-muted);
+  font-size: 13.5px;
+  max-width: 640px;
+}
+
+/* ── Closing CTA band ── */
+.land-cta {
+  margin-top: 48px;
+  border-radius: 20px;
+  padding: 40px 28px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  color: #fff;
+  background: radial-gradient(130% 150% at 20% 0%, #6d63ff, #4f46e5 45%, #37309f);
+}
+.land-cta h2 {
+  color: #fff;
+  font-size: 22px;
+  margin: 0 0 6px;
+}
+.land-cta p {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 14px;
+}
+.land-cta__actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+.btn-light {
+  display: inline-block;
+  background: #fff;
+  color: #2b2585;
+  padding: 10px 20px;
+  border-radius: var(--radius-md);
+  font-size: 13.5px;
+  font-weight: 700;
+  transition: transform 0.12s ease;
+}
+.btn-light:hover {
+  color: #2b2585;
+  transform: translateY(-1px);
+}
+.btn-ghost {
+  display: inline-block;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  color: #fff;
+  padding: 9px 19px;
+  border-radius: var(--radius-md);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.btn-ghost:hover {
+  color: #fff;
+  border-color: #fff;
+}
+
+/* ═══════════ Live pointer-tracked tilt (TiltProvider) ═══════════
+   Placed last so it outranks the fixed :hover tilts of the same
+   specificity — while the pointer moves, the card follows it. */
+@media (hover: hover) {
+  .card3d.is-tilting {
+    transform: rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) translateZ(22px);
+    transition: transform 0.08s linear, box-shadow 0.3s ease, border-color 0.3s ease;
+  }
+  .feature-card {
+    position: relative;
+    transform-style: preserve-3d;
+    will-change: transform;
+    transition: transform 0.35s ease, box-shadow 0.35s ease;
+  }
+  .feature-card__icon {
+    transition: transform 0.3s ease;
+  }
+  .feature-card.is-tilting {
+    transform: rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) translateZ(10px);
+    transition: transform 0.08s linear, box-shadow 0.35s ease;
+    box-shadow: 0 22px 42px -22px rgba(24, 28, 55, 0.45);
+  }
+  .feature-card.is-tilting .feature-card__icon {
+    transform: translateZ(28px);
+  }
+  .kpi-grid--3d .kpi.is-tilting {
+    transform: rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) translateZ(16px);
+    transition: transform 0.08s linear, box-shadow 0.35s ease, border-color 0.3s ease;
+  }
+  .kpi-grid--3d .kpi.is-tilting .kpi__value {
+    transform: translateZ(22px);
+  }
+  /* Light sheen that follows the pointer across the surface. */
+  .card3d::after,
+  .feature-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    background: radial-gradient(
+      340px circle at var(--mx, 50%) var(--my, 50%),
+      rgba(255, 255, 255, 0.13),
+      transparent 55%
+    );
+    transition: opacity 0.3s ease;
+  }
+  .card3d.is-tilting::after,
+  .feature-card.is-tilting::after {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .land-hero::before,
+  .land-hero::after,
+  .pv__fill,
+  .pv__spark path,
+  .pv__cell {
+    animation: none;
+  }
+  .pv__cell {
+    opacity: 1;
+    transform: none;
+  }
+  .pv__fill {
+    transform: none;
+  }
+  .pv__spark path {
+    stroke-dashoffset: 0;
+  }
+}

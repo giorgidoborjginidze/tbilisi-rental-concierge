@@ -13,6 +13,7 @@ import {
 import SplashIntro from "./splash-intro";
 import HeroLogo from "./hero-logo";
 import PortfolioDeck from "./portfolio-deck";
+import CountUp from "./count-up";
 
 export const dynamic = "force-dynamic";
 
@@ -105,7 +106,7 @@ function Landing({ locale }: { locale: Locale }) {
       <section className="land-hero">
         <div className="land-hero__copy">
         <HeroLogo />
-        <h1 style={{ fontSize: 32, marginTop: 14 }}>{t(locale, "land_hero")}</h1>
+        <h1 className="land-hero__title" style={{ fontSize: 32, marginTop: 14 }}>{t(locale, "land_hero")}</h1>
         <p style={{ color: "var(--color-text-muted)", fontSize: 15 }}>
           {t(locale, "land_sub")}
         </p>
@@ -135,6 +136,25 @@ function Landing({ locale }: { locale: Locale }) {
         </div>
         </div>
         <PortfolioDeck />
+      </section>
+
+      {/* Honest numbers only — what the product actually covers. */}
+      <section className="land-stats">
+        {(
+          [
+            { to: 4, label: "land_stat_assets" },
+            { to: 5, label: "land_stat_platforms" },
+            { to: 30, label: "land_stat_days" },
+            { to: 15, label: "land_stat_price" },
+          ] as const
+        ).map((stat) => (
+          <div key={stat.label} className="land-stat">
+            <div className="land-stat__n">
+              <CountUp to={stat.to} />
+            </div>
+            <div className="land-stat__l">{t(locale, stat.label)}</div>
+          </div>
+        ))}
       </section>
 
       {/* Promo video — shown once NEXT_PUBLIC_DEMO_VIDEO_URL is set to the
@@ -174,6 +194,110 @@ function Landing({ locale }: { locale: Locale }) {
             <div className="feature-card__body">{t(locale, f.b)}</div>
           </div>
         ))}
+      </section>
+
+      {/* A living miniature of the dashboard — decorative, so the page
+          shows the product moving instead of describing it. */}
+      <section className="land-preview">
+        <div>
+          <h2 style={{ marginBottom: 4 }}>{t(locale, "land_preview_title")}</h2>
+          <p style={{ color: "var(--color-text-muted)", fontSize: 14, maxWidth: 460 }}>
+            {t(locale, "land_preview_sub")}
+          </p>
+        </div>
+        <div className="pv" aria-hidden>
+          <div className="pv__bar"><span /><span /><span /></div>
+          <div className="pv__kpis">
+            {[62, 84, 47].map((h, i) => (
+              <div key={i} className="pv__kpi">
+                <span
+                  className="pv__fill"
+                  style={{ "--h": `${h}%`, "--d": `${i * 0.6}s` } as React.CSSProperties}
+                />
+              </div>
+            ))}
+          </div>
+          <svg className="pv__spark" viewBox="0 0 220 48">
+            <path d="M2 40 C30 38 40 24 62 26 S 100 10 124 16 S 170 30 218 6" fill="none" />
+          </svg>
+          <div className="pv__cal">
+            {Array.from({ length: 42 }, (_, i) => (
+              <span
+                key={i}
+                className={`pv__cell pv__cell--${(i * 7) % 4}`}
+                style={{ "--d": `${(i % 14) * 0.3 + Math.floor(i / 14) * 0.15}s` } as React.CSSProperties}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Three steps from empty to the full picture. */}
+      <section>
+        <h2>{t(locale, "land_how_title")}</h2>
+        <div className="land-steps">
+          {(
+            [
+              ["land_how_1t", "land_how_1"],
+              ["land_how_2t", "land_how_2"],
+              ["land_how_3t", "land_how_3"],
+            ] as const
+          ).map(([titleKey, bodyKey], i) => (
+            <div key={titleKey} className="land-step">
+              <div className="land-step__n">{i + 1}</div>
+              <h3>{t(locale, titleKey)}</h3>
+              <p>{t(locale, bodyKey)}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* FAQ — the same answers the support bot gives. */}
+      <section className="land-faq">
+        <h2>{t(locale, "land_faq_title")}</h2>
+        {(
+          [
+            ["bot_q_what", "bot_a_what"],
+            ["bot_q_pricing", "bot_a_pricing"],
+            ["bot_q_sync", "bot_a_sync"],
+            ["bot_q_payment", "bot_a_payment"],
+            ["bot_q_security", "bot_a_security"],
+          ] as const
+        ).map(([q, a]) => (
+          <details key={q} className="faq">
+            <summary>
+              {t(locale, q)}
+              <svg
+                className="faq__plus"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                aria-hidden
+              >
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </summary>
+            <p>{t(locale, a)}</p>
+          </details>
+        ))}
+      </section>
+
+      {/* Closing call to action. */}
+      <section className="land-cta">
+        <h2>{t(locale, "land_cta_title")}</h2>
+        <p>{t(locale, "land_cta_sub")}</p>
+        <div className="land-cta__actions">
+          <Link href="/register" className="btn-light">
+            {t(locale, "register_free")}
+          </Link>
+          <Link href="/invest" className="btn-ghost">
+            {t(locale, "land_try_calc")}
+          </Link>
+        </div>
       </section>
     </main>
   );
@@ -343,7 +467,7 @@ async function HotelDashboard({
         <>
           <section>
             <h2>{t(locale, "this_month")}</h2>
-            <div className="kpi-grid kpi-grid--5">
+            <div className="kpi-grid kpi-grid--3d kpi-grid--5">
               <Kpi label={t(locale, "kpi_occupancy")} value={pct(portfolio.occupancyRate)} />
               <Kpi label="ADR" value={money(portfolio.adr, currency)} />
               <Kpi label="RevPAR" value={money(portfolio.revpar, currency)} />
@@ -458,7 +582,7 @@ async function BrokerageDashboard({
         sub={`🏢 ${t(locale, "profile_brokerage")}`}
       />
 
-      <section className="kpi-grid kpi-grid--3">
+      <section className="kpi-grid kpi-grid--3d kpi-grid--3">
         <Kpi label={t(locale, "dash_managed")} value={String(assets.length)} />
         <Kpi label={t(locale, "dash_rent_month")} value={money(rentIncome)} />
         <Kpi label={t(locale, "dash_open_alerts")} value={String(alertCount)} />
@@ -648,7 +772,7 @@ async function CarRentalDashboard({
         sub={`🚗 ${t(locale, "profile_car")}`}
       />
 
-      <section className="kpi-grid">
+      <section className="kpi-grid kpi-grid--3d">
         <Kpi label={t(locale, "dash_fleet")} value={String(vehicles.length)} />
         <Kpi
           label={t(locale, "dash_rented_now")}
@@ -763,7 +887,7 @@ async function PersonalDashboard({
         sub={`👤 ${t(locale, "account_personal")}`}
       />
 
-      <section className="kpi-grid kpi-grid--3">
+      <section className="kpi-grid kpi-grid--3d kpi-grid--3">
         <Kpi
           label={t(locale, "assets_monthly_income")}
           value={money(totalMonthly)}

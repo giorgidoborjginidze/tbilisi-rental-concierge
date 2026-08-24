@@ -107,7 +107,7 @@ export default function ProCalculator({
           </span>
         </div>
 
-        <div className="kpi-grid" style={{ margin: "14px 0", gridTemplateColumns: "repeat(2, 1fr)" }}>
+        <div className="kpi-grid kpi-grid--3d" style={{ margin: "14px 0", gridTemplateColumns: "repeat(2, 1fr)" }}>
           <div className="kpi">
             <div className="kpi__label">{labels.wor_cf_month}</div>
             <div

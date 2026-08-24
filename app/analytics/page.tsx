@@ -115,7 +115,7 @@ export default async function AnalyticsPage() {
       {units.length > 0 && (<>
       <section>
         <h2>{t(locale, "this_month")}</h2>
-        <div className="kpi-grid kpi-grid--5">
+        <div className="kpi-grid kpi-grid--3d kpi-grid--5">
           <Kpi
             label={t(locale, "kpi_occupancy")}
             value={pct(portfolioThisMonth.occupancyRate)}
