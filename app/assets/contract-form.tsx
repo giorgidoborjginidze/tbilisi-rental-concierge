@@ -47,6 +47,20 @@ export default function ContractForm({
         {labels.contract_deposit}
         <input name="deposit" type="number" min={0} step="0.01" />
       </label>
+      {/* Payment terms travel with the contract from the start, so a car
+          rental is watched from day one rather than after a second edit. */}
+      <label className="field">
+        {labels.pay_period}
+        <select name="paymentPeriod" defaultValue="monthly">
+          <option value="daily">{labels.period_daily}</option>
+          <option value="weekly">{labels.period_weekly}</option>
+          <option value="monthly">{labels.period_monthly}</option>
+        </select>
+      </label>
+      <label className="field">
+        {labels.pay_grace}
+        <input name="graceDays" type="number" min={0} max={60} step={1} defaultValue={3} />
+      </label>
       <label className="field">
         {labels.asset_notes}
         <input name="notes" />

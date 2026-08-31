@@ -216,6 +216,7 @@ export default async function EditAssetPage({
     "contract_add", "contract_tenant", "tenant_phone", "contract_start", "contract_end",
     "contract_rent", "contract_deposit", "asset_notes", "error_required",
     "error_invalid_number", "error_dates", "error_email_taken",
+    "pay_period", "period_daily", "period_weekly", "period_monthly", "pay_grace",
   ];
   const contractLabels = Object.fromEntries(
     contractLabelKeys.map((key) => [key, t(locale, key)]),
@@ -225,7 +226,16 @@ export default async function EditAssetPage({
     <main>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
         <h1 style={{ marginBottom: 0 }}>{displayName}</h1>
-        <Link href="/assets" className="btn-chip">← {t(locale, "assets_title")}</Link>
+        <div className="flex flex-wrap gap-1.5">
+          {/* Cars and other rented-out property get the service desk:
+              payment schedule, GPS red lines, WhatsApp notifications. */}
+          {!isIncome && (
+            <Link href={`/assets/${asset.id}/rental`} className="btn-chip btn-chip--active">
+              {t(locale, "rental_open_service")}
+            </Link>
+          )}
+          <Link href="/assets" className="btn-chip">← {t(locale, "assets_title")}</Link>
+        </div>
       </div>
 
       {/* ── Summary: status, listings, door key — same controls as the list ── */}

@@ -2458,3 +2458,108 @@ details[open] .faq__plus {
   color: var(--color-primary);
   font-weight: 700;
 }
+
+/* ── Rental service: payment schedule, GPS red lines, notifications ── */
+
+/* Two forms side by side on a wide screen, stacked on a phone. Each keeps
+   its own two-column grid inside, so nothing turns into a single column
+   until the viewport really is narrow. */
+.rental-two {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.rental-two .form-grid {
+  max-width: none;
+}
+
+.field-hint {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+.form-error {
+  color: var(--status-danger-text);
+  font-size: 13px;
+  margin: 0;
+}
+.field-row {
+  display: flex;
+  gap: 8px;
+}
+
+/* Device token and ping URL: long, monospaced, copied rather than read. */
+.gps-copy {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+.gps-copy > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.gps-copy .field-hint {
+  flex: 0 0 auto;
+  min-width: 92px;
+}
+.gps-copy code {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  white-space: nowrap;
+  font-size: 12px;
+  padding: 5px 9px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+.gps-copy button {
+  flex: 0 0 auto;
+}
+
+.tpl-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+  margin-top: 14px;
+}
+.tpl-grid textarea {
+  resize: vertical;
+  line-height: 1.5;
+}
+.tpl-grid__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+/* A pencil marks the ones this workspace has rewritten. */
+.tpl-grid__edited {
+  color: var(--color-primary);
+  font-size: 11px;
+}
+
+.alert-card--overdue {
+  border-color: color-mix(in srgb, var(--status-listed-text) 30%, var(--color-bg));
+  background: color-mix(in srgb, var(--status-listed-bg) 45%, var(--color-bg));
+}
+.alert-card--repossess,
+.alert-card--geofence {
+  border-color: color-mix(in srgb, var(--status-danger-text) 32%, var(--color-bg));
+  background: color-mix(in srgb, var(--status-danger-bg) 45%, var(--color-bg));
+}
+/* Currency and grace-day suffixes ride along with the KPI number instead
+   of wrapping onto their own line on a narrow screen. */
+.kpi__unit {
+  font-size: 0.62em;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  letter-spacing: 0;
+}

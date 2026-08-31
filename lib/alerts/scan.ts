@@ -7,6 +7,7 @@ import { prisma } from "@/lib/db";
 import { findGaps, type Stay } from "@/lib/calendar/occupancy";
 import { suggestRate } from "@/lib/pricing/engine";
 import { getMarketDataSource } from "@/lib/market/source";
+import { monitorRentPayments } from "@/lib/rentals/monitor";
 
 const DAY_MS = 86_400_000;
 const GAP_WINDOW_DAYS = 30;
@@ -172,6 +173,11 @@ export async function scanAlerts(
       ),
     });
   }
+
+  // 5. Late rent on active contracts — and the day the repossession right
+  //    kicks in. This also queues the WhatsApp reminders.
+  const payments = await monitorRentPayments(today, operatorId);
+  result.created += payments.alerts;
 
   return result;
 }

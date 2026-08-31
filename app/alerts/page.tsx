@@ -13,6 +13,9 @@ const TYPE_STYLE: Record<string, string> = {
   lease_expiry: "alert-card--lease",
   underpriced: "alert-card--underpriced",
   contract_expiry: "alert-card--contract",
+  rent_overdue: "alert-card--overdue",
+  repossession_right: "alert-card--repossess",
+  geofence_breach: "alert-card--geofence",
 };
 
 interface AlertPayload {
@@ -29,6 +32,20 @@ interface AlertPayload {
   assetId?: string;
   assetName?: string;
   monthlyRent?: number;
+  // Car rentals: late payment and red-line crossings.
+  plate?: string | null;
+  currency?: string;
+  dueDate?: string;
+  daysOverdue?: number;
+  graceDays?: number;
+  amountDue?: number;
+  repossessFrom?: string;
+  tenantPhone?: string | null;
+  fenceName?: string;
+  lat?: number;
+  lng?: number;
+  distanceKm?: number;
+  driverName?: string | null;
 }
 
 export default async function AlertsPage({
@@ -61,6 +78,31 @@ export default async function AlertsPage({
         return `${payload.baseNightlyRate} → ${payload.suggestedRate} ${currency} · ADR ${payload.benchmarkAdr} (${payload.month})`;
       case "contract_expiry":
         return `${payload.assetName} · ${payload.tenantName ?? "—"} · ${payload.monthlyRent} ${currency} · ${payload.endDate} · ${payload.daysLeft} ${t(locale, "days_left")}`;
+      case "rent_overdue":
+      case "repossession_right":
+        return [
+          payload.assetName,
+          payload.plate,
+          payload.tenantName ?? "—",
+          `${payload.amountDue} ${payload.currency ?? currency}`,
+          `${t(locale, "pay_next_due")}: ${payload.dueDate}`,
+          `${t(locale, "pay_days_overdue")}: ${payload.daysOverdue}/${payload.graceDays}`,
+        ]
+          .filter(Boolean)
+          .join(" · ");
+      case "geofence_breach":
+        return [
+          payload.assetName,
+          payload.plate,
+          payload.fenceName,
+          payload.driverName,
+          payload.lat != null && payload.lng != null
+            ? `${payload.lat.toFixed(4)}, ${payload.lng.toFixed(4)}`
+            : null,
+          payload.distanceKm != null ? `${payload.distanceKm} km` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ");
       default:
         return "";
     }

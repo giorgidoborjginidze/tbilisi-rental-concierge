@@ -242,6 +242,18 @@ export async function saveContract(
   const now = new Date();
   const status = endDate < now ? "ended" : startDate > now ? "upcoming" : "active";
 
+  // Payment terms: how often rent is collected and how many days late the
+  // contract tolerates before the owner may require the asset back.
+  const periodRaw = str(formData, "paymentPeriod");
+  const paymentPeriod = ["daily", "weekly", "monthly"].includes(periodRaw)
+    ? periodRaw
+    : "monthly";
+  const graceRaw = Number(str(formData, "graceDays"));
+  const graceDays =
+    Number.isFinite(graceRaw) && graceRaw >= 0 && graceRaw <= 60
+      ? Math.round(graceRaw)
+      : 3;
+
   await prisma.rentalContract.create({
     data: {
       assetId,
@@ -253,6 +265,11 @@ export async function saveContract(
       deposit,
       currency: asset.currency,
       status,
+      paymentPeriod,
+      graceDays,
+      // Tracking starts at the contract's own start date: nothing is paid
+      // yet, and the first period falls due on day one.
+      paidThrough: startDate,
       notes: str(formData, "notes") || null,
     },
   });

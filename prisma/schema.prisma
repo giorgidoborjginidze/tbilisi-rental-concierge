@@ -40,13 +40,18 @@ model Operator {
   company   Operator?  @relation("Team", fields: [companyId], references: [id], onDelete: SetNull)
   members   Operator[] @relation("Team")
 
-  units    Unit[]
-  alerts   Alert[]
-  assets   Asset[]
-  incomes  IncomeRecord[]
-  sessions Session[]
-  invites  Invite[]
-  payments Payment[]
+  // WhatsApp number that receives owner-side alerts (geofence, overdue rent).
+  notifyPhone String?
+
+  units     Unit[]
+  alerts    Alert[]
+  assets    Asset[]
+  incomes   IncomeRecord[]
+  sessions  Session[]
+  invites   Invite[]
+  payments  Payment[]
+  templates NotifyTemplate[]
+  messages  NotifyMessage[]
 
   @@index([companyId])
 }
@@ -234,6 +239,8 @@ model Asset {
   myautoUrl      String?
   airbnbUrl      String?
   bookingUrl     String?
+  // Vehicles: the state plate, used verbatim in geofence notifications.
+  plateNumber    String?
   // Digital door key (daily rentals / handovers), sent via WhatsApp.
   doorCode            String?
   doorCodeGeneratedAt DateTime?
@@ -245,6 +252,8 @@ model Asset {
   contracts RentalContract[]
   incomes   IncomeRecord[]
   trades    CryptoTrade[]
+  gpsDevice GpsDevice?
+  geofences Geofence[]
 
   @@index([operatorId])
 }
@@ -281,9 +290,139 @@ model RentalContract {
   notes       String?
   createdAt   DateTime @default(now())
 
-  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  // ── Payment schedule (car rentals especially) ──
+  // The contract says how often the renter pays and how many days late is
+  // still tolerated. Past the grace period the owner has the contractual
+  // right to take the vehicle back — with graceDays = 3 that is day 4.
+  paymentPeriod String    @default("monthly") // "daily" | "weekly" | "monthly"
+  paymentAmount Float? // per period; falls back to monthlyRent
+  graceDays     Int       @default(3)
+  // Paid up to (exclusive): every period starting before this date is
+  // settled. Null means nothing paid yet — the schedule starts at startDate.
+  paidThrough   DateTime?
+
+  asset    Asset         @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  payments RentPayment[]
 
   @@index([assetId, endDate])
+}
+
+// One received payment against a contract. Recording a payment advances
+// the contract's paidThrough by the periods it covers.
+model RentPayment {
+  id         String   @id @default(cuid())
+  contractId String
+  amount     Float
+  currency   String   @default("GEL")
+  paidAt     DateTime @default(now())
+  // The window this payment settles, so history stays auditable even if
+  // the schedule is edited later.
+  periodStart DateTime
+  periodEnd   DateTime
+  method     String   @default("cash") // "cash" | "transfer" | "card" | "other"
+  note       String?
+  createdAt  DateTime @default(now())
+
+  contract RentalContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([contractId, paidAt])
+}
+
+// A GPS tracker bound to one asset (the vehicle it is installed in).
+// Positions arrive on POST /api/gps/ping authenticated by `token`.
+model GpsDevice {
+  id        String    @id @default(cuid())
+  assetId   String    @unique
+  label     String?
+  provider  String    @default("generic") // tracker vendor, informational
+  deviceId  String    @unique // the tracker's own identifier
+  token     String    @unique // shared secret for the ingest endpoint
+  lastLat   Float?
+  lastLng   Float?
+  lastSpeed Float? // km/h, when the tracker reports it
+  lastPingAt DateTime?
+  createdAt DateTime  @default(now())
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+}
+
+// A "red line": the area the vehicle is contractually allowed to stay in.
+// Either a circle (center + radiusKm) or a polygon (points: [[lat,lng],…]).
+// The driver is warned `approachKm` before the boundary and again on
+// crossing it.
+model Geofence {
+  id         String   @id @default(cuid())
+  assetId    String
+  name       String
+  kind       String   @default("circle") // "circle" | "polygon"
+  centerLat  Float?
+  centerLng  Float?
+  radiusKm   Float?
+  points     Json? // polygon: [[lat, lng], …]
+  approachKm Float    @default(1)
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  asset  Asset      @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  events GeoEvent[]
+
+  @@index([assetId, active])
+}
+
+// A boundary transition detected from GPS pings. One row per state change,
+// so a car sitting just outside the line does not re-notify every minute.
+model GeoEvent {
+  id         String   @id @default(cuid())
+  assetId    String
+  geofenceId String
+  kind       String // "approach" | "breach" | "return"
+  lat        Float
+  lng        Float
+  distanceKm Float // to the boundary; negative-free, `kind` says which side
+  createdAt  DateTime @default(now())
+
+  geofence Geofence @relation(fields: [geofenceId], references: [id], onDelete: Cascade)
+
+  @@index([assetId, createdAt])
+}
+
+// An operator-editable notification body. Defaults live in code
+// (lib/notify/templates.ts); a row exists only once the operator edits it.
+model NotifyTemplate {
+  id         String   @id @default(cuid())
+  operatorId String
+  key        String // see TEMPLATE_KEYS in lib/notify/templates.ts
+  body       String
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  operator Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+
+  @@unique([operatorId, key])
+}
+
+// The WhatsApp outbox. Messages are queued the moment an event fires and
+// sent by the Cloud API when it is configured; without it they stay
+// queued with a click-to-send wa.me link so nothing is silently lost.
+model NotifyMessage {
+  id         String  @id @default(cuid())
+  operatorId String
+  assetId    String?
+  contractId String?
+  toPhone    String // digits only, international
+  toRole     String // "driver" | "owner"
+  kind       String // template key this was rendered from
+  body       String
+  status     String  @default("queued") // "queued" | "sent" | "failed"
+  // Stable key so a repeated scan or ping never queues the same message twice.
+  dedupeKey   String   @unique
+  providerRef String?
+  error       String?
+  createdAt   DateTime @default(now())
+  sentAt      DateTime?
+
+  operator Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+
+  @@index([operatorId, status])
 }
 
 // A manual income entry (salary, dividend, one-off) — rent and STR income
@@ -323,7 +462,9 @@ model Alert {
   id         String   @id @default(cuid())
   operatorId String
   unitId     String?
-  type       String // "vacancy_gap" | "lease_expiry" | "underpriced"
+  // "vacancy_gap" | "lease_expiry" | "underpriced" | "contract_expiry"
+  // | "rent_overdue" | "repossession_right" | "geofence_breach"
+  type       String
   payload    Json // type-specific details + { suggestedAction: string }
   status     String    @default("open") // "open" | "dismissed" | "resolved"
   resolvedAt DateTime?
