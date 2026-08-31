@@ -399,6 +399,7 @@ export default async function AssetsPage() {
                   daily: asset.rentalMode === "daily",
                   overdue: overdueBadge(contract),
                   serviceHref: `/assets/${asset.id}/rental`,
+                  category: asset.category,
                 };
                 return (
                   <AssetFlipCard

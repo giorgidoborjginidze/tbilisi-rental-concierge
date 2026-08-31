@@ -31,7 +31,7 @@ export default async function ContactPage() {
           className="card3d"
           style={{ "--i": 0 } as React.CSSProperties}
         >
-          <span className="card3d__icon" style={{ background: "#4f46e5" }}>
+          <span className="card3d__icon" style={{ background: "#2679ad" }}>
             <IconMail />
           </span>
           <div className="card3d__title">{t(locale, "contact_email_label")}</div>

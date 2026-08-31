@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { Geist, Geist_Mono, Noto_Sans_Georgian } from "next/font/google";
+import { Geist, Geist_Mono, Noto_Sans_Georgian, Noto_Serif_Georgian } from "next/font/google";
 import "./globals.css";
 import Nav from "./nav";
 import AppMark from "./app-mark";
 import SupportBot from "./support-bot";
 import TiltProvider from "./tilt-provider";
 import TourMount from "./tour-mount";
+import TabBar from "./tab-bar";
 import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 import { siteUrl } from "@/lib/site";
@@ -26,6 +27,13 @@ const geistMono = Geist_Mono({
 const notoGeorgian = Noto_Sans_Georgian({
   variable: "--font-noto",
   subsets: ["georgian", "latin"],
+});
+
+// Headings only — the serif voice from the Ice design round.
+const notoSerifGeorgian = Noto_Serif_Georgian({
+  variable: "--font-noto-serif",
+  subsets: ["georgian", "latin"],
+  weight: ["500", "600", "700"],
 });
 
 const SITE_NAME = "Activo";
@@ -70,7 +78,7 @@ export default async function RootLayout({
     <html
       lang="en"
       data-theme={theme}
-      className={`${geistSans.variable} ${geistMono.variable} ${notoGeorgian.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${notoGeorgian.variable} ${notoSerifGeorgian.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <TiltProvider />
@@ -95,6 +103,7 @@ export default async function RootLayout({
         </footer>
         <SupportBot locale={locale} waUrl={whatsappUrl()} />
         <TourMount />
+        <TabBar />
       </body>
     </html>
   );

@@ -17,7 +17,7 @@ const SECTIONS: {
   icon: ReactNode;
   color: string;
 }[] = [
-  { h: "about_h_mission", p: "about_p_mission", icon: <IconTarget />, color: "#4f46e5" },
+  { h: "about_h_mission", p: "about_p_mission", icon: <IconTarget />, color: "#2679ad" },
   { h: "about_h_what", p: "about_p_what", icon: <IconLayers />, color: "#23c185" },
   { h: "about_h_georgia", p: "about_p_georgia", icon: <IconGlobe />, color: "#f97316" },
   { h: "about_h_who", p: "about_p_who", icon: <IconUsers />, color: "#3b82f6" },

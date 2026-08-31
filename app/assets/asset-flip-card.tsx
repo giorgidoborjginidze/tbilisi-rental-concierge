@@ -22,6 +22,8 @@ export interface FlipAsset {
   overdue: { label: string; severe: boolean } | null;
   /** Rentable assets link straight to their service desk. */
   serviceHref: string | null;
+  /** Asset family — drives the card's ice tint. */
+  category: string;
 }
 
 // A turn icon — the only affordance the card needs, since tapping it
@@ -72,7 +74,10 @@ export default function AssetFlipCard({
   };
 
   return (
-    <div className={`aflip${open ? " aflip--open" : ""}`}>
+    <div
+      className={`aflip${open ? " aflip--open" : ""}`}
+      style={{ "--cat": `var(--cat-${asset.category.replace(/_/g, "-")}, var(--cat-other))` } as React.CSSProperties}
+    >
       <div
         className="aflip__inner"
         onClick={onClick}

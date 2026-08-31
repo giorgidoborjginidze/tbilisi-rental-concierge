@@ -15,6 +15,12 @@ import HeroLogo from "./hero-logo";
 import PortfolioDeck from "./portfolio-deck";
 import CountUp from "./count-up";
 import TourPrompt from "./tour-prompt";
+import {
+  CompositionRing,
+  MarketTips,
+  WealthHero,
+  ringPartsFromAssets,
+} from "./dash-extras";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +57,7 @@ function Landing({ locale }: { locale: Locale }) {
     {
       t: "land_b1_t",
       b: "land_b1",
-      color: "#4f46e5",
+      color: "#2679ad",
       // Everything in one place — a dashboard of tiles.
       icon: (
         <svg {...iconProps} aria-hidden>
@@ -466,6 +472,14 @@ async function HotelDashboard({
 
       {units.length > 0 && (
         <>
+          <WealthHero
+            label={`${t(locale, "this_month")} · ${t(locale, "kpi_revenue")}`}
+            total={portfolio.revenue}
+            chips={[
+              `${t(locale, "kpi_occupancy")}: ${pct(portfolio.occupancyRate)}`,
+              `ADR: ${money(portfolio.adr, currency)}`,
+            ]}
+          />
           <section>
             <h2>{t(locale, "this_month")}</h2>
             <div className="kpi-grid kpi-grid--3d kpi-grid--5">
@@ -509,6 +523,8 @@ async function HotelDashboard({
           </section>
         </>
       )}
+
+      <MarketTips locale={locale} operatorId={operator.id} />
     </main>
   );
 }
@@ -676,6 +692,8 @@ async function BrokerageDashboard({
           </section>
         </>
       )}
+
+      <MarketTips locale={locale} operatorId={operator.id} />
     </main>
   );
 }
@@ -825,6 +843,8 @@ async function CarRentalDashboard({
           </Link>
         </div>
       </section>
+
+      <MarketTips locale={locale} operatorId={operator.id} />
     </main>
   );
 }
@@ -888,6 +908,17 @@ async function PersonalDashboard({
         sub={`👤 ${t(locale, "account_personal")}`}
       />
 
+      <WealthHero
+        label={t(locale, "dash_wealth")}
+        total={totalValue}
+        chips={[
+          `${t(locale, "assets_monthly_income")}: ${money(totalMonthly)}`,
+          `${t(locale, "nav_assets")}: ${propertyCount}`,
+        ]}
+      />
+
+      <CompositionRing locale={locale} parts={ringPartsFromAssets(locale, assets)} />
+
       <section className="kpi-grid kpi-grid--3d kpi-grid--3">
         <Kpi
           label={t(locale, "assets_monthly_income")}
@@ -935,6 +966,8 @@ async function PersonalDashboard({
           </Link>
         </div>
       </section>
+
+      <MarketTips locale={locale} operatorId={operator.id} />
     </main>
   );
 }

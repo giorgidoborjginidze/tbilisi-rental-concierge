@@ -4,29 +4,40 @@
    (design/ui-redesign-brief.html → user redesign → this port). */
 
 @theme {
-  /* Brand */
-  --color-primary: #4f46e5;
-  --color-primary-hover: #4338ca;
+  /* Brand — the glacial palette from the approved "Activo Ice" round.
+     The logo mark is theme-coloured, so changing primary recolours it. */
+  --color-primary: #2679ad;
+  --color-primary-hover: #1f6493;
   --color-primary-contrast: #ffffff;
-  --color-accent: #0369a1;
+  --color-accent: #6a5bc7;
+
+  /* The logo's fixed accent (window + wheel hub), frosted to match. */
+  --brand-mint: #3fc6a5;
+
+  /* Category ice tints: one colour per asset family, used everywhere. */
+  --cat-real-estate: #5ab0e0;
+  --cat-vehicle: #988ae6;
+  --cat-digital: #6ed3b8;
+  --cat-income: #ecc06a;
+  --cat-other: #8aa3b5;
 
   /* Surfaces */
-  --color-page: #fafafb;
+  --color-page: #eef5fa;
   --color-bg: #ffffff;
-  --color-surface: #f4f5f9;
-  --color-border: #e8eaf1;
-  --color-border-strong: #d5d9e6;
+  --color-surface: #e9f2f8;
+  --color-border: #d8e6ef;
+  --color-border-strong: #b9d2e1;
 
   /* Text */
-  --color-text: #191c28;
-  --color-text-muted: #666d81;
+  --color-text: #16354a;
+  --color-text-muted: #5b7488;
 
   /* Shape & type */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
   --shadow-card:
-    0 1px 1px rgba(24, 28, 55, 0.03), 0 8px 24px -12px rgba(24, 28, 55, 0.1);
+    0 1px 1px rgba(38, 92, 130, 0.04), 0 14px 30px -16px rgba(38, 92, 130, 0.25);
   --font-sans: var(--font-noto), var(--font-geist-sans), "Sylfaen", sans-serif;
   --font-mono: var(--font-geist-mono);
 }
@@ -72,17 +83,18 @@
    sets data-theme="dark" on <html> (and persists it in a cookie). */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --color-primary: #8f97ff;
-  --color-primary-hover: #a6acff;
-  --color-primary-contrast: #101227;
-  --color-accent: #71b8f2;
-  --color-page: #0e1015;
-  --color-bg: #151822;
-  --color-surface: #1c2030;
-  --color-border: #262b3b;
-  --color-border-strong: #363d52;
-  --color-text: #eceef5;
-  --color-text-muted: #969db2;
+  --color-primary: #8fc7ee;
+  --color-primary-hover: #a9d5f4;
+  --color-primary-contrast: #0b1826;
+  --color-accent: #b3a7f2;
+  --color-page: #0b141f;
+  --color-bg: #101c2a;
+  --color-surface: #16283a;
+  --color-border: #1f3347;
+  --color-border-strong: #2d4a63;
+  --color-text: #e8f1f8;
+  --color-text-muted: #92a9bb;
+  --brand-mint: #6ee0c4;
   --status-rented-bg: #133527;
   --status-rented-text: #74e3ae;
   --status-vacant-bg: #382b0e;
@@ -1057,7 +1069,7 @@ td:first-child {
   gap: 14px;
   cursor: pointer;
   background:
-    radial-gradient(120% 120% at 50% 30%, #5b52f0 0%, #4f46e5 45%, #3b34b8 100%);
+    radial-gradient(120% 120% at 50% 30%, #58a9d8 0%, #2679ad 45%, #16496c 100%);
   animation: splash-in 0.35s ease;
 }
 .splash--leaving {
@@ -2100,7 +2112,7 @@ td:first-child {
   font-weight: 700;
   font-size: 15px;
   color: #fff;
-  background: linear-gradient(135deg, #4f46e5, #23c185);
+  background: linear-gradient(135deg, #2679ad, #3fc6a5);
   margin-bottom: 12px;
 }
 .land-step h3 {
@@ -2169,7 +2181,11 @@ details[open] .faq__plus {
   position: relative;
   overflow: hidden;
   color: #fff;
-  background: radial-gradient(130% 150% at 20% 0%, #6d63ff, #4f46e5 45%, #37309f);
+  background: radial-gradient(130% 150% at 20% 0%, #58a9d8, #2679ad 45%, #174e73);
+  box-shadow:
+    0 26px 52px -24px rgba(23, 78, 115, 0.55),
+    inset 0 1.6px 1px rgba(255, 255, 255, 0.45),
+    inset 0 0 24px 2px rgba(255, 255, 255, 0.12);
 }
 .land-cta h2 {
   color: #fff;
@@ -2190,7 +2206,7 @@ details[open] .faq__plus {
 .btn-light {
   display: inline-block;
   background: #fff;
-  color: #2b2585;
+  color: #1c5d85;
   padding: 10px 20px;
   border-radius: var(--radius-md);
   font-size: 13.5px;
@@ -2571,4 +2587,305 @@ details[open] .faq__plus {
   align-items: flex-end;
   gap: 4px;
   flex: 0 0 auto;
+}
+
+/* ═══════════════════ ACTIVO ICE — liquid glass skin ═══════════════════
+   Ported from the approved Ice demo. Two rules govern everything below:
+   1. Real backdrop blur only on FLAT surfaces. Elements that live inside
+      3D transforms (tilting KPIs, card3d, flip-card faces) render glass
+      with translucent gradients alone — backdrop-filter inside
+      preserve-3d contexts glitches in Chromium.
+   2. Text stays on opaque-enough glass: this is a working tool, not a
+      poster, so fills sit higher than the demo's. */
+
+/* ── Frozen-cloud ambience behind every page. ── */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(42% 34% at 10% 6%, rgba(179, 167, 242, 0.32), transparent 70%),
+    radial-gradient(48% 38% at 90% 14%, rgba(124, 195, 234, 0.36), transparent 70%),
+    radial-gradient(52% 42% at 22% 94%, rgba(143, 227, 205, 0.28), transparent 70%),
+    radial-gradient(40% 32% at 88% 90%, rgba(246, 198, 216, 0.26), transparent 70%);
+}
+:root[data-theme="dark"] body::before {
+  background:
+    radial-gradient(42% 34% at 10% 6%, rgba(122, 108, 210, 0.16), transparent 70%),
+    radial-gradient(48% 38% at 90% 14%, rgba(64, 145, 196, 0.18), transparent 70%),
+    radial-gradient(52% 42% at 22% 94%, rgba(52, 158, 132, 0.13), transparent 70%),
+    radial-gradient(40% 32% at 88% 90%, rgba(196, 108, 144, 0.1), transparent 70%);
+}
+
+/* ── The serif voice for headings, as in the demo. ── */
+h1, h2,
+.land-hero__title,
+.card3d__title,
+.section-h {
+  font-family: var(--font-noto-serif), var(--font-noto), Georgia, serif;
+  letter-spacing: 0.005em;
+}
+
+/* ── Glass tokens per theme. ── */
+:root {
+  --glass-fill: linear-gradient(120deg,
+    rgba(255, 255, 255, 0.66),
+    rgba(255, 255, 255, 0.38) 45%,
+    rgba(255, 255, 255, 0.56));
+  --glass-fill-solid: linear-gradient(120deg,
+    rgba(255, 255, 255, 0.9),
+    rgba(255, 255, 255, 0.72) 45%,
+    rgba(255, 255, 255, 0.84));
+  --glass-edge:
+    0 22px 44px -22px rgba(38, 92, 130, 0.42),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.5),
+    inset 0 1.6px 1px rgba(255, 255, 255, 0.95),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.35),
+    inset 0 0 20px 1px rgba(255, 255, 255, 0.14);
+  --glass-blur: blur(14px) saturate(1.7);
+}
+:root[data-theme="dark"] {
+  --glass-fill: linear-gradient(120deg,
+    rgba(22, 40, 58, 0.62),
+    rgba(16, 30, 46, 0.42) 45%,
+    rgba(22, 40, 58, 0.56));
+  --glass-fill-solid: linear-gradient(120deg,
+    rgba(23, 42, 61, 0.94),
+    rgba(16, 30, 46, 0.86) 45%,
+    rgba(22, 40, 58, 0.92));
+  --glass-edge:
+    0 22px 44px -22px rgba(0, 0, 0, 0.6),
+    inset 0 0 0 1px rgba(163, 205, 235, 0.12),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.22),
+    inset 0 0 20px 1px rgba(140, 200, 240, 0.07);
+  --glass-blur: blur(14px) saturate(1.5);
+}
+
+/* ── Flat surfaces: true liquid glass. ── */
+.card,
+.alert-card,
+.learn-lesson,
+.learn-lesson__soon,
+details.faq,
+.bot-panel {
+  background: var(--glass-fill);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-color: transparent;
+  box-shadow: var(--glass-edge);
+  border-radius: var(--radius-lg);
+}
+
+/* ── Tilting / 3D surfaces: glass by gradient only (no backdrop). ── */
+.kpi,
+.card3d,
+.feature-card,
+.aflip__face,
+.pv,
+.land-stats .stat {
+  background: var(--glass-fill-solid);
+  border-color: transparent;
+  box-shadow: var(--glass-edge);
+}
+
+/* ── The top nav becomes a glass shelf. ── */
+.nav {
+  background: color-mix(in srgb, var(--color-page) 40%, transparent);
+  backdrop-filter: blur(18px) saturate(1.7);
+  -webkit-backdrop-filter: blur(18px) saturate(1.7);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 55%, transparent);
+}
+
+/* ── Buttons and chips pick up the bead of light. ── */
+.btn-primary {
+  box-shadow:
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.45),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.12),
+    0 10px 20px -10px color-mix(in srgb, var(--color-primary) 65%, transparent);
+}
+.btn-chip,
+.btn-secondary {
+  background: var(--glass-fill);
+  backdrop-filter: blur(10px) saturate(1.6);
+  -webkit-backdrop-filter: blur(10px) saturate(1.6);
+  border-color: color-mix(in srgb, var(--color-border) 70%, transparent);
+  box-shadow: inset 0 1.2px 1px rgba(255, 255, 255, 0.6);
+}
+:root[data-theme="dark"] .btn-chip,
+:root[data-theme="dark"] .btn-secondary {
+  box-shadow: inset 0 1.2px 1px rgba(255, 255, 255, 0.14);
+}
+
+/* ── Category ice tints on asset flip cards: one hairline of colour. ── */
+.aflip__face { position: relative; }
+.aflip__face::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 18px; right: 18px;
+  height: 3.5px;
+  border-radius: 0 0 6px 6px;
+  background: var(--cat, transparent);
+  opacity: 0.85;
+}
+
+/* ── Wealth hero: the one number the platform exists to answer. ── */
+.wealth-hero {
+  padding: 30px 26px 26px;
+  text-align: center;
+  margin: 18px 0 24px;
+  border-radius: var(--radius-lg);
+}
+.wealth-hero__label {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.wealth-hero__figure {
+  font-family: var(--font-noto-serif), var(--font-noto), Georgia, serif;
+  font-size: clamp(34px, 7vw, 48px);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+}
+.wealth-hero__figure small {
+  font-size: 0.52em;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+.wealth-hero__chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.wealth-hero__chips .chip {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 25%, transparent);
+}
+
+/* ── Composition ring. ── */
+.comp-ring {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 20px 22px;
+  margin-bottom: 28px;
+  border-radius: var(--radius-lg);
+}
+.comp-ring svg {
+  flex: 0 0 138px;
+  filter: drop-shadow(0 10px 16px rgba(38, 92, 130, 0.22));
+}
+.comp-ring__legend {
+  display: grid;
+  gap: 9px;
+  font-size: 13px;
+  flex: 1;
+  min-width: 0;
+}
+.comp-ring__legend > div {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.comp-ring__legend i {
+  width: 13px; height: 13px;
+  border-radius: 5px;
+  flex: 0 0 auto;
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.8),
+              0 2px 5px -2px rgba(38, 92, 130, 0.6);
+}
+.comp-ring__legend b {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
+}
+@media (max-width: 560px) {
+  .comp-ring { flex-direction: column; }
+  .comp-ring__legend { width: 100%; }
+}
+
+/* ── Market advice cards — the dashboard's closing section. ── */
+.tips-grid {
+  display: grid;
+  gap: 12px;
+}
+.tip-card {
+  display: flex;
+  gap: 13px;
+  align-items: flex-start;
+  padding: 15px 16px;
+  border-radius: var(--radius-lg);
+  margin-bottom: 0;
+}
+.tip-card__ico {
+  width: 38px; height: 38px;
+  border-radius: 12px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1b3a50;
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.8);
+}
+.tip-card b.t { display: block; font-size: 13.5px; margin-bottom: 2px; }
+.tip-card p { margin: 0; font-size: 12.5px; color: var(--color-text-muted); line-height: 1.5; }
+
+/* ── Mobile bottom navigation: the glass tab bar. ── */
+.tabbar {
+  position: fixed;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  width: min(430px, calc(100% - 24px));
+  display: none;
+  justify-content: space-around;
+  align-items: center;
+  padding: 9px 8px;
+  border-radius: 24px;
+  /* Denser than card glass: content scrolls right underneath it. */
+  background: color-mix(in srgb, var(--color-bg) 74%, transparent);
+  backdrop-filter: blur(24px) saturate(1.9);
+  -webkit-backdrop-filter: blur(24px) saturate(1.9);
+  box-shadow: var(--glass-edge);
+  z-index: 40;
+}
+.tabbar__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  padding: 4px 10px;
+  border-radius: 14px;
+}
+.tabbar__item:hover { color: var(--color-text); }
+.tabbar__item svg { width: 21px; height: 21px; }
+.tabbar__item--on {
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+}
+@media (max-width: 760px) {
+  .tabbar { display: flex; }
+  /* Room for the bar so the last content never hides behind it. */
+  main { padding-bottom: 130px; }
+  /* The support bot floats above the tab bar, not on it. */
+  .bot-launcher { bottom: 92px; }
+  .bot-panel { bottom: 162px; }
 }

@@ -8,7 +8,7 @@ export default async function PortfolioDeck() {
   const locale = await getLocale();
 
   const cards = [
-    { label: t(locale, "land_deck_re"), value: "420,000 ₾", accent: "#4f46e5" },
+    { label: t(locale, "land_deck_re"), value: "420,000 ₾", accent: "#5ab0e0" },
     { label: t(locale, "land_deck_car"), value: "32,000 ₾", accent: "#23c185" },
     { label: t(locale, "land_deck_digital"), value: "18,400 ₾", accent: "#f97316" },
   ];
