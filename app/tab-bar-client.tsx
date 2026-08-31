@@ -70,6 +70,8 @@ export default function TabBarClient({
           <Link
             key={item.href}
             href={item.href}
+            aria-label={item.label}
+            title={item.label}
             className={
               item.center
                 ? `tabbar__item tabbar__item--center${on ? " tabbar__item--on" : ""}`
@@ -77,7 +79,6 @@ export default function TabBarClient({
             }
           >
             {item.center ? <span className="tabbar__bubble">{icon}</span> : icon}
-            {item.label}
           </Link>
         );
       })}

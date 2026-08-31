@@ -2909,23 +2909,15 @@ details.faq,
   z-index: 40;
 }
 .tabbar__item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  /* Five seats incl. the long Georgian labels: tight and truncating. */
-  font-size: 9.5px;
-  font-weight: 600;
+  /* Icons only — the label lives in aria-label/title. */
+  display: grid;
+  place-items: center;
   color: var(--color-text-muted);
-  padding: 4px 5px;
-  border-radius: 14px;
-  max-width: 21vw;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  padding: 9px 16px;
+  border-radius: 16px;
 }
 .tabbar__item:hover { color: var(--color-text); }
-.tabbar__item svg { width: 21px; height: 21px; }
+.tabbar__item svg { width: 23px; height: 23px; }
 .tabbar__item--on {
   color: var(--color-primary);
   background: color-mix(in srgb, var(--color-primary) 14%, transparent);
@@ -3005,7 +2997,8 @@ details.faq,
 
 /* ── Centre tab: assets, raised in the brand blue. ── */
 .tabbar__item--center {
-  margin-top: -30px;
+  margin-top: -26px;
+  padding: 0;
   color: var(--color-primary);
   background: none;
 }
