@@ -14,6 +14,7 @@ import ListingControls, { type ListingLink } from "./listing-controls";
 import DoorKey from "./door-key";
 import AssetSegments from "./asset-segments";
 import AssetFlipCard, { type FlipAsset } from "./asset-flip-card";
+import { statusFor } from "@/lib/rentals/monitor";
 
 export const dynamic = "force-dynamic";
 
@@ -287,11 +288,34 @@ export default async function AssetsPage() {
   const displayName = (a: { name: string; nameKa: string | null }) =>
     locale === "ka" && a.nameKa ? a.nameKa : a.name;
 
+  // Late rent, straight from the same schedule the alerts and the WhatsApp
+  // reminders use — so the list agrees with everything else.
+  const overdueBadge = (
+    contract: {
+      startDate: Date;
+      endDate: Date;
+      paymentPeriod: string;
+      paymentAmount: number | null;
+      monthlyRent: number;
+      graceDays: number;
+      paidThrough: Date | null;
+    } | null | undefined,
+  ) => {
+    if (!contract?.paidThrough) return null;
+    const status = statusFor(contract, now);
+    if (status.state !== "grace" && status.state !== "repossess") return null;
+    return {
+      label: `${t(locale, "pay_days_overdue")}: ${status.daysOverdue}`,
+      severe: status.state === "repossess",
+    };
+  };
+
   const flipLabels = Object.fromEntries(
     (
       [
         "edit", "contracts_col", "contract_until",
         "market_rent_est", "below_market", "asset_value_col", "mode_daily",
+        "rental_service",
       ] as StringKey[]
     ).map((k) => [k, t(locale, k)]),
   );
@@ -373,6 +397,8 @@ export default async function AssetsPage() {
                   ),
                   value: asset.estimatedValue ? money(asset.estimatedValue) : null,
                   daily: asset.rentalMode === "daily",
+                  overdue: overdueBadge(contract),
+                  serviceHref: `/assets/${asset.id}/rental`,
                 };
                 return (
                   <AssetFlipCard

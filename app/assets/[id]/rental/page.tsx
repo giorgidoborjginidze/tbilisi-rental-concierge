@@ -36,14 +36,14 @@ const STATE_BADGE: Record<string, string> = {
   ok: "badge--vacant",
   due: "badge--str",
   grace: "badge--listed",
-  repossess: "badge--rented",
+  repossess: "badge--danger",
   ended: "badge--personal",
 };
 
 const ZONE_BADGE: Record<string, string> = {
   safe: "badge--vacant",
   approach: "badge--listed",
-  outside: "badge--rented",
+  outside: "badge--danger",
 };
 
 const LABEL_KEYS: StringKey[] = [
@@ -471,7 +471,7 @@ export default async function RentalServicePage({
                         message.status === "sent"
                           ? "badge--vacant"
                           : message.status === "failed"
-                            ? "badge--rented"
+                            ? "badge--danger"
                             : "badge--str"
                       }`}
                     >

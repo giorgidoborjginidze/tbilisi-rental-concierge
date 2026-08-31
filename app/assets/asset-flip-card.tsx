@@ -18,6 +18,10 @@ export interface FlipAsset {
   belowMarket: boolean;
   value: string | null;
   daily: boolean;
+  /** Late-payment warning from the contract's schedule, if any. */
+  overdue: { label: string; severe: boolean } | null;
+  /** Rentable assets link straight to their service desk. */
+  serviceHref: string | null;
 }
 
 // A turn icon — the only affordance the card needs, since tapping it
@@ -96,7 +100,17 @@ export default function AssetFlipCard({
                 {asset.address && <div>{asset.address}</div>}
               </div>
             </div>
-            <span className={`badge ${asset.statusClass}`}>{asset.statusLabel}</span>
+            <div className="aflip__badges">
+              <span className={`badge ${asset.statusClass}`}>{asset.statusLabel}</span>
+              {/* Late rent is the one thing worth interrupting a scan for. */}
+              {asset.overdue && (
+                <span
+                  className={`badge ${asset.overdue.severe ? "badge--danger" : "badge--listed"}`}
+                >
+                  {asset.overdue.label}
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="aflip__value">{asset.value ?? "—"}</div>
@@ -153,6 +167,11 @@ export default function AssetFlipCard({
             <span className="aflip__turn">
               <TurnIcon />
             </span>
+            {asset.serviceHref && (
+              <Link href={asset.serviceHref} className="btn-chip">
+                {labels.rental_service}
+              </Link>
+            )}
             <Link href={`/assets/${asset.id}/edit`} className="btn-primary aflip__edit">
               {labels.edit}
             </Link>
