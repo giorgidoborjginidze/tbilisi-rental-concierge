@@ -24,6 +24,14 @@ const ICONS: Record<string, React.ReactNode> = {
       <path d="M4 10h16M9 3v4M15 3v4" />
     </>
   ),
+  building: (
+    <>
+      <path d="M5 20V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v14" />
+      <path d="M3 20h18" />
+      <path d="M10 20v-4h4v4" />
+      <path d="M9 8h2M13 8h2M9 12h2M13 12h2" />
+    </>
+  ),
   bell: (
     <>
       <path d="M6 9.5a6 6 0 0 1 12 0c0 4 1.5 5.5 2 6.5H4c.5-1 2-2.5 2-6.5Z" />
@@ -35,7 +43,7 @@ const ICONS: Record<string, React.ReactNode> = {
 export default function TabBarClient({
   items,
 }: {
-  items: { href: string; label: string; icon: string }[];
+  items: { href: string; label: string; icon: string; center?: boolean }[];
 }) {
   const pathname = usePathname();
   const active = (href: string) =>
@@ -43,12 +51,8 @@ export default function TabBarClient({
 
   return (
     <nav className="tabbar" aria-label="Navigation">
-      {items.map((item) => (
-        <Link
-          key={item.href}
-          href={item.href}
-          className={`tabbar__item${active(item.href) ? " tabbar__item--on" : ""}`}
-        >
+      {items.map((item) => {
+        const icon = (
           <svg
             viewBox="0 0 24 24"
             fill="none"
@@ -60,9 +64,23 @@ export default function TabBarClient({
           >
             {ICONS[item.icon]}
           </svg>
-          {item.label}
-        </Link>
-      ))}
+        );
+        const on = active(item.href);
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={
+              item.center
+                ? `tabbar__item tabbar__item--center${on ? " tabbar__item--on" : ""}`
+                : `tabbar__item${on ? " tabbar__item--on" : ""}`
+            }
+          >
+            {item.center ? <span className="tabbar__bubble">{icon}</span> : icon}
+            {item.label}
+          </Link>
+        );
+      })}
     </nav>
   );
 }

@@ -15,7 +15,9 @@ export default async function TabBar() {
     <TabBarClient
       items={[
         { href: "/", label: t(locale, "nav_dashboard"), icon: "home" },
-        { href: "/assets", label: t(locale, "nav_assets"), icon: "grid" },
+        { href: "/units", label: t(locale, "nav_rentals"), icon: "building" },
+        // The centre seat: assets are the product, raised in brand blue.
+        { href: "/assets", label: t(locale, "nav_assets"), icon: "grid", center: true },
         { href: "/calendar", label: t(locale, "nav_calendar"), icon: "calendar" },
         { href: "/alerts", label: t(locale, "nav_alerts"), icon: "bell" },
       ]}

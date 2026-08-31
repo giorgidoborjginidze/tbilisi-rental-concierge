@@ -2899,7 +2899,7 @@ details.faq,
   display: none;
   justify-content: space-around;
   align-items: center;
-  padding: 9px 8px;
+  padding: 9px 4px;
   border-radius: 24px;
   /* Denser than card glass: content scrolls right underneath it. */
   background: color-mix(in srgb, var(--color-bg) 74%, transparent);
@@ -2913,11 +2913,16 @@ details.faq,
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  font-size: 10px;
+  /* Five seats incl. the long Georgian labels: tight and truncating. */
+  font-size: 9.5px;
   font-weight: 600;
   color: var(--color-text-muted);
-  padding: 4px 10px;
+  padding: 4px 5px;
   border-radius: 14px;
+  max-width: 21vw;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .tabbar__item:hover { color: var(--color-text); }
 .tabbar__item svg { width: 21px; height: 21px; }
@@ -2996,4 +3001,38 @@ details.faq,
   font-size: 11.5px;
   color: var(--color-text-muted);
   margin: 2px 0 12px;
+}
+
+/* ── Centre tab: assets, raised in the brand blue. ── */
+.tabbar__item--center {
+  margin-top: -30px;
+  color: var(--color-primary);
+  background: none;
+}
+.tabbar__item--center:hover { color: var(--color-primary); }
+.tabbar__bubble {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(150deg,
+    color-mix(in srgb, var(--color-primary) 82%, #ffffff),
+    var(--color-primary) 55%,
+    color-mix(in srgb, var(--color-primary) 72%, #08243a));
+  color: var(--color-primary-contrast);
+  border: 3px solid var(--color-bg);
+  box-shadow:
+    0 12px 22px -8px color-mix(in srgb, var(--color-primary) 75%, transparent),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.5);
+}
+.tabbar__bubble svg {
+  width: 24px;
+  height: 24px;
+}
+.tabbar__item--center.tabbar__item--on .tabbar__bubble {
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--color-primary) 30%, transparent),
+    0 12px 22px -8px color-mix(in srgb, var(--color-primary) 75%, transparent),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.5);
 }
