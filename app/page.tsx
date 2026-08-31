@@ -17,7 +17,9 @@ import CountUp from "./count-up";
 import TourPrompt from "./tour-prompt";
 import {
   CompositionRing,
+  DecideToday,
   MarketTips,
+  PortfolioRing,
   WealthHero,
   ringPartsFromAssets,
 } from "./dash-extras";
@@ -480,6 +482,8 @@ async function HotelDashboard({
               `ADR: ${money(portfolio.adr, currency)}`,
             ]}
           />
+          <PortfolioRing locale={locale} operatorId={operator.id} />
+          <DecideToday locale={locale} operatorId={operator.id} />
           <section>
             <h2>{t(locale, "this_month")}</h2>
             <div className="kpi-grid kpi-grid--3d kpi-grid--5">
@@ -598,6 +602,9 @@ async function BrokerageDashboard({
         operator={operator}
         sub={`🏢 ${t(locale, "profile_brokerage")}`}
       />
+
+      <PortfolioRing locale={locale} operatorId={operator.id} />
+      <DecideToday locale={locale} operatorId={operator.id} />
 
       <section className="kpi-grid kpi-grid--3d kpi-grid--3">
         <Kpi label={t(locale, "dash_managed")} value={String(assets.length)} />
@@ -791,6 +798,9 @@ async function CarRentalDashboard({
         sub={`🚗 ${t(locale, "profile_car")}`}
       />
 
+      <PortfolioRing locale={locale} operatorId={operator.id} />
+      <DecideToday locale={locale} operatorId={operator.id} />
+
       <section className="kpi-grid kpi-grid--3d">
         <Kpi label={t(locale, "dash_fleet")} value={String(vehicles.length)} />
         <Kpi
@@ -918,6 +928,8 @@ async function PersonalDashboard({
       />
 
       <CompositionRing locale={locale} parts={ringPartsFromAssets(locale, assets)} />
+
+      <DecideToday locale={locale} operatorId={operator.id} />
 
       <section className="kpi-grid kpi-grid--3d kpi-grid--3">
         <Kpi

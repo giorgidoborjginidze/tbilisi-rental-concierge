@@ -11,16 +11,6 @@
   --color-primary-contrast: #ffffff;
   --color-accent: #6a5bc7;
 
-  /* The logo's fixed accent (window + wheel hub), frosted to match. */
-  --brand-mint: #3fc6a5;
-
-  /* Category ice tints: one colour per asset family, used everywhere. */
-  --cat-real-estate: #5ab0e0;
-  --cat-vehicle: #988ae6;
-  --cat-digital: #6ed3b8;
-  --cat-income: #ecc06a;
-  --cat-other: #8aa3b5;
-
   /* Surfaces */
   --color-page: #eef5fa;
   --color-bg: #ffffff;
@@ -54,6 +44,19 @@
 
 :root {
   color-scheme: light;
+
+  /* The logo's fixed accent (window + wheel hub), frosted to match.
+     Kept OUT of @theme: these are read from runtime inline styles, and
+     Tailwind drops @theme variables its compiler never sees used. */
+  --brand-mint: #3fc6a5;
+
+  /* Category ice tints: one colour per asset family, used everywhere. */
+  --cat-real-estate: #5ab0e0;
+  --cat-vehicle: #988ae6;
+  --cat-digital: #6ed3b8;
+  --cat-income: #ecc06a;
+  --cat-income-source: #ecc06a;
+  --cat-other: #8aa3b5;
 
   /* Status */
   --status-rented-bg: #e2f7eb;
@@ -2682,7 +2685,6 @@ details.faq,
 .kpi,
 .card3d,
 .feature-card,
-.aflip__face,
 .pv,
 .land-stats .stat {
   background: var(--glass-fill-solid);
@@ -2718,9 +2720,51 @@ details.faq,
   box-shadow: inset 0 1.2px 1px rgba(255, 255, 255, 0.14);
 }
 
-/* ── Category ice tints on asset flip cards: one hairline of colour. ── */
-.aflip__face { position: relative; }
-.aflip__face::before {
+/* ── Asset flip cards: opaque faces (the flip depends on it) with the
+   glass edge, and a category-tinted "photo" header on the front — the
+   place a real photo will live once uploads exist. ── */
+.aflip__face {
+  background: var(--color-bg);
+  border-color: transparent;
+  box-shadow: var(--glass-edge);
+}
+.aflip__art {
+  position: relative;
+  height: 86px;
+  margin: -16px -16px 24px;
+  border-radius: 16px 16px 0 0;
+  /* The badge hangs below the strip, so the strip itself must not clip;
+     the artwork is clipped by its own radius instead. */
+  overflow: visible;
+  background: linear-gradient(140deg,
+    color-mix(in srgb, var(--cat, var(--cat-other)) 45%, var(--color-bg)),
+    color-mix(in srgb, var(--cat, var(--cat-other)) 85%, var(--color-text) 4%));
+  flex: 0 0 auto;
+}
+.aflip__art svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 16px 16px 0 0;
+}
+.aflip__art-badge {
+  position: absolute;
+  left: 14px;
+  bottom: -16px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 17px;
+  background: var(--color-bg);
+  border: 2px solid color-mix(in srgb, var(--cat, var(--cat-other)) 55%, var(--color-bg));
+  box-shadow: 0 8px 16px -8px rgba(38, 92, 130, 0.5);
+  z-index: 1;
+}
+/* The back face keeps a slim category hairline instead of the art. */
+.aflip__face--back::before {
   content: "";
   position: absolute;
   top: 0; left: 18px; right: 18px;
@@ -2849,7 +2893,7 @@ details.faq,
 .tabbar {
   position: fixed;
   left: 50%;
-  bottom: 14px;
+  bottom: calc(6px + env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%);
   width: min(430px, calc(100% - 24px));
   display: none;
@@ -2888,4 +2932,68 @@ details.faq,
   /* The support bot floats above the tab bar, not on it. */
   .bot-launcher { bottom: 92px; }
   .bot-panel { bottom: 162px; }
+}
+
+
+/* ── Decide today: confirm with a flick, straight on the dashboard. ── */
+.decide-zone { display: grid; gap: 12px; }
+.decide-card {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  touch-action: pan-y;
+}
+.decide-under {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  font-weight: 700;
+  font-size: 13px;
+  border-radius: inherit;
+  background: var(--glass-fill);
+}
+.decide-under .yes { color: var(--status-rented-text); }
+.decide-under .no { color: var(--color-primary); }
+.decide-top {
+  position: relative;
+  background: var(--color-bg);
+  border-radius: inherit;
+  box-shadow: var(--glass-edge);
+  padding: 13px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: grab;
+  user-select: none;
+}
+.decide-top:active { cursor: grabbing; }
+.decide-ico {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1b3a50;
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.8);
+}
+.decide-txt { min-width: 0; }
+.decide-txt b { display: block; font-size: 13.5px; }
+.decide-txt span { font-size: 11.5px; color: var(--color-text-muted); }
+.decide-amount {
+  margin-left: auto;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.decide-hint {
+  font-size: 11.5px;
+  color: var(--color-text-muted);
+  margin: 2px 0 12px;
 }

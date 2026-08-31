@@ -95,6 +95,34 @@ export default function AssetFlipCard({
       >
         {/* ── front ── */}
         <div className="aflip__face">
+          {/* Category-tinted header art — where the asset's photo will
+              live; until then a silhouette in the category's ice tint. */}
+          <div className="aflip__art" aria-hidden>
+            <svg viewBox="0 0 340 86" preserveAspectRatio="xMidYMid slice">
+              {asset.category === "vehicle" ? (
+                <g fill="rgba(255,255,255,.7)">
+                  <path d="M60 66h220l-14-22c-4-6-9-9-16-9h-40l-24-16c-4-3-9-5-15-5h-36c-7 0-13 3-17 9l-14 12-13 4c-5 2-5 7-5 10z" />
+                  <circle cx="108" cy="68" r="11" fill="rgba(22,53,74,.4)" />
+                  <circle cx="232" cy="68" r="11" fill="rgba(22,53,74,.4)" />
+                </g>
+              ) : (
+                <g fill="rgba(255,255,255,.7)">
+                  <rect x="58" y="18" width="76" height="68" rx="4" />
+                  <rect x="150" y="34" width="92" height="52" rx="4" opacity=".8" />
+                  <rect x="258" y="46" width="52" height="40" rx="4" opacity=".6" />
+                  {[0, 1, 2].map((r) =>
+                    [0, 1].map((c) => (
+                      <rect key={`${r}${c}`} x={72 + c * 30} y={27 + r * 20} width="16" height="11" rx="2" fill="rgba(22,53,74,.32)" />
+                    )),
+                  )}
+                </g>
+              )}
+              <path d="M0 74h340v12H0z" fill="rgba(255,255,255,.3)" />
+            </svg>
+            <span className="aflip__art-badge">
+              {asset.category === "vehicle" ? "🚗" : asset.category === "real_estate" ? "🏠" : "📦"}
+            </span>
+          </div>
           <div className="aflip__top">
             <div style={{ minWidth: 0 }}>
               <Link href={`/assets/${asset.id}/edit`} className="link aflip__name">

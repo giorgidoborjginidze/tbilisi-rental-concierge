@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { t, type Locale, type StringKey } from "@/lib/i18n/strings";
+import { statusFor, periodAmount } from "@/lib/rentals/monitor";
 import CountUp from "./count-up";
+import DecideCards, { type DecideItem } from "./decide-cards";
 
 // The Ice dashboard pieces shared by every profile: the one hero number,
 // the composition ring, and the closing "market advice" feed.
@@ -219,6 +221,79 @@ export function ringPartsFromAssets(
     value,
     tint: CATEGORY_TINTS[key] ?? CATEGORY_TINTS.other,
   }));
+}
+
+/** The ring, fetching its own data — one line to add on any dashboard. */
+export async function PortfolioRing({
+  locale,
+  operatorId,
+}: {
+  locale: Locale;
+  operatorId: string;
+}) {
+  const assets = await prisma.asset.findMany({
+    where: { operatorId },
+    select: { category: true, estimatedValue: true },
+  });
+  return <CompositionRing locale={locale} parts={ringPartsFromAssets(locale, assets)} />;
+}
+
+/** "To decide today": due and late rent, answered with a flick. */
+export async function DecideToday({
+  locale,
+  operatorId,
+}: {
+  locale: Locale;
+  operatorId: string;
+}) {
+  const contracts = await prisma.rentalContract.findMany({
+    where: {
+      status: "active",
+      paidThrough: { not: null },
+      asset: { operatorId },
+    },
+    include: { asset: { select: { id: true, name: true, nameKa: true } } },
+  });
+
+  const now = new Date();
+  const items: DecideItem[] = [];
+  for (const contract of contracts) {
+    const status = statusFor(contract, now);
+    if (!["due", "grace", "repossess"].includes(status.state)) continue;
+    const name =
+      locale === "ka" && contract.asset.nameKa
+        ? contract.asset.nameKa
+        : contract.asset.name;
+    items.push({
+      contractId: contract.id,
+      assetId: contract.asset.id,
+      title: `${name} — ${t(locale, "decide_rent")}`,
+      sub: `${contract.tenantName ?? "—"}${
+        status.daysOverdue > 0
+          ? ` · ${t(locale, "decide_late")}: ${status.daysOverdue} ${t(locale, "decide_days")}`
+          : ""
+      }`,
+      amount: status.amountDue || periodAmount(contract),
+      currency: contract.currency,
+      severe: status.state === "repossess",
+    });
+  }
+  items.sort((a, b) => Number(b.severe) - Number(a.severe));
+
+  return (
+    <section>
+      <h2>{t(locale, "decide_title")}</h2>
+      <p className="decide-hint">{t(locale, "decide_sub")}</p>
+      <DecideCards
+        items={items.slice(0, 4)}
+        labels={{
+          paid: t(locale, "decide_paid"),
+          open: t(locale, "decide_open"),
+          empty: t(locale, "decide_empty"),
+        }}
+      />
+    </section>
+  );
 }
 
 export { money };
