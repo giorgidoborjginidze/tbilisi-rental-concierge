@@ -16,8 +16,10 @@ import PortfolioDeck from "./portfolio-deck";
 import CountUp from "./count-up";
 import TourPrompt from "./tour-prompt";
 import {
+  AssetDeck,
   CompositionRing,
   DecideToday,
+  IncomeBars,
   MarketTips,
   PortfolioRing,
   WealthHero,
@@ -484,6 +486,8 @@ async function HotelDashboard({
           />
           <PortfolioRing locale={locale} operatorId={operator.id} />
           <DecideToday locale={locale} operatorId={operator.id} />
+          <AssetDeck locale={locale} operatorId={operator.id} />
+          <IncomeBars locale={locale} operatorId={operator.id} />
           <section>
             <h2>{t(locale, "this_month")}</h2>
             <div className="kpi-grid kpi-grid--3d kpi-grid--5">
@@ -605,6 +609,8 @@ async function BrokerageDashboard({
 
       <PortfolioRing locale={locale} operatorId={operator.id} />
       <DecideToday locale={locale} operatorId={operator.id} />
+      <AssetDeck locale={locale} operatorId={operator.id} />
+      <IncomeBars locale={locale} operatorId={operator.id} />
 
       <section className="kpi-grid kpi-grid--3d kpi-grid--3">
         <Kpi label={t(locale, "dash_managed")} value={String(assets.length)} />
@@ -800,6 +806,8 @@ async function CarRentalDashboard({
 
       <PortfolioRing locale={locale} operatorId={operator.id} />
       <DecideToday locale={locale} operatorId={operator.id} />
+      <AssetDeck locale={locale} operatorId={operator.id} />
+      <IncomeBars locale={locale} operatorId={operator.id} />
 
       <section className="kpi-grid kpi-grid--3d">
         <Kpi label={t(locale, "dash_fleet")} value={String(vehicles.length)} />
@@ -930,6 +938,10 @@ async function PersonalDashboard({
       <CompositionRing locale={locale} parts={ringPartsFromAssets(locale, assets)} />
 
       <DecideToday locale={locale} operatorId={operator.id} />
+
+      <AssetDeck locale={locale} operatorId={operator.id} />
+
+      <IncomeBars locale={locale} operatorId={operator.id} />
 
       <section className="kpi-grid kpi-grid--3d kpi-grid--3">
         <Kpi

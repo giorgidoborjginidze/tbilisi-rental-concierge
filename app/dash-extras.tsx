@@ -2,8 +2,11 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { t, type Locale, type StringKey } from "@/lib/i18n/strings";
 import { statusFor, periodAmount } from "@/lib/rentals/monitor";
+import { estimateMarketRent, getRentBenchmark } from "@/lib/market/rent";
+import { proratedRevenue } from "@/lib/analytics/metrics";
 import CountUp from "./count-up";
 import DecideCards, { type DecideItem } from "./decide-cards";
+import AssetDeckClient, { type DeckAsset, type DeckSlide } from "./asset-deck-client";
 
 // The Ice dashboard pieces shared by every profile: the one hero number,
 // the composition ring, and the closing "market advice" feed.
@@ -150,6 +153,17 @@ const TIP_GLYPHS: Record<string, string> = {
   geofence_breach: "⚑",
 };
 
+/** Where each kind of advice actually comes from — stated, not implied. */
+const TIP_SOURCE: Record<string, StringKey> = {
+  underpriced: "tips_src_bench",
+  vacancy_gap: "tips_src_calendar",
+  lease_expiry: "tips_src_contract",
+  contract_expiry: "tips_src_contract",
+  rent_overdue: "tips_src_contract",
+  repossession_right: "tips_src_contract",
+  geofence_breach: "tips_src_contract",
+};
+
 export async function MarketTips({
   locale,
   operatorId,
@@ -195,6 +209,9 @@ export async function MarketTips({
                     <Link href="/alerts" className="link">
                       {t(locale, "tips_open")} →
                     </Link>
+                    <span className="tip-card__src">
+                      {t(locale, "tips_source")}: {t(locale, TIP_SOURCE[alert.type] ?? "tips_src_contract")}
+                    </span>
                   </p>
                 </div>
               </div>
@@ -298,6 +315,313 @@ export async function DecideToday({
           empty: t(locale, "decide_empty"),
         }}
       />
+    </section>
+  );
+}
+
+const DAY_MS = 86_400_000;
+
+/**
+ * The property deck: every physical asset as a card you can swipe between
+ * and tap through — value, rent, status, then one piece of advice. It sits
+ * on the dashboard so the whole portfolio can be glanced at without ever
+ * opening Assets.
+ */
+export async function AssetDeck({
+  locale,
+  operatorId,
+}: {
+  locale: Locale;
+  operatorId: string;
+}) {
+  const now = new Date();
+  const assets = await prisma.asset.findMany({
+    where: {
+      operatorId,
+      category: { in: ["real_estate", "vehicle", "other"] },
+    },
+    include: { contracts: { orderBy: { endDate: "desc" } } },
+    orderBy: [{ category: "asc" }, { name: "asc" }],
+    take: 12,
+  });
+
+  if (assets.length === 0) {
+    return (
+      <section>
+        <h2>{t(locale, "deck_title")}</h2>
+        <p style={{ color: "var(--color-text-muted)", fontSize: 13 }}>
+          {t(locale, "deck_empty")}
+        </p>
+      </section>
+    );
+  }
+
+  // District rent benchmarks, so the advice can compare against the market.
+  const monthKey = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+  const districts = [...new Set(assets.map((a) => a.district).filter(Boolean))] as string[];
+  const benchmarks = new Map(
+    await Promise.all(
+      districts.map(async (d) => [d, await getRentBenchmark(d, monthKey)] as const),
+    ),
+  );
+
+  const fmtMoney = (value: number) => Math.round(value).toLocaleString("en-US");
+  const fmtDate = new Intl.DateTimeFormat(locale === "ka" ? "ka-GE" : "en-GB", {
+    day: "numeric", month: "short", year: "numeric",
+  });
+
+  const deck: DeckAsset[] = assets.map((asset) => {
+    const contract = asset.contracts.find(
+      (c) => c.status !== "ended" && c.startDate <= now && c.endDate >= now,
+    );
+    const status = contract ? "rented" : asset.unitId ? "str" : asset.status;
+    const displayName =
+      locale === "ka" && asset.nameKa ? asset.nameKa : asset.name;
+    const marketRent =
+      asset.category === "real_estate"
+        ? estimateMarketRent(asset.areaSqm, benchmarks.get(asset.district ?? "") ?? null)
+        : null;
+
+    const slides: DeckSlide[] = [];
+
+    // 1 · What it is worth.
+    slides.push({
+      kind: "metric",
+      label: t(locale, "asset_value_col"),
+      value: asset.estimatedValue ? fmtMoney(asset.estimatedValue) : "—",
+      unit: asset.estimatedValue ? "₾" : undefined,
+      note: marketRent
+        ? `${t(locale, "market_rent_est")}: ~${fmtMoney(marketRent)} ₾ / ${t(locale, "per_month_word")}`
+        : undefined,
+    });
+
+    // 2 · What it earns.
+    const dayRate = asset.rentalMode === "daily" ? asset.dailyRate : null;
+    slides.push({
+      kind: "metric",
+      label: t(locale, "deck_rent"),
+      value: contract
+        ? fmtMoney(contract.monthlyRent)
+        : dayRate
+          ? fmtMoney(dayRate)
+          : "—",
+      unit: contract
+        ? `₾ / ${t(locale, "per_month_word")}`
+        : dayRate
+          ? "₾ / 24h"
+          : undefined,
+      note: contract
+        ? `${contract.tenantName ?? "—"} · ${t(locale, "contract_until")} ${fmtDate.format(contract.endDate)}`
+        : t(locale, "deck_no_rent"),
+    });
+
+    // 3 · Where it stands — the payment schedule when tracked, else status.
+    const schedule = contract?.paidThrough ? statusFor(contract, now) : null;
+    if (schedule && ["due", "grace", "repossess"].includes(schedule.state)) {
+      slides.push({
+        kind: "metric",
+        label: t(locale, "pay_days_overdue"),
+        value: String(schedule.daysOverdue),
+        unit: `/ ${schedule.graceDays}`,
+        meter: (schedule.daysOverdue / Math.max(1, schedule.graceDays)) * 100,
+        tone: schedule.state === "repossess" ? "bad" : undefined,
+        note: `${t(locale, "pay_amount_due")}: ${fmtMoney(schedule.amountDue)} ${contract!.currency}`,
+      });
+    } else {
+      slides.push({
+        kind: "metric",
+        label: t(locale, "status_label"),
+        value: t(locale, `status_${status}` as StringKey),
+        note: contract
+          ? `${t(locale, "contract_until")} ${fmtDate.format(contract.endDate)}`
+          : undefined,
+      });
+    }
+
+    // 4 · The one thing worth doing about it.
+    let advice: DeckSlide;
+    if (schedule?.state === "repossess") {
+      advice = {
+        kind: "advice",
+        label: t(locale, "deck_attention"),
+        note: t(locale, "deck_adv_repossess"),
+        tone: "bad",
+      };
+    } else if (schedule && (schedule.state === "grace" || schedule.state === "due")) {
+      advice = {
+        kind: "advice",
+        label: t(locale, "deck_attention"),
+        note: t(locale, "deck_adv_overdue")
+          .replace("{days}", String(schedule.daysOverdue))
+          .replace("{grace}", String(schedule.graceDays)),
+        tone: "warn",
+      };
+    } else if (contract && marketRent && contract.monthlyRent < marketRent * 0.9) {
+      const pct = Math.round((1 - contract.monthlyRent / marketRent) * 100);
+      advice = {
+        kind: "advice",
+        label: t(locale, "deck_advice"),
+        note: t(locale, "deck_adv_underpriced").replace("{pct}", String(pct)),
+        tone: "good",
+      };
+    } else if (status === "vacant" || status === "listed") {
+      const days = Math.max(
+        1,
+        Math.round((now.getTime() - asset.createdAt.getTime()) / DAY_MS),
+      );
+      const weekly = marketRent ? Math.round((marketRent / 30) * 7) : null;
+      advice = {
+        kind: "advice",
+        label: t(locale, "deck_advice"),
+        note: t(locale, "deck_adv_vacant")
+          .replace("{days}", String(Math.min(days, 999)))
+          .replace("{loss}", weekly ? `${fmtMoney(weekly)} ₾` : "—"),
+        tone: "warn",
+      };
+    } else if (!asset.estimatedValue) {
+      advice = {
+        kind: "advice",
+        label: t(locale, "deck_advice"),
+        note: t(locale, "deck_adv_no_value"),
+        tone: "warn",
+      };
+    } else {
+      advice = {
+        kind: "advice",
+        label: t(locale, "deck_advice"),
+        note: t(locale, "deck_adv_ok"),
+        tone: "good",
+      };
+    }
+    slides.push(advice);
+
+    return {
+      id: asset.id,
+      name: displayName,
+      place: [asset.district, asset.address, asset.areaSqm ? `${asset.areaSqm} m²` : null]
+        .filter(Boolean)
+        .join(" · "),
+      category: asset.category,
+      badge: asset.category === "vehicle" ? "🚗" : asset.category === "real_estate" ? "🏠" : "📦",
+      slides,
+    };
+  });
+
+  return (
+    <section>
+      <div className="deck-head">
+        <div>
+          <h2>{t(locale, "deck_title")}</h2>
+          <p>{t(locale, "deck_sub")}</p>
+        </div>
+        <Link href="/assets" className="btn-chip">
+          {t(locale, "deck_all")}
+        </Link>
+      </div>
+      <AssetDeckClient
+        assets={deck}
+        labels={{ tap: t(locale, "deck_tap"), restart: t(locale, "deck_restart") }}
+      />
+    </section>
+  );
+}
+
+// ── Income, six months back, as tinted ice slabs. Combines what the
+// platform actually knows: nightly bookings, contracted rent for months
+// the contract covered, and manually recorded income. ──
+
+const BAR_TINTS: [string, string][] = [
+  ["#a8daf5", "#5ab0e0"],
+  ["#bdf0e0", "#6ed3b8"],
+  ["#d3cbf8", "#988ae6"],
+  ["#a8daf5", "#5ab0e0"],
+  ["#bdf0e0", "#6ed3b8"],
+  ["#f9e5b8", "#ecc06a"],
+];
+
+export async function IncomeBars({
+  locale,
+  operatorId,
+}: {
+  locale: Locale;
+  operatorId: string;
+}) {
+  const now = new Date();
+  const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 5, 1));
+  const to = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+
+  const [bookings, contracts, incomes] = await Promise.all([
+    prisma.booking.findMany({
+      where: {
+        status: { not: "cancelled" },
+        checkIn: { lt: to },
+        checkOut: { gt: from },
+        unit: { operatorId },
+      },
+    }),
+    prisma.rentalContract.findMany({
+      where: { asset: { operatorId }, startDate: { lt: to }, endDate: { gt: from } },
+      select: { startDate: true, endDate: true, monthlyRent: true },
+    }),
+    prisma.incomeRecord.findMany({
+      where: { operatorId, date: { gte: from, lt: to } },
+      select: { date: true, amount: true },
+    }),
+  ]);
+
+  const months = Array.from({ length: 6 }, (_, i) => {
+    const start = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth() + i, 1));
+    const end = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1));
+    let total = 0;
+    for (const booking of bookings) {
+      total += proratedRevenue(booking, { start, end });
+    }
+    for (const contract of contracts) {
+      // Count the contracted rent for any month the contract covered.
+      if (contract.startDate < end && contract.endDate > start) {
+        total += contract.monthlyRent;
+      }
+    }
+    for (const income of incomes) {
+      if (income.date >= start && income.date < end) total += income.amount;
+    }
+    return { start, total };
+  });
+
+  const max = Math.max(...months.map((m) => m.total));
+  const fmtMonth = new Intl.DateTimeFormat(locale === "ka" ? "ka-GE" : "en-GB", {
+    month: "short",
+  });
+
+  return (
+    <section className="card bars-card">
+      <div className="bars-card__head">
+        <h2>{t(locale, "bars_title")}</h2>
+        <p>{t(locale, "bars_sub")}</p>
+      </div>
+      {max <= 0 ? (
+        <p style={{ color: "var(--color-text-muted)", fontSize: 13, margin: 0 }}>
+          {t(locale, "bars_empty")}
+        </p>
+      ) : (
+        <div className="bars">
+          {months.map((month, i) => (
+            <div className="bar" key={month.start.toISOString()}>
+              <span className="bar__val">{(month.total / 1000).toFixed(1)}</span>
+              <span
+                className="bar__slab"
+                style={{
+                  height: `${Math.max(6, Math.round((month.total / max) * 116))}px`,
+                  background: `linear-gradient(rgba(255,255,255,.6), rgba(255,255,255,0) 32%),
+                    linear-gradient(160deg, ${BAR_TINTS[i][0]}cc 0%, ${BAR_TINTS[i][1]}d9 90%)`,
+                  animationDelay: `${i * 0.08}s`,
+                }}
+              />
+              <span className="bar__m">{fmtMonth.format(month.start)}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
