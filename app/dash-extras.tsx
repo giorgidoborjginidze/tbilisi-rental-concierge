@@ -81,6 +81,11 @@ export function CompositionRing({
 
   return (
     <section className="card comp-ring">
+      <div className="comp-ring__head">
+        <h2>{t(locale, "dash_comp_title")}</h2>
+        <p>{t(locale, "dash_comp_sub")}</p>
+      </div>
+      <div className="comp-ring__body">
       <svg viewBox="0 0 120 120" role="img" aria-label={t(locale, "dash_comp_title")}>
         <defs>
           {segments.map((seg) => (
@@ -117,6 +122,7 @@ export function CompositionRing({
             <b>{short(seg.value)}</b>
           </div>
         ))}
+      </div>
       </div>
     </section>
   );
