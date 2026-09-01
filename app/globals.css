@@ -2748,6 +2748,13 @@ details.faq,
   height: 100%;
   border-radius: 16px 16px 0 0;
 }
+/* The badge and the art carry their own stacking context, which some
+   browsers (Safari especially) exempt from the front face's
+   backface-visibility — so the house icon bled through onto the flipped
+   card and sat over the figures. Hide the header outright once open. */
+.aflip--open .aflip__art {
+  visibility: hidden;
+}
 .aflip__art-badge {
   position: absolute;
   left: 14px;
