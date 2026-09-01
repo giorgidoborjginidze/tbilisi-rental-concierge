@@ -2785,7 +2785,6 @@ details.faq,
 .wealth-hero {
   padding: 30px 26px 26px;
   text-align: center;
-  margin: 18px 0 24px;
   border-radius: var(--radius-lg);
 }
 .wealth-hero__label {
@@ -2832,7 +2831,6 @@ details.faq,
 .comp-ring {
   display: block;
   padding: 24px 24px 26px;
-  margin-bottom: 28px;
   border-radius: var(--radius-lg);
   text-align: center;
 }
@@ -3080,7 +3078,7 @@ details.faq,
   gap: 16px;
   overflow-x: auto;
   padding: 6px 32px 20px;
-  scroll-snap-type: x mandatory;
+  scroll-snap-type: x proximity;
   scrollbar-width: none;
 }
 .adeck::-webkit-scrollbar { display: none; }
@@ -3229,7 +3227,7 @@ details.faq,
 }
 
 /* ── Income bars: six months as tinted ice slabs. ── */
-.bars-card { padding: 22px 24px 18px; margin-bottom: 28px; }
+.bars-card { padding: 22px 24px 18px; }
 .bars-card__head h2 { margin: 0; font-size: 17.5px; }
 .bars-card__head p {
   margin: 4px 0 0;
@@ -3296,4 +3294,20 @@ details.faq,
 @media (prefers-reduced-motion: reduce) {
   .bar__slab { animation: none; }
   .adeck__track { transition: none; }
+}
+
+
+/* ── Page rhythm: every top-level block is separated by the same gap.
+   Sections used to improvise it from their heading's top margin, so any
+   block whose heading lives inside a card (the ring, the deck, the income
+   chart) ended up flush against its neighbour. ── */
+main > section {
+  margin-bottom: 34px;
+}
+main > section:last-child {
+  margin-bottom: 0;
+}
+/* The gap now comes from the block, not the heading. */
+main > section > h2:first-child {
+  margin-top: 0;
 }

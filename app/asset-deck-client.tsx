@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export interface DeckSlide {
   /** "metric" shows a figure; "advice" is the tinted closing card. */
@@ -74,9 +74,57 @@ export default function AssetDeckClient({
   assets: DeckAsset[];
   labels: { tap: string; restart: string };
 }) {
+  const deckRef = useRef<HTMLDivElement>(null);
+
+  // While the pointer is over the deck, a vertical wheel drives it
+  // sideways — scrolling down walks right through the properties, up walks
+  // back. At either end the gesture is handed straight back to the page,
+  // so the reader can never get trapped inside the strip. Touch is left
+  // alone: a horizontal swipe already works there natively.
+  useEffect(() => {
+    const el = deckRef.current;
+    if (!el) return;
+
+    let restore: ReturnType<typeof setTimeout> | undefined;
+
+    const onWheel = (event: WheelEvent) => {
+      // A trackpad's own horizontal gesture needs no translation.
+      if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
+
+      const max = el.scrollWidth - el.clientWidth;
+      if (max <= 1) return; // nothing to scroll — let the page have it
+
+      const atStart = el.scrollLeft <= 0;
+      const atEnd = el.scrollLeft >= max - 1;
+      if ((event.deltaY < 0 && atStart) || (event.deltaY > 0 && atEnd)) return;
+
+      // Wheels report in pixels, lines or pages depending on the device.
+      const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? el.clientWidth : 1;
+      const step = event.deltaY * unit * 2.2; // ≈ one card per notch
+
+      event.preventDefault();
+      // Snap would yank the strip back to the nearest card mid-gesture, so
+      // it is suspended while the wheel turns and restored once it stops —
+      // which then settles neatly on a card.
+      el.style.scrollSnapType = "none";
+      el.scrollLeft = Math.max(0, Math.min(max, el.scrollLeft + step));
+
+      clearTimeout(restore);
+      restore = setTimeout(() => {
+        el.style.scrollSnapType = "";
+      }, 180);
+    };
+
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      clearTimeout(restore);
+    };
+  }, []);
+
   return (
     <div className="adeck-outer">
-      <div className="adeck">
+      <div className="adeck" ref={deckRef}>
         {assets.map((asset) => (
           <Card key={asset.id} asset={asset} labels={labels} />
         ))}
