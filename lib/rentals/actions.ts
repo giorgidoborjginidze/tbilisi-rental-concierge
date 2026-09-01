@@ -397,3 +397,60 @@ export async function retryOutbox(formData: FormData) {
   await flushOutbox(operator.id).catch(() => undefined);
   if (assetId) refresh(assetId);
 }
+
+// ── Daily lets: one answer per day ─────────────────────────────────────
+
+/**
+ * Record whether a daily-let asset was rented on a given day, and for how
+ * much. The tariff only suggests the figure — whatever was actually agreed
+ * is what gets stored, and it stays editable afterwards.
+ */
+export async function saveDayEntry(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const assetId = str(formData, "assetId");
+  const dateRaw = str(formData, "date");
+  if (!assetId || !dateRaw) return { error: "error_required" };
+
+  const owned = await ownAsset(assetId);
+  if (!owned) return { error: "error_required" };
+
+  const rented = str(formData, "rented") === "1";
+  const amountRaw = optionalNumber(formData, "amount");
+  if (Number.isNaN(amountRaw) || (amountRaw != null && amountRaw < 0)) {
+    return { error: "error_invalid_number" };
+  }
+  const amount = rented ? amountRaw ?? 0 : 0;
+  const date = new Date(`${dateRaw}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return { error: "error_required" };
+
+  await prisma.dayEntry.upsert({
+    where: { assetId_date: { assetId, date } },
+    update: { rented, amount, note: str(formData, "note") || null },
+    create: {
+      assetId,
+      date,
+      rented,
+      amount,
+      currency: owned.asset.currency,
+      note: str(formData, "note") || null,
+    },
+  });
+
+  revalidatePath("/");
+  refresh(assetId);
+  return { ok: true };
+}
+
+export async function deleteDayEntry(formData: FormData) {
+  const assetId = str(formData, "assetId");
+  const dateRaw = str(formData, "date");
+  const owned = assetId ? await ownAsset(assetId) : null;
+  if (!owned || !dateRaw) return;
+  await prisma.dayEntry.deleteMany({
+    where: { assetId, date: new Date(`${dateRaw}T00:00:00Z`) },
+  });
+  revalidatePath("/");
+  refresh(assetId);
+}

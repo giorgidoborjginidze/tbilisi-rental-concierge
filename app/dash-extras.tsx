@@ -7,6 +7,8 @@ import { proratedRevenue } from "@/lib/analytics/metrics";
 import CountUp from "./count-up";
 import DecideCards, { type DecideItem } from "./decide-cards";
 import AssetDeckClient, { type DeckAsset, type DeckSlide } from "./asset-deck-client";
+import DailyCheckClient, { type DayAsset } from "./daily-check-client";
+import { dayKind, dayPrice } from "@/lib/assets/daily-price";
 
 // The Ice dashboard pieces shared by every profile: the one hero number,
 // the composition ring, and the closing "market advice" feed.
@@ -550,7 +552,7 @@ export async function IncomeBars({
   const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 5, 1));
   const to = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
 
-  const [bookings, contracts, incomes] = await Promise.all([
+  const [bookings, contracts, incomes, days] = await Promise.all([
     prisma.booking.findMany({
       where: {
         status: { not: "cancelled" },
@@ -565,6 +567,10 @@ export async function IncomeBars({
     }),
     prisma.incomeRecord.findMany({
       where: { operatorId, date: { gte: from, lt: to } },
+      select: { date: true, amount: true },
+    }),
+    prisma.dayEntry.findMany({
+      where: { asset: { operatorId }, rented: true, date: { gte: from, lt: to } },
       select: { date: true, amount: true },
     }),
   ]);
@@ -584,6 +590,9 @@ export async function IncomeBars({
     }
     for (const income of incomes) {
       if (income.date >= start && income.date < end) total += income.amount;
+    }
+    for (const day of days) {
+      if (day.date >= start && day.date < end) total += day.amount;
     }
     return { start, total };
   });
@@ -622,6 +631,80 @@ export async function IncomeBars({
           ))}
         </div>
       )}
+    </section>
+  );
+}
+
+/**
+ * The daily question: for every asset let by the day, was it rented today
+ * and for how much. The suggestion is the day's tariff — base rate plus
+ * the weekend or holiday premium — so a public holiday proposes the
+ * holiday price rather than the ordinary one.
+ */
+export async function DailyCheck({
+  locale,
+  operatorId,
+}: {
+  locale: Locale;
+  operatorId: string;
+}) {
+  const now = new Date();
+  const today = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  );
+
+  const assets = await prisma.asset.findMany({
+    where: { operatorId, rentalMode: "daily" },
+    include: { days: { where: { date: today } } },
+    orderBy: { name: "asc" },
+  });
+  if (assets.length === 0) return null;
+
+  const iso = today.toISOString().slice(0, 10);
+  const rows: DayAsset[] = assets.map((asset) => {
+    const base = asset.dailyRate ?? 0;
+    const entry = asset.days[0];
+    return {
+      id: asset.id,
+      name: locale === "ka" && asset.nameKa ? asset.nameKa : asset.name,
+      place: [asset.district, asset.address].filter(Boolean).join(" · "),
+      date: iso,
+      suggested: dayPrice(today, base, asset.weekendPct ?? 0, asset.holidayPct ?? 0),
+      currency: asset.currency,
+      kind: dayKind(today),
+      answered: entry ? { rented: entry.rented, amount: entry.amount } : null,
+    };
+  });
+
+  const earned = rows.reduce(
+    (sum, row) => sum + (row.answered?.rented ? row.answered.amount : 0),
+    0,
+  );
+  const currency = rows[0]?.currency ?? "GEL";
+
+  const labelKeys: StringKey[] = [
+    "day_amount", "day_yes", "day_no", "day_edit",
+    "day_holiday", "day_weekend", "day_base",
+    "error_required", "error_invalid_number",
+  ];
+  const labels = Object.fromEntries(
+    labelKeys.map((key) => [key, t(locale, key)]),
+  );
+
+  return (
+    <section>
+      <div className="deck-head">
+        <div>
+          <h2>{t(locale, "day_title")}</h2>
+          <p>{t(locale, "day_sub")}</p>
+        </div>
+        {earned > 0 && (
+          <span className="daily-total">
+            {t(locale, "day_earned")}: <b>{money(earned)} {currency}</b>
+          </span>
+        )}
+      </div>
+      <DailyCheckClient assets={rows} labels={labels} />
     </section>
   );
 }

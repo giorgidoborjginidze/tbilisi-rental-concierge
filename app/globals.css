@@ -3311,3 +3311,101 @@ main > section:last-child {
 main > section > h2:first-child {
   margin-top: 0;
 }
+
+/* ── The daily question: one row per daily-let asset. ── */
+.daily-zone { display: grid; gap: 10px; margin-top: 14px; }
+.daily-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  border-radius: var(--radius-lg);
+  background: var(--color-bg);
+  box-shadow: var(--glass-edge);
+}
+.daily-row__txt { min-width: 0; flex: 1 1 190px; }
+.daily-row__txt b { display: block; font-size: 13.5px; }
+.daily-row__txt > span {
+  font-size: 11.5px;
+  color: var(--color-text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.daily-tag {
+  font-style: normal;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.daily-tag--holiday {
+  background: var(--status-danger-bg);
+  color: var(--status-danger-text);
+}
+.daily-tag--weekend {
+  background: var(--status-vacant-bg);
+  color: var(--status-vacant-text);
+}
+.daily-row__amount {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 0 0 auto;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.daily-row__amount input {
+  width: 130px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+.daily-row__actions { display: flex; gap: 8px; flex: 0 0 auto; }
+.daily-row__err { flex: 1 1 100%; margin: 0; }
+.daily-row--done .daily-row__sum {
+  margin-left: auto;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.daily-row__ico {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 15px;
+  background: var(--status-personal-bg);
+  color: var(--status-personal-text);
+}
+.daily-row__ico[data-on="1"] {
+  background: var(--status-rented-bg);
+  color: var(--status-rented-text);
+}
+.daily-total {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+.daily-total b { color: var(--color-text); font-variant-numeric: tabular-nums; }
+@media (max-width: 560px) {
+  .daily-row__amount input { width: 100%; }
+  .daily-row__amount { flex: 1 1 100%; }
+  .daily-row__actions { flex: 1 1 100%; }
+  .daily-row__actions button { flex: 1; }
+}

@@ -166,6 +166,39 @@ describe("evaluateSchedule — contract boundaries", () => {
   });
 });
 
+describe("per-period pricing", () => {
+  it("prices each owed day on its own rate rather than a flat average", () => {
+    // 1–2 January are Georgian public holidays; charge double for them.
+    const status = evaluateSchedule({
+      ...base,
+      period: "daily",
+      amount: 100,
+      paidThrough: d("2025-12-31"),
+      today: d("2026-01-03"),
+      startDate: d("2025-12-01"),
+      rateFor: (day) => {
+        const key = day.toISOString().slice(5, 10);
+        return key === "01-01" || key === "01-02" ? 200 : 100;
+      },
+    });
+    // 31 Dec (100) + 1 Jan (200) + 2 Jan (200) + 3 Jan (100).
+    expect(status.periodsOwed).toBe(4);
+    expect(status.amountDue).toBe(600);
+  });
+
+  it("falls back to the flat amount when no rate function is given", () => {
+    const status = evaluateSchedule({
+      ...base,
+      period: "daily",
+      amount: 100,
+      paidThrough: d("2026-01-05"),
+      today: d("2026-01-07"),
+    });
+    expect(status.periodsOwed).toBe(3);
+    expect(status.amountDue).toBe(300);
+  });
+});
+
 describe("recording payments", () => {
   it("advances paidThrough by whole periods", () => {
     expect(

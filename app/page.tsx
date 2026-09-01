@@ -18,6 +18,7 @@ import TourPrompt from "./tour-prompt";
 import {
   AssetDeck,
   CompositionRing,
+  DailyCheck,
   DecideToday,
   IncomeBars,
   MarketTips,
@@ -485,6 +486,7 @@ async function HotelDashboard({
             ]}
           />
           <PortfolioRing locale={locale} operatorId={operator.id} />
+          <DailyCheck locale={locale} operatorId={operator.id} />
           <DecideToday locale={locale} operatorId={operator.id} />
           <AssetDeck locale={locale} operatorId={operator.id} />
           <IncomeBars locale={locale} operatorId={operator.id} />
@@ -608,7 +610,8 @@ async function BrokerageDashboard({
       />
 
       <PortfolioRing locale={locale} operatorId={operator.id} />
-      <DecideToday locale={locale} operatorId={operator.id} />
+      <DailyCheck locale={locale} operatorId={operator.id} />
+          <DecideToday locale={locale} operatorId={operator.id} />
       <AssetDeck locale={locale} operatorId={operator.id} />
       <IncomeBars locale={locale} operatorId={operator.id} />
 
@@ -805,7 +808,8 @@ async function CarRentalDashboard({
       />
 
       <PortfolioRing locale={locale} operatorId={operator.id} />
-      <DecideToday locale={locale} operatorId={operator.id} />
+      <DailyCheck locale={locale} operatorId={operator.id} />
+          <DecideToday locale={locale} operatorId={operator.id} />
       <AssetDeck locale={locale} operatorId={operator.id} />
       <IncomeBars locale={locale} operatorId={operator.id} />
 
@@ -937,7 +941,8 @@ async function PersonalDashboard({
 
       <CompositionRing locale={locale} parts={ringPartsFromAssets(locale, assets)} />
 
-      <DecideToday locale={locale} operatorId={operator.id} />
+      <DailyCheck locale={locale} operatorId={operator.id} />
+          <DecideToday locale={locale} operatorId={operator.id} />
 
       <AssetDeck locale={locale} operatorId={operator.id} />
 

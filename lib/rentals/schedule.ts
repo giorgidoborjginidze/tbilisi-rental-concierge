@@ -25,8 +25,14 @@ export interface ScheduleInput {
   startDate: Date;
   endDate: Date;
   period: PaymentPeriod;
-  /** Amount per period. */
+  /** Amount per period — the flat rate. */
   amount: number;
+  /**
+   * Optional per-period rate. Daily rentals charge more at weekends and
+   * on public holidays, so what is owed is not simply periods × amount:
+   * each period is priced on the day it starts.
+   */
+  rateFor?: (periodStart: Date) => number;
   /** Days of delay the contract tolerates before repossession. */
   graceDays: number;
   /** Paid up to (exclusive). Null = nothing paid yet. */
@@ -43,6 +49,7 @@ export interface ScheduleStatus {
   paidThrough: Date;
   /** Unpaid periods whose due date has already arrived. */
   periodsOwed: number;
+  /** Sum of the rates of every owed period, holidays included. */
   amountDue: number;
   /** Whole days between the due date and today (0 when not late). */
   daysOverdue: number;
@@ -159,6 +166,14 @@ export function evaluateSchedule(input: ScheduleInput): ScheduleStatus {
     owed = Math.min(due, remaining);
   }
 
+  // Price each owed period on its own start day, so a holiday costs what
+  // the holiday costs rather than the base rate.
+  let amountDue = 0;
+  for (let i = 0; i < owed; i += 1) {
+    const periodStart = addPeriods(paidThrough, period, i);
+    amountDue += input.rateFor ? input.rateFor(periodStart) : amount;
+  }
+
   let state: PaymentState;
   if (today < start) state = "not_started";
   else if (owed === 0) state = today >= end ? "ended" : "ok";
@@ -172,7 +187,7 @@ export function evaluateSchedule(input: ScheduleInput): ScheduleStatus {
     nextDueDate,
     paidThrough,
     periodsOwed: owed,
-    amountDue: owed * amount,
+    amountDue,
     daysOverdue,
     graceDays,
     graceEndsOn,

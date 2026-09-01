@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import type { Locale } from "@/lib/i18n/strings";
 import { queueMessage } from "@/lib/notify/whatsapp";
+import { dayPrice } from "@/lib/assets/daily-price";
 import { evaluateSchedule, type PaymentPeriod, type ScheduleStatus } from "./schedule";
 
 // Watches the payment schedule of every active contract and turns it into
@@ -31,6 +32,29 @@ export function periodAmount(contract: {
     : contract.monthlyRent;
 }
 
+/** The asset's daily-pricing rules, when it has any. */
+export interface DailyPricing {
+  dailyRate: number | null;
+  weekendPct: number | null;
+  holidayPct: number | null;
+}
+
+/**
+ * Prices one day of a daily contract. Weekend and holiday premiums come
+ * from the asset, so a public holiday is charged at the holiday rate
+ * rather than the base one — which is the whole point of setting them.
+ */
+export function dailyRateFor(
+  base: number,
+  pricing?: DailyPricing | null,
+): ((day: Date) => number) | undefined {
+  if (!pricing) return undefined;
+  const weekend = pricing.weekendPct ?? 0;
+  const holiday = pricing.holidayPct ?? 0;
+  if (weekend === 0 && holiday === 0) return undefined;
+  return (day) => dayPrice(day, base, weekend, holiday);
+}
+
 export function statusFor(
   contract: {
     startDate: Date;
@@ -42,12 +66,17 @@ export function statusFor(
     paidThrough: Date | null;
   },
   today = new Date(),
+  /** Daily-mode assets price each day individually. */
+  pricing?: DailyPricing | null,
 ): ScheduleStatus {
+  const period = (contract.paymentPeriod as PaymentPeriod) ?? "monthly";
+  const amount = periodAmount(contract);
   return evaluateSchedule({
     startDate: contract.startDate,
     endDate: contract.endDate,
-    period: (contract.paymentPeriod as PaymentPeriod) ?? "monthly",
-    amount: periodAmount(contract),
+    period,
+    amount,
+    rateFor: period === "daily" ? dailyRateFor(amount, pricing) : undefined,
     graceDays: contract.graceDays,
     paidThrough: contract.paidThrough,
     today,
@@ -96,7 +125,7 @@ export async function monitorRentPayments(
     // that was in fact paid. Tracking starts when the owner sets the date.
     if (!contract.paidThrough) continue;
 
-    const status = statusFor(contract, today);
+    const status = statusFor(contract, today, contract.asset);
     if (status.state === "not_started" || status.state === "ended" || status.state === "ok") {
       continue;
     }

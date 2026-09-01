@@ -254,6 +254,7 @@ model Asset {
   trades    CryptoTrade[]
   gpsDevice GpsDevice?
   geofences Geofence[]
+  days      DayEntry[]
 
   @@index([operatorId])
 }
@@ -423,6 +424,27 @@ model NotifyMessage {
   operator Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
 
   @@index([operatorId, status])
+}
+
+// One day of a daily-let asset: was it rented, and for how much. The
+// suggested amount comes from the asset's day price (base rate plus the
+// weekend or holiday premium), but the owner can agree anything and edit
+// it afterwards — the agreed figure is what counts, not the tariff.
+model DayEntry {
+  id        String   @id @default(cuid())
+  assetId   String
+  date      DateTime // UTC midnight of the day it covers
+  rented    Boolean  @default(true)
+  amount    Float    @default(0) // agreed amount for that day
+  currency  String   @default("GEL")
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([assetId, date])
+  @@index([assetId, date])
 }
 
 // A manual income entry (salary, dividend, one-off) — rent and STR income

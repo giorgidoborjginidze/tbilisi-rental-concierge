@@ -79,10 +79,18 @@ export default function ScheduleForm({
         </label>
 
         <label className="field">
-          {labels.pay_paid_through}
-          <input name="paidThrough" type="date" defaultValue={defaults.paidThrough} />
+          {/* For weekly and monthly contracts this date also fixes which
+              day of the week or month the payment falls on. */}
+          {labels.pay_start_date}
+          <input
+            name="paidThrough"
+            type="date"
+            defaultValue={defaults.paidThrough}
+            required
+          />
         </label>
 
+        <p className="field-hint col-span-2">{labels.pay_start_hint}</p>
         <p className="field-hint col-span-2">{labels.pay_grace_hint}</p>
 
         {termsState?.error && (

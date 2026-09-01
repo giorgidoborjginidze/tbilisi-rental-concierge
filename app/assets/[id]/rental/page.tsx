@@ -52,7 +52,8 @@ const LABEL_KEYS: StringKey[] = [
   "error_device_taken", "error_fence_points",
   "pay_period", "period_daily", "period_weekly", "period_monthly",
   "pay_amount", "pay_amount_hint", "pay_grace", "pay_grace_hint",
-  "pay_paid_through", "pay_paid_through_hint", "pay_record", "pay_received",
+  "pay_paid_through", "pay_paid_through_hint", "pay_start_date", "pay_start_hint",
+  "pay_record", "pay_received",
   "pay_date", "pay_method", "method_cash", "method_transfer", "method_card",
   "method_other", "pay_note", "pay_partial_hint",
   "asset_plate", "asset_plate_hint",
@@ -98,7 +99,7 @@ export default async function RentalServicePage({
   // Without a paid-through date the schedule was never tracked, so the
   // numbers would be fiction — the page asks for the starting point instead.
   const tracked = contract?.paidThrough != null;
-  const status = contract && tracked ? statusFor(contract, now) : null;
+  const status = contract && tracked ? statusFor(contract, now, asset) : null;
   const payments = contract
     ? await prisma.rentPayment.findMany({
         where: { contractId: contract.id },
