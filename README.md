@@ -182,9 +182,34 @@ operator's name is optional. Tenant name/phone are optional and stored
 only for contact. Income sources store an amount only (no employer or
 payer). A dedicated `/privacy` page states the confidentiality stance
 (minimal collection, full per-account isolation, hashed passwords and
-sessions, no selling or sharing) and is linked in the site footer.
+sessions, no selling or sharing, retention windows, who the controller
+is for which data) and is linked in the site footer.
 Market benchmark data is mock behind a pluggable `MarketDataSource` —
 no scraping/republishing of third-party listings.
+
+## Data protection & security
+
+`/settings` → **Your data** carries the two rights that need no support
+ticket: **download** (`GET /api/account/export` — the whole account as one
+JSON file) and **delete** (the account and every record attached to it,
+confirmed by typing your own email, with no recovery period). Every
+sign-in, failed attempt, export and deletion is written to an append-only
+audit trail that records *that* something happened and by which account,
+never a copy of the data it happened to. Retention windows are enforced by
+the scheduler rather than remembered by a person — location history 90
+days, sent notifications 180, closed alerts 365, the audit trail 730, all
+overridable per deployment (see `.env.example`). Sign-in is rate-limited
+per email + source address, operator-supplied iCal URLs are checked before
+the server follows them (no reaching the cloud metadata service), and the
+app ships a CSP plus HSTS and the usual response headers.
+
+Two documents carry the detail: **`docs/compliance-gap-analysis.md`** (what
+was missing against ISO 27001 / GDPR / the Georgian personal-data law, what
+was fixed, what is still open and whose decision it is) and
+**`docs/compliance.md`** (the register of all thirteen automated agents —
+what each one does, what data it touches, what protects it — plus the
+records of processing, the Annex A mapping, the sub-processor and transfer
+table, the retention schedule and a draft DPIA for the GPS monitoring).
 
 Assets also include an **income-source** category (salary, dividend,
 business, pension, interest, royalty) that records a recurring monthly

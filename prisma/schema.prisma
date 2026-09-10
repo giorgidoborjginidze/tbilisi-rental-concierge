@@ -497,3 +497,72 @@ model Alert {
 
   @@index([operatorId, status])
 }
+
+// ── Compliance plumbing ──────────────────────────────────────────────────
+// Three tables that exist for the law rather than for the product: the
+// audit trail every automated personal-data system owes a regulator, the
+// counter that slows a password-guessing run down, and the receipt that
+// proves an erasure request was carried out.
+
+// Append-only record of what was done to personal data, and by whom.
+// Georgian personal-data law requires automated processing to be logged
+// (access, change, disclosure, deletion); ISO 27001 A.8.15 asks for the
+// same events for security reasons. Nothing in the app ever updates or
+// deletes a row here except the retention sweep.
+model AuditLog {
+  id String @id @default(cuid())
+
+  // The acting account, stored as a plain column rather than a relation so
+  // the trail survives the erasure of the account it refers to.
+  actorId String?
+  // Pseudonymous actor label (SHA-256 prefix of the email). Lets an
+  // investigator follow one actor across an erasure without the trail
+  // itself holding an identifier.
+  actorRef String?
+
+  action   String // see AUDIT_ACTIONS in lib/audit/log.ts
+  entity   String? // model the action touched, when it targets one
+  entityId String?
+
+  // Context only — counts, reasons, record types. Never the personal data
+  // itself: a log that copies the data doubles the exposure it documents.
+  detail Json?
+
+  // Truncated source address (/24 for IPv4, /48 for IPv6) — enough to spot
+  // an attack pattern, not enough to single a person out.
+  ip String?
+
+  createdAt DateTime @default(now())
+
+  @@index([actorId, createdAt])
+  @@index([action, createdAt])
+}
+
+// Failed sign-in counter, keyed by a hash of email + truncated address, so
+// the table itself holds no readable account name. Cleared on success and
+// by the retention sweep.
+model LoginAttempt {
+  id          String    @id @default(cuid())
+  key         String    @unique // sha256(email|ipPrefix)
+  count       Int       @default(0)
+  firstAt     DateTime  @default(now())
+  lastAt      DateTime  @default(now())
+  lockedUntil DateTime?
+
+  @@index([lastAt])
+}
+
+// Proof that an erasure request was executed, kept after the account rows
+// are gone. Holds no personal data — only the pseudonymous reference the
+// audit trail uses, so a later "did you actually delete me?" can be
+// answered without keeping the person on file to answer it.
+model ErasureRecord {
+  id         String   @id @default(cuid())
+  subjectRef String // same SHA-256 prefix as AuditLog.actorRef
+  scope      String   @default("account") // what was erased
+  counts     Json // { units: 4, bookings: 812, … } — record counts only
+  requestedAt DateTime @default(now())
+  completedAt DateTime @default(now())
+
+  @@index([subjectRef])
+}

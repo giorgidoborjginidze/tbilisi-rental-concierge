@@ -2,8 +2,10 @@
 
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { hashPassword, verifyPassword } from "./password";
-import { createSession, destroySession } from "./session";
+import { burnVerifyTime, hashPassword, verifyPassword } from "./password";
+import { createSession, destroySession, getSessionOperator } from "./session";
+import { checkThrottle, clearFailures, registerFailure } from "./throttle";
+import { recordAudit, requestIp } from "@/lib/audit/log";
 import type { FormState } from "@/lib/units/actions";
 
 const str = (formData: FormData, key: string) =>
@@ -83,6 +85,14 @@ export async function register(
       data: { usedAt: new Date() },
     });
   }
+  await recordAudit({
+    action: "register",
+    actorId: operator.id,
+    actorEmail: email,
+    entity: "Operator",
+    entityId: operator.id,
+    detail: { accountType, invited: invite != null },
+  });
   await createSession(operator.id);
   redirect("/");
 }
@@ -95,20 +105,66 @@ export async function login(
   const password = String(formData.get("password") ?? "");
   if (!email || !password) return { error: "error_required" };
 
-  const operator = await prisma.operator.findUnique({ where: { email } });
-  if (
-    !operator ||
-    !operator.passwordHash ||
-    !verifyPassword(password, operator.passwordHash)
-  ) {
-    return { error: "error_invalid_credentials" };
+  // Guessing runs are slowed per (email, source address). The account is
+  // never locked itself, so nobody can shut an operator out of their own
+  // dashboard by getting their password wrong on purpose.
+  const ip = await requestIp();
+  const throttle = await checkThrottle(email, ip);
+  if (throttle.locked) {
+    await recordAudit({
+      action: "login_locked",
+      actorEmail: email,
+      ip,
+      detail: { retryAfterSeconds: throttle.retryAfterSeconds },
+    });
+    return { error: "error_too_many_attempts" };
   }
 
+  const operator = await prisma.operator.findUnique({ where: { email } });
+  const ok =
+    operator?.passwordHash != null &&
+    verifyPassword(password, operator.passwordHash);
+
+  if (!ok) {
+    // Spend the same scrypt time on an unknown address as on a known one.
+    if (!operator?.passwordHash) burnVerifyTime(password);
+    const state = await registerFailure(email, ip);
+    await recordAudit({
+      action: "login_failed",
+      actorId: operator?.id ?? null,
+      actorEmail: email,
+      ip,
+      detail: { locked: state.locked },
+    });
+    return {
+      error: state.locked ? "error_too_many_attempts" : "error_invalid_credentials",
+    };
+  }
+
+  await clearFailures(email, ip);
+  await recordAudit({
+    action: "login",
+    actorId: operator.id,
+    actorEmail: email,
+    ip,
+    entity: "Operator",
+    entityId: operator.id,
+  });
   await createSession(operator.id);
   redirect("/");
 }
 
 export async function logout() {
+  const operator = await getSessionOperator();
+  if (operator) {
+    await recordAudit({
+      action: "logout",
+      actorId: operator.id,
+      actorEmail: operator.email,
+      entity: "Operator",
+      entityId: operator.id,
+    });
+  }
   await destroySession();
   redirect("/login");
 }

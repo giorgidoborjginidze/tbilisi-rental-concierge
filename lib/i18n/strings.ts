@@ -119,6 +119,21 @@ const en = {
   privacy_h_control: "You are in control",
   privacy_p_control:
     "Delete any asset, contract or income record at any time \u2014 it is removed for good. Remove a team member and their access ends immediately.",
+  privacy_h_rights: "Take it with you, or take it away",
+  privacy_p_rights:
+    "Settings \u2192 Your data holds two buttons. One downloads everything the account contains as a single JSON file. The other deletes the account and every record attached to it \u2014 immediately, with no recovery period and without asking us. Neither needs a support request.",
+  privacy_h_roles: "Who answers for what",
+  privacy_p_roles:
+    "For your own account details we are the controller. For everything you enter about other people \u2014 tenants, drivers, guests \u2014 you are the controller and we only process it on your instructions: we do not read it, mine it or reuse it for anything else.",
+  privacy_h_retention: "Nothing is kept forever",
+  privacy_p_retention:
+    "Vehicle location history is deleted after 90 days, sent notifications after 180, and the security log after two years. Expired sessions are cleared on every scheduled run. The limits are enforced by a job, not by someone remembering.",
+  privacy_h_processors: "The few services involved",
+  privacy_p_processors:
+    "Hosting and the database (Vercel, Neon), card payments (Flitt \u2014 card details never reach us), WhatsApp delivery when you switch it on (Meta), and Anthropic for pricing rationales, which receive a unit's name, district and rates and never a guest or tenant. Nobody else receives anything.",
+  privacy_h_log: "Access is recorded",
+  privacy_p_log:
+    "Sign-ins, failed attempts, exports and deletions are written to an append-only log, as the law requires of an automated system. The log records that something happened and by which account \u2014 never a copy of the data it happened to.",
   footer_about: "About Us",
   footer_contact: "Contact",
   // \u2500\u2500 About page \u2500\u2500
@@ -175,7 +190,7 @@ const en = {
     "You can pay by card through our secure checkout, including Apple Pay and Google Pay.",
   bot_q_security: "Is my data safe?",
   bot_a_security:
-    "Yes. Every account is fully isolated, passwords are hashed, and we never sell or share your data. See the Privacy page for details.",
+    "Yes. Every account is fully isolated, passwords are hashed, and we never sell or share your data. You can download everything you have or delete the account outright from Settings. See the Privacy page for details.",
   bot_q_calc: "Is the calculator free?",
   bot_a_calc:
     "Yes \u2014 the investment calculator is free to try and needs no account.",
@@ -491,6 +506,20 @@ const en = {
   settings_language: "Language",
   settings_theme: "Theme",
   settings_manage_plan: "Manage Plan",
+  settings_data: "Your data",
+  settings_data_intro:
+    "Your account, and everything in it, is yours to take away or destroy. Both actions happen immediately, without going through us.",
+  data_export_title: "Download a copy",
+  data_export_hint:
+    "One JSON file with every record this workspace holds for your account — units, bookings, assets, contracts, income, alerts and messages. It may contain other people's details that you entered, so treat the file as confidential.",
+  data_export_cta: "Download my data",
+  data_erase_title: "Delete the account",
+  data_erase_hint:
+    "Deletes the account and every record attached to it — units, bookings, assets, contracts, income, alerts, messages and location history. This cannot be undone and there is no recovery period.",
+  data_erase_confirm_label: "Type {email} to confirm",
+  data_erase_cta: "Delete permanently",
+  data_erased_notice:
+    "The account and all of its records have been deleted.",
   billing_title: "Plan & Subscription",
   billing_upgrade: "Upgrade Plan",
   billing_intro:
@@ -894,6 +923,10 @@ const en = {
 
   error_password_short: "Password must be at least 8 characters.",
   error_invalid_credentials: "Incorrect email or password.",
+  error_too_many_attempts:
+    "Too many failed sign-in attempts. Wait a few minutes and try again.",
+  error_erase_confirm:
+    "Type your account email exactly as shown to confirm the deletion.",
   error_required: "Please fill in all required fields.",
   error_invalid_number: "Rates, capacity and bedrooms must be valid numbers.",
   error_email_taken: "An operator with this email already exists.",
@@ -1078,6 +1111,21 @@ const ka: Record<StringKey, string> = {
   privacy_h_control: "კონტროლი შენ გაქვს",
   privacy_p_control:
     "ნებისმიერი აქტივი, ხელშეკრულება თუ შემოსავალი ნებისმიერ დროს წაშალე \u2014 სამუდამოდ იშლება. თანამშრომლის მოშორებისთანავე მისი წვდომა წყდება.",
+  privacy_h_rights: "წაიღე ან სამუდამოდ წაშალე",
+  privacy_p_rights:
+    "პარამეტრები → თქვენი მონაცემები — ორი ღილაკი. პირველი ჩამოტვირთავს ანგარიშის ყველა ჩანაწერს ერთი JSON ფაილის სახით. მეორე შლის ანგარიშს და მასზე მიბმულ ყველა ჩანაწერს — დაუყოვნებლივ, აღდგენის ვადის გარეშე და ჩვენთვის მიმართვის გარეშე. არცერთს არ სჭირდება მხარდაჭერასთან დაკავშირება.",
+  privacy_h_roles: "ვინ რაზე აგებს პასუხს",
+  privacy_p_roles:
+    "შენი ანგარიშის მონაცემებზე მონაცემთა დამმუშავებელი ჩვენ ვართ. ყველაფერზე, რასაც სხვა პირებზე შეიყვან — დამქირავებელი, მძღოლი, სტუმარი — დამმუშავებელი შენ ხარ, ჩვენ კი მხოლოდ შენი დავალებით ვამუშავებთ: არ ვკითხულობთ, არ ვაანალიზებთ და სხვა მიზნით არ ვიყენებთ.",
+  privacy_h_retention: "არაფერი ინახება სამუდამოდ",
+  privacy_p_retention:
+    "ავტომობილის მდებარეობის ისტორია იშლება 90 დღეში, გაგზავნილი შეტყობინებები — 180 დღეში, უსაფრთხოების ჟურნალი — ორ წელიწადში. ვადაგასული სესიები იშლება ყოველი დაგეგმილი გაშვებისას. ვადებს ავტომატური პროცესი ასრულებს და არა ადამიანის მეხსიერება.",
+  privacy_h_processors: "ჩართული მცირერიცხოვანი სერვისები",
+  privacy_p_processors:
+    "ჰოსტინგი და ბაზა (Vercel, Neon), ბარათით გადახდა (Flitt — ბარათის მონაცემები ჩვენამდე არ აღწევს), WhatsApp-ით მიწოდება, თუ ჩართავ (Meta), და Anthropic ფასის დასაბუთებისთვის, რომელიც იღებს ერთეულის სახელს, უბანს და ტარიფებს — არასდროს სტუმრის ან დამქირავებლის მონაცემს. სხვა არავინ იღებს არაფერს.",
+  privacy_h_log: "წვდომა აღირიცხება",
+  privacy_p_log:
+    "შესვლა, წარუმატებელი მცდელობა, ექსპორტი და წაშლა იწერება ჟურნალში, რომელიც მხოლოდ ივსება — როგორც ამას კანონი ავტომატური სისტემისგან მოითხოვს. ჟურნალი ინახავს იმას, რომ მოქმედება მოხდა და რომელი ანგარიშიდან — და არასდროს იმ მონაცემის ასლს, რომელსაც მოქმედება შეეხო.",
   footer_about: "ჩვენ შესახებ",
   footer_contact: "კონტაქტი",
   // ── About page ──
@@ -1134,7 +1182,7 @@ const ka: Record<StringKey, string> = {
     "გადახდა ბარათით შეგიძლია ჩვენი დაცული გვერდიდან, მათ შორის Apple Pay-ითა და Google Pay-ით.",
   bot_q_security: "ჩემი მონაცემები დაცულია?",
   bot_a_security:
-    "დიახ. თითოეული ანგარიში იზოლირებულია, პაროლები დაჰეშილია და მონაცემებს არასდროს ვყიდით ან ვუზიარებთ. დეტალები იხილე კონფიდენციალურობის გვერდზე.",
+    "დიახ. თითოეული ანგარიში იზოლირებულია, პაროლები დაჰეშილია და მონაცემებს არასდროს ვყიდით ან ვუზიარებთ. პარამეტრებიდან შეგიძლია ყველაფერი ჩამოტვირთო ან ანგარიში სრულად წაშალო. დეტალები იხილე კონფიდენციალურობის გვერდზე.",
   bot_q_calc: "კალკულატორი უფასოა?",
   bot_a_calc:
     "დიახ — საინვესტიციო კალკულატორის ცდა უფასოა და ანგარიში არ სჭირდება.",
@@ -1450,6 +1498,20 @@ const ka: Record<StringKey, string> = {
   settings_language: "ენა",
   settings_theme: "თემა",
   settings_manage_plan: "პაკეტის მართვა",
+  settings_data: "თქვენი მონაცემები",
+  settings_data_intro:
+    "ანგარიში და მასში არსებული ყველაფერი თქვენია — შეგიძლიათ წაიღოთ ან სამუდამოდ წაშალოთ. ორივე ქმედება დაუყოვნებლივ სრულდება, ჩვენდამი მიმართვის გარეშე.",
+  data_export_title: "ასლის ჩამოტვირთვა",
+  data_export_hint:
+    "ერთი JSON ფაილი, რომელშიც თქვენი ანგარიშის ყველა ჩანაწერია — ერთეულები, ჯავშნები, აქტივები, ხელშეკრულებები, შემოსავალი, შეტყობინებები და გაფრთხილებები. ფაილში შესაძლოა იყოს თქვენ მიერ შეყვანილი სხვა პირების მონაცემები, ამიტომ მოეპყარით მას როგორც კონფიდენციალურს.",
+  data_export_cta: "ჩემი მონაცემების ჩამოტვირთვა",
+  data_erase_title: "ანგარიშის წაშლა",
+  data_erase_hint:
+    "იშლება ანგარიში და მასზე მიბმული ყველა ჩანაწერი — ერთეულები, ჯავშნები, აქტივები, ხელშეკრულებები, შემოსავალი, გაფრთხილებები, შეტყობინებები და მდებარეობის ისტორია. მოქმედება შეუქცევადია და აღდგენის ვადა არ არსებობს.",
+  data_erase_confirm_label: "დასადასტურებლად ჩაწერეთ {email}",
+  data_erase_cta: "სამუდამოდ წაშლა",
+  data_erased_notice:
+    "ანგარიში და მისი ყველა ჩანაწერი წაშლილია.",
   billing_title: "პაკეტი და გამოწერა",
   billing_upgrade: "პაკეტის განახლება",
   billing_intro:
@@ -1852,6 +1914,10 @@ const ka: Record<StringKey, string> = {
 
   error_password_short: "პაროლი მინიმუმ 8 სიმბოლო უნდა იყოს.",
   error_invalid_credentials: "ელფოსტა ან პაროლი არასწორია.",
+  error_too_many_attempts:
+    "შესვლის ძალიან ბევრი წარუმატებელი მცდელობა. დაელოდეთ რამდენიმე წუთს და სცადეთ ხელახლა.",
+  error_erase_confirm:
+    "წაშლის დასადასტურებლად ჩაწერეთ თქვენი ანგარიშის ელფოსტა ზუსტად ისე, როგორც ნაჩვენებია.",
   error_required: "გთხოვთ, შეავსოთ ყველა სავალდებულო ველი.",
   error_invalid_number:
     "ტარიფი, ტევადობა და საძინებლების რაოდენობა უნდა იყოს რიცხვები.",

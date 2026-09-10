@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { processPing } from "@/lib/geo/monitor";
@@ -12,7 +13,11 @@ import { flushOutbox } from "@/lib/notify/whatsapp";
 //     "speed": 54, "at": "2026-08-31T10:00:00Z" }
 //
 // GET is accepted too, with the same fields as query parameters, because
-// several cheap trackers can only fire a plain URL.
+// several cheap trackers can only fire a plain URL. That does put the
+// device secret in a URL, where proxies and access logs can see it — an
+// accepted, documented trade-off (see docs/compliance.md): the token
+// authorises position reports for one vehicle and nothing else, and the
+// owner can rotate it from the asset's rental page at any time.
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +28,22 @@ interface PingBody {
   lng?: number | string;
   speed?: number | string;
   at?: string;
+}
+
+/**
+ * Constant-time token comparison. A plain `!==` returns faster the earlier
+ * the strings differ, which is enough to recover a token one character at
+ * a time from an endpoint that can be called as often as this one.
+ */
+function sameToken(expected: string, provided: string): boolean {
+  const a = Buffer.from(expected, "utf8");
+  const b = Buffer.from(provided, "utf8");
+  if (a.length !== b.length) {
+    // Still spend the comparison, so length is not leaked by timing either.
+    timingSafeEqual(a, a);
+    return false;
+  }
+  return timingSafeEqual(a, b);
 }
 
 const num = (value: unknown): number | null => {
@@ -44,7 +65,7 @@ async function handle(body: PingBody) {
   }
 
   const device = await prisma.gpsDevice.findUnique({ where: { deviceId } });
-  if (!device || device.token !== token) {
+  if (!device || !sameToken(device.token, token)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

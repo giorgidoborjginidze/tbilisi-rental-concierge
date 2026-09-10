@@ -9,6 +9,7 @@ import { getBillingContext } from "@/lib/billing/context";
 import { planById, type AccountType } from "@/lib/billing/plans";
 import ThemeToggle from "../theme-toggle";
 import TeamSection from "../billing/team-section";
+import DataRights from "./data-rights";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +58,13 @@ export default async function SettingsPage({
     "operator_email", "error_required", "error_limit_members",
     "error_owner_only", "save",
   ];
+  const dataKeys: StringKey[] = [
+    "settings_data", "settings_data_intro", "data_export_title",
+    "data_export_hint", "data_export_cta", "data_erase_title",
+    "data_erase_hint", "data_erase_confirm_label", "data_erase_cta",
+    "error_erase_confirm", "cancel",
+  ];
+  const dataLabels = Object.fromEntries(dataKeys.map((k) => [k, t(locale, k)]));
   const labels = Object.fromEntries(labelKeys.map((k) => [k, t(locale, k)]));
 
   const row = { color: "var(--color-text-muted)" };
@@ -139,6 +147,9 @@ export default async function SettingsPage({
           </div>
         </div>
       </section>
+
+      {/* ── Your data: access, portability, erasure ── */}
+      <DataRights email={operator.email} labels={dataLabels} />
     </main>
   );
 }

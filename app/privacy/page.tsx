@@ -9,6 +9,11 @@ const SECTIONS: { h: StringKey; p: StringKey; icon: string }[] = [
   { h: "privacy_h_security", p: "privacy_p_security", icon: "🔐" },
   { h: "privacy_h_sharing", p: "privacy_p_sharing", icon: "🚫" },
   { h: "privacy_h_control", p: "privacy_p_control", icon: "🗑️" },
+  { h: "privacy_h_rights", p: "privacy_p_rights", icon: "📦" },
+  { h: "privacy_h_roles", p: "privacy_p_roles", icon: "⚖️" },
+  { h: "privacy_h_retention", p: "privacy_p_retention", icon: "⏳" },
+  { h: "privacy_h_processors", p: "privacy_p_processors", icon: "🌍" },
+  { h: "privacy_h_log", p: "privacy_p_log", icon: "🧾" },
 ];
 
 export default async function PrivacyPage() {

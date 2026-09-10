@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { parseChannelLinks } from "@/lib/types";
 import { parseIcal } from "./parse";
 import { eventsToBookings, sourceFromUrl } from "./sync";
+import { checkFeedUrl } from "./url-guard";
 
 export type IcalFetcher = (url: string) => Promise<string>;
 
@@ -20,10 +21,35 @@ export interface FeedSyncResult {
 }
 
 const defaultFetcher: IcalFetcher = async (url) => {
-  const response = await fetch(url, {
+  // The URL came from an operator's form, so the server must not follow it
+  // blindly — see lib/ical/url-guard.ts.
+  const verdict = checkFeedUrl(url);
+  if (!verdict.ok) {
+    throw new Error(`refused to fetch feed: ${verdict.reason}`);
+  }
+  const response = await fetch(verdict.url, {
     headers: { "User-Agent": "str-operator-dashboard/0.1 ical-sync" },
     signal: AbortSignal.timeout(15_000),
+    // A redirect can land on a private address the check above rejected,
+    // so the hop is inspected rather than followed automatically.
+    redirect: "manual",
   });
+  if (response.status >= 300 && response.status < 400) {
+    const location = response.headers.get("location");
+    const hop = location ? checkFeedUrl(new URL(location, verdict.url).href) : null;
+    if (!hop?.ok) {
+      throw new Error(`refused to follow redirect from ${url}`);
+    }
+    const followed = await fetch(hop.url, {
+      headers: { "User-Agent": "str-operator-dashboard/0.1 ical-sync" },
+      signal: AbortSignal.timeout(15_000),
+      redirect: "error",
+    });
+    if (!followed.ok) {
+      throw new Error(`HTTP ${followed.status} for ${url}`);
+    }
+    return followed.text();
+  }
   if (!response.ok) {
     throw new Error(`HTTP ${response.status} for ${url}`);
   }

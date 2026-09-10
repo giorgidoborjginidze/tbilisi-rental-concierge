@@ -4,6 +4,7 @@
 import "dotenv/config";
 import { syncAllUnits } from "../lib/ical/run-sync";
 import { scanAlerts } from "../lib/alerts/scan";
+import { sweepRetention } from "../lib/retention/sweep";
 
 const intervalMinutes = Number(process.env.SYNC_INTERVAL_MINUTES ?? 60);
 
@@ -31,6 +32,24 @@ async function tick() {
     );
   } catch (error) {
     console.error(`[${startedAt}] alert scan failed:`, error);
+  }
+
+  // Retention is on the same tick as everything else so that "we keep data
+  // for N days" is enforced by the system rather than remembered by a
+  // person. Nothing here is user-visible when there is nothing to delete.
+  try {
+    const swept = await sweepRetention();
+    const total = Object.values(swept).reduce((sum, n) => sum + n, 0);
+    if (total > 0) {
+      console.log(
+        `[${startedAt}] retention: -${swept.sessions} sessions, ` +
+          `-${swept.geoEvents} geo events, -${swept.notifyMessages} messages, ` +
+          `-${swept.auditLogs} audit rows, -${swept.loginAttempts} attempt counters, ` +
+          `-${swept.closedAlerts} closed alerts`,
+      );
+    }
+  } catch (error) {
+    console.error(`[${startedAt}] retention sweep failed:`, error);
   }
 }
 

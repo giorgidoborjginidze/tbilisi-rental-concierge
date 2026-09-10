@@ -20,3 +20,13 @@ export function verifyPassword(password: string, stored: string): boolean {
     candidate.length === expected.length && timingSafeEqual(candidate, expected)
   );
 }
+
+// A sign-in against an unknown email must cost the same as one against a
+// known email. Without this, the response time alone says whether an
+// address has an account here — an enumeration oracle that no amount of
+// careful wording in the error message can close.
+const DECOY_HASH = hashPassword("password-that-belongs-to-nobody");
+
+export function burnVerifyTime(password: string): void {
+  verifyPassword(password, DECOY_HASH);
+}
