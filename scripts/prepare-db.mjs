@@ -5,7 +5,8 @@
 //     → derive prisma/schema.postgres.prisma from schema.prisma
 //       (provider swap only — single source of truth),
 //       generate the client from it, and on Vercel push the schema
-//       to the database (prisma db push).
+//       to the database (prisma db push), then run the idempotent data
+//       repairs (scripts/repair-ledger.ts).
 //
 // Keeps one schema file authoritative while supporting both databases.
 
@@ -46,5 +47,10 @@ if (!isPostgres) {
     } catch {
       console.warn("[prepare-db] demo seed skipped (non-fatal)");
     }
+    // Bring rows written before the rent-ledger fix onto it: per-period
+    // amounts, no false "unpaid since the start" debts. Idempotent. Fatal
+    // on failure — deploying the new ledger over unrepaired rows would
+    // show owners wrong monthly figures.
+    run("npx tsx scripts/repair-ledger.ts");
   }
 }

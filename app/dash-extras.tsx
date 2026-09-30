@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { t, type Locale, type StringKey } from "@/lib/i18n/strings";
-import { statusFor, periodAmount } from "@/lib/rentals/monitor";
+import { statusFor, periodAmount } from "@/lib/rentals/terms";
+import { activeContract as runningContract, activeContractWhere, assetStatusNow } from "@/lib/rentals/phase";
+import { contractIncomeInWindow } from "@/lib/rentals/amount";
+import { formatAmount, periodWordKey } from "@/lib/rentals/display";
+import { templateFamily } from "@/lib/notify/templates";
+import { dayKey, monthKeyTbilisi, monthStartTbilisi, startOfTodayTbilisi, tbilisiFormat } from "@/lib/time";
 import { estimateMarketRent, getRentBenchmark } from "@/lib/market/rent";
 import { proratedRevenue } from "@/lib/analytics/metrics";
 import CountUp from "./count-up";
@@ -141,6 +146,7 @@ const TIP_TINTS: Record<string, string> = {
   vacancy_gap: "linear-gradient(140deg,#f9e5b8,#ecc06a)",
   lease_expiry: "linear-gradient(140deg,#d3cbf8,#988ae6)",
   contract_expiry: "linear-gradient(140deg,#d3cbf8,#988ae6)",
+  contract_ended: "linear-gradient(140deg,#d3cbf8,#988ae6)",
   rent_overdue: "linear-gradient(140deg,#f5cdd9,#e08ba4)",
   repossession_right: "linear-gradient(140deg,#f5cdd9,#e08ba4)",
   geofence_breach: "linear-gradient(140deg,#f5cdd9,#e08ba4)",
@@ -150,6 +156,7 @@ const TIP_GLYPHS: Record<string, string> = {
   vacancy_gap: "◔",
   lease_expiry: "◷",
   contract_expiry: "◷",
+  contract_ended: "◷",
   rent_overdue: "!",
   repossession_right: "!",
   geofence_breach: "⚑",
@@ -161,6 +168,7 @@ const TIP_SOURCE: Record<string, StringKey> = {
   vacancy_gap: "tips_src_calendar",
   lease_expiry: "tips_src_contract",
   contract_expiry: "tips_src_contract",
+  contract_ended: "tips_src_contract",
   rent_overdue: "tips_src_contract",
   repossession_right: "tips_src_contract",
   geofence_breach: "tips_src_contract",
@@ -192,7 +200,16 @@ export async function MarketTips({
       ) : (
         <div className="tips-grid">
           {alerts.map((alert) => {
-            const payload = alert.payload as { assetName?: string; suggestedAction?: string };
+            const payload = alert.payload as {
+              assetName?: string;
+              suggestedAction?: string;
+              category?: string;
+            };
+            // Late rent on a flat speaks of the lease, not of a vehicle.
+            const property =
+              alert.type === "repossession_right" &&
+              payload.category != null &&
+              templateFamily(payload.category) === "property";
             return (
               <div key={alert.id} className="card tip-card">
                 <span
@@ -203,11 +220,21 @@ export async function MarketTips({
                 </span>
                 <div style={{ minWidth: 0 }}>
                   <b className="t">
-                    {t(locale, `alert_${alert.type}` as StringKey)}
+                    {t(
+                      locale,
+                      property
+                        ? "alert_repossession_right_property"
+                        : (`alert_${alert.type}` as StringKey),
+                    )}
                     {payload.assetName ? ` — ${payload.assetName}` : ""}
                   </b>
                   <p>
-                    {t(locale, `action_${alert.type}` as StringKey)}{" "}
+                    {t(
+                      locale,
+                      property
+                        ? "action_repossession_right_property"
+                        : (`action_${alert.type}` as StringKey),
+                    )}{" "}
                     <Link href="/alerts" className="link">
                       {t(locale, "tips_open")} →
                     </Link>
@@ -271,19 +298,28 @@ export async function DecideToday({
   locale: Locale;
   operatorId: string;
 }) {
+  const today = startOfTodayTbilisi();
+  // Running contracts by their dates, priced exactly as the rental page
+  // and the WhatsApp message price them (weekend and holiday days too).
   const contracts = await prisma.rentalContract.findMany({
     where: {
-      status: "active",
+      ...activeContractWhere(today),
       paidThrough: { not: null },
       asset: { operatorId },
     },
-    include: { asset: { select: { id: true, name: true, nameKa: true } } },
+    include: {
+      asset: {
+        select: {
+          id: true, name: true, nameKa: true,
+          dailyRate: true, weekendPct: true, holidayPct: true,
+        },
+      },
+    },
   });
 
-  const now = new Date();
   const items: DecideItem[] = [];
   for (const contract of contracts) {
-    const status = statusFor(contract, now);
+    const status = statusFor(contract, today, contract.asset);
     if (!["due", "grace", "repossess"].includes(status.state)) continue;
     const name =
       locale === "ka" && contract.asset.nameKa
@@ -337,6 +373,7 @@ export async function AssetDeck({
   operatorId: string;
 }) {
   const now = new Date();
+  const today = startOfTodayTbilisi(now);
   const assets = await prisma.asset.findMany({
     where: {
       operatorId,
@@ -359,7 +396,7 @@ export async function AssetDeck({
   }
 
   // District rent benchmarks, so the advice can compare against the market.
-  const monthKey = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+  const monthKey = monthKeyTbilisi(now);
   const districts = [...new Set(assets.map((a) => a.district).filter(Boolean))] as string[];
   const benchmarks = new Map(
     await Promise.all(
@@ -368,15 +405,18 @@ export async function AssetDeck({
   );
 
   const fmtMoney = (value: number) => Math.round(value).toLocaleString("en-US");
-  const fmtDate = new Intl.DateTimeFormat(locale === "ka" ? "ka-GE" : "en-GB", {
+  const fmtDate = tbilisiFormat(locale, {
     day: "numeric", month: "short", year: "numeric",
   });
 
   const deck: DeckAsset[] = assets.map((asset) => {
-    const contract = asset.contracts.find(
-      (c) => c.status !== "ended" && c.startDate <= now && c.endDate >= now,
-    );
-    const status = contract ? "rented" : asset.unitId ? "str" : asset.status;
+    const contract = runningContract(asset.contracts, today);
+    const status = contract
+      ? "rented"
+      : asset.unitId
+        ? "str"
+        : assetStatusNow(asset, asset.contracts, today);
+    const property = templateFamily(asset.category) === "property";
     const displayName =
       locale === "ka" && asset.nameKa ? asset.nameKa : asset.name;
     const marketRent =
@@ -399,18 +439,20 @@ export async function AssetDeck({
 
     // 2 · What it earns.
     const dayRate = asset.rentalMode === "daily" ? asset.dailyRate : null;
+    // The rent per period as agreed — "60 ₾ / day", not a day rate
+    // passed off as a month.
     slides.push({
       kind: "metric",
       label: t(locale, "deck_rent"),
       value: contract
-        ? fmtMoney(contract.monthlyRent)
+        ? formatAmount(Math.round(periodAmount(contract)))
         : dayRate
           ? fmtMoney(dayRate)
           : "—",
       unit: contract
-        ? `₾ / ${t(locale, "per_month_word")}`
+        ? `₾ / ${t(locale, periodWordKey(contract.paymentPeriod))}`
         : dayRate
-          ? "₾ / 24h"
+          ? `₾ / ${t(locale, "per_day_word")}`
           : undefined,
       note: contract
         ? `${contract.tenantName ?? "—"} · ${t(locale, "contract_until")} ${fmtDate.format(contract.endDate)}`
@@ -418,7 +460,7 @@ export async function AssetDeck({
     });
 
     // 3 · Where it stands — the payment schedule when tracked, else status.
-    const schedule = contract?.paidThrough ? statusFor(contract, now) : null;
+    const schedule = contract?.paidThrough ? statusFor(contract, today, asset) : null;
     if (schedule && ["due", "grace", "repossess"].includes(schedule.state)) {
       slides.push({
         kind: "metric",
@@ -446,7 +488,7 @@ export async function AssetDeck({
       advice = {
         kind: "advice",
         label: t(locale, "deck_attention"),
-        note: t(locale, "deck_adv_repossess"),
+        note: t(locale, property ? "deck_adv_late_property" : "deck_adv_repossess"),
         tone: "bad",
       };
     } else if (schedule && (schedule.state === "grace" || schedule.state === "due")) {
@@ -548,9 +590,8 @@ export async function IncomeBars({
   locale: Locale;
   operatorId: string;
 }) {
-  const now = new Date();
-  const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 5, 1));
-  const to = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+  const from = monthStartTbilisi(-5);
+  const to = monthStartTbilisi(1);
 
   const [bookings, contracts, incomes, days] = await Promise.all([
     prisma.booking.findMany({
@@ -563,7 +604,14 @@ export async function IncomeBars({
     }),
     prisma.rentalContract.findMany({
       where: { asset: { operatorId }, startDate: { lt: to }, endDate: { gt: from } },
-      select: { startDate: true, endDate: true, monthlyRent: true },
+      select: {
+        assetId: true,
+        startDate: true,
+        endDate: true,
+        monthlyRent: true,
+        paymentPeriod: true,
+        paymentAmount: true,
+      },
     }),
     prisma.incomeRecord.findMany({
       where: { operatorId, date: { gte: from, lt: to } },
@@ -571,9 +619,19 @@ export async function IncomeBars({
     }),
     prisma.dayEntry.findMany({
       where: { asset: { operatorId }, rented: true, date: { gte: from, lt: to } },
-      select: { date: true, amount: true },
+      select: { assetId: true, date: true, amount: true },
     }),
   ]);
+
+  // A night answered in the daily check that a contract already covers is
+  // the same night: count it once, at the contract's price.
+  const coveredByContract = (assetId: string, date: Date) =>
+    contracts.some(
+      (contract) =>
+        contract.assetId === assetId &&
+        contract.startDate <= date &&
+        contract.endDate > date,
+    );
 
   const months = Array.from({ length: 6 }, (_, i) => {
     const start = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth() + i, 1));
@@ -583,24 +641,23 @@ export async function IncomeBars({
       total += proratedRevenue(booking, { start, end });
     }
     for (const contract of contracts) {
-      // Count the contracted rent for any month the contract covered.
-      if (contract.startDate < end && contract.endDate > start) {
-        total += contract.monthlyRent;
-      }
+      // The rent for the days the contract covered in this month: one
+      // night counts one night, a lease from the 16th half a month.
+      total += contractIncomeInWindow(contract, { start, end });
     }
     for (const income of incomes) {
       if (income.date >= start && income.date < end) total += income.amount;
     }
     for (const day of days) {
-      if (day.date >= start && day.date < end) total += day.amount;
+      if (day.date >= start && day.date < end && !coveredByContract(day.assetId, day.date)) {
+        total += day.amount;
+      }
     }
     return { start, total };
   });
 
   const max = Math.max(...months.map((m) => m.total));
-  const fmtMonth = new Intl.DateTimeFormat(locale === "ka" ? "ka-GE" : "en-GB", {
-    month: "short",
-  });
+  const fmtMonth = tbilisiFormat(locale, { month: "short" });
 
   return (
     <section className="card bars-card">
@@ -648,10 +705,9 @@ export async function DailyCheck({
   locale: Locale;
   operatorId: string;
 }) {
-  const now = new Date();
-  const today = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-  );
+  // Tbilisi's today: an answer given at 01:30 belongs to the new day,
+  // at that day's tariff.
+  const today = startOfTodayTbilisi();
 
   const assets = await prisma.asset.findMany({
     where: { operatorId, rentalMode: "daily" },
@@ -660,7 +716,7 @@ export async function DailyCheck({
   });
   if (assets.length === 0) return null;
 
-  const iso = today.toISOString().slice(0, 10);
+  const iso = dayKey(today);
   const rows: DayAsset[] = assets.map((asset) => {
     const base = asset.dailyRate ?? 0;
     const entry = asset.days[0];

@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/db";
 import type { Locale } from "@/lib/i18n/strings";
 import { queueMessage } from "@/lib/notify/whatsapp";
+import { activeContractWhere } from "@/lib/rentals/phase";
+import { startOfTodayTbilisi } from "@/lib/time";
 import type { TemplateKey } from "@/lib/notify/templates";
 import {
   evaluateFence,
@@ -66,9 +68,12 @@ export async function processPing(
     include: {
       operator: { select: { id: true, locale: true, notifyPhone: true } },
       geofences: { where: { active: true } },
+      // The driver is whoever's contract runs on the day of the ping — by
+      // its dates, so a contract booked ahead is covered from its first
+      // day and a finished one never gets messages meant for the new driver.
       contracts: {
-        where: { status: "active" },
-        orderBy: { endDate: "desc" },
+        where: activeContractWhere(startOfTodayTbilisi(ping.at ?? new Date())),
+        orderBy: { startDate: "desc" },
         take: 1,
       },
     },

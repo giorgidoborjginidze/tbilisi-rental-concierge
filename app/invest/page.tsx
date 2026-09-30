@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { monthKeyTbilisi } from "@/lib/time";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
 import { KNOWN_DISTRICTS } from "@/lib/types";
@@ -47,8 +48,7 @@ const LABEL_KEYS: StringKey[] = [
 
 export default async function InvestPage() {
   const locale = await getLocale();
-  const now = new Date();
-  const monthKey = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+  const monthKey = monthKeyTbilisi();
 
   // District rent benchmarks for the current month (mock-seeded table).
   const rows = await prisma.rentBenchmark.findMany({

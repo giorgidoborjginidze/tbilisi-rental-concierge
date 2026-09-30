@@ -12,6 +12,10 @@ import { POPULAR_STOCKS } from "@/lib/stocks/prices";
 import { METALS } from "@/lib/metals/prices";
 import type { FormState } from "@/lib/units/actions";
 import type { SessionOperator } from "@/lib/auth/session";
+import { startOfTodayTbilisi } from "@/lib/time";
+import { asPeriod, monthlyEquivalent } from "@/lib/rentals/amount";
+import { contractPhase } from "@/lib/rentals/phase";
+import { defaultPaidThrough, snapToBoundary } from "@/lib/rentals/schedule";
 
 const str = (formData: FormData, key: string) =>
   String(formData.get(key) ?? "").trim();
@@ -156,13 +160,20 @@ export async function saveAsset(
       where: { id: assetId, operatorId: operator.id },
     });
     if (!owned) return { error: "error_required" };
-    await prisma.asset.update({ where: { id: assetId }, data });
+    await prisma.asset.update({
+      where: { id: assetId },
+      // A status the owner changes by hand is stamped, so it outranks a
+      // stale "rented" left behind by a finished contract.
+      data: { ...data, ...(owned.status !== status ? { statusSetAt: new Date() } : {}) },
+    });
   } else {
     const { getBillingContext } = await import("@/lib/billing/context");
     if (!(await getBillingContext(operator)).canAddAsset) {
       return { error: "error_limit_assets" };
     }
-    await prisma.asset.create({ data: { ...data, operatorId: operator.id } });
+    await prisma.asset.create({
+      data: { ...data, operatorId: operator.id, statusSetAt: new Date() },
+    });
   }
 
   revalidatePath("/assets");
@@ -194,9 +205,10 @@ export async function setAssetStatus(formData: FormData) {
   if (assetId && (status === "rented" || status === "vacant")) {
     await prisma.asset.updateMany({
       where: { id: assetId, operatorId: operator.id },
-      data: { status },
+      data: { status, statusSetAt: new Date() },
     });
     revalidatePath("/assets");
+    revalidatePath("/");
   }
 }
 
@@ -212,6 +224,14 @@ export async function deleteAsset(formData: FormData) {
   redirect("/assets");
 }
 
+/**
+ * Add a rental contract. The owner types the rent PER PAYMENT PERIOD
+ * (60 a day, 350 a week, 1,200 a month); that is what the schedule
+ * charges, and monthlyRent keeps its monthly equivalent for every monthly
+ * figure. "Paid up to" says how far the rent is already paid, so a lease
+ * that has been running since March is not announced as seven months late
+ * the moment it is typed in.
+ */
 export async function saveContract(
   _prev: FormState,
   formData: FormData,
@@ -219,15 +239,19 @@ export async function saveContract(
   const assetId = str(formData, "assetId");
   const startRaw = str(formData, "startDate");
   const endRaw = str(formData, "endDate");
-  const monthlyRent = Number(str(formData, "monthlyRent"));
+  // "amount" is the per-period rent; older clients posted "monthlyRent".
+  const amount = Number(str(formData, "amount") || str(formData, "monthlyRent"));
 
   if (!assetId || !startRaw || !endRaw) return { error: "error_required" };
-  if (!Number.isFinite(monthlyRent) || monthlyRent <= 0) {
+  if (!Number.isFinite(amount) || amount <= 0) {
     return { error: "error_invalid_number" };
   }
 
   const startDate = new Date(`${startRaw}T00:00:00Z`);
   const endDate = new Date(`${endRaw}T00:00:00Z`);
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    return { error: "error_required" };
+  }
   if (endDate <= startDate) return { error: "error_dates" };
 
   const deposit = optionalNumber(formData, "deposit");
@@ -239,20 +263,37 @@ export async function saveContract(
   });
   if (!asset) return { error: "error_required" };
 
-  const now = new Date();
-  const status = endDate < now ? "ended" : startDate > now ? "upcoming" : "active";
-
   // Payment terms: how often rent is collected and how many days late the
-  // contract tolerates before the owner may require the asset back.
-  const periodRaw = str(formData, "paymentPeriod");
-  const paymentPeriod = ["daily", "weekly", "monthly"].includes(periodRaw)
-    ? periodRaw
-    : "monthly";
+  // contract tolerates before the owner may act.
+  const paymentPeriod = asPeriod(str(formData, "paymentPeriod"));
   const graceRaw = Number(str(formData, "graceDays"));
   const graceDays =
     Number.isFinite(graceRaw) && graceRaw >= 0 && graceRaw <= 60
       ? Math.round(graceRaw)
       : 3;
+
+  // Paid up to: the typed date moved onto the contract's due dates, or —
+  // when nothing is typed — the first due date on or after today, so a
+  // running lease starts in good standing.
+  const today = startOfTodayTbilisi();
+  const paidRaw = str(formData, "paidThrough");
+  let paidThrough: Date;
+  if (paidRaw) {
+    const typed = new Date(`${paidRaw}T00:00:00Z`);
+    if (Number.isNaN(typed.getTime())) return { error: "error_required" };
+    paidThrough = snapToBoundary(startDate, endDate, paymentPeriod, typed);
+  } else {
+    paidThrough = defaultPaidThrough(startDate, endDate, paymentPeriod, today);
+  }
+
+  // The checkbox is only on the full contract form; the calendar's quick
+  // form leaves reminders on.
+  const remindersEnabled = formData.has("remindersField")
+    ? formData.get("remindersEnabled") === "on"
+    : true;
+
+  // Stored for compatibility only — every reader derives it from dates.
+  const phase = contractPhase({ startDate, endDate }, today);
 
   await prisma.rentalContract.create({
     data: {
@@ -261,29 +302,37 @@ export async function saveContract(
       tenantPhone: str(formData, "tenantPhone") || null,
       startDate,
       endDate,
-      monthlyRent,
+      paymentAmount: amount,
+      monthlyRent: monthlyEquivalent(amount, paymentPeriod),
       deposit,
       currency: asset.currency,
-      status,
+      status: phase,
       paymentPeriod,
       graceDays,
-      // Tracking starts at the contract's own start date: nothing is paid
-      // yet, and the first period falls due on day one.
-      paidThrough: startDate,
+      paidThrough,
+      creditBalance: 0,
+      remindersEnabled,
+      // The ledger's opening balance: payments recorded from now on are
+      // replayed on top of it if one of them is ever deleted.
+      openingPaidThrough: paidThrough,
+      openingCredit: 0,
+      openingAt: new Date(),
       notes: str(formData, "notes") || null,
     },
   });
 
-  // An active contract means the asset is rented.
-  if (status === "active" && asset.status !== "rented") {
+  // A running contract means the asset is rented.
+  if (phase === "active" && asset.status !== "rented") {
     await prisma.asset.update({
       where: { id: assetId },
       data: { status: "rented" },
     });
   }
 
+  revalidatePath("/");
   revalidatePath("/assets");
   revalidatePath(`/assets/${assetId}/edit`);
+  revalidatePath(`/assets/${assetId}/rental`);
   return null;
 }
 

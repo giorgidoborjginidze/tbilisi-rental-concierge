@@ -9,6 +9,7 @@ import { getBillingContext } from "@/lib/billing/context";
 import { planById, type AccountType } from "@/lib/billing/plans";
 import ThemeToggle from "../theme-toggle";
 import TeamSection from "../billing/team-section";
+import { tbilisiFormat } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ export default async function SettingsPage({
   const context = await getBillingContext(operator);
   const justReturned = (await searchParams).paid === "1";
 
-  const fmtDate = new Intl.DateTimeFormat(locale === "ka" ? "ka-GE" : "en-GB", {
+  const fmtDate = tbilisiFormat(locale, {
     day: "numeric", month: "short", year: "numeric",
   });
 

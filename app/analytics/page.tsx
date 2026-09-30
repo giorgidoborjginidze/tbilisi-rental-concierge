@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { monthStartTbilisi, startOfTodayTbilisi } from "@/lib/time";
 import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
@@ -34,14 +35,12 @@ function Kpi({ label, value }: { label: string; value: string }) {
 export default async function AnalyticsPage() {
   const operator = await requireOperator();
   const locale = await getLocale();
-  const now = new Date();
-  const today = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-  );
+  // Tbilisi's today and month.
+  const today = startOfTodayTbilisi();
 
   // Analysis range: 5 months back through 3 months ahead.
-  const rangeStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 5, 1));
-  const rangeEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 4, 1));
+  const rangeStart = monthStartTbilisi(-5);
+  const rangeEnd = monthStartTbilisi(4);
 
   const units = await prisma.unit.findMany({
     where: { operatorId: operator.id },
@@ -62,8 +61,8 @@ export default async function AnalyticsPage() {
     unit.bookings;
 
   const thisMonth = {
-    start: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)),
-    end: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)),
+    start: monthStartTbilisi(0),
+    end: monthStartTbilisi(1),
   };
   const next30 = { start: today, end: new Date(today.getTime() + 30 * DAY_MS) };
 

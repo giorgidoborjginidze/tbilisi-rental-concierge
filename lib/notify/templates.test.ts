@@ -13,7 +13,7 @@ describe("templates", () => {
     for (const key of TEMPLATE_KEYS) {
       expect(DEFAULT_TEMPLATES.ka[key], key).toBeTruthy();
       expect(DEFAULT_TEMPLATES.en[key], key).toBeTruthy();
-      expect(TEMPLATE_ROLE[key], key).toMatch(/^(driver|owner)$/);
+      expect(TEMPLATE_ROLE[key], key).toMatch(/^(driver|tenant|owner)$/);
     }
   });
 

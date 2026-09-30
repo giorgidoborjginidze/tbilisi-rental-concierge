@@ -255,18 +255,19 @@ const en = {
 
   pay_schedule_title: "Payment Schedule",
   pay_schedule_intro:
-    "How often the renter pays, and how many days late the contract tolerates before you may require the vehicle back.",
+    "How often the driver pays, and how many days late the contract tolerates before you may require the vehicle back.",
   pay_period: "Payment Frequency",
   period_daily: "Daily",
   period_weekly: "Weekly",
   period_monthly: "Monthly",
   pay_amount: "Amount per Period",
-  pay_amount_hint: "Leave empty to use the contract's headline rent.",
+  pay_amount_hint: "What the renter pays each period.",
   pay_grace: "Grace Days",
   pay_grace_hint:
     "Days of delay the contract tolerates. Past this, the repossession right is live.",
-  pay_paid_through: "Paid Through",
-  pay_paid_through_hint: "Payments cover everything before this date.",
+  pay_paid_through: "Rent Paid Up To",
+  pay_paid_through_hint:
+    "The next payment day: every period before it is paid, and payments fall due on the contract's start day. Changing it restates the balance — recorded payments stay in the history and any credit is cleared.",
   pay_next_due: "Next Due",
   pay_days_overdue: "Days Late",
   pay_amount_due: "Outstanding",
@@ -282,11 +283,11 @@ const en = {
   pay_note: "Note",
   pay_history: "Payments",
   pay_partial_hint:
-    "The schedule advances by whole periods only — a part payment is recorded but leaves the contract as late as it was.",
+    "A part payment is kept as credit and counts toward the next period. The schedule moves forward only when a whole period is covered, so a part payment leaves the contract as late as it was.",
   pay_no_contract:
     "Add an active contract for this asset first — the schedule follows the contract.",
   pay_untracked:
-    "This contract is not being tracked yet. Set \"Paid Through\" below — that date is where the schedule starts counting — and reminders begin from there. Nothing is sent about the period before it.",
+    "This contract is not being tracked yet. Set \"Rent Paid Up To\" below and save — the schedule counts from that date and reminders begin from there. Nothing is sent about the period before it.",
   pstate_not_started: "Not started",
   pstate_ok: "Up to date",
   pstate_due: "Due today",
@@ -605,8 +606,45 @@ const en = {
   day_empty: "No daily-let assets — switch an asset to daily mode and it appears here every morning.",
   day_all_done: "Every daily let is answered for today.",
   day_earned: "Today",
-  pay_start_date: "Billing starts on",
-  pay_start_hint: "The schedule counts from this date. For weekly and monthly contracts it also fixes which day of the week or month falls due.",
+  contract_amount_daily: "Rent per Day",
+  contract_amount_weekly: "Rent per Week",
+  contract_amount_monthly: "Rent per Month",
+  contract_monthly_equiv: "≈ {amount} ₾ a month",
+  contract_paid_up_to: "Rent Paid Up To",
+  contract_paid_up_to_hint:
+    "The next payment day: every period before it counts as paid. For a lease that is already running it defaults to the next due date, so nothing looks late. If the tenant owes rent, pick an earlier date. Payments fall due on the contract's start day.",
+  contract_reminders: "Automatic WhatsApp reminders to the renter",
+  per_day_word: "day",
+  per_week_word: "week",
+  error_untracked:
+    "Set \"Rent Paid Up To\" first — the schedule needs a starting point.",
+  pay_credit: "Credit",
+  pay_kept_credit: "kept as credit",
+  pay_delete_confirm:
+    "Delete this payment? The schedule is recalculated from the payments that remain.",
+  pay_grace_until: "Grace period until",
+  pstate_repossess_property: "Grace period over",
+  pay_schedule_intro_property:
+    "How often the tenant pays, and how many days late the lease tolerates.",
+  pay_grace_hint_property:
+    "Days of delay the lease tolerates. After that the tenant gets a final reminder and you get an alert.",
+  rental_service_intro_property:
+    "Payment schedule, payment log and the messages sent to the tenant.",
+  outbox_to_tenant: "To the tenant",
+  tplk_lease_due_tenant: "Rent due today — to the tenant",
+  tplk_lease_overdue_tenant: "Rent late, inside grace — to the tenant",
+  tplk_lease_late_tenant: "Grace run out — to the tenant",
+  tplk_lease_late_owner: "Grace run out — to you",
+  tpl_vars_hint_property:
+    "Placeholders: {asset} property, {tenant} tenant, {amount} amount, {currency} currency, {days} days late, {grace} grace days, {date} due date.",
+  alert_repossession_right_property: "Rent Late — Grace Over",
+  action_repossession_right_property:
+    "The grace period in the lease has run out. Under the lease you may demand payment or start ending the tenancy.",
+  deck_adv_late_property:
+    "The grace period has run out — under the lease you may demand payment or start ending the tenancy.",
+  alert_contract_ended: "Contract Ended",
+  action_contract_ended:
+    "The contract has ended. Add the new contract if it was renewed, or mark the asset vacant or listed.",
   analytics_title: "Rental Analytics",
   analytics_intro:
     "Detailed occupancy, rate and revenue breakdowns — by month and by unit.",
@@ -1214,18 +1252,19 @@ const ka: Record<StringKey, string> = {
 
   pay_schedule_title: "გადახდის გრაფიკი",
   pay_schedule_intro:
-    "რა სიხშირით იხდის დამქირავებელი და რამდენი დღის გადაცილებას უშვებს კონტრაქტი, სანამ ავტომობილის დაბრუნების მოთხოვნის უფლება წარმოგეშობათ.",
+    "რა სიხშირით იხდის მძღოლი და რამდენი დღით დაგვიანებას უშვებს კონტრაქტი, სანამ ავტომობილის დაბრუნების მოთხოვნის უფლება გაგიჩნდება.",
   pay_period: "გადახდის სიხშირე",
   period_daily: "ყოველდღიური",
   period_weekly: "ყოველკვირეული",
   period_monthly: "ყოველთვიური",
   pay_amount: "თანხა ერთ პერიოდზე",
-  pay_amount_hint: "ცარიელი დატოვე და კონტრაქტის ძირითადი ქირა გამოიყენება.",
+  pay_amount_hint: "რამდენს იხდის დამქირავებელი ერთ პერიოდში.",
   pay_grace: "შეღავათიანი დღეები",
   pay_grace_hint:
     "რამდენი დღის დაგვიანებას უშვებს კონტრაქტი. ამის შემდეგ ჩამორთმევის უფლება ძალაში შედის.",
-  pay_paid_through: "გადახდილია თარიღამდე",
-  pay_paid_through_hint: "ამ თარიღამდე ყველა პერიოდი დაფარულია.",
+  pay_paid_through: "ქირა გადახდილია თარიღამდე",
+  pay_paid_through_hint:
+    "შემდეგი გადახდის დღე — მანამდე ყველა პერიოდი გადახდილია; გადახდის დღე ხელშეკრულების დაწყების დღეს ემთხვევა. ამ თარიღის შეცვლა ნაშთს თავიდან ადგენს: აღრიცხული გადახდები ისტორიაში რჩება, ავანსი კი ნულდება.",
   pay_next_due: "შემდეგი გადახდა",
   pay_days_overdue: "დაგვიანება (დღე)",
   pay_amount_due: "დავალიანება",
@@ -1241,11 +1280,11 @@ const ka: Record<StringKey, string> = {
   pay_note: "შენიშვნა",
   pay_history: "გადახდები",
   pay_partial_hint:
-    "გრაფიკი მხოლოდ სრული პერიოდებით მოძრაობს — ნაწილობრივი გადახდა აღირიცხება, მაგრამ დაგვიანებას არ ხსნის.",
+    "ნაწილობრივი თანხა ავანსად რჩება და შემდეგ პერიოდს აკლდება. გრაფიკი წინ მხოლოდ მაშინ მიიწევს, როცა მთელი პერიოდი დაიფარება — ამიტომ ნაწილობრივი გადახდა დაგვიანებას არ ხსნის.",
   pay_no_contract:
     "ჯერ დაამატე მოქმედი ხელშეკრულება ამ აქტივზე — გრაფიკი კონტრაქტს მიჰყვება.",
   pay_untracked:
-    "ეს ხელშეკრულება ჯერ არ ითვლება. ქვემოთ მიუთითე „გადახდილია თარიღამდე“ — სწორედ ამ თარიღიდან იწყებს გრაფიკი ათვლას — და შეხსენებებიც აქედან ამოქმედდება. მანამდელ პერიოდზე არაფერი იგზავნება.",
+    "ეს ხელშეკრულება ჯერ არ ითვლება. ქვემოთ მიუთითე „ქირა გადახდილია თარიღამდე“ და შეინახე — გრაფიკი ამ თარიღიდან იწყებს ათვლას და შეხსენებებიც აქედან ამოქმედდება. მანამდელ პერიოდზე არაფერი იგზავნება.",
   pstate_not_started: "ჯერ არ დაწყებულა",
   pstate_ok: "დაფარულია",
   pstate_due: "დღეს იხდის",
@@ -1564,8 +1603,45 @@ const ka: Record<StringKey, string> = {
   day_empty: "დღიური აქტივები არ არის — გადაიყვანე აქტივი დღიურ რეჟიმში და აქ ყოველ დილით გამოჩნდება.",
   day_all_done: "დღევანდელი დღე ყველა ობიექტზე შევსებულია.",
   day_earned: "დღეს",
-  pay_start_date: "ათვლის თარიღი",
-  pay_start_hint: "გრაფიკი ამ თარიღიდან ითვლება. კვირეული და თვიური კონტრაქტისთვის ეს განსაზღვრავს კვირის ან თვის რომელ დღეს ემთხვევა გადახდა.",
+  contract_amount_daily: "თანხა დღეში",
+  contract_amount_weekly: "თანხა კვირაში",
+  contract_amount_monthly: "თანხა თვეში",
+  contract_monthly_equiv: "≈ {amount} ₾ თვეში",
+  contract_paid_up_to: "ქირა გადახდილია თარიღამდე",
+  contract_paid_up_to_hint:
+    "შემდეგი გადახდის დღე — მანამდე ყველა პერიოდი გადახდილად ითვლება. უკვე მიმდინარე ხელშეკრულებისთვის ნაგულისხმევად შემდეგი ვადაა, ამიტომ არაფერი ჩანს დაგვიანებულად. თუ დამქირავებელს ვალი აქვს, ადრინდელი თარიღი აირჩიე. გადახდის დღე ხელშეკრულების დაწყების დღეს ემთხვევა.",
+  contract_reminders: "ავტომატური WhatsApp შეხსენებები დამქირავებელს",
+  per_day_word: "დღე",
+  per_week_word: "კვირა",
+  error_untracked:
+    "ჯერ მიუთითე „ქირა გადახდილია თარიღამდე“ — გრაფიკს ათვლის წერტილი სჭირდება.",
+  pay_credit: "ავანსი",
+  pay_kept_credit: "ავანსად დარჩა",
+  pay_delete_confirm:
+    "ნამდვილად წაიშალოს ეს გადახდა? გრაფიკი დარჩენილი გადახდებით ხელახლა დაითვლება.",
+  pay_grace_until: "შეღავათიანი ვადა თარიღამდე",
+  pstate_repossess_property: "შეღავათიანი ვადა ამოიწურა",
+  pay_schedule_intro_property:
+    "რა სიხშირით იხდის დამქირავებელი ქირას და რამდენი დღით დაგვიანებას უშვებს ხელშეკრულება.",
+  pay_grace_hint_property:
+    "რამდენი დღით დაგვიანებას უშვებს ხელშეკრულება. ამის შემდეგ დამქირავებელი ბოლო შეხსენებას იღებს, შენ კი — გაფრთხილებას.",
+  rental_service_intro_property:
+    "გადახდის გრაფიკი, გადახდების ისტორია და დამქირავებლისთვის გაგზავნილი შეტყობინებები.",
+  outbox_to_tenant: "დამქირავებელს",
+  tplk_lease_due_tenant: "ქირის გადახდის დღე — დამქირავებელს",
+  tplk_lease_overdue_tenant: "დაგვიანება შეღავათის ფარგლებში — დამქირავებელს",
+  tplk_lease_late_tenant: "შეღავათი ამოიწურა — დამქირავებელს",
+  tplk_lease_late_owner: "შეღავათი ამოიწურა — შენ",
+  tpl_vars_hint_property:
+    "ჩანაცვლებადი ველები: {asset} ქონება, {tenant} დამქირავებელი, {amount} თანხა, {currency} ვალუტა, {days} დაგვიანება, {grace} შეღავათი, {date} ვადა.",
+  alert_repossession_right_property: "ქირა დაგვიანებულია — შეღავათი ამოიწურა",
+  action_repossession_right_property:
+    "ხელშეკრულებით გათვალისწინებული შეღავათიანი ვადა ამოიწურა. ხელშეკრულების პირობებით შეგიძლია მოითხოვო დავალიანების დაფარვა ან ხელშეკრულების შეწყვეტა.",
+  deck_adv_late_property:
+    "შეღავათიანი ვადა ამოიწურა — ხელშეკრულებით შეგიძლია მოითხოვო დავალიანების დაფარვა ან ხელშეკრულების შეწყვეტა.",
+  alert_contract_ended: "ხელშეკრულება დასრულდა",
+  action_contract_ended:
+    "ხელშეკრულების ვადა ამოიწურა. თუ განახლდა, დაამატე ახალი ხელშეკრულება; თუ არა — მონიშნე აქტივი თავისუფლად ან გამოქვეყნებულად.",
   analytics_title: "გაქირავების ანალიტიკა",
   analytics_intro:
     "დეტალური ანალიზი — დატვირთულობა, ფასი და შემოსავალი თვეებისა და ერთეულების მიხედვით.",

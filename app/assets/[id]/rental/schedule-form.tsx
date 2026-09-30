@@ -3,27 +3,32 @@
 import { useActionState } from "react";
 import { saveSchedule, recordPayment } from "@/lib/rentals/actions";
 import type { FormState } from "@/lib/units/actions";
+import { todayKey } from "@/lib/time";
 
 export interface ScheduleDefaults {
   paymentPeriod: string;
   paymentAmount: string;
   graceDays: string;
   paidThrough: string;
+  remindersEnabled: boolean;
 }
 
 // The payment terms of one contract, plus the box for recording money
 // received. Both write through server actions and re-render the status
-// panel above them.
+// panel above them. Money can only be recorded once the schedule has a
+// starting point ("Rent paid up to").
 export default function ScheduleForm({
   assetId,
   contractId,
   currency,
+  tracked,
   defaults,
   labels,
 }: {
   assetId: string;
   contractId: string;
   currency: string;
+  tracked: boolean;
   defaults: ScheduleDefaults;
   labels: Record<string, string>;
 }) {
@@ -36,7 +41,8 @@ export default function ScheduleForm({
     null,
   );
 
-  const today = new Date().toISOString().slice(0, 10);
+  // Today in Tbilisi — after midnight there it is already the next day.
+  const today = todayKey();
 
   return (
     <div className="rental-two">
@@ -58,11 +64,12 @@ export default function ScheduleForm({
           <input
             name="paymentAmount"
             type="number"
-            min={1}
+            min={0.01}
             step="0.01"
             defaultValue={defaults.paymentAmount}
-            placeholder={labels.pay_amount_hint}
+            required
           />
+          <span className="hint">{labels.pay_amount_hint}</span>
         </label>
 
         <label className="field">
@@ -79,9 +86,7 @@ export default function ScheduleForm({
         </label>
 
         <label className="field">
-          {/* For weekly and monthly contracts this date also fixes which
-              day of the week or month the payment falls on. */}
-          {labels.pay_start_date}
+          {labels.pay_paid_through}
           <input
             name="paidThrough"
             type="date"
@@ -90,7 +95,20 @@ export default function ScheduleForm({
           />
         </label>
 
-        <p className="field-hint col-span-2">{labels.pay_start_hint}</p>
+        <label
+          className="field col-span-2"
+          style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+        >
+          <input type="hidden" name="remindersField" value="1" />
+          <input
+            type="checkbox"
+            name="remindersEnabled"
+            defaultChecked={defaults.remindersEnabled}
+          />
+          {labels.contract_reminders}
+        </label>
+
+        <p className="field-hint col-span-2">{labels.pay_paid_through_hint}</p>
         <p className="field-hint col-span-2">{labels.pay_grace_hint}</p>
 
         {termsState?.error && (
@@ -103,6 +121,7 @@ export default function ScheduleForm({
         </div>
       </form>
 
+      {tracked && (
       <form action={pay} className="card form-grid" style={{ padding: 18 }}>
         <input type="hidden" name="assetId" value={assetId} />
         <input type="hidden" name="contractId" value={contractId} />
@@ -113,7 +132,7 @@ export default function ScheduleForm({
 
         <label className="field">
           {labels.pay_received} ({currency})
-          <input name="amount" type="number" min={1} step="0.01" required />
+          <input name="amount" type="number" min={0.01} step="0.01" required />
         </label>
 
         <label className="field">
@@ -147,6 +166,7 @@ export default function ScheduleForm({
           </button>
         </div>
       </form>
+      )}
     </div>
   );
 }

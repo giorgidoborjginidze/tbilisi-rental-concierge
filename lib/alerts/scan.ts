@@ -8,26 +8,29 @@ import { findGaps, type Stay } from "@/lib/calendar/occupancy";
 import { suggestRate } from "@/lib/pricing/engine";
 import { getMarketDataSource } from "@/lib/market/source";
 import { monitorRentPayments } from "@/lib/rentals/monitor";
+import { activeContractWhere, contractPhase, recentlyEndedWhere } from "@/lib/rentals/phase";
+import { dayKey, startOfTodayTbilisi } from "@/lib/time";
 
 const DAY_MS = 86_400_000;
 const GAP_WINDOW_DAYS = 30;
 const GAP_MIN_NIGHTS = 2;
 const LEASE_EXPIRY_DAYS = 30;
+/** How far back a finished contract still earns a "contract ended" alert. */
+const CONTRACT_ENDED_DAYS = 60;
 
 export interface ScanResult {
   created: number;
   skipped: number; // already-open duplicates
 }
 
-const dayStamp = (date: Date) => date.toISOString().slice(0, 10);
+const dayStamp = dayKey;
 
 export async function scanAlerts(
-  today = new Date(),
+  now = new Date(),
   operatorId?: string,
 ): Promise<ScanResult> {
-  const start = new Date(
-    Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()),
-  );
+  // Tbilisi's today, in the stored form of a calendar day.
+  const start = startOfTodayTbilisi(now);
   const gapWindowEnd = new Date(start.getTime() + GAP_WINDOW_DAYS * DAY_MS);
   const leaseWindowEnd = new Date(start.getTime() + LEASE_EXPIRY_DAYS * DAY_MS);
   const month = `${start.getUTCFullYear()}-${String(start.getUTCMonth() + 1).padStart(2, "0")}`;
@@ -105,11 +108,10 @@ export async function scanAlerts(
       });
     }
 
-    // 2. Active leases expiring within N days.
+    // 2. Running leases (by their dates) expiring within N days.
     for (const lease of unit.leases) {
       if (
-        lease.status === "active" &&
-        lease.endDate >= start &&
+        contractPhase(lease, start) === "active" &&
         lease.endDate <= leaseWindowEnd
       ) {
         await push(unit.operatorId, unit.id, "lease_expiry", lease.id, {
@@ -151,11 +153,13 @@ export async function scanAlerts(
     }
   }
 
-  // 4. Asset rental contracts expiring within N days.
+  // 4. Asset rental contracts running today and expiring within N days —
+  //    by their dates, whatever status was stored when they were typed in.
+  const running = activeContractWhere(start);
   const expiringContracts = await prisma.rentalContract.findMany({
     where: {
-      status: "active",
-      endDate: { gte: start, lte: leaseWindowEnd },
+      startDate: running.startDate,
+      endDate: { gt: start, lte: leaseWindowEnd },
       ...(operatorId ? { asset: { operatorId } } : {}),
     },
     include: { asset: true },
@@ -168,15 +172,43 @@ export async function scanAlerts(
       endDate: dayStamp(contract.endDate),
       tenantName: contract.tenantName,
       monthlyRent: contract.monthlyRent,
+      paymentAmount: contract.paymentAmount,
+      paymentPeriod: contract.paymentPeriod,
       daysLeft: Math.round(
         (contract.endDate.getTime() - start.getTime()) / DAY_MS,
       ),
     });
   }
 
+  // 4b. Contracts that have ended with nothing after them: the asset is no
+  //     longer rented, so the owner is asked to renew or relist it.
+  const endedContracts = await prisma.rentalContract.findMany({
+    where: {
+      ...recentlyEndedWhere(start, CONTRACT_ENDED_DAYS),
+      ...(operatorId ? { asset: { operatorId } } : {}),
+    },
+    include: {
+      asset: { include: { contracts: { select: { id: true, endDate: true } } } },
+    },
+  });
+  for (const contract of endedContracts) {
+    const followedUp = contract.asset.contracts.some(
+      (other) => other.id !== contract.id && other.endDate > start,
+    );
+    if (followedUp) continue;
+    await push(contract.asset.operatorId, null, "contract_ended", contract.id, {
+      contractId: contract.id,
+      assetId: contract.assetId,
+      assetName: contract.asset.name,
+      category: contract.asset.category,
+      endDate: dayStamp(contract.endDate),
+      tenantName: contract.tenantName,
+    });
+  }
+
   // 5. Late rent on active contracts — and the day the repossession right
   //    kicks in. This also queues the WhatsApp reminders.
-  const payments = await monitorRentPayments(today, operatorId);
+  const payments = await monitorRentPayments(now, operatorId);
   result.created += payments.alerts;
 
   return result;

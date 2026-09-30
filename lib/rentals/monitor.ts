@@ -1,18 +1,34 @@
 import { prisma } from "@/lib/db";
 import type { Locale } from "@/lib/i18n/strings";
 import { queueMessage } from "@/lib/notify/whatsapp";
-import { dayPrice } from "@/lib/assets/daily-price";
-import { evaluateSchedule, type PaymentPeriod, type ScheduleStatus } from "./schedule";
+import {
+  paymentTemplates,
+  templateFamily,
+  TEMPLATE_ROLE,
+} from "@/lib/notify/templates";
+import { dayKey, sameTbilisiDay, startOfTodayTbilisi } from "@/lib/time";
+import { activeContractWhere } from "./phase";
+import { statusFor } from "./terms";
 
-// Watches the payment schedule of every active contract and turns it into
-// alerts and WhatsApp reminders:
+// Re-exported so existing callers keep one import for "the rent status".
+export {
+  dailyRateFor,
+  periodAmount,
+  statusFor,
+  type DailyPricing,
+} from "./terms";
+
+// Watches the payment schedule of every running contract and turns it
+// into alerts and WhatsApp reminders:
 //
 //   due day        → a polite reminder to the renter
 //   1…grace days   → one nudge per late day, still inside the tolerance
 //   past grace     → the renter is told the window has run out, and the
-//                    owner is told the repossession right is now live
+//                    owner is told what the contract now allows
 //
-// Everything is deduped on the due date, so re-running the scan is safe.
+// Cars get the vehicle wording (repossession); flats and other property
+// get lease wording — no "vehicle", no 112. Everything is deduped on the
+// due date, so re-running the scan is safe.
 
 export interface RentalMonitorResult {
   contracts: number;
@@ -20,76 +36,19 @@ export interface RentalMonitorResult {
   messages: number;
 }
 
-const iso = (date: Date) => date.toISOString().slice(0, 10);
-
-/** Per-period amount, falling back to the contract's headline rent. */
-export function periodAmount(contract: {
-  paymentAmount: number | null;
-  monthlyRent: number;
-}): number {
-  return contract.paymentAmount && contract.paymentAmount > 0
-    ? contract.paymentAmount
-    : contract.monthlyRent;
-}
-
-/** The asset's daily-pricing rules, when it has any. */
-export interface DailyPricing {
-  dailyRate: number | null;
-  weekendPct: number | null;
-  holidayPct: number | null;
-}
-
-/**
- * Prices one day of a daily contract. Weekend and holiday premiums come
- * from the asset, so a public holiday is charged at the holiday rate
- * rather than the base one — which is the whole point of setting them.
- */
-export function dailyRateFor(
-  base: number,
-  pricing?: DailyPricing | null,
-): ((day: Date) => number) | undefined {
-  if (!pricing) return undefined;
-  const weekend = pricing.weekendPct ?? 0;
-  const holiday = pricing.holidayPct ?? 0;
-  if (weekend === 0 && holiday === 0) return undefined;
-  return (day) => dayPrice(day, base, weekend, holiday);
-}
-
-export function statusFor(
-  contract: {
-    startDate: Date;
-    endDate: Date;
-    paymentPeriod: string;
-    paymentAmount: number | null;
-    monthlyRent: number;
-    graceDays: number;
-    paidThrough: Date | null;
-  },
-  today = new Date(),
-  /** Daily-mode assets price each day individually. */
-  pricing?: DailyPricing | null,
-): ScheduleStatus {
-  const period = (contract.paymentPeriod as PaymentPeriod) ?? "monthly";
-  const amount = periodAmount(contract);
-  return evaluateSchedule({
-    startDate: contract.startDate,
-    endDate: contract.endDate,
-    period,
-    amount,
-    rateFor: period === "daily" ? dailyRateFor(amount, pricing) : undefined,
-    graceDays: contract.graceDays,
-    paidThrough: contract.paidThrough,
-    today,
-  });
-}
-
 export async function monitorRentPayments(
-  today = new Date(),
+  now = new Date(),
   operatorId?: string,
 ): Promise<RentalMonitorResult> {
+  const today = startOfTodayTbilisi(now);
+  // Running contracts only, by their dates: one that starts tomorrow is
+  // watched from tomorrow, and a finished one is no longer chased. A
+  // contract with no paid-up-to date has never had its schedule tracked —
+  // announcing that it is a year overdue would be false.
   const contracts = await prisma.rentalContract.findMany({
     where: {
-      status: "active",
+      ...activeContractWhere(today),
+      paidThrough: { not: null },
       ...(operatorId ? { asset: { operatorId } } : {}),
     },
     include: {
@@ -119,12 +78,6 @@ export async function monitorRentPayments(
   );
 
   for (const contract of contracts) {
-    // A contract with no paid-through date has never had its schedule
-    // tracked — an old lease entered before this existed, say. Announcing
-    // that it is a year overdue would be false: nobody recorded the money
-    // that was in fact paid. Tracking starts when the owner sets the date.
-    if (!contract.paidThrough) continue;
-
     const status = statusFor(contract, today, contract.asset);
     if (status.state === "not_started" || status.state === "ended" || status.state === "ok") {
       continue;
@@ -133,12 +86,22 @@ export async function monitorRentPayments(
 
     const operator = contract.asset.operator;
     const locale = (operator.locale === "ka" ? "ka" : "en") as Locale;
-    const dueKey = iso(status.nextDueDate);
+    const family = templateFamily(contract.asset.category);
+    const keys = paymentTemplates(contract.asset.category);
+    // The renter hears from us only when the owner wants reminders, and
+    // never on the day the contract was typed in: the owner sees the
+    // status first and can correct a wrong "paid up to" before anything
+    // reaches the tenant.
+    const tenantMessages =
+      contract.remindersEnabled && !sameTbilisiDay(contract.createdAt, now);
+    const dueKey = dayKey(status.nextDueDate);
     const amount = Math.round(status.amountDue).toLocaleString("en-US");
     const vars = {
       asset: contract.asset.name,
       plate: contract.asset.plateNumber ?? "—",
+      // {driver} is the renter's name — a driver for a car, a tenant for a flat.
       driver: contract.tenantName ?? "—",
+      tenant: contract.tenantName ?? "—",
       amount,
       currency: contract.currency,
       date: dueKey,
@@ -164,6 +127,7 @@ export async function monitorRentPayments(
       dedupeKey: string,
       phone: string | null | undefined,
     ) => {
+      if (TEMPLATE_ROLE[key] !== "owner" && !tenantMessages) return;
       const message = await queueMessage({
         operatorId: operator.id,
         locale,
@@ -179,7 +143,7 @@ export async function monitorRentPayments(
 
     if (status.state === "due") {
       await queue(
-        "pay_due_driver",
+        keys.due,
         `pay|${contract.id}|${dueKey}|due`,
         contract.tenantPhone,
       );
@@ -190,7 +154,9 @@ export async function monitorRentPayments(
       contractId: contract.id,
       assetId: contract.assetId,
       assetName: contract.asset.name,
-      plate: contract.asset.plateNumber,
+      category: contract.asset.category,
+      family,
+      plate: family === "vehicle" ? contract.asset.plateNumber : null,
       tenantName: contract.tenantName,
       tenantPhone: contract.tenantPhone,
       dueDate: dueKey,
@@ -198,14 +164,14 @@ export async function monitorRentPayments(
       graceDays: status.graceDays,
       amountDue: Math.round(status.amountDue),
       currency: contract.currency,
-      repossessFrom: iso(status.repossessFrom),
+      repossessFrom: dayKey(status.repossessFrom),
     };
 
     if (status.state === "grace") {
       await push("rent_overdue", `${contract.id}|${dueKey}`, alertPayload);
-      // One nudge per late day — the driver should feel the clock running.
+      // One nudge per late day — the renter should feel the clock running.
       await queue(
-        "pay_overdue_driver",
+        keys.overdue,
         `pay|${contract.id}|${dueKey}|late${status.daysOverdue}`,
         contract.tenantPhone,
       );
@@ -213,12 +179,12 @@ export async function monitorRentPayments(
       await push("repossession_right", `${contract.id}|${dueKey}`, alertPayload);
       // Said once, not every day: the window has already run out.
       await queue(
-        "pay_repossess_driver",
+        keys.late,
         `pay|${contract.id}|${dueKey}|repossess`,
         contract.tenantPhone,
       );
       await queue(
-        "pay_repossess_owner",
+        keys.lateOwner,
         `pay|${contract.id}|${dueKey}|repossess-owner`,
         operator.notifyPhone,
       );

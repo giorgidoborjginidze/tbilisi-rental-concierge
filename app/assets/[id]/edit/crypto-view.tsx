@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { tbilisiFormat, todayKey } from "@/lib/time";
 import { t, type Locale, type StringKey } from "@/lib/i18n/strings";
 import { deleteAsset } from "@/lib/assets/actions";
 import { fetchUsdGel, fetchUsdPrices } from "@/lib/crypto/prices";
@@ -41,9 +42,8 @@ export default async function CryptoView({
     nUsd == null ? "—" : `${Math.round(nUsd * usdGel).toLocaleString("en-US")} GEL`;
   const qty = v.quantity.toLocaleString("en-US", { maximumFractionDigits: 8 });
 
-  const intl = locale === "ka" ? "ka-GE" : "en-GB";
-  const fmtDate = new Intl.DateTimeFormat(intl, { day: "numeric", month: "short", year: "numeric" });
-  const today = new Date().toISOString().slice(0, 10);
+  const fmtDate = tbilisiFormat(locale, { day: "numeric", month: "short", year: "numeric" });
+  const today = todayKey();
 
   const labelKeys: StringKey[] = [
     "crypto_buy", "crypto_sell", "crypto_quantity", "crypto_unit_price",

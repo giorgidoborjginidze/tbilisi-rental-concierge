@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   addPeriods,
-  advancePaidThrough,
+  boundaryIndexOnOrAfter,
+  defaultPaidThrough,
   evaluateSchedule,
+  periodBoundary,
   periodsBetween,
   periodsCovered,
+  snapToBoundary,
 } from "./schedule";
 
 const d = (iso: string) => new Date(`${iso}T00:00:00Z`);
@@ -101,12 +104,13 @@ describe("evaluateSchedule — daily rentals", () => {
 
 describe("evaluateSchedule — weekly and monthly", () => {
   it("accrues one weekly period per week of delay", () => {
+    // Weekly periods start on the contract's weekday: 1 Jan, 8 Jan, …
     const status = evaluateSchedule({
       ...base,
       period: "weekly",
       amount: 700,
-      paidThrough: d("2026-03-02"),
-      today: d("2026-03-16"),
+      paidThrough: d("2026-02-26"),
+      today: d("2026-03-12"),
     });
     expect(status.periodsOwed).toBe(3);
     expect(status.amountDue).toBe(2100);
@@ -199,17 +203,146 @@ describe("per-period pricing", () => {
   });
 });
 
-describe("recording payments", () => {
-  it("advances paidThrough by whole periods", () => {
-    expect(
-      advancePaidThrough(d("2026-01-05"), d("2026-01-01"), "daily", 3),
-    ).toEqual(d("2026-01-08"));
-    expect(advancePaidThrough(null, d("2026-01-01"), "monthly", 2)).toEqual(
-      d("2026-03-01"),
-    );
+describe("periods anchored on the contract start", () => {
+  it("computes every boundary from the start, so a short month never sticks", () => {
+    const start = d("2026-01-31");
+    expect(periodBoundary(start, "monthly", 1)).toEqual(d("2026-02-28"));
+    expect(periodBoundary(start, "monthly", 2)).toEqual(d("2026-03-31"));
+    expect(periodBoundary(start, "monthly", 3)).toEqual(d("2026-04-30"));
+    expect(periodBoundary(start, "monthly", 4)).toEqual(d("2026-05-31"));
+    expect(periodBoundary(d("2026-01-01"), "weekly", 2)).toEqual(d("2026-01-15"));
+    expect(periodBoundary(d("2026-01-01"), "daily", 3)).toEqual(d("2026-01-04"));
   });
 
-  it("converts an amount into the periods it covers", () => {
+  it("finds the first boundary on or after a date", () => {
+    const start = d("2026-01-31");
+    expect(boundaryIndexOnOrAfter(start, "monthly", d("2026-01-31"))).toBe(0);
+    expect(boundaryIndexOnOrAfter(start, "monthly", d("2026-02-28"))).toBe(1);
+    expect(boundaryIndexOnOrAfter(start, "monthly", d("2026-03-01"))).toBe(2);
+    expect(boundaryIndexOnOrAfter(start, "monthly", d("2026-03-31"))).toBe(2);
+    expect(boundaryIndexOnOrAfter(d("2026-01-01"), "weekly", d("2026-01-09"))).toBe(2);
+    expect(boundaryIndexOnOrAfter(d("2026-01-01"), "daily", d("2025-12-01"))).toBe(0);
+  });
+
+  it("falls due on the 31st in March for a lease started on 31 January", () => {
+    const lease = {
+      startDate: d("2026-01-31"),
+      endDate: d("2027-01-31"),
+      period: "monthly" as const,
+      amount: 1200,
+      graceDays: 3,
+      paidThrough: d("2026-02-28"), // the first month paid
+    };
+    // The second month began on 28 February; the third begins on 31 March
+    // — not on the 28th, which is where the old chained dates drifted to.
+    const lateMarch = evaluateSchedule({ ...lease, today: d("2026-03-30") });
+    expect(lateMarch.periodsOwed).toBe(1);
+    const dueDay = evaluateSchedule({ ...lease, today: d("2026-03-31") });
+    expect(dueDay.periodsOwed).toBe(2);
+
+    const paidUp = evaluateSchedule({
+      ...lease,
+      paidThrough: d("2026-03-31"),
+      today: d("2026-03-30"),
+    });
+    expect(paidUp.state).toBe("ok");
+    expect(paidUp.nextDueDate).toEqual(d("2026-03-31"));
+  });
+
+  it("moves a drifted or hand-typed date up to the next boundary", () => {
+    const status = evaluateSchedule({
+      startDate: d("2026-01-31"),
+      endDate: d("2027-01-31"),
+      period: "monthly",
+      amount: 1200,
+      graceDays: 3,
+      paidThrough: d("2026-03-28"), // the old code's drifted pointer
+      today: d("2026-03-30"),
+    });
+    expect(status.nextDueDate).toEqual(d("2026-03-31"));
+    expect(status.state).toBe("ok");
+  });
+
+  it("snaps a typed date onto the grid, inside the contract", () => {
+    const start = d("2026-03-01");
+    const end = d("2027-03-01");
+    expect(snapToBoundary(start, end, "monthly", d("2026-09-30"))).toEqual(d("2026-10-01"));
+    expect(snapToBoundary(start, end, "monthly", d("2026-10-01"))).toEqual(d("2026-10-01"));
+    expect(snapToBoundary(start, end, "monthly", d("2025-01-01"))).toEqual(start);
+    expect(snapToBoundary(start, end, "monthly", d("2030-01-01"))).toEqual(end);
+  });
+});
+
+describe("default paid-up-to for a newly entered contract", () => {
+  it("puts a lease that is already running in good standing", () => {
+    // Nino's flat: 1 March lease entered on 30 September.
+    const paid = defaultPaidThrough(
+      d("2026-03-01"), d("2027-03-01"), "monthly", d("2026-09-30"),
+    );
+    expect(paid).toEqual(d("2026-10-01"));
+    const status = evaluateSchedule({
+      startDate: d("2026-03-01"),
+      endDate: d("2027-03-01"),
+      period: "monthly",
+      amount: 1200,
+      graceDays: 3,
+      paidThrough: paid,
+      today: d("2026-09-30"),
+    });
+    expect(status.state).toBe("ok");
+    expect(status.amountDue).toBe(0);
+  });
+
+  it("shows a payment falling due today as due, not late", () => {
+    const paid = defaultPaidThrough(
+      d("2026-09-28"), d("2027-09-28"), "daily", d("2026-09-30"),
+    );
+    expect(paid).toEqual(d("2026-09-30"));
+    const status = evaluateSchedule({
+      startDate: d("2026-09-28"),
+      endDate: d("2027-09-28"),
+      period: "daily",
+      amount: 60,
+      graceDays: 3,
+      paidThrough: paid,
+      today: d("2026-09-30"),
+    });
+    expect(status.state).toBe("due");
+    expect(status.daysOverdue).toBe(0);
+  });
+
+  it("counts a contract that has not started from its first day", () => {
+    expect(
+      defaultPaidThrough(d("2026-10-05"), d("2026-11-05"), "weekly", d("2026-09-30")),
+    ).toEqual(d("2026-10-05"));
+  });
+
+  it("treats a stay that is already over as settled", () => {
+    expect(
+      defaultPaidThrough(d("2026-09-01"), d("2026-09-04"), "daily", d("2026-09-30")),
+    ).toEqual(d("2026-09-04"));
+  });
+});
+
+describe("credit toward the next period", () => {
+  it("lowers what is still to pay without moving the schedule", () => {
+    const status = evaluateSchedule({
+      ...base,
+      period: "daily",
+      paidThrough: d("2026-01-05"),
+      credit: 10,
+      today: d("2026-01-07"),
+    });
+    expect(status.periodsOwed).toBe(3);
+    expect(status.amountDue).toBe(290);
+    expect(status.credit).toBe(10);
+    expect(status.daysOverdue).toBe(2);
+    expect(status.state).toBe("grace");
+  });
+});
+
+describe("converting money to periods", () => {
+  it("counts whole periods only", () => {
     expect(periodsCovered(350, 100)).toBe(3);
     expect(periodsCovered(90, 100)).toBe(0);
     expect(periodsCovered(100, 0)).toBe(0);

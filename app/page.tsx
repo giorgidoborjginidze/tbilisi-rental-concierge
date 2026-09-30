@@ -26,6 +26,18 @@ import {
   WealthHero,
   ringPartsFromAssets,
 } from "./dash-extras";
+import {
+  activeContract as runningContract,
+  assetStatusNow,
+  isActiveContract,
+} from "@/lib/rentals/phase";
+import { rentLabel } from "@/lib/rentals/display";
+import {
+  monthStartTbilisi,
+  startOfTodayTbilisi,
+  startOfTomorrowTbilisi,
+  tbilisiFormat,
+} from "@/lib/time";
 
 export const dynamic = "force-dynamic";
 
@@ -354,13 +366,11 @@ async function HotelDashboard({
   locale: Locale;
   operator: SessionOperator;
 }) {
-  const now = new Date();
-  const today = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-  );
-  const tomorrow = new Date(today.getTime() + DAY_MS);
-  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-  const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+  // Tbilisi's today: arrivals after midnight belong to the new day.
+  const today = startOfTodayTbilisi();
+  const tomorrow = startOfTomorrowTbilisi();
+  const monthStart = monthStartTbilisi(0);
+  const monthEnd = monthStartTbilisi(1);
   // Fetch a hair wider than the month so a stay ending exactly on the 1st
   // still shows up in today's departures.
   const queryStart = new Date(
@@ -547,8 +557,8 @@ async function BrokerageDashboard({
   locale: Locale;
   operator: SessionOperator;
 }) {
-  const now = new Date();
-  const in30 = new Date(now.getTime() + 30 * DAY_MS);
+  const today = startOfTodayTbilisi();
+  const in30 = new Date(today.getTime() + 30 * DAY_MS);
 
   const [assets, alertCount] = await Promise.all([
     prisma.asset.findMany({
@@ -560,11 +570,15 @@ async function BrokerageDashboard({
   ]);
 
   const activeContract = (asset: (typeof assets)[number]) =>
-    asset.contracts.find(
-      (c) => c.status !== "ended" && c.startDate <= now && c.endDate >= now,
-    );
+    runningContract(asset.contracts, today);
+  // The asset follows its contracts: a lease that has ended no longer
+  // keeps it counted as rented.
   const effectiveStatus = (asset: (typeof assets)[number]) =>
-    activeContract(asset) ? "rented" : asset.unitId ? "rented" : asset.status;
+    activeContract(asset)
+      ? "rented"
+      : asset.unitId
+        ? "rented"
+        : assetStatusNow(asset, asset.contracts, today);
 
   const statusCounts = { rented: 0, listed: 0, vacant: 0, personal_use: 0 };
   for (const asset of assets) {
@@ -581,16 +595,12 @@ async function BrokerageDashboard({
   const expiring = assets
     .flatMap((asset) =>
       asset.contracts
-        .filter(
-          (c) =>
-            c.status !== "ended" && c.endDate >= now && c.endDate <= in30,
-        )
+        .filter((c) => isActiveContract(c, today) && c.endDate <= in30)
         .map((c) => ({ asset, contract: c })),
     )
     .sort((a, b) => a.contract.endDate.getTime() - b.contract.endDate.getTime());
 
-  const intl = locale === "ka" ? "ka-GE" : "en-GB";
-  const fmtDate = new Intl.DateTimeFormat(intl, { day: "numeric", month: "short" });
+  const fmtDate = tbilisiFormat(locale, { day: "numeric", month: "short" });
   const displayName = (a: { name: string; nameKa: string | null }) =>
     locale === "ka" && a.nameKa ? a.nameKa : a.name;
 
@@ -676,7 +686,7 @@ async function BrokerageDashboard({
                           </div>
                         </td>
                         <td data-label={t(locale, "contracts_col")}>
-                          {contract.monthlyRent} {contract.currency} · {contract.tenantName ?? "—"}
+                          {rentLabel(locale, contract)} · {contract.tenantName ?? "—"}
                         </td>
                         <td className="num" data-label={t(locale, "contract_until")}>
                           {fmtDate.format(contract.endDate)}
@@ -722,11 +732,8 @@ async function CarRentalDashboard({
   locale: Locale;
   operator: SessionOperator;
 }) {
-  const now = new Date();
-  const today = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-  );
-  const tomorrow = new Date(today.getTime() + DAY_MS);
+  const today = startOfTodayTbilisi();
+  const tomorrow = startOfTomorrowTbilisi();
 
   const [vehicles, alertCount] = await Promise.all([
     prisma.asset.findMany({
@@ -738,9 +745,7 @@ async function CarRentalDashboard({
   ]);
 
   const activeContract = (asset: (typeof vehicles)[number]) =>
-    asset.contracts.find(
-      (c) => c.status !== "ended" && c.startDate <= now && c.endDate >= now,
-    );
+    runningContract(asset.contracts, today);
   const rentedNow = vehicles.filter((v) => activeContract(v)).length;
   const rentIncome = vehicles.reduce(
     (sum, v) => sum + (activeContract(v)?.monthlyRent ?? 0),
@@ -751,7 +756,7 @@ async function CarRentalDashboard({
   const withContracts = (pick: (c: { startDate: Date; endDate: Date }) => boolean) =>
     vehicles.flatMap((vehicle) =>
       vehicle.contracts
-        .filter((c) => c.status !== "ended" && pick(c))
+        .filter((c) => pick(c))
         .map((contract) => ({ vehicle, contract })),
     );
   const handovers = withContracts((c) => inDay(c.startDate));
@@ -775,7 +780,7 @@ async function CarRentalDashboard({
             <tr>
               <th>{t(locale, "unit_name")}</th>
               <th>{t(locale, "contract_tenant")}</th>
-              <th className="num">{t(locale, "contract_rent")}</th>
+              <th className="num">{t(locale, "deck_rent")}</th>
             </tr>
           </thead>
           <tbody>
@@ -789,8 +794,8 @@ async function CarRentalDashboard({
                 <td data-label={t(locale, "contract_tenant")}>
                   {contract.tenantName ?? "—"}
                 </td>
-                <td className="num" data-label={t(locale, "contract_rent")}>
-                  {contract.monthlyRent} {contract.currency}
+                <td className="num" data-label={t(locale, "deck_rent")}>
+                  {rentLabel(locale, contract)}
                 </td>
               </tr>
             ))}
@@ -879,9 +884,9 @@ async function PersonalDashboard({
   locale: Locale;
   operator: SessionOperator;
 }) {
-  const now = new Date();
-  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-  const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+  const today = startOfTodayTbilisi();
+  const monthStart = monthStartTbilisi(0);
+  const monthEnd = monthStartTbilisi(1);
 
   const [assets, monthBookings, unitCount, alertCount] = await Promise.all([
     prisma.asset.findMany({
@@ -901,10 +906,10 @@ async function PersonalDashboard({
   ]);
 
   const activeContract = (asset: (typeof assets)[number]) =>
-    asset.contracts.find(
-      (c) => c.status !== "ended" && c.startDate <= now && c.endDate >= now,
-    );
+    runningContract(asset.contracts, today);
 
+  // monthlyRent is the normalised monthly equivalent, so a daily car adds
+  // a month of its day rate, not one day.
   const rentIncome = assets.reduce(
     (sum, asset) => sum + (activeContract(asset)?.monthlyRent ?? 0),
     0,

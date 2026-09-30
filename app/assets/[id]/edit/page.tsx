@@ -16,6 +16,10 @@ import ContractForm from "../../contract-form";
 import ListingControls, { type ListingLink } from "../../listing-controls";
 import DoorKey from "../../door-key";
 import { assetFormProps } from "../../form-helpers";
+import { dayKey, monthStartTbilisi, startOfTodayTbilisi, tbilisiFormat } from "@/lib/time";
+import { activeContract as runningContract, assetStatusNow, contractPhase } from "@/lib/rentals/phase";
+import { perDayAmount } from "@/lib/rentals/amount";
+import { rentLabel } from "@/lib/rentals/display";
 
 export const dynamic = "force-dynamic";
 
@@ -86,11 +90,12 @@ export default async function EditAssetPage({
   const props = await assetFormProps(locale, operator.id, asset.id);
   const isIncome = asset.category === "income_source";
 
-  const now = new Date();
-  const activeContract = asset.contracts.find(
-    (c) => c.status !== "ended" && c.startDate <= now && c.endDate >= now,
-  );
-  const status = activeContract ? "rented" : asset.unitId ? "str" : asset.status;
+  const today = startOfTodayTbilisi();
+  const activeContract = runningContract(asset.contracts, today);
+  // The asset follows its contracts: a lease that ended in August no
+  // longer keeps it "rented".
+  const ownStatus = assetStatusNow(asset, asset.contracts, today);
+  const status = activeContract ? "rented" : asset.unitId ? "str" : ownStatus;
 
   const record = asset as unknown as Record<string, string | null>;
   const links: ListingLink[] =
@@ -110,8 +115,8 @@ export default async function EditAssetPage({
   // ── Per-asset occupancy calendar: 2 months back through 3 ahead. ──
   // Days are colored by rental contracts (lease) and, when the asset is
   // linked to an STR unit, by that unit's bookings per source.
-  const calStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 2, 1));
-  const calEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 4, 1));
+  const calStart = monthStartTbilisi(-2);
+  const calEnd = monthStartTbilisi(4);
   const showCalendar = !isIncome;
   const bookings = showCalendar && asset.unitId
     ? await prisma.booking.findMany({
@@ -124,15 +129,15 @@ export default async function EditAssetPage({
         select: { source: true, checkIn: true, checkOut: true, amount: true, nights: true },
       })
     : [];
+  // Every contract is drawn, finished ones too — the calendar looks back
+  // two months, and a past stay is part of the record.
   const stays = [
-    ...asset.contracts
-      .filter((c) => c.status !== "ended")
-      .map((c) => ({
+    ...asset.contracts.map((c) => ({
         kind: "lease",
         start: c.startDate,
         end: c.endDate,
-        // For daily-mode assets the contract amount IS the day price.
-        dayAmount: asset.rentalMode === "daily" ? c.monthlyRent : null,
+        // Daily lets show each rented day's price.
+        dayAmount: asset.rentalMode === "daily" ? Math.round(perDayAmount(c)) : null,
       })),
     ...bookings.map((b) => ({
       kind: b.source,
@@ -150,13 +155,13 @@ export default async function EditAssetPage({
   const weekendPct = asset.weekendPct ?? 0;
   const holidayPct = asset.holidayPct ?? 0;
 
-  const intl = locale === "ka" ? "ka-GE" : "en-GB";
-  const fmtMonth = new Intl.DateTimeFormat(intl, { month: "short" });
-  const fmtDate = new Intl.DateTimeFormat(intl, {
+  const fmtMonth = tbilisiFormat(locale, { month: "short" });
+  const fmtDate = tbilisiFormat(locale, {
     day: "numeric", month: "short", year: "numeric",
   });
 
-  const fmtDay = new Intl.DateTimeFormat(intl, { day: "numeric", month: "short" });
+  const fmtDay = tbilisiFormat(locale, { day: "numeric", month: "short" });
+
   const months: {
     label: string;
     current: boolean;
@@ -189,14 +194,14 @@ export default async function EditAssetPage({
           ? t(locale, "status_rented")
           : t(locale, "calendar_vacant");
         return {
-          iso: dayStart.toISOString().slice(0, 10),
+          iso: dayKey(dayStart),
           cls,
           title: `${fmtDay.format(dayStart)} — ${statusText}${priceText}`,
         };
       });
       months.push({
         label: fmtMonth.format(mStart),
-        current: fmtMonth.format(mStart) === fmtMonth.format(now),
+        current: mStart.getTime() === monthStartTbilisi(0).getTime(),
         days,
       });
     }
@@ -204,7 +209,7 @@ export default async function EditAssetPage({
 
   const calendarLabelKeys: StringKey[] = [
     "drag_hint", "mark_range_title", "mark_save", "nights_short",
-    "contract_start", "contract_end", "contract_rent", "daily_rate",
+    "contract_start", "contract_end", "contract_amount_monthly", "contract_amount_daily",
     "contract_tenant", "cancel", "error_required", "error_invalid_number",
     "error_dates",
   ];
@@ -214,9 +219,12 @@ export default async function EditAssetPage({
 
   const contractLabelKeys: StringKey[] = [
     "contract_add", "contract_tenant", "tenant_phone", "contract_start", "contract_end",
-    "contract_rent", "contract_deposit", "asset_notes", "error_required",
+    "contract_deposit", "asset_notes", "error_required",
     "error_invalid_number", "error_dates", "error_email_taken",
     "pay_period", "period_daily", "period_weekly", "period_monthly", "pay_grace",
+    "contract_amount_daily", "contract_amount_weekly", "contract_amount_monthly",
+    "contract_monthly_equiv", "contract_paid_up_to", "contract_paid_up_to_hint",
+    "contract_reminders",
   ];
   const contractLabels = Object.fromEntries(
     contractLabelKeys.map((key) => [key, t(locale, key)]),
@@ -328,7 +336,9 @@ export default async function EditAssetPage({
             defaultRate={
               asset.rentalMode === "daily"
                 ? asset.dailyRate
-                : asset.contracts[0]?.monthlyRent ?? null
+                : asset.contracts[0]
+                  ? Math.round(asset.contracts[0].monthlyRent)
+                  : null
             }
             isDaily={asset.rentalMode === "daily"}
             labels={calendarLabels}
@@ -360,7 +370,9 @@ export default async function EditAssetPage({
           dailyRate: asset.dailyRate?.toString() ?? "",
           weekendPct: asset.weekendPct?.toString() ?? "",
           holidayPct: asset.holidayPct?.toString() ?? "",
-          status: asset.status,
+          // The form starts from the status as it stands today, so saving
+          // it never re-confirms a "rented" left over from an ended lease.
+          status: ownStatus,
           unitId: asset.unitId ?? "",
           notes: asset.notes ?? "",
         }}
@@ -378,14 +390,12 @@ export default async function EditAssetPage({
                   style={{ padding: "12px 18px", alignItems: "center" }}
                 >
                   <div>
-                    <span className="font-medium">
-                      {contract.monthlyRent} {contract.currency}
-                    </span>{" "}
+                    <span className="font-medium">{rentLabel(locale, contract)}</span>{" "}
                     · {contract.tenantName ?? "—"}
                     {contract.tenantPhone ? ` (${contract.tenantPhone})` : ""} · {fmtDate.format(contract.startDate)}{" "}
                     – {fmtDate.format(contract.endDate)}{" "}
                     <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
-                      ({t(locale, `cstatus_${contract.status}` as StringKey)})
+                      ({t(locale, `cstatus_${contractPhase(contract, today)}` as StringKey)})
                     </span>
                   </div>
                   <form action={deleteContract}>

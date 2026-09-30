@@ -14,7 +14,10 @@ import ListingControls, { type ListingLink } from "./listing-controls";
 import DoorKey from "./door-key";
 import AssetSegments from "./asset-segments";
 import AssetFlipCard, { type FlipAsset } from "./asset-flip-card";
-import { statusFor } from "@/lib/rentals/monitor";
+import { statusFor } from "@/lib/rentals/terms";
+import { activeContract as runningContract, assetStatusNow } from "@/lib/rentals/phase";
+import { rentLabel } from "@/lib/rentals/display";
+import { monthKeyTbilisi, monthStartTbilisi, startOfTodayTbilisi, tbilisiFormat } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
 
@@ -127,10 +130,10 @@ export default async function AssetsPage() {
   const operator = await requireOperator();
 
   const locale = await getLocale();
-  const now = new Date();
-  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-  const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
-  const monthKey = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+  const today = startOfTodayTbilisi();
+  const monthStart = monthStartTbilisi(0);
+  const monthEnd = monthStartTbilisi(1);
+  const monthKey = monthKeyTbilisi();
 
   const [assets, monthBookings, monthIncomes] = await Promise.all([
     prisma.asset.findMany({
@@ -157,12 +160,16 @@ export default async function AssetsPage() {
   ]);
 
   const activeContract = (asset: (typeof assets)[number]) =>
-    asset.contracts.find(
-      (c) => c.status !== "ended" && c.startDate <= now && c.endDate >= now,
-    );
+    runningContract(asset.contracts, today);
 
+  // The asset follows its contracts: "Rented" only while one runs, so a
+  // lease that ended in August no longer shows "Rented · Contract —".
   const effectiveStatus = (asset: (typeof assets)[number]) =>
-    activeContract(asset) ? "rented" : asset.unitId ? "str" : asset.status;
+    activeContract(asset)
+      ? "rented"
+      : asset.unitId
+        ? "str"
+        : assetStatusNow(asset, asset.contracts, today);
 
   // Listing links per asset: platform set follows the category; assets in
   // personal use get no links at all (nothing is published for them).
@@ -178,7 +185,8 @@ export default async function AssetsPage() {
       }));
   };
 
-  // Income consolidation for the current month.
+  // Income consolidation for the current month. monthlyRent is the
+  // normalised monthly equivalent, whatever the payment period.
   const rentIncome = assets.reduce((sum, asset) => {
     const contract = activeContract(asset);
     return sum + (contract?.monthlyRent ?? 0);
@@ -282,8 +290,7 @@ export default async function AssetsPage() {
     ),
   );
 
-  const intl = locale === "ka" ? "ka-GE" : "en-GB";
-  const fmtDate = new Intl.DateTimeFormat(intl, { day: "numeric", month: "short", year: "numeric" });
+  const fmtDate = tbilisiFormat(locale, { day: "numeric", month: "short", year: "numeric" });
   const money = (v: number) => `${Math.round(v).toLocaleString("en-US")} GEL`;
   const displayName = (a: { name: string; nameKa: string | null }) =>
     locale === "ka" && a.nameKa ? a.nameKa : a.name;
@@ -299,10 +306,12 @@ export default async function AssetsPage() {
       monthlyRent: number;
       graceDays: number;
       paidThrough: Date | null;
+      creditBalance: number;
     } | null | undefined,
+    pricing: { dailyRate: number | null; weekendPct: number | null; holidayPct: number | null },
   ) => {
     if (!contract?.paidThrough) return null;
-    const status = statusFor(contract, now);
+    const status = statusFor(contract, today, pricing);
     if (status.state !== "grace" && status.state !== "repossess") return null;
     return {
       label: `${t(locale, "pay_days_overdue")}: ${status.daysOverdue}`,
@@ -388,7 +397,7 @@ export default async function AssetsPage() {
                   statusLabel: t(locale, `status_${status}` as StringKey),
                   statusClass: STATUS_BADGE[status] ?? STATUS_BADGE.personal_use,
                   contract: contract
-                    ? `${contract.monthlyRent} ${contract.currency} · ${contract.tenantName ?? "—"}`
+                    ? `${rentLabel(locale, contract)} · ${contract.tenantName ?? "—"}`
                     : null,
                   contractUntil: contract ? fmtDate.format(contract.endDate) : null,
                   marketRent: marketRent ? `~${marketRent} GEL` : null,
@@ -397,7 +406,7 @@ export default async function AssetsPage() {
                   ),
                   value: asset.estimatedValue ? money(asset.estimatedValue) : null,
                   daily: asset.rentalMode === "daily",
-                  overdue: overdueBadge(contract),
+                  overdue: overdueBadge(contract, asset),
                   serviceHref: `/assets/${asset.id}/rental`,
                   category: asset.category,
                 };

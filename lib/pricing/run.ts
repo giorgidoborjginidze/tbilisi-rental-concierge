@@ -3,6 +3,7 @@
 // them as PricingSuggestion rows (idempotent upsert per unit+date).
 
 import { prisma } from "@/lib/db";
+import { startOfTodayTbilisi } from "@/lib/time";
 import { getMarketDataSource } from "@/lib/market/source";
 import { suggestRate, type PricingResult } from "./engine";
 import { generateRationales } from "@/lib/ai/rationale";
@@ -28,9 +29,7 @@ export async function computeSuggestionsForUnit(
   const unit = await prisma.unit.findUnique({ where: { id: unitId } });
   if (!unit) return null;
 
-  const start = new Date(
-    Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()),
-  );
+  const start = startOfTodayTbilisi(today);
   const next30End = new Date(start.getTime() + 30 * DAY_MS);
 
   // The unit's own occupancy over the next 30 days drives the demand factor.

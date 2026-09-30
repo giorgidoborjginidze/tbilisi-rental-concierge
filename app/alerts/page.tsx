@@ -5,6 +5,9 @@ import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
 import { runAlertScan, setAlertStatus } from "@/lib/alerts/actions";
+import { templateFamily } from "@/lib/notify/templates";
+import { formatAmount, periodWordKey } from "@/lib/rentals/display";
+import { tbilisiFormat } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +16,7 @@ const TYPE_STYLE: Record<string, string> = {
   lease_expiry: "alert-card--lease",
   underpriced: "alert-card--underpriced",
   contract_expiry: "alert-card--contract",
+  contract_ended: "alert-card--contract",
   rent_overdue: "alert-card--overdue",
   repossession_right: "alert-card--repossess",
   geofence_breach: "alert-card--geofence",
@@ -32,6 +36,9 @@ interface AlertPayload {
   assetId?: string;
   assetName?: string;
   monthlyRent?: number;
+  paymentAmount?: number | null;
+  paymentPeriod?: string;
+  category?: string;
   // Car rentals: late payment and red-line crossings.
   plate?: string | null;
   currency?: string;
@@ -77,7 +84,13 @@ export default async function AlertsPage({
       case "underpriced":
         return `${payload.baseNightlyRate} → ${payload.suggestedRate} ${currency} · ADR ${payload.benchmarkAdr} (${payload.month})`;
       case "contract_expiry":
-        return `${payload.assetName} · ${payload.tenantName ?? "—"} · ${payload.monthlyRent} ${currency} · ${payload.endDate} · ${payload.daysLeft} ${t(locale, "days_left")}`;
+        return `${payload.assetName} · ${payload.tenantName ?? "—"} · ${
+          payload.paymentAmount != null && payload.paymentPeriod
+            ? `${formatAmount(payload.paymentAmount)} ${currency} / ${t(locale, periodWordKey(payload.paymentPeriod))}`
+            : `${payload.monthlyRent} ${currency}`
+        } · ${payload.endDate} · ${payload.daysLeft} ${t(locale, "days_left")}`;
+      case "contract_ended":
+        return `${payload.assetName} · ${payload.tenantName ?? "—"} · ${t(locale, "cstatus_ended")}: ${payload.endDate}`;
       case "rent_overdue":
       case "repossession_right":
         return [
@@ -138,11 +151,21 @@ export default async function AlertsPage({
         alerts.map((alert) => {
           const payload = alert.payload as AlertPayload;
           const currency = alert.unit?.currency ?? "GEL";
+          // Late rent on a flat is not a vehicle to take back.
+          const property =
+            alert.type === "repossession_right" &&
+            payload.category != null &&
+            templateFamily(payload.category) === "property";
           return (
             <div key={alert.id} className={`alert-card ${TYPE_STYLE[alert.type] ?? ""}`}>
               <div>
                 <div className="alert-card__title">
-                  {t(locale, `alert_${alert.type}` as StringKey)}
+                  {t(
+                    locale,
+                    property
+                      ? "alert_repossession_right_property"
+                      : (`alert_${alert.type}` as StringKey),
+                  )}
                   {alert.unit && (
                     <>
                       {" "}
@@ -157,14 +180,19 @@ export default async function AlertsPage({
                 </div>
                 <div className="alert-card__action">
                   <b>{t(locale, "alert_action")}:</b>{" "}
-                  {t(locale, `action_${alert.type}` as StringKey)}
+                  {t(
+                    locale,
+                    property
+                      ? "action_repossession_right_property"
+                      : (`action_${alert.type}` as StringKey),
+                  )}
                 </div>
               </div>
               {done ? (
                 <span className="badge badge--rented">
                   {t(locale, "alert_done_at")}
                   {alert.resolvedAt
-                    ? ` · ${new Intl.DateTimeFormat(locale === "ka" ? "ka-GE" : "en-GB", { day: "numeric", month: "short" }).format(alert.resolvedAt)}`
+                    ? ` · ${tbilisiFormat(locale, { day: "numeric", month: "short" }).format(alert.resolvedAt)}`
                     : ""}
                 </span>
               ) : (

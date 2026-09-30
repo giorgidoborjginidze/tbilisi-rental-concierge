@@ -419,7 +419,7 @@ async function main() {
       contract: {
         tenantName: "L. Gelashvili", tenantPhone: "+995 599 11 22 33",
         startDate: utc(2025, 9, 1), endDate: utc(2026, 8, 10),
-        monthlyRent: 1400, deposit: 1400, status: "active",
+        paymentAmount: 1400, monthlyRent: 1400, deposit: 1400, status: "ended",
       },
     },
     // 2) Commercial space listed on ss.ge
@@ -492,7 +492,7 @@ async function main() {
       contract: {
         tenantName: "N. Adeishvili", tenantPhone: null,
         startDate: utc(2026, 1, 1), endDate: utc(2026, 12, 31),
-        monthlyRent: 250, deposit: null, status: "active",
+        paymentAmount: 250, monthlyRent: 250, deposit: null, status: "active",
       },
     },
     // 10) Personal car — no listings by design
@@ -510,7 +510,7 @@ async function main() {
       contract: {
         tenantName: "G. Tsiklauri", tenantPhone: "+995 555 44 33 22",
         startDate: utc(2026, 5, 1), endDate: utc(2027, 5, 1),
-        monthlyRent: 900, deposit: 900, status: "active",
+        paymentAmount: 900, monthlyRent: 900, deposit: 900, status: "active",
       },
     },
     // 11b) Daily-rental car: per-day pricing with weekend/holiday premiums
@@ -523,7 +523,9 @@ async function main() {
       contract: {
         tenantName: "L. Kapanadze", tenantPhone: "+995 599 11 22 33",
         startDate: utc(2026, 7, 20), endDate: utc(2026, 7, 23),
-        monthlyRent: 95, deposit: null, status: "active",
+        // 95 a day; monthlyRent is always the monthly equivalent (× 30.44).
+        paymentPeriod: "daily", paymentAmount: 95, monthlyRent: 2891.8,
+        deposit: null, status: "ended",
       },
     },
     // 12) Recurring income stream — amount only, no payer details
@@ -545,8 +547,11 @@ async function main() {
       data: { ...assetData, operatorId: operator.id, currency: "GEL" },
     });
     if (contract) {
+      // Not tracked yet (no paid-up-to date): the owner states how far the
+      // rent is paid. The ledger counts as opened, so the deploy-time
+      // repair (scripts/repair-ledger.ts) leaves these rows alone.
       await prisma.rentalContract.create({
-        data: { ...contract, assetId: asset.id, currency: "GEL" },
+        data: { ...contract, assetId: asset.id, currency: "GEL", openingAt: new Date() },
       });
       contractCount += 1;
     }

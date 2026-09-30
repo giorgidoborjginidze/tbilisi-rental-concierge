@@ -8,13 +8,12 @@ import type { FormState } from "@/lib/units/actions";
 import { TEMPLATE_KEYS, type TemplateKey } from "@/lib/notify/templates";
 import { flushOutbox } from "@/lib/notify/whatsapp";
 import { parsePolygon } from "@/lib/geo/fence";
-import {
-  PAYMENT_PERIODS,
-  advancePaidThrough,
-  periodsCovered,
-  type PaymentPeriod,
-} from "./schedule";
-import { periodAmount } from "./monitor";
+import { startOfTodayTbilisi } from "@/lib/time";
+import { PAYMENT_PERIODS, snapToBoundary, type PaymentPeriod } from "./schedule";
+import { monthlyEquivalent } from "./amount";
+import { alignPaidThrough, applyPayment, replayLedger } from "./ledger";
+import { contractTerms, periodAmount } from "./terms";
+import { settlePaidRent } from "./settle";
 
 const str = (formData: FormData, key: string) =>
   String(formData.get(key) ?? "").trim();
@@ -38,11 +37,20 @@ async function ownAsset(assetId: string) {
 const refresh = (assetId: string) => {
   revalidatePath(`/assets/${assetId}/rental`);
   revalidatePath(`/assets/${assetId}/edit`);
+  revalidatePath("/assets");
   revalidatePath("/alerts");
+  revalidatePath("/");
 };
 
 // ── Payment schedule ────────────────────────────────────────────────────
 
+/**
+ * Save the payment terms of a contract: period, amount per period, grace
+ * days, reminders — and "paid up to", the owner's statement of how far the
+ * rent is paid. Restating that date, or changing the period or the amount,
+ * opens a new ledger balance: payments recorded from then on are replayed
+ * on top of it, so an older payment is never re-priced at a new rate.
+ */
 export async function saveSchedule(
   _prev: FormState,
   formData: FormData,
@@ -58,7 +66,7 @@ export async function saveSchedule(
   if (!PAYMENT_PERIODS.includes(period)) return { error: "error_required" };
 
   const amount = optionalNumber(formData, "paymentAmount");
-  if (Number.isNaN(amount) || (amount != null && amount <= 0)) {
+  if (amount == null || Number.isNaN(amount) || amount <= 0) {
     return { error: "error_invalid_number" };
   }
   const graceRaw = optionalNumber(formData, "graceDays");
@@ -66,28 +74,86 @@ export async function saveSchedule(
     return { error: "error_invalid_number" };
   }
 
-  const paidThroughRaw = str(formData, "paidThrough");
+  const contract = await prisma.rentalContract.findFirst({
+    where: { id: contractId, assetId },
+  });
+  if (!contract) return { error: "error_required" };
+
+  const next = {
+    ...contract,
+    paymentPeriod: period,
+    paymentAmount: amount,
+    monthlyRent: monthlyEquivalent(amount, period),
+  };
+  const terms = contractTerms(next, owned.asset);
+  const termsChanged =
+    period !== contract.paymentPeriod ||
+    Math.abs(amount - periodAmount(contract)) >= 0.005;
+
+  let ledger: {
+    paidThrough: Date | null;
+    creditBalance: number;
+    openingPaidThrough: Date | null;
+    openingCredit: number;
+    openingAt: Date;
+  } | null = null;
+
+  const paidRaw = str(formData, "paidThrough");
+  const typed = paidRaw ? new Date(`${paidRaw}T00:00:00Z`) : null;
+  if (typed && Number.isNaN(typed.getTime())) return { error: "error_required" };
+  const stated = typed
+    ? snapToBoundary(contract.startDate, contract.endDate, period, typed)
+    : null;
+
+  if (stated && stated.getTime() !== contract.paidThrough?.getTime()) {
+    // The owner restates the balance: paid up to this date, no credit.
+    ledger = {
+      paidThrough: stated,
+      creditBalance: 0,
+      openingPaidThrough: stated,
+      openingCredit: 0,
+      openingAt: new Date(),
+    };
+  } else if (termsChanged) {
+    // Same balance on new terms: carry it over, onto the new period grid.
+    const paidThrough = contract.paidThrough
+      ? alignPaidThrough(terms, contract.paidThrough)
+      : null;
+    ledger = {
+      paidThrough,
+      creditBalance: contract.creditBalance,
+      openingPaidThrough: paidThrough,
+      openingCredit: contract.creditBalance,
+      openingAt: new Date(),
+    };
+  }
+
+  const remindersEnabled = formData.has("remindersField")
+    ? formData.get("remindersEnabled") === "on"
+    : contract.remindersEnabled;
 
   await prisma.rentalContract.updateMany({
     where: { id: contractId, assetId },
     data: {
       paymentPeriod: period,
       paymentAmount: amount,
+      monthlyRent: next.monthlyRent,
       graceDays: Math.round(graceRaw),
-      ...(paidThroughRaw
-        ? { paidThrough: new Date(`${paidThroughRaw}T00:00:00Z`) }
-        : {}),
+      remindersEnabled,
+      ...(ledger ?? {}),
     },
   });
+  if (ledger) await settlePaidRent(prisma, contractId, ledger.paidThrough);
 
   refresh(assetId);
   return null;
 }
 
 /**
- * Record money received. The schedule moves forward by whole periods only,
- * so a part payment leaves the contract exactly as late as it was — which
- * is the honest answer.
+ * Record money received. It pays the owed periods in order, each at the
+ * price the schedule shows for it; what does not cover a whole period is
+ * kept as credit toward the next one. A part payment therefore leaves the
+ * contract exactly as late as it was — and the money is not lost.
  */
 export async function recordPayment(
   _prev: FormState,
@@ -106,19 +172,18 @@ export async function recordPayment(
     where: { id: contractId, assetId },
   });
   if (!contract) return { error: "error_required" };
+  // Without a paid-up-to date there is nothing to count the money from.
+  if (!contract.paidThrough) return { error: "error_untracked" };
 
-  const period = (contract.paymentPeriod as PaymentPeriod) ?? "monthly";
-  const perPeriod = periodAmount(contract);
-  const covered = Math.max(1, periodsCovered(amount, perPeriod));
-  const periodStart = contract.paidThrough ?? contract.startDate;
-  const periodEnd = advancePaidThrough(
-    contract.paidThrough,
-    contract.startDate,
-    period,
-    covered,
+  const step = applyPayment(
+    contractTerms(contract, owned.asset),
+    { paidThrough: contract.paidThrough, credit: contract.creditBalance },
+    amount,
   );
 
   const paidAtRaw = str(formData, "paidAt");
+  const paidAt = paidAtRaw ? new Date(`${paidAtRaw}T00:00:00Z`) : startOfTodayTbilisi();
+  if (Number.isNaN(paidAt.getTime())) return { error: "error_required" };
 
   await prisma.$transaction([
     prisma.rentPayment.create({
@@ -126,23 +191,30 @@ export async function recordPayment(
         contractId,
         amount,
         currency: contract.currency,
-        paidAt: paidAtRaw ? new Date(`${paidAtRaw}T00:00:00Z`) : new Date(),
-        periodStart,
-        periodEnd,
+        paidAt,
+        periodStart: step.periodStart,
+        periodEnd: step.periodEnd,
         method: str(formData, "method") || "cash",
         note: str(formData, "note") || null,
       },
     }),
     prisma.rentalContract.update({
       where: { id: contractId },
-      data: { paidThrough: periodEnd },
+      data: { paidThrough: step.state.paidThrough, creditBalance: step.state.credit },
     }),
   ]);
+  await settlePaidRent(prisma, contractId, step.state.paidThrough);
 
   refresh(assetId);
   return null;
 }
 
+/**
+ * Delete a payment and rebuild the schedule from the ledger's opening
+ * balance and the payments that remain, so a period paid by a later
+ * payment never re-opens. Payments from before the balance was last
+ * restated are part of that statement and are not deleted here.
+ */
 export async function deletePayment(formData: FormData) {
   const assetId = str(formData, "assetId");
   const paymentId = str(formData, "paymentId");
@@ -151,16 +223,56 @@ export async function deletePayment(formData: FormData) {
 
   const payment = await prisma.rentPayment.findFirst({
     where: { id: paymentId, contract: { assetId } },
+    include: { contract: true },
   });
   if (!payment) return;
+  const contract = payment.contract;
+  if (contract.openingAt && payment.createdAt <= contract.openingAt) return;
 
-  // Roll the schedule back to where this payment started.
+  const all = await prisma.rentPayment.findMany({
+    where: {
+      contractId: contract.id,
+      ...(contract.openingAt ? { createdAt: { gt: contract.openingAt } } : {}),
+    },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+  });
+  const remaining = all.filter((row) => row.id !== paymentId);
+
+  // Contracts from before the ledger had an opening balance replay from
+  // where their first recorded payment started.
+  const openingPaidThrough =
+    contract.openingPaidThrough ??
+    (all.length > 0
+      ? all.reduce(
+          (min, row) => (row.periodStart < min ? row.periodStart : min),
+          all[0].periodStart,
+        )
+      : contract.startDate);
+  const replay = replayLedger(
+    contractTerms(contract, owned.asset),
+    { paidThrough: openingPaidThrough, credit: contract.openingAt ? contract.openingCredit : 0 },
+    remaining.map((row) => row.amount),
+  );
+
   await prisma.$transaction([
     prisma.rentPayment.delete({ where: { id: paymentId } }),
     prisma.rentalContract.update({
-      where: { id: payment.contractId },
-      data: { paidThrough: payment.periodStart },
+      where: { id: contract.id },
+      data: {
+        paidThrough: replay.state.paidThrough,
+        creditBalance: replay.state.credit,
+      },
     }),
+    // Keep each remaining row's window true to the replayed schedule.
+    ...remaining.map((row, i) =>
+      prisma.rentPayment.update({
+        where: { id: row.id },
+        data: {
+          periodStart: replay.applied[i].periodStart,
+          periodEnd: replay.applied[i].periodEnd,
+        },
+      }),
+    ),
   ]);
   refresh(assetId);
 }
@@ -323,8 +435,11 @@ export async function saveNotifySetup(
   });
 
   // A template row exists only while it differs from the default, so
-  // clearing a field restores the built-in wording.
+  // clearing a field restores the built-in wording. Only the templates the
+  // form actually showed are touched: a flat's page lists the lease texts,
+  // a car's page the vehicle texts, and neither may wipe the other's.
   for (const key of TEMPLATE_KEYS) {
+    if (!formData.has(`tpl_${key}`)) continue;
     const body = str(formData, `tpl_${key}`);
     if (!body) {
       await prisma.notifyTemplate.deleteMany({

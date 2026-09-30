@@ -6,7 +6,11 @@ import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
 import { siteUrl } from "@/lib/site";
 import { evaluateFence, shapeFromRow } from "@/lib/geo/fence";
-import { statusFor } from "@/lib/rentals/monitor";
+import { periodAmount, statusFor } from "@/lib/rentals/terms";
+import { scheduleContract } from "@/lib/rentals/phase";
+import { asPeriod } from "@/lib/rentals/amount";
+import { defaultPaidThrough } from "@/lib/rentals/schedule";
+import { dayKey, startOfTodayTbilisi, tbilisiFormat } from "@/lib/time";
 import {
   deleteGeofence,
   deleteGpsDevice,
@@ -19,7 +23,8 @@ import {
 } from "@/lib/rentals/actions";
 import {
   DEFAULT_TEMPLATES,
-  TEMPLATE_KEYS,
+  templateFamily,
+  templateKeysFor,
   type TemplateKey,
 } from "@/lib/notify/templates";
 import { waLink } from "@/lib/notify/phone";
@@ -28,6 +33,7 @@ import ScheduleForm from "./schedule-form";
 import GpsForm from "./gps-form";
 import FenceForm from "./fence-form";
 import TemplatesForm, { type TemplateField } from "./templates-form";
+import ConfirmSubmit from "./confirm-submit";
 
 export const dynamic = "force-dynamic";
 
@@ -52,7 +58,8 @@ const LABEL_KEYS: StringKey[] = [
   "error_device_taken", "error_fence_points",
   "pay_period", "period_daily", "period_weekly", "period_monthly",
   "pay_amount", "pay_amount_hint", "pay_grace", "pay_grace_hint",
-  "pay_paid_through", "pay_paid_through_hint", "pay_start_date", "pay_start_hint",
+  "pay_paid_through", "pay_paid_through_hint", "contract_reminders",
+  "pay_grace_hint_property", "error_untracked",
   "pay_record", "pay_received",
   "pay_date", "pay_method", "method_cash", "method_transfer", "method_card",
   "method_other", "pay_note", "pay_partial_hint",
@@ -65,8 +72,9 @@ const LABEL_KEYS: StringKey[] = [
   "tpl_notify_phone", "tpl_notify_phone_hint", "tpl_vars_hint", "tpl_save",
 ];
 
-// The rental service for one asset: what the renter owes and when, where
-// the vehicle is allowed to go, and every message that goes out about it.
+// The rental service for one asset: what the renter owes and when, every
+// message that goes out about it — and, for vehicles only, the GPS tracker
+// and the red lines. A flat gets no car tooling.
 export default async function RentalServicePage({
   params,
 }: {
@@ -86,20 +94,23 @@ export default async function RentalServicePage({
   if (!asset) notFound();
 
   const locale = await getLocale();
-  const now = new Date();
+  const today = startOfTodayTbilisi();
   const displayName = locale === "ka" && asset.nameKa ? asset.nameKa : asset.name;
+  const isVehicle = templateFamily(asset.category) === "vehicle";
 
   const labels = Object.fromEntries(LABEL_KEYS.map((key) => [key, t(locale, key)]));
+  if (!isVehicle) {
+    labels.pay_grace_hint = labels.pay_grace_hint_property;
+    labels.tpl_vars_hint = t(locale, "tpl_vars_hint_property");
+  }
 
-  // ── The contract the schedule follows ──
-  const contract =
-    asset.contracts.find(
-      (c) => c.status === "active" || (c.startDate <= now && c.endDate >= now),
-    ) ?? null;
-  // Without a paid-through date the schedule was never tracked, so the
+  // ── The contract the schedule follows: the one running today, else the
+  // next to start. A finished contract is not followed any more. ──
+  const contract = scheduleContract(asset.contracts, today) ?? null;
+  // Without a paid-up-to date the schedule was never tracked, so the
   // numbers would be fiction — the page asks for the starting point instead.
   const tracked = contract?.paidThrough != null;
-  const status = contract && tracked ? statusFor(contract, now, asset) : null;
+  const status = contract && tracked ? statusFor(contract, today, asset) : null;
   const payments = contract
     ? await prisma.rentPayment.findMany({
         where: { contractId: contract.id },
@@ -132,7 +143,7 @@ export default async function RentalServicePage({
     where: { operatorId: operator.id },
   });
   const overrideBy = new Map(overrides.map((row) => [row.key, row.body]));
-  const templateFields: TemplateField[] = TEMPLATE_KEYS.map((key) => {
+  const templateFields: TemplateField[] = templateKeysFor(asset.category).map((key) => {
     const override = overrideBy.get(key);
     return {
       key,
@@ -154,19 +165,28 @@ export default async function RentalServicePage({
   });
   const autoSend = whatsappConfig() != null;
 
-  const intl = locale === "ka" ? "ka-GE" : "en-GB";
-  const fmtDate = new Intl.DateTimeFormat(intl, {
+  // Every date and time in Tbilisi time: a ping at 06:38 UTC is 10:38.
+  const fmtDate = tbilisiFormat(locale, {
     day: "numeric", month: "short", year: "numeric",
   });
   // Compact form for the KPI tiles, so a date never wraps onto two lines.
-  const fmtShort = new Intl.DateTimeFormat("en-GB", {
+  const fmtShort = tbilisiFormat("en", {
     day: "2-digit", month: "2-digit", year: "2-digit",
   });
-  const fmtStamp = new Intl.DateTimeFormat(intl, {
+  const fmtStamp = tbilisiFormat(locale, {
     day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
   });
-  const iso = (date: Date) => date.toISOString().slice(0, 10);
+  const iso = dayKey;
   const money = (value: number) => Math.round(value).toLocaleString("en-US");
+  const roleLabel = (role: string) =>
+    t(
+      locale,
+      role === "driver"
+        ? "outbox_to_driver"
+        : role === "tenant"
+          ? "outbox_to_tenant"
+          : "outbox_to_owner",
+    );
 
   return (
     <main>
@@ -177,14 +197,14 @@ export default async function RentalServicePage({
         </Link>
       </div>
       <p style={{ color: "var(--color-text-muted)", maxWidth: 640 }}>
-        {t(locale, "rental_service_intro")}
+        {t(locale, isVehicle ? "rental_service_intro" : "rental_service_intro_property")}
       </p>
 
       {/* ── 1. Payment schedule ──────────────────────────────────────── */}
       <section>
         <h2>{t(locale, "pay_schedule_title")}</h2>
         <p className="field-hint" style={{ maxWidth: 640, marginTop: -6 }}>
-          {t(locale, "pay_schedule_intro")}
+          {t(locale, isVehicle ? "pay_schedule_intro" : "pay_schedule_intro_property")}
         </p>
 
         {!contract ? (
@@ -203,7 +223,12 @@ export default async function RentalServicePage({
                 <div className="kpi__label">{t(locale, "status_label")}</div>
                 <div style={{ marginTop: 10 }}>
                   <span className={`badge ${STATE_BADGE[status.state]}`}>
-                    {t(locale, `pstate_${status.state}` as StringKey)}
+                    {t(
+                      locale,
+                      status.state === "repossess" && !isVehicle
+                        ? "pstate_repossess_property"
+                        : (`pstate_${status.state}` as StringKey),
+                    )}
                   </span>
                 </div>
               </div>
@@ -224,14 +249,28 @@ export default async function RentalServicePage({
                   {money(status.amountDue)}
                   <span className="kpi__unit"> {contract.currency}</span>
                 </div>
+                {status.credit > 0 && (
+                  <div className="kpi__sub">
+                    {t(locale, "pay_credit")}: {money(status.credit)} {contract.currency}
+                  </div>
+                )}
               </div>
             </div>
             )}
 
             {status && status.state !== "ok" && status.state !== "ended" && (
               <p className="field-hint" style={{ marginTop: -8, marginBottom: 14 }}>
-                {t(locale, "pay_repossess_from")}:{" "}
-                <b>{fmtDate.format(status.repossessFrom)}</b>
+                {isVehicle ? (
+                  <>
+                    {t(locale, "pay_repossess_from")}:{" "}
+                    <b>{fmtDate.format(status.repossessFrom)}</b>
+                  </>
+                ) : (
+                  <>
+                    {t(locale, "pay_grace_until")}:{" "}
+                    <b>{fmtDate.format(status.graceEndsOn)}</b>
+                  </>
+                )}
               </p>
             )}
 
@@ -239,11 +278,23 @@ export default async function RentalServicePage({
               assetId={asset.id}
               contractId={contract.id}
               currency={contract.currency}
+              tracked={tracked}
               defaults={{
                 paymentPeriod: contract.paymentPeriod,
-                paymentAmount: contract.paymentAmount?.toString() ?? "",
+                paymentAmount: String(periodAmount(contract)),
                 graceDays: String(contract.graceDays),
-                paidThrough: contract.paidThrough ? iso(contract.paidThrough) : "",
+                // Untracked: suggest the next due date, so one save starts
+                // the schedule in good standing.
+                paidThrough: iso(
+                  contract.paidThrough ??
+                    defaultPaidThrough(
+                      contract.startDate,
+                      contract.endDate,
+                      asPeriod(contract.paymentPeriod),
+                      today,
+                    ),
+                ),
+                remindersEnabled: contract.remindersEnabled,
               }}
               labels={labels}
             />
@@ -268,17 +319,27 @@ export default async function RentalServicePage({
                         {t(locale, `method_${payment.method}` as StringKey)}
                         <span style={{ color: "var(--color-text-muted)" }}>
                           {" "}
-                          ({iso(payment.periodStart)} → {iso(payment.periodEnd)})
+                          {payment.periodStart.getTime() === payment.periodEnd.getTime()
+                            ? `(${t(locale, "pay_kept_credit")})`
+                            : `(${iso(payment.periodStart)} → ${iso(payment.periodEnd)})`}
                         </span>
                         {payment.note ? ` · ${payment.note}` : ""}
                       </div>
-                      <form action={deletePayment}>
-                        <input type="hidden" name="assetId" value={asset.id} />
-                        <input type="hidden" name="paymentId" value={payment.id} />
-                        <button type="submit" className="btn-chip" aria-label="delete payment">
-                          ✕
-                        </button>
-                      </form>
+                      {/* Only payments recorded since the balance was last
+                          stated can be taken back — they are replayed. */}
+                      {(!contract.openingAt || payment.createdAt > contract.openingAt) && (
+                        <form action={deletePayment}>
+                          <input type="hidden" name="assetId" value={asset.id} />
+                          <input type="hidden" name="paymentId" value={payment.id} />
+                          <ConfirmSubmit
+                            className="btn-chip"
+                            ariaLabel={t(locale, "delete")}
+                            message={t(locale, "pay_delete_confirm")}
+                          >
+                            ✕
+                          </ConfirmSubmit>
+                        </form>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -288,7 +349,8 @@ export default async function RentalServicePage({
         )}
       </section>
 
-      {/* ── 2. GPS ───────────────────────────────────────────────────── */}
+      {/* ── 2. GPS (vehicles only) ─────────────────────────────────────── */}
+      {isVehicle && (
       <section>
         <h2>{t(locale, "gps_title")}</h2>
         <p className="field-hint" style={{ maxWidth: 640, marginTop: -6 }}>
@@ -345,8 +407,10 @@ export default async function RentalServicePage({
           </div>
         )}
       </section>
+      )}
 
-      {/* ── 3. Red lines ─────────────────────────────────────────────── */}
+      {/* ── 3. Red lines (vehicles only) ───────────────────────────────── */}
+      {isVehicle && (
       <section>
         <h2>{t(locale, "fence_title")}</h2>
         <p className="field-hint" style={{ maxWidth: 640, marginTop: -6 }}>
@@ -424,6 +488,7 @@ export default async function RentalServicePage({
           </ul>
         )}
       </section>
+      )}
 
       {/* ── 4. Messages ──────────────────────────────────────────────── */}
       <section>
@@ -431,9 +496,11 @@ export default async function RentalServicePage({
         <p className="field-hint" style={{ maxWidth: 640, marginTop: -6 }}>
           {t(locale, "tpl_intro")}
         </p>
-        <p className="alert-card" style={{ display: "block", fontSize: 13 }}>
-          {t(locale, "tpl_disclaimer")}
-        </p>
+        {isVehicle && (
+          <p className="alert-card" style={{ display: "block", fontSize: 13 }}>
+            {t(locale, "tpl_disclaimer")}
+          </p>
+        )}
 
         <TemplatesForm
           assetId={asset.id}
@@ -462,9 +529,9 @@ export default async function RentalServicePage({
                 <div style={{ fontSize: 13, minWidth: 0 }}>
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className="badge badge--listed">
-                      {t(
-                        locale,
-                        message.toRole === "driver" ? "outbox_to_driver" : "outbox_to_owner",
+                      {roleLabel(
+                        // Older rows addressed a flat's tenant as "driver".
+                        message.toRole === "driver" && !isVehicle ? "tenant" : message.toRole,
                       )}
                     </span>
                     <span

@@ -225,6 +225,10 @@ model Asset {
   monthlyIncome  Float? // income_source only — recurring monthly amount (GEL)
   currency       String   @default("GEL")
   status         String   @default("personal_use") // "rented" | "vacant" | "personal_use" | "listed"
+  // When the owner last set `status` by hand. A stored "rented" that is
+  // older than the end of the asset's last contract is stale: the asset
+  // follows its contracts (lib/rentals/phase.ts assetStatusNow).
+  statusSetAt    DateTime?
   rentalMode     String   @default("long_term") // "long_term" | "daily"
   // Daily-rental pricing: base rate plus weekend/holiday premiums (%).
   // Effective day price = dailyRate × (1 + premium/100).
@@ -283,24 +287,43 @@ model RentalContract {
   tenantName  String?
   tenantPhone String? // for WhatsApp (door codes, notifications)
   startDate   DateTime
-  endDate     DateTime
+  endDate     DateTime // exclusive: the day the rental is over (move-out)
+  // The NORMALISED monthly equivalent of the rent (daily × 30.44,
+  // weekly × 4.345), so every monthly figure — KPIs, income bars, market
+  // comparison — adds up. What the renter actually pays per period is
+  // paymentAmount.
   monthlyRent Float
   currency    String   @default("GEL")
   deposit     Float?
+  // Written for compatibility only; never trusted for logic. The phase is
+  // derived from the dates (lib/rentals/phase.ts contractPhase).
   status      String   @default("active") // "active" | "upcoming" | "ended"
   notes       String?
   createdAt   DateTime @default(now())
 
-  // ── Payment schedule (car rentals especially) ──
+  // ── Payment schedule ──
   // The contract says how often the renter pays and how many days late is
-  // still tolerated. Past the grace period the owner has the contractual
-  // right to take the vehicle back — with graceDays = 3 that is day 4.
+  // still tolerated. Past the grace period a car owner has the contractual
+  // right to take the vehicle back; a landlord may act under the lease.
   paymentPeriod String    @default("monthly") // "daily" | "weekly" | "monthly"
-  paymentAmount Float? // per period; falls back to monthlyRent
+  paymentAmount Float? // per period, as typed — the amount actually charged
   graceDays     Int       @default(3)
-  // Paid up to (exclusive): every period starting before this date is
-  // settled. Null means nothing paid yet — the schedule starts at startDate.
+  // Paid up to (exclusive), always a period boundary counted from
+  // startDate: every period starting before this date is settled. Null
+  // means the schedule is not tracked yet (the owner has not said how far
+  // the rent is paid), so nothing is announced about it.
   paidThrough   DateTime?
+  // Money received that does not cover a whole period yet; it counts
+  // toward the next period.
+  creditBalance Float     @default(0)
+  // Automatic WhatsApp reminders to the renter (the owner still gets alerts).
+  remindersEnabled Boolean @default(true)
+  // Opening balance of the payment ledger: the paid-up-to date and credit
+  // the owner stated at `openingAt`. Payments recorded after `openingAt`
+  // are replayed on top of it whenever one of them is deleted.
+  openingPaidThrough DateTime?
+  openingCredit      Float     @default(0)
+  openingAt          DateTime?
 
   asset    Asset         @relation(fields: [assetId], references: [id], onDelete: Cascade)
   payments RentPayment[]
@@ -309,7 +332,8 @@ model RentalContract {
 }
 
 // One received payment against a contract. Recording a payment advances
-// the contract's paidThrough by the periods it covers.
+// the contract's paidThrough by the whole periods it covers; the rest is
+// kept as credit (RentalContract.creditBalance).
 model RentPayment {
   id         String   @id @default(cuid())
   contractId String
@@ -410,7 +434,7 @@ model NotifyMessage {
   assetId    String?
   contractId String?
   toPhone    String // digits only, international
-  toRole     String // "driver" | "owner"
+  toRole     String // "driver" | "tenant" | "owner"
   kind       String // template key this was rendered from
   body       String
   status     String  @default("queued") // "queued" | "sent" | "failed"
@@ -485,7 +509,8 @@ model Alert {
   operatorId String
   unitId     String?
   // "vacancy_gap" | "lease_expiry" | "underpriced" | "contract_expiry"
-  // | "rent_overdue" | "repossession_right" | "geofence_breach"
+  // | "contract_ended" | "rent_overdue" | "repossession_right"
+  // | "geofence_breach"
   type       String
   payload    Json // type-specific details + { suggestedAction: string }
   status     String    @default("open") // "open" | "dismissed" | "resolved"

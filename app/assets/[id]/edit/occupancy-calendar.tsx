@@ -28,7 +28,7 @@ export default function OccupancyCalendar({
 }: {
   assetId: string;
   months: CalMonth[];
-  /** Prefill for the price field: daily rate or last monthly rent. */
+  /** Prefill for the price field: the day rate, or the last monthly rent. */
   defaultRate: number | null;
   isDaily: boolean;
   labels: Record<string, string>;
@@ -167,6 +167,8 @@ export default function OccupancyCalendar({
           style={{ marginTop: 10, alignItems: "flex-end", flexWrap: "wrap", gap: 12 }}
         >
           <input type="hidden" name="assetId" value={assetId} />
+          {/* A daily let is charged per night; anything else per month. */}
+          <input type="hidden" name="paymentPeriod" value={isDaily ? "daily" : "monthly"} />
           <div style={{ fontSize: 13, fontWeight: 600, alignSelf: "center" }}>
             {labels.mark_range_title}: {nights} {labels.nights_short}
           </div>
@@ -179,11 +181,12 @@ export default function OccupancyCalendar({
             <input type="date" name="endDate" defaultValue={dayAfter(range.end)} required />
           </label>
           <label className="field" style={{ width: 130 }}>
-            {isDaily ? labels.daily_rate : labels.contract_rent}
+            {isDaily ? labels.contract_amount_daily : labels.contract_amount_monthly}
             <input
               type="number"
-              name="monthlyRent"
-              min={1}
+              name="amount"
+              min={0.01}
+              step="0.01"
               defaultValue={defaultRate ?? undefined}
               required
             />
