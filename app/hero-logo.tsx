@@ -2,25 +2,16 @@
 
 import { useEffect, useState } from "react";
 import ActivoLogo from "./activo-logo";
+import { afterSplash } from "@/lib/ui/splash";
 
 // The landing hero's logo builds itself the same way the splash one does.
-// It has to wait: the splash covers the page for the first couple of
-// seconds, and an animation that plays behind a cover has already finished
-// by the time anyone can see it. So it holds until the splash says it is
-// done, then starts.
+// When the splash is up it waits for it — an animation that plays behind a
+// cover is over by the time anyone can see it — and without a splash (a
+// second visit this session) it builds at once.
 export default function HeroLogo({ height = 52 }: { height?: number }) {
   const [start, setStart] = useState(false);
 
-  useEffect(() => {
-    const go = () => setStart(true);
-    window.addEventListener("activo:splash-done", go);
-    // Fallback for any route that shows the hero without a splash.
-    const timer = setTimeout(go, 3200);
-    return () => {
-      window.removeEventListener("activo:splash-done", go);
-      clearTimeout(timer);
-    };
-  }, []);
+  useEffect(() => afterSplash(() => setStart(true)), []);
 
   // Hidden until it can actually be watched, so it never appears
   // half-built.

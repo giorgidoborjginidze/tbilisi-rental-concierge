@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { t, type Locale, type StringKey } from "@/lib/i18n/strings";
@@ -9,6 +10,7 @@ import { IconArrowRight } from "./icons";
 import { adviceTips } from "@/lib/alerts/groups";
 import { alertHref } from "@/lib/alerts/links";
 import { ADVICE_TYPES } from "@/lib/alerts/rank";
+import { owingEndingIds } from "@/lib/alerts/owing";
 import { rentalDesk } from "@/lib/rentals/desk";
 import { activeContract as runningContract, assetStatusNow } from "@/lib/rentals/phase";
 import { periodWordKey } from "@/lib/rentals/display";
@@ -222,22 +224,30 @@ export async function MarketTips({
       select: { id: true, unitId: true },
     }),
   ]);
+  // A finished contract that still owes rent is not advice: the rent card
+  // in "Today" already carries it (lib/alerts/owing.ts). Read together with
+  // the names of every place the open advice is about (one round trip).
+  const assetIds = [
+    ...new Set(open.map((alert) => (alert.payload as TipPayload).assetId).filter(Boolean)),
+  ] as string[];
+  const [owing, assets] = await Promise.all([
+    owingEndingIds(operatorId, open),
+    assetIds.length
+      ? prisma.asset.findMany({
+          where: { id: { in: assetIds }, operatorId },
+          select: { id: true, name: true, nameKa: true, category: true, _count: { select: { contracts: { where: LIVE_CONTRACT } } } },
+        })
+      : Promise.resolve([]),
+  ]);
   // One tip per kind per place, the most useful first; each names its
   // place and dates, and leads to the exact spot to act on it.
-  const tips = adviceTips(open, types, new Map(linked.map((asset) => [asset.id, asset.unitId!])));
+  const tips = adviceTips(
+    open.filter((alert) => !owing.has(alert.id)),
+    types,
+    new Map(linked.map((asset) => [asset.id, asset.unitId!])),
+  );
   const shown = tips.slice(0, TIPS_SHOWN);
 
-  const assetIds = [
-    ...new Set(
-      shown.map((tip) => (tip.alerts[0].payload as TipPayload).assetId).filter(Boolean),
-    ),
-  ] as string[];
-  const assets = assetIds.length
-    ? await prisma.asset.findMany({
-        where: { id: { in: assetIds }, operatorId },
-        select: { id: true, name: true, nameKa: true, category: true, _count: { select: { contracts: { where: LIVE_CONTRACT } } } },
-      })
-    : [];
   const assetBy = new Map(assets.map((asset) => [asset.id, asset]));
   const deskOf = (assetId: string) => {
     const asset = assetBy.get(assetId);
@@ -254,7 +264,7 @@ export async function MarketTips({
       ? tbilisiFormat(locale, { month: "long" }).format(new Date(`${key}-01T00:00:00Z`))
       : "";
 
-  const detail = (type: string, payload: TipPayload, currency: string, more: number): string => {
+  const detail = (type: string, payload: TipPayload, currency: string, more: number): ReactNode => {
     switch (type) {
       case "vacancy_gap":
         return [
@@ -266,10 +276,15 @@ export async function MarketTips({
           .filter(Boolean)
           .join(" · ");
       case "underpriced":
-        return `${formatMoney(payload.baseNightlyRate ?? null, currency)} → ${formatMoney(
-          payload.suggestedRate ?? null,
-          currency,
-        )} · ${monthLabel(payload.month)}`;
+        // The arrow is a line icon: a text "→" pulls in a whole symbol
+        // font file just for itself.
+        return (
+          <>
+            {formatMoney(payload.baseNightlyRate ?? null, currency)}{" "}
+            <IconArrowRight size={12} className="inline-arrow" />{" "}
+            {formatMoney(payload.suggestedRate ?? null, currency)} · {monthLabel(payload.month)}
+          </>
+        );
       case "lease_expiry":
       case "contract_expiry":
         return [

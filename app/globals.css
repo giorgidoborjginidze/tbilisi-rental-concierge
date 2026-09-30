@@ -4816,3 +4816,535 @@ td:has(> .confirm-inline) { white-space: normal; }
   .card--stack td:has(> .confirm-inline) { column-span: all; }
   .card--stack .confirm-inline--row { display: flex; }
 }
+
+/* ═══════════ P13 · Phones: room for the tab bar, targets a thumb can hit,
+   no sideways scroll, fewer blurred layers, and a page that answers the
+   moment it is tapped. ═══════════ */
+
+/* ── Footer: on a phone with the tab bar it keeps clear of the bar and the
+   home indicator, so the privacy link can be tapped at the page's end. ── */
+.site-footer {
+  border-top: 1px solid var(--color-border);
+  padding: 16px 32px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--color-ink-muted);
+}
+.site-footer .link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+@media (max-width: 760px) {
+  body:has(> .tabbar) > .site-footer {
+    /* Above the bar (6 px off the edge, ~64 px tall) and the home
+       indicator; clear of the support button's column on the right. */
+    padding: 16px 70px calc(92px + env(safe-area-inset-bottom, 0px)) 14px;
+  }
+  /* The footer carries the bar's room now; main keeps a normal end. */
+  body:has(> .tabbar) main { padding-bottom: 40px; }
+}
+
+/* ── The "Today" block: a milder block of rent cards further down
+   continues the first one (one heading). ── */
+.today-block--more {
+  border-top: 0;
+  padding-top: 0;
+  margin-top: 12px;
+}
+.inline-arrow { display: inline-block; vertical-align: -1px; }
+
+/* ── Support button on a phone: a 44 px outlined circle — smaller than the
+   Assets bubble (54 px), never the loudest thing on the screen — just
+   above the tab bar's right end. It steps aside while a field has focus
+   (the keyboard is up) and is left out of form pages (support-bot.tsx). */
+@media (max-width: 760px) {
+  .bot-launcher {
+    width: 44px;
+    height: 44px;
+    right: 14px;
+    bottom: calc(82px + env(safe-area-inset-bottom, 0px));
+    background: var(--glass-fill-solid);
+    color: var(--color-primary);
+    border: 1.5px solid color-mix(in srgb, var(--color-primary) 55%, transparent);
+    box-shadow: 0 8px 18px -10px rgba(38, 92, 130, 0.55);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+  }
+  .bot-launcher:hover { background: var(--glass-fill-solid); }
+  .bot-launcher svg { width: 22px; height: 22px; }
+  .bot-launcher--typing {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.8);
+  }
+  .bot-panel { bottom: calc(134px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* ── Tap targets: 44 px on a phone for chips, buttons, the tab bar's
+   seats and text links; form fields at 16 px so iOS never zooms in. ── */
+@media (max-width: 760px) {
+  .btn-chip {
+    height: auto;
+    min-height: 44px;
+    min-width: 44px;
+    justify-content: center;
+    padding: 0 14px;
+    font-size: 13px;
+  }
+  .btn-chip--icon {
+    min-width: 44px;
+    justify-content: center;
+    padding: 0;
+  }
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .tabbar__item:not(.tabbar__item--center) {
+    min-width: 48px;
+    min-height: 48px;
+    padding: 12px 15px;
+  }
+  /* Inline text links: vertical padding widens the tap area without
+     moving a single line of text. Names that sit as blocks (the deck,
+     the asset cards) get an invisible hit area instead. */
+  a.link:not(.icon-text):not(.btn-chip):not(.aflip__name):not(.alert-row__detail) {
+    padding-block: 13px;
+  }
+  .alert-row__detail { min-height: 44px; display: flex; align-items: center; }
+  /* The logo, the account button, chips and prices that are links. */
+  .nav__brand,
+  .account-btn,
+  .demo-ribbon__cta,
+  .chip--link,
+  .today-moves__amount,
+  .gap-unit__name,
+  .brandmark {
+    position: relative;
+  }
+  .nav__burger { min-width: 44px; min-height: 44px; }
+  .btn-light,
+  .btn-ghost {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .nav__brand::after,
+  .account-btn::after,
+  .demo-ribbon__cta::after,
+  .chip--link::after,
+  .today-moves__amount::after,
+  .gap-unit__name::after,
+  .brandmark::after {
+    content: "";
+    position: absolute;
+    inset: -12px -4px;
+  }
+  details > summary:not([class]) { padding-block: 11px; }
+  /* The decide cards' "received" / "open" buttons and badges that link. */
+  .btn-chip.decide-act {
+    min-width: 44px;
+    height: auto;
+    min-height: 44px;
+  }
+  .decide-acts .btn-chip.decide-act {
+    width: 44px;
+    height: 44px;
+  }
+  a.badge--link { position: relative; }
+  a.badge--link::after {
+    content: "";
+    position: absolute;
+    inset: -9px -2px;
+  }
+  .field input:not([type="checkbox"]):not([type="radio"]),
+  .field select,
+  select {
+    min-height: 44px;
+  }
+  .adeck__name,
+  .aflip__name {
+    position: relative;
+  }
+  .adeck__name::after,
+  .aflip__name::after {
+    content: "";
+    position: absolute;
+    inset: -12px -4px;
+  }
+  a.link.icon-text {
+    min-height: 44px;
+    align-items: center;
+  }
+  /* iOS zooms the page into any field under 16 px; !important because a
+     few components size their own fields. */
+  html body input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]),
+  html body select,
+  html body textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* ── Nothing wider than the phone: shrinkable grids. ── */
+@media (max-width: 760px) {
+  .kpi-grid,
+  .kpi-grid--3,
+  .kpi-grid--5 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .kpi { min-width: 0; }
+  .kpi .badge { white-space: normal; height: auto; min-height: 26px; }
+  .form-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ── Fewer blurred layers on a phone: real blur stays on the nav, the tab
+   bar and the hero; cards, chips and folds scroll by on a denser glass
+   fill — the same look, a lighter load for mobile Safari. ── */
+@media (max-width: 760px) {
+  .card:not(.wealth-hero),
+  .alert-card,
+  .alert-group,
+  .learn-lesson,
+  .learn-lesson__soon,
+  details.faq,
+  .btn-chip,
+  .btn-secondary {
+    backdrop-filter: none;
+  }
+  .card:not(.wealth-hero),
+  .alert-card,
+  .learn-lesson,
+  details.faq,
+  .btn-secondary,
+  .btn-chip:not(.btn-chip--active) {
+    background: var(--glass-fill-solid);
+  }
+}
+
+/* ── The dashboard deck: cards off to the side are not laid out or painted
+   until they scroll near (the card already clips its own content). ── */
+.adeck__card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 320px auto 360px;
+}
+
+/* ── Landing: the living miniature's sparkline is revealed by two opposite
+   transforms (compositor-only), and every loop pauses off screen. ── */
+.pv__spark {
+  width: 100%;
+  height: 48px;
+  margin: 12px 0 2px;
+  overflow: hidden;
+  animation: pv-sweep 7s ease-in-out infinite;
+}
+.pv__spark-in {
+  height: 100%;
+  animation: pv-sweep-in 7s ease-in-out infinite;
+}
+.pv__spark svg { display: block; width: 100%; height: 48px; }
+.pv__spark path {
+  stroke-dasharray: none;
+  stroke-dashoffset: 0;
+  animation: none;
+}
+@keyframes pv-sweep {
+  0% { transform: translateX(-100%); opacity: 1; }
+  45%, 85% { transform: none; opacity: 1; }
+  97%, 100% { transform: none; opacity: 0; }
+}
+@keyframes pv-sweep-in {
+  0% { transform: translateX(100%); }
+  45%, 100% { transform: none; }
+}
+[data-motion][data-offscreen],
+[data-motion][data-offscreen] *,
+[data-motion][data-offscreen]::before,
+[data-motion][data-offscreen]::after {
+  animation-play-state: paused !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pv__spark,
+  .pv__spark-in { animation: none; }
+}
+
+/* ── While a page is on the way: its shape in soft blocks (loading.tsx),
+   and the tapped tab lit at once. ── */
+.skel { display: grid; gap: 16px; align-content: start; }
+.skel__block {
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-text) 7%, transparent);
+  animation: skel-pulse 1.3s ease-in-out infinite;
+}
+.skel__card { border-radius: var(--radius-lg); }
+.skel__pill { border-radius: 999px; }
+.skel__title { height: 26px; }
+.skel__row { display: flex; gap: 8px; flex-wrap: wrap; }
+.skel__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+  gap: 16px;
+}
+.skel__form { display: grid; gap: 14px; max-width: 480px; }
+.skel__form > div { display: grid; gap: 6px; }
+.skel__field { border-radius: var(--radius-md); }
+@keyframes skel-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skel__block { animation: none; }
+}
+.tabbar__item { position: relative; }
+.tabbar__pending { display: none; }
+.tabbar__item:active:not(.tabbar__item--center) {
+  transform: scale(0.94);
+}
+.tabbar__item:has(.tabbar__pending.is-pending):not(.tabbar__item--center) {
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+  animation: tab-pending 0.9s ease-in-out infinite;
+}
+.tabbar__item--center:has(.tabbar__pending.is-pending) .tabbar__bubble {
+  animation: tab-pending 0.9s ease-in-out infinite;
+}
+@keyframes tab-pending {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tabbar__item:has(.tabbar__pending.is-pending),
+  .tabbar__item--center:has(.tabbar__pending.is-pending) .tabbar__bubble {
+    animation: none;
+  }
+}
+
+/* ── Wide tables on a phone (/analytics, /pricing): each row becomes a
+   small card — its title on top, then label-over-value pairs, the key
+   figure (income, the suggested price) first and in bold. ── */
+@media (max-width: 640px) {
+  .table-stack { padding: 0; overflow: visible; }
+  .table-stack thead { display: none; }
+  .table-stack table,
+  .table-stack tbody { display: block; width: 100%; }
+  .table-stack tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 14px;
+    padding: 12px 16px;
+  }
+  .table-stack tr + tr { border-top: 1px solid var(--color-border); }
+  .table-stack td,
+  .table-stack td:last-child {
+    display: block;
+    border: 0;
+    padding: 0;
+    min-width: 0;
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .table-stack td.num { text-align: left; }
+  .table-stack td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    margin-bottom: 2px;
+  }
+  .table-stack .table-stack__title {
+    grid-column: 1 / -1;
+    font-weight: 600;
+  }
+  .table-stack .table-stack__key {
+    order: -1;
+    grid-column: 1 / -1;
+    font-size: 16px;
+    font-weight: 700;
+  }
+  .table-stack .table-stack__title { order: -2; }
+  .table-stack .table-stack__wide { grid-column: 1 / -1; }
+}
+
+/* ── /calendar: today's column on the month board, cells that open
+   something, and — on a phone — the two-week strip instead. ── */
+.cal-board a.cal-cell { display: block; }
+.cal-board a.cal-cell:hover,
+.cal-board a.cal-cell:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+.cal-board .cal-daynum.is-today {
+  color: var(--color-primary);
+  font-weight: 700;
+  visibility: visible;
+}
+.cal-board .cal-cell.is-today {
+  outline: 1.5px solid var(--color-primary);
+  outline-offset: 1px;
+}
+.cal-strip { display: none; }
+@media (max-width: 760px) {
+  .cal-board { display: none; }
+  .cal-strip {
+    display: block;
+    padding: 12px 0 12px 12px;
+  }
+}
+.cal-strip__bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 12px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.cal-strip__range {
+  font-size: 14px;
+  min-width: 0;
+  flex: 1 1 auto;
+  text-align: center;
+}
+.cal-strip__scroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  padding-bottom: 4px;
+}
+.cal-strip__grid {
+  display: grid;
+  /* Full names pinned on the left; the days scroll beside them. */
+  grid-template-columns: 112px repeat(var(--n, 14), 34px);
+  gap: 3px;
+  align-items: stretch;
+  padding-right: 12px;
+  width: max-content;
+}
+.cal-strip__corner,
+.cal-strip__name {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--color-bg);
+}
+.cal-strip__name {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 4px 8px 4px 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--color-text);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+  box-shadow: 6px 0 8px -6px rgba(38, 92, 130, 0.25);
+}
+.cal-strip__day {
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  padding: 3px 0;
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+.cal-strip__day small { font-size: 12px; }
+.cal-strip__day b { font-size: 13px; color: var(--color-text); }
+.cal-strip__day.is-weekend b { color: var(--status-vacant-text); }
+.cal-strip__day.is-today {
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
+}
+.cal-strip__day.is-today b { color: var(--color-primary-contrast); }
+.cal-strip__cell.cal-cell {
+  display: block;
+  width: 34px;
+  height: 36px;
+  border-radius: 6px;
+}
+.cal-strip__cell.is-today {
+  box-shadow: inset 0 0 0 2px var(--color-primary);
+}
+.cal-strip__cell:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+/* ── The asset's own calendar on a phone: one month as a 7-column month
+   view, 44 px days, taps instead of a drag (the page keeps scrolling). ── */
+.cal-month-view,
+.cal-hint--tap { display: none; }
+@media (max-width: 760px) {
+  .cal-grid,
+  .cal-hint--drag { display: none; }
+  .cal-month-view { display: block; padding: 12px; }
+  .cal-hint--tap { display: block; }
+}
+.cal-month-view__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.cal-month-view__bar b { font-size: 15px; text-transform: capitalize; }
+.cal-month-view__bar b.is-current { color: var(--color-primary); }
+.cal-month-view__grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+.cal-month-view__wd {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  padding-bottom: 2px;
+}
+.cal-mcell.cal-cell {
+  width: 100%;
+  height: auto;
+  min-height: 44px;
+  aspect-ratio: auto;
+  border: 0;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  cursor: pointer;
+}
+.cal-mcell.cal-cell[class*="cal-cell--"] { color: #0b2233; }
+.cal-mcell.cal-cell--sel {
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
+  outline: none;
+}
+.cal-mcell.is-today { box-shadow: inset 0 0 0 2px var(--color-primary); }
+.cal-mcell.is-anchor { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+
+/* The mark form under the phone's month view: two fields a row. */
+@media (max-width: 760px) {
+  .mark-form .field {
+    width: auto !important;
+    flex: 1 1 calc(50% - 6px);
+    min-width: 0;
+  }
+}
+/* The one-time tour invitation floats above the tab bar, never over it. */
+@media (max-width: 760px) {
+  body:has(> .tabbar) .tour-prompt {
+    bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+}

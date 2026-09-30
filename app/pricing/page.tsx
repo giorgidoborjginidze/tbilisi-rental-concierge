@@ -78,7 +78,9 @@ export default async function PricingPage({
           </Link>
         </div>
       ) : (
-      <div className="card">
+      // On a phone each night is a small card: the date, the price, the
+      // district figure and the reason all in view (.table-stack).
+      <div className="card table-stack">
         <table>
           <thead>
             <tr>
@@ -89,12 +91,14 @@ export default async function PricingPage({
             </tr>
           </thead>
           <tbody>
-            {(suggestions ?? []).map((row) => {
+            {(suggestions ?? []).map((row, i, rows) => {
               const delta = row.result.suggestedRate - selected.baseNightlyRate;
+              // The reason is written out when it changes, not on every row.
+              const sameReason = i > 0 && rows[i - 1].rationale === row.rationale;
               return (
                 <tr key={row.date.toISOString()}>
-                  <td>{fmtDay.format(row.date)}</td>
-                  <td className="num">
+                  <td className="table-stack__title">{fmtDay.format(row.date)}</td>
+                  <td className="num table-stack__key" data-label={t(locale, "pricing_suggested")}>
                     {formatMoney(row.result.suggestedRate, selected.currency)}{" "}
                     <span
                       style={{
@@ -110,7 +114,11 @@ export default async function PricingPage({
                       {delta > 0 ? `+${delta}` : delta < 0 ? `${delta}` : "="}
                     </span>
                   </td>
-                  <td className="num" style={{ color: "var(--color-text-muted)" }}>
+                  <td
+                    className="num"
+                    data-label={t(locale, "pricing_benchmark")}
+                    style={{ color: "var(--color-text-muted)" }}
+                  >
                     {formatMoney(row.result.factors.benchmarkAdr, selected.currency)}
                     {row.result.underpriced && (
                       <>
@@ -121,8 +129,12 @@ export default async function PricingPage({
                       </>
                     )}
                   </td>
-                  <td style={{ color: "var(--color-text-muted)", fontWeight: 400 }}>
-                    {row.rationale}
+                  <td
+                    className="table-stack__wide"
+                    data-label={t(locale, "pricing_rationale")}
+                    style={{ color: "var(--color-text-muted)", fontWeight: 400 }}
+                  >
+                    {sameReason ? <span className="cell-sub">{t(locale, "pricing_same_reason")}</span> : row.rationale}
                   </td>
                 </tr>
               );

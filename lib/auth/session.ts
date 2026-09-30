@@ -3,6 +3,7 @@
 // session tokens.
 
 import { createHash, randomBytes } from "node:crypto";
+import { cache } from "react";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
@@ -46,7 +47,15 @@ export type SessionOperator = {
   isDemo: boolean;
 };
 
-export async function getSessionOperator(): Promise<SessionOperator | null> {
+/**
+ * The signed-in operator, read once per request: the layout's nav, tab bar
+ * and tour and the page itself all ask, and React's cache() hands them the
+ * same lookup instead of four session queries (outside a render — in a
+ * server action — it simply runs).
+ */
+export const getSessionOperator = cache(readSessionOperator);
+
+async function readSessionOperator(): Promise<SessionOperator | null> {
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
   if (!token) return null;

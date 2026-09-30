@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { startOfTodayTbilisi } from "@/lib/time";
+import { dayKey, startOfTodayTbilisi } from "@/lib/time";
 import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
@@ -15,6 +15,8 @@ import { titled } from "@/lib/i18n/metadata";
 import { AlertTypeIcon } from "../alert-icon";
 import { formatMoney } from "@/lib/format";
 import { IconAlert, IconArrowRight, IconChevronLeft, IconChevronRight } from "../icons";
+import { CELL_CLASS, nightCells, OVERLAP_CODE } from "@/lib/calendar/cells";
+import CalendarStrip, { type StripDay, type StripRow } from "./calendar-strip";
 import { getMarketDataSource } from "@/lib/market/source";
 import { benchmarkMonth, freeWindowRange, placeOccupancy, windowPrice } from "@/lib/pricing/nightly";
 
@@ -24,18 +26,9 @@ export const dynamic = "force-dynamic";
 export const generateMetadata = titled("nav_rentals");
 
 const DAY_MS = 86_400_000;
+/** Nights loaded before and after the month for the phone's strip. */
+const STRIP_PAD_DAYS = 14;
 
-const KIND_CLASS: Record<string, string> = {
-  airbnb: "cal-cell--airbnb",
-  booking: "cal-cell--booking",
-  direct: "cal-cell--direct",
-  manual: "cal-cell--direct",
-  lease: "cal-cell--lease",
-  // A day-let contract and a "rented today?" answer are let directly.
-  contract: "cal-cell--direct",
-  day: "cal-cell--direct",
-};
-const OVERLAP_CLASS = "cal-cell--overlap";
 const SOURCE_NAME: Record<string, string> = { airbnb: "Airbnb", booking: "Booking.com" };
 
 function parseMonth(value: string | undefined): { year: number; month: number } {
@@ -84,8 +77,15 @@ export default async function CalendarPage({
   const aheadEnd = range
     ? new Date(Math.max(range.end.getTime(), today.getTime() + 30 * DAY_MS))
     : today;
-  const loadStart = new Date(Math.min(windowStart.getTime(), today.getTime()));
-  const loadEnd = new Date(Math.max(windowEnd.getTime(), aheadEnd.getTime()));
+  // The phone's two-week strip pages through the month, two weeks before
+  // it and four after without a round trip.
+  const stripFrom = new Date(windowStart.getTime() - STRIP_PAD_DAYS * DAY_MS);
+  // Four weeks past the month's end, so today near the end of a month still
+  // pages forward by whole fortnights.
+  const stripTo = new Date(windowEnd.getTime() + 2 * STRIP_PAD_DAYS * DAY_MS);
+  const stripLength = Math.round((stripTo.getTime() - stripFrom.getTime()) / DAY_MS);
+  const loadStart = new Date(Math.min(windowStart.getTime(), today.getTime(), stripFrom.getTime()));
+  const loadEnd = new Date(Math.max(windowEnd.getTime(), aheadEnd.getTime(), stripTo.getTime()));
 
   // Every place let by the night, however it was entered: units (with the
   // contracts and daily answers of the asset linked to them) and day-let
@@ -108,33 +108,65 @@ export default async function CalendarPage({
   const inMonth = (stay: { start: Date; end: Date }) =>
     stay.start < windowEnd && stay.end > windowStart;
 
+  const intl = locale === "ka" ? "ka-GE" : "en-GB";
+  const fmtDay = new Intl.DateTimeFormat(intl, { day: "numeric", month: "short", timeZone: "UTC" });
+  const displayName = (unit: { name: string; nameKa: string | null }) =>
+    locale === "ka" && unit.nameKa ? unit.nameKa : unit.name;
+  // What a stay is: its channel, a lease or a contract.
+  const kindLabel = (kind: string) =>
+    SOURCE_NAME[kind] ??
+    t(
+      locale,
+      kind === "direct"
+        ? "source_direct"
+        : kind === "lease"
+          ? "overlap_src_lease"
+          : kind === "contract"
+            ? "overlap_src_contract"
+            : "source_manual",
+    );
+
   const rows = places.map((place) => {
     // Bookings, leases and contracts; two of them on a night is a double
     // booking. A daily answer only fills a night none of them holds.
-    const stays = placeStays(place.sources).filter(inMonth);
-    const fills = dayFills(place.sources).filter(inMonth);
+    const allStays = placeStays(place.sources);
+    const allFills = dayFills(place.sources);
+    const stays = allStays.filter(inMonth);
+    const guests = new Map((place.unit?.bookings ?? []).map((b) => [b.id, b]));
 
-    // Day-level occupancy for the grid: which stays cover each night.
-    const days = Array.from({ length: daysInMonth }, (_, i) => {
-      const dayStart = new Date(windowStart.getTime() + i * DAY_MS);
-      const dayEnd = new Date(dayStart.getTime() + DAY_MS);
-      const covering = stays.filter((s) => s.start < dayEnd && s.end > dayStart);
-      const answered = fills.some((s) => s.start < dayEnd && s.end > dayStart);
-      return {
-        className:
-          covering.length > 1
-            ? OVERLAP_CLASS
-            : covering.length === 1
-              ? KIND_CLASS[covering[0].kind] ?? KIND_CLASS.direct
-              : answered
-                ? KIND_CLASS.day
-                : "",
-      };
-    });
+    // What a taken night opens, and what it is called.
+    const stayInfo = (index: number): { href: string; label: string } => {
+      const stay = index < allStays.length ? allStays[index] : allFills[index - allStays.length];
+      if (stay.record === "booking") {
+        const booking = guests.get(stay.id);
+        return {
+          href: `/bookings/${stay.id}/edit?back=calendar`,
+          label: [
+            kindLabel(stay.kind),
+            booking?.guestName,
+            booking?.amount != null ? formatMoney(booking.amount, booking.currency) : null,
+          ]
+            .filter(Boolean)
+            .join(" · "),
+        };
+      }
+      const assetPage = place.asset ? `/assets/${place.asset.id}/edit` : placeHref(place, monthParam(year, month));
+      if (stay.record === "contract") {
+        return { href: place.asset ? `${assetPage}#contracts` : assetPage, label: kindLabel("contract") };
+      }
+      if (stay.record === "day") return { href: assetPage, label: t(locale, "calendar_day_rented") };
+      return { href: placeHref(place, monthParam(year, month)), label: kindLabel("lease") };
+    };
+    // A free night: the add-a-stay form on that date (a unit), or the
+    // flat's own day calendar (a flat that has no unit yet).
+    const addHref = place.unit ? `/bookings/new?unit=${place.unit.id}&date=` : null;
 
     return {
       place,
-      days,
+      stayInfo,
+      addHref,
+      monthCells: nightCells(allStays, allFills, windowStart, daysInMonth),
+      stripCells: nightCells(allStays, allFills, stripFrom, stripLength),
       overlaps: findOverlaps(stays),
       bookings: place.unit?.bookings.filter((b) => b.checkIn < windowEnd && b.checkOut > windowStart) ?? [],
     };
@@ -195,28 +227,53 @@ export default async function CalendarPage({
   const next = month === 12 ? { year: year + 1, month: 1 } : { year, month: month + 1 };
   const unitSuffix = unitQuery ? `&unit=${unitQuery}` : "";
 
-  const intl = locale === "ka" ? "ka-GE" : "en-GB";
   const monthLabel = new Intl.DateTimeFormat(intl, {
     month: "long",
     year: "numeric",
   }).format(windowStart);
-  const fmtDay = new Intl.DateTimeFormat(intl, { day: "numeric", month: "short" });
 
-  const displayName = (unit: { name: string; nameKa: string | null }) =>
-    locale === "ka" && unit.nameKa ? unit.nameKa : unit.name;
-  // What each of two clashing stays is.
-  const kindLabel = (kind: string) =>
-    SOURCE_NAME[kind] ??
-    t(
-      locale,
-      kind === "direct"
-        ? "source_direct"
-        : kind === "lease"
-          ? "overlap_src_lease"
-          : kind === "contract"
-            ? "overlap_src_contract"
-            : "source_manual",
-    );
+  // The phone's strip: every night of its range, labelled on the server
+  // (the same words the rest of the page uses).
+  const fmtWeekday = new Intl.DateTimeFormat(intl, { weekday: "short", timeZone: "UTC" });
+  const stripDays: StripDay[] = Array.from({ length: stripLength }, (_, i) => {
+    const date = new Date(stripFrom.getTime() + i * DAY_MS);
+    const weekday = date.getUTCDay();
+    return {
+      key: dayKey(date),
+      wd: fmtWeekday.format(date),
+      d: String(date.getUTCDate()),
+      title: fmtDay.format(date),
+      weekend: weekday === 0 || weekday === 6,
+    };
+  });
+  const stripToday = Math.round((today.getTime() - stripFrom.getTime()) / DAY_MS);
+  const stripRows: StripRow[] = rows.map((row) => {
+    const used = new Map<number, number>();
+    const stays: StripRow["stays"] = [];
+    const cells = row.stripCells.map(([code, stay]): [number, number] => {
+      if (stay < 0) return [code, -1];
+      if (!used.has(stay)) {
+        used.set(stay, stays.length);
+        stays.push(row.stayInfo(stay));
+      }
+      return [code, used.get(stay)!];
+    });
+    const prices: Record<number, string> = {};
+    cells.forEach(([, stay], i) => {
+      if (stay >= 0) return;
+      const rate = nightPrice.get(`${row.place.key}|${stripFrom.getTime() + i * DAY_MS}`);
+      if (rate != null) prices[i] = formatMoney(rate, row.place.currency);
+    });
+    return {
+      key: row.place.key,
+      name: displayName(row.place),
+      href: placeHref(row.place, monthParam(year, month)),
+      addHref: row.addHref,
+      cells,
+      stays,
+      prices,
+    };
+  });
 
   const legend: { label: string; color: string; bordered?: boolean; overlap?: boolean }[] = [
     { label: "Airbnb", color: "var(--cal-airbnb)" },
@@ -313,12 +370,19 @@ export default async function CalendarPage({
         style={{ "--days": daysInMonth } as React.CSSProperties}
       >
         <span className="cal-name cal-name--head" />
-        {Array.from({ length: daysInMonth }, (_, i) => (
-          <span key={`h${i}`} className={dayNumClass(i + 1)}>
-            {i + 1}
-          </span>
-        ))}
-        {rows.map(({ place, days }) => (
+        {Array.from({ length: daysInMonth }, (_, i) => {
+          const isToday = windowStart.getTime() + i * DAY_MS === today.getTime();
+          return (
+            <span
+              key={`h${i}`}
+              className={`${dayNumClass(i + 1)}${isToday ? " is-today" : ""}`}
+              aria-current={isToday ? "date" : undefined}
+            >
+              {i + 1}
+            </span>
+          );
+        })}
+        {rows.map(({ place, monthCells, stayInfo, addHref }) => (
           <Fragment key={place.key}>
             <span className="cal-name">
               <Link
@@ -329,24 +393,51 @@ export default async function CalendarPage({
                 {displayName(place)}
               </Link>
             </span>
-            {days.map((day, i) => {
-              const night = windowStart.getTime() + i * DAY_MS;
-              const rate = day.className ? undefined : nightPrice.get(`${place.key}|${night}`);
+            {monthCells.map(([code, stay], i) => {
+              // Every night opens something: its booking or contract, or
+              // — free — the add-a-stay form on that date.
+              const night = new Date(windowStart.getTime() + i * DAY_MS);
+              const info = stay >= 0 ? stayInfo(stay) : null;
+              const rate = info ? undefined : nightPrice.get(`${place.key}|${night.getTime()}`);
+              const title = info
+                ? `${fmtDay.format(night)} — ${code === OVERLAP_CODE ? `${t(locale, "calendar_overlap")}: ` : ""}${info.label}`
+                : `${fmtDay.format(night)} — ${t(locale, "calendar_cell_free")}${rate != null ? ` · ${formatMoney(rate, place.currency)}` : ""}`;
               return (
-                <span
+                <Link
                   key={i}
-                  className={`cal-cell ${day.className}`}
-                  title={
-                    rate != null
-                      ? `${fmtDay.format(new Date(night))} — ${t(locale, "calendar_cell_free")} · ${formatMoney(rate, place.currency)}`
-                      : undefined
-                  }
+                  href={info ? info.href : addHref ? `${addHref}${dayKey(night)}` : placeHref(place, monthParam(year, month))}
+                  prefetch={false}
+                  className={`cal-cell ${CELL_CLASS[code]}${night.getTime() === today.getTime() ? " is-today" : ""}`}
+                  title={title}
+                  aria-label={title}
                 />
               );
             })}
           </Fragment>
         ))}
       </div>
+
+      {/* Phones: two weeks at a time, full names, today marked, every
+          cell a link (the month board above is hidden there). */}
+      <CalendarStrip
+        // A new month is a new strip: it opens on today or the month's start.
+        key={`${monthParam(year, month)}|${unitQuery ?? ""}`}
+        days={stripDays}
+        rows={stripRows}
+        todayIndex={stripToday >= 0 && stripToday < stripLength ? stripToday : null}
+        fallbackIndex={STRIP_PAD_DAYS}
+        prevMonthHref={`/calendar?month=${monthParam(prev.year, prev.month)}${unitSuffix}`}
+        nextMonthHref={`/calendar?month=${monthParam(next.year, next.month)}${unitSuffix}`}
+        labels={{
+          prev: t(locale, "calendar_prev_weeks"),
+          next: t(locale, "calendar_next_weeks"),
+          prevMonth: t(locale, "calendar_prev_month"),
+          nextMonth: t(locale, "calendar_next_month"),
+          today: t(locale, "today_title"),
+          free: t(locale, "calendar_cell_free"),
+          overlap: t(locale, "calendar_overlap"),
+        }}
+      />
 
       {/* A double booking first — it costs money today. */}
       <section style={{ marginTop: 28 }}>

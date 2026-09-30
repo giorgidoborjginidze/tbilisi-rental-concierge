@@ -7,7 +7,8 @@ import Tour, { type TourStep } from "./tour";
 
 // Where each tour stop lives and what it spotlights.
 const STOPS: Record<string, { path: string; target: string }> = {
-  s1: { path: "/", target: ".wealth-hero" },
+  // The hero, or — before anything is added — the "what do you have?" card.
+  s1: { path: "/", target: ".wealth-hero, .setup-card" },
   s2: { path: "/", target: "[data-tour='account']" },
   s3: { path: "/assets", target: "[data-tour='new-asset']" },
   s5: { path: "/assets", target: ".aflip" },

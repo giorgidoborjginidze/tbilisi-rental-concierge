@@ -230,7 +230,7 @@ export default function CarCalculator({
                   : `${Math.abs(comparison.deltaPct).toFixed(0)}% ${comparisonLabel}`}
               </span>
             </div>
-            <div className="kpi-grid kpi-grid--3d" style={{ gridTemplateColumns: "1fr 1fr", marginTop: 14 }}>
+            <div className="kpi-grid kpi-grid--3d" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))", marginTop: 14 }}>
               <div className="kpi" style={{ "--i": 0 } as React.CSSProperties}>
                 <div className="kpi__label">{labels.car_market_price}</div>
                 <div className="kpi__value">{fmt(market.avgPrice)}</div>
@@ -254,7 +254,7 @@ export default function CarCalculator({
           </div>
 
           {mode === "rental" ? (
-            <div className="kpi-grid kpi-grid--3d" style={{ gridTemplateColumns: "1fr 1fr", marginTop: 14 }}>
+            <div className="kpi-grid kpi-grid--3d" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))", marginTop: 14 }}>
               <div className="kpi" style={{ "--i": 0 } as React.CSSProperties}>
                 <div className="kpi__label">{labels.car_monthly_income}</div>
                 <div className="kpi__value">{fmt(result.netMonthly)}</div>
@@ -277,7 +277,7 @@ export default function CarCalculator({
             </div>
           ) : (
             <>
-              <div className="kpi-grid kpi-grid--3d" style={{ gridTemplateColumns: "1fr 1fr", marginTop: 14 }}>
+              <div className="kpi-grid kpi-grid--3d" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))", marginTop: 14 }}>
                 <div className="kpi" style={{ "--i": 0 } as React.CSSProperties}>
                   <div className="kpi__label">{labels.taxi_res_cash}</div>
                   <div className="kpi__value" style={{ color: netColor(taxi.cashMonthly) }}>

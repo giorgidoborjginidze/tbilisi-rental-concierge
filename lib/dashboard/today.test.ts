@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aroundCards, foldIntoCards, rentCardRank } from "./today";
+import { foldIntoCards, rentCardRank, todaySegments } from "./today";
 import { alertRank } from "@/lib/alerts/rank";
 
 describe("rentCardRank", () => {
@@ -8,6 +8,33 @@ describe("rentCardRank", () => {
     expect(rentCardRank({ severe: false, flags: ["geofence_breach"] })).toBe(alertRank("geofence_breach"));
     expect(rentCardRank({ severe: false, flags: ["tracker_silent"] })).toBe(alertRank("tracker_silent"));
     expect(rentCardRank({ severe: false, flags: [] })).toBe(alertRank("rent_overdue"));
+  });
+
+  it("takes the most severe thing the card carries — a double booking outranks everything", () => {
+    expect(rentCardRank({ severe: false, flags: ["overlap"] })).toBe(alertRank("overlap"));
+    expect(rentCardRank({ severe: true, flags: ["overlap"] })).toBe(alertRank("overlap"));
+    expect(rentCardRank({ severe: true, flags: ["tracker_silent"] })).toBe(alertRank("repossession_right"));
+  });
+
+  it("a folded double booking sorts its car first, ahead of cars owing more periods", () => {
+    const groups = [
+      { assetId: "carA", rank: alertRank("overlap"), kinds: [{ type: "overlap" }] },
+      { assetId: "carF", rank: alertRank("tracker_silent"), kinds: [{ type: "tracker_silent" }] },
+    ];
+    const cards = ["carA", "carB", "carC", "carD", "carE"].map((assetId, i) => ({
+      assetId,
+      severe: false,
+      periodsOwed: assetId === "carA" ? 1 : 5 - i,
+    }));
+    const { rows, flags } = foldIntoCards(groups, new Set(cards.map((c) => c.assetId)));
+    const rankOf = (card: (typeof cards)[number]) =>
+      rentCardRank({ severe: card.severe, flags: flags.get(card.assetId) ?? [] });
+    const segments = todaySegments(rows, cards, rankOf);
+    expect(segments[0].kind).toBe("cards");
+    expect((segments[0].items[0] as { assetId: string }).assetId).toBe("carA");
+    // The silent tracker of a paid-up car comes after the double booking,
+    // before the plain due-today cards.
+    expect(segments.map((s) => s.kind)).toEqual(["cards", "rows", "cards"]);
   });
 });
 
@@ -24,13 +51,34 @@ describe("foldIntoCards", () => {
   });
 });
 
-describe("aroundCards", () => {
-  const rows = [{ rank: 0 }, { rank: 1 }, { rank: 2 }];
-  it("rows as severe as the worst card or worse come first, the rest after the cards", () => {
-    expect(aroundCards(rows, 1)).toEqual({ before: [{ rank: 0 }, { rank: 1 }], after: [{ rank: 2 }] });
-    expect(aroundCards(rows, 3)).toEqual({ before: rows, after: [] });
+describe("todaySegments", () => {
+  const byRank = (card: { rank: number }) => card.rank;
+  it("cards of rank 1 and 3 with a row of rank 2: the row sits between them", () => {
+    const segments = todaySegments([{ rank: 2, id: "silent" }], [{ rank: 3, id: "due" }, { rank: 1, id: "repossess" }], byRank);
+    expect(segments).toEqual([
+      { kind: "cards", items: [{ rank: 1, id: "repossess" }] },
+      { kind: "rows", items: [{ rank: 2, id: "silent" }] },
+      { kind: "cards", items: [{ rank: 3, id: "due" }] },
+    ]);
   });
-  it("no cards: every row", () => {
-    expect(aroundCards(rows, null)).toEqual({ before: rows, after: [] });
+
+  it("a row goes before a card of the same rank; neighbours of one kind stay one block", () => {
+    const segments = todaySegments(
+      [{ rank: 0 }, { rank: 1 }],
+      [{ rank: 1 }, { rank: 3 }, { rank: 3 }],
+      byRank,
+    );
+    expect(segments.map((s) => [s.kind, s.items.length])).toEqual([
+      ["rows", 2],
+      ["cards", 3],
+    ]);
+  });
+
+  it("no cards: one block of rows; no rows: one block of cards; nothing: nothing", () => {
+    expect(todaySegments([{ rank: 2 }, { rank: 0 }], [], byRank)).toEqual([
+      { kind: "rows", items: [{ rank: 0 }, { rank: 2 }] },
+    ]);
+    expect(todaySegments([], [{ rank: 3 }], byRank)).toEqual([{ kind: "cards", items: [{ rank: 3 }] }]);
+    expect(todaySegments([], [], byRank)).toEqual([]);
   });
 });

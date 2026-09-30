@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { outboxView, type OutboxRow } from "./outbox-view";
+import { outboxView, type OutboxRow, manualSendable } from "./outbox-view";
 
 const now = new Date("2026-09-30T12:00:00Z");
 const row = (id: string, extra: Partial<OutboxRow>): OutboxRow & { id: string } => ({
@@ -43,5 +43,21 @@ describe("outboxView", () => {
     const view = outboxView(rows, false, now);
     expect(view.waiting).toEqual([]);
     expect(view.recent.map((r) => r.id)).toEqual(["gone", "stale", "sent"]);
+  });
+});
+
+describe("manualSendable", () => {
+  it("a note to the owner never gets a manual WhatsApp link, in either mode", () => {
+    for (const autoSend of [false, true]) {
+      expect(manualSendable({ toRole: "owner", status: "failed" }, autoSend)).toBe(false);
+      expect(manualSendable({ toRole: "owner", status: "queued" }, autoSend)).toBe(false);
+    }
+  });
+  it("a renter's failed message can be sent by hand; a queued one only while sending is manual", () => {
+    expect(manualSendable({ toRole: "driver", status: "failed" }, true)).toBe(true);
+    expect(manualSendable({ toRole: "tenant", status: "queued" }, false)).toBe(true);
+    expect(manualSendable({ toRole: "tenant", status: "queued" }, true)).toBe(false);
+    expect(manualSendable({ toRole: "tenant", status: "queued", stale: "paid" }, false)).toBe(false);
+    expect(manualSendable({ toRole: "tenant", status: "sent" }, false)).toBe(false);
   });
 });

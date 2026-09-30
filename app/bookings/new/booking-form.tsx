@@ -20,11 +20,14 @@ export default function BookingForm({
   units,
   labels,
   defaultUnitId,
+  defaultCheckIn,
 }: {
   units: { id: string; label: string }[];
   labels: Record<string, string>;
   /** Preselected unit (from ?unit= on the calendar). */
   defaultUnitId?: string;
+  /** The free night tapped on the calendar ("YYYY-MM-DD"): check-in, one night. */
+  defaultCheckIn?: string;
 }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     createBooking,
@@ -33,7 +36,7 @@ export default function BookingForm({
   // After an error the fields show what was submitted (React resets the
   // form after its action; a clash must not wipe the dates and the guest).
   const sent = state && "values" in state ? state.values : undefined;
-  const [checkIn, setCheckIn] = useState(sent?.checkIn ?? "");
+  const [checkIn, setCheckIn] = useState(sent?.checkIn ?? defaultCheckIn ?? "");
 
   return (
     <form action={formAction} onSubmit={keepTyped(formAction)} className="mt-6 flex flex-col gap-4">
@@ -74,7 +77,7 @@ export default function BookingForm({
             type="date"
             required
             aria-required="true"
-            defaultValue={sent?.checkIn ?? ""}
+            defaultValue={sent?.checkIn ?? defaultCheckIn ?? ""}
             onChange={(event) => setCheckIn(event.target.value)}
           />
         </label>
@@ -91,7 +94,7 @@ export default function BookingForm({
             required
             aria-required="true"
             min={checkIn ? dayAfter(checkIn) : undefined}
-            defaultValue={sent?.checkOut ?? ""}
+            defaultValue={sent?.checkOut ?? (defaultCheckIn ? dayAfter(defaultCheckIn) : undefined) ?? ""}
           />
         </label>
       </div>

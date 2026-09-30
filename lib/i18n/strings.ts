@@ -54,7 +54,7 @@ const en = {
   unit_asset_hint:
     "The same flat under Assets — its value, contracts and daily answers. Pick an existing asset if you already added it there.",
   unit_ical_hint:
-    "Paste the iCal export URL (https://) from each channel (Airbnb: Calendar → Availability → Connect another website; Booking.com: Rates & Availability → Sync calendars). Sync runs automatically; the status shows below.",
+    "Paste the iCal export URL (https://) from each channel (Airbnb: Calendar › Availability › Connect another website; Booking.com: Rates & Availability › Sync calendars). Sync runs automatically; the status shows below.",
 
   type_apartment: "Apartment",
   type_studio: "Studio",
@@ -625,7 +625,7 @@ const en = {
   contract_amount_daily: "Rent per Day (₾)",
   contract_amount_weekly: "Rent per Week (₾)",
   contract_amount_monthly: "Rent per Month (₾)",
-  contract_monthly_equiv: "≈ {amount} ₾ a month",
+  contract_monthly_equiv: "about {amount} ₾ a month",
   contract_paid_up_to: "Rent Paid Up To",
   contract_paid_up_to_hint:
     "The next payment day: every period before it counts as paid. For a lease that is already running it defaults to the next due date, so nothing looks late. If the tenant owes rent, pick an earlier date. Payments fall due on the contract's start day.",
@@ -676,6 +676,7 @@ const en = {
   drag_hint_daily:
     "Drag across the calendar to select days — they are recorded like the daily question on the dashboard, one answer per night.",
   error_days_taken: "Those nights are already taken by a booking or contract.",
+  tap_hint: "Tap the first night, then the last — the form opens below.",
   daily_rate: "Daily Rate (₾)",
   weekend_pct: "Weekend Premium (%)",
   holiday_pct: "Holiday Premium (%)",
@@ -827,7 +828,7 @@ const en = {
   tour_prompt_start: "Start the tour",
   tour_prompt_later: "Not now",
   tour_s1_t: "Your dashboard",
-  tour_s1_b: "Your one key number sits on top; right under it, “Today” lists what needs you today — late rent, urgent alerts, today's check-ins. Every figure updates by itself.",
+  tour_s1_b: "Your one key number sits on top; right under it, “Today” lists what needs you today — late rent, urgent alerts, today's check-ins. Every figure updates by itself. With nothing added yet, this is where you add your first place or car.",
   tour_s2_t: "Your account",
   tour_s2_b: "Settings, your plan, Help (lessons, this tour, the support chat) and log out live in this menu. On a phone, the pages the bottom bar has no seat for are here too.",
   tour_s3_t: "One button for everything",
@@ -890,6 +891,7 @@ const en = {
   pricing_benchmark: "District avg. nightly rate",
   pricing_underpriced: "Underpriced",
   pricing_rationale: "Rationale",
+  pricing_same_reason: "Same as above",
 
   kpi_occupancy: "Occupancy",
   this_month: "This Month",
@@ -909,6 +911,9 @@ const en = {
   calendar_overlap: "Double booking",
   calendar_prev_month: "Previous month",
   calendar_next_month: "Next month",
+  calendar_prev_weeks: "Previous two weeks",
+  calendar_next_weeks: "Next two weeks",
+  calendar_day_rented: "rented (daily answer)",
   calendar_direct_manual: "Direct / Manual",
   nights_short: "nights",
 
@@ -1300,7 +1305,7 @@ const en = {
   tips_more_windows: "{n} more free window(s)",
   tips_all: "All advice ({n})",
   alert_resolve_hint: "You have dealt with it: it moves to Done.",
-  alert_dismiss_hint: "Not needed: it is hidden and does not come back.",
+  alert_dismiss_hint: "Not needed: it is hidden and the daily check does not raise it again. Completed lists it if you change your mind.",
   alerts_n_vacancy_gap: "{n} free windows ({nights} nights)",
   alerts_open_calendar: "Open the calendar",
   alerts_open_desk: "Open the rental page",
@@ -1308,6 +1313,10 @@ const en = {
   alerts_hide_group: "Hide all ({n})",
   alerts_closed: "Closed: {n}",
   alerts_undo: "Undo",
+  alerts_hide_windows: "Hide all free windows ({n})",
+  alerts_hidden_badge: "hidden",
+  alerts_reopen: "Back to active",
+  alerts_limited: "Showing the newest {shown} of {total} — close the ones you have handled to see the rest.",
   desk_outbox_history: "Sent and withdrawn ({n})",
   fleet_outside_count: "Outside a red line: {n}",
   nav_alerts_badge: "{label}: {n} need you",
@@ -1440,7 +1449,7 @@ const ka: Record<StringKey, string> = {
   unit_asset_hint:
     "იგივე ბინა აქტივებში — მისი ღირებულება, ხელშეკრულებები და დღიური პასუხები. თუ იქ უკვე დაამატე, აირჩიე ის.",
   unit_ical_hint:
-    "ჩასვი iCal ექსპორტის ბმული (https://) თითოეული არხიდან (Airbnb: Calendar → Availability → Connect another website; Booking.com: Rates & Availability → Sync calendars). სინქრონი ავტომატურია; სტატუსი ქვემოთ ჩანს.",
+    "ჩასვი iCal ექსპორტის ბმული (https://) თითოეული არხიდან (Airbnb: Calendar › Availability › Connect another website; Booking.com: Rates & Availability › Sync calendars). სინქრონი ავტომატურია; სტატუსი ქვემოთ ჩანს.",
 
   type_apartment: "ბინა",
   type_studio: "სტუდია",
@@ -2005,7 +2014,7 @@ const ka: Record<StringKey, string> = {
   contract_amount_daily: "თანხა დღეში (₾)",
   contract_amount_weekly: "თანხა კვირაში (₾)",
   contract_amount_monthly: "თანხა თვეში (₾)",
-  contract_monthly_equiv: "≈ {amount} ₾ თვეში",
+  contract_monthly_equiv: "დაახლ. {amount} ₾ თვეში",
   contract_paid_up_to: "ქირა გადახდილია თარიღამდე",
   contract_paid_up_to_hint:
     "შემდეგი გადახდის დღე — მანამდე ყველა პერიოდი გადახდილად ითვლება. უკვე მიმდინარე ხელშეკრულებისთვის ნაგულისხმევად შემდეგი ვადაა, ამიტომ არაფერი ჩანს დაგვიანებულად. თუ დამქირავებელს ვალი აქვს, ადრინდელი თარიღი აირჩიე. გადახდის დღე ხელშეკრულების დაწყების დღეს ემთხვევა.",
@@ -2056,6 +2065,7 @@ const ka: Record<StringKey, string> = {
   drag_hint_daily:
     "გადაატარე თითი ან მაუსი კალენდარზე დღეების მოსანიშნად — ისინი ისევე ჩაიწერება, როგორც მთავარ გვერდზე დღიური კითხვის პასუხი, თითო ღამეზე.",
   error_days_taken: "ეს ღამეები უკვე დაკავებულია ჯავშნით ან ხელშეკრულებით.",
+  tap_hint: "შეეხე პირველ ღამეს, მერე ბოლოს — ფორმა ქვემოთ გაიხსნება.",
   daily_rate: "დღიური ტარიფი (₾)",
   weekend_pct: "შაბათ-კვირის დანამატი (%)",
   holiday_pct: "დღესასწაულის დანამატი (%)",
@@ -2206,7 +2216,7 @@ const ka: Record<StringKey, string> = {
   tour_prompt_start: "ტურის დაწყება",
   tour_prompt_later: "ახლა არა",
   tour_s1_t: "შენი დაფა",
-  tour_s1_b: "ზემოთ შენი მთავარი ციფრია, მის ქვემოთ კი „დღეს“ — რას სჭირდება შენი ყურადღება დღეს: დაგვიანებული ქირა, სასწრაფო გაფრთხილებები, დღევანდელი ჩასახლებები. ყველა ციფრი თავად ახლდება.",
+  tour_s1_b: "ზემოთ შენი მთავარი ციფრია, მის ქვემოთ კი „დღეს“ — რას სჭირდება შენი ყურადღება დღეს: დაგვიანებული ქირა, სასწრაფო გაფრთხილებები, დღევანდელი ჩასახლებები. ყველა ციფრი თავად ახლდება. სანამ არაფერი გაქვს დამატებული, პირველ ბინას ან მანქანას აქედან დაამატებ.",
   tour_s2_t: "შენი ანგარიში",
   tour_s2_b: "პარამეტრები, პაკეტი, დახმარება (სწავლება, ეს ტური, მხარდაჭერის ჩატი) და გასვლა ამ მენიუშია. ტელეფონზე აქვეა ის გვერდებიც, რომლებსაც ქვედა ზოლში ადგილი არ აქვს.",
   tour_s3_t: "ერთი ღილაკი ყველაფრისთვის",
@@ -2268,6 +2278,7 @@ const ka: Record<StringKey, string> = {
   pricing_benchmark: "უბნის საშ. ღამის ფასი",
   pricing_underpriced: "დაბალი ფასი",
   pricing_rationale: "დასაბუთება",
+  pricing_same_reason: "იგივე, რაც ზემოთ",
 
   kpi_occupancy: "დატვირთულობა",
   this_month: "მიმდინარე თვე",
@@ -2287,6 +2298,9 @@ const ka: Record<StringKey, string> = {
   calendar_overlap: "ორმაგი ჯავშანი",
   calendar_prev_month: "წინა თვე",
   calendar_next_month: "შემდეგი თვე",
+  calendar_prev_weeks: "წინა ორი კვირა",
+  calendar_next_weeks: "შემდეგი ორი კვირა",
+  calendar_day_rented: "გაქირავდა (დღიური პასუხი)",
   calendar_direct_manual: "პირდაპირი / ხელით",
   nights_short: "ღამე",
 
@@ -2678,7 +2692,7 @@ const ka: Record<StringKey, string> = {
   tips_more_windows: "კიდევ {n} თავისუფალი ფანჯარა",
   tips_all: "ყველა რჩევა ({n})",
   alert_resolve_hint: "უკვე მიხედე — გადავა „შესრულებულში“.",
-  alert_dismiss_hint: "არ გჭირდება — დაიმალება და აღარ გამოჩნდება.",
+  alert_dismiss_hint: "არ გჭირდება — დაიმალება და შემოწმება აღარ გამოიტანს. თუ გადაიფიქრებ, „შესრულებულში“ იპოვი.",
   alerts_n_vacancy_gap: "{n} თავისუფალი ფანჯარა ({nights} ღამე)",
   alerts_open_calendar: "კალენდრის გახსნა",
   alerts_open_desk: "გაქირავების გვერდის გახსნა",
@@ -2686,6 +2700,10 @@ const ka: Record<StringKey, string> = {
   alerts_hide_group: "ყველას დამალვა ({n})",
   alerts_closed: "დაიხურა: {n}",
   alerts_undo: "დაბრუნება",
+  alerts_hide_windows: "ყველა თავისუფალი ფანჯრის დამალვა ({n})",
+  alerts_hidden_badge: "დამალული",
+  alerts_reopen: "აქტიურში დაბრუნება",
+  alerts_limited: "ნაჩვენებია {shown} უახლესი, სულ {total} — დახურე მოგვარებულები და დანარჩენიც გამოჩნდება.",
   desk_outbox_history: "გაგზავნილი და გაუქმებული ({n})",
   fleet_outside_count: "წითელი ხაზის გარეთ: {n}",
   nav_alerts_badge: "{label}: {n} ყურადღებას ითხოვს",

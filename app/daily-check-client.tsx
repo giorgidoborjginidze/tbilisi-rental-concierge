@@ -164,7 +164,7 @@ function Row({
           type="submit"
           name="rented"
           value="0"
-          className="btn-chip"
+          className="btn-secondary"
           disabled={saving}
         >
           {labels.day_no}

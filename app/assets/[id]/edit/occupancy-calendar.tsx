@@ -5,6 +5,11 @@ import { useActionState } from "react";
 import { saveContract } from "@/lib/assets/actions";
 import { saveDayRange } from "@/lib/rentals/actions";
 import type { FormState } from "@/lib/units/actions";
+import { IconChevronLeft, IconChevronRight } from "@/app/icons";
+
+/** Blank cells before a month's first day in a Monday-first week. */
+const mondayOffset = (iso: string | undefined) =>
+  iso ? (new Date(`${iso}T00:00:00Z`).getUTCDay() + 6) % 7 : 0;
 
 export interface CalDay {
   iso: string; // "YYYY-MM-DD"
@@ -29,6 +34,8 @@ export default function OccupancyCalendar({
   defaultRate,
   isDaily,
   labels,
+  weekdays,
+  todayIso,
 }: {
   assetId: string;
   months: CalMonth[];
@@ -36,6 +43,10 @@ export default function OccupancyCalendar({
   defaultRate: number | null;
   isDaily: boolean;
   labels: Record<string, string>;
+  /** Short weekday names, Monday first — the phone's month view. */
+  weekdays: string[];
+  /** Today in Tbilisi ("YYYY-MM-DD"), marked on the month view. */
+  todayIso: string;
 }) {
   // Live drag endpoints (state drives the highlight, refs feed the
   // window-level pointerup handler without stale closures).
@@ -46,6 +57,12 @@ export default function OccupancyCalendar({
   const hoverRef = useRef<string | null>(null);
   const dragging = useRef(false);
   const submitted = useRef(false);
+  // Phones: one month at a time as a 7-column month view (cells a thumb
+  // can hit), and taps instead of a drag — the first tap picks a night,
+  // the second the last night of the range. The page still scrolls.
+  const currentMonth = Math.max(0, months.findIndex((month) => month.current));
+  const [shown, setShown] = useState(currentMonth);
+  const [tapAnchor, setTapAnchor] = useState<string | null>(null);
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     isDaily ? saveDayRange : saveContract,
     null,
@@ -58,6 +75,7 @@ export default function OccupancyCalendar({
       setRange(null);
       setAnchor(null);
       setHover(null);
+      setTapAnchor(null);
     }
   }, [pending, state]);
 
@@ -94,6 +112,18 @@ export default function OccupancyCalendar({
     if (iso) {
       hoverRef.current = iso;
       setHover(iso);
+    }
+  };
+
+  const onTap = (iso: string) => {
+    if (tapAnchor == null) {
+      // First tap: one night, the form opens; a second tap extends it.
+      setTapAnchor(iso);
+      setRange({ start: iso, end: iso });
+    } else {
+      const [start, end] = [tapAnchor, iso].sort();
+      setTapAnchor(null);
+      setRange({ start, end });
     }
   };
 
@@ -164,7 +194,61 @@ export default function OccupancyCalendar({
           </Fragment>
         ))}
       </div>
-      <p className="hint" style={{ marginTop: 8 }}>{isDaily ? labels.drag_hint_daily : labels.drag_hint}</p>
+      {months[shown] && (
+        <div className="card cal-month-view">
+          <div className="cal-month-view__bar">
+            <button
+              type="button"
+              className="btn-chip btn-chip--icon"
+              aria-label={labels.calendar_prev_month}
+              title={labels.calendar_prev_month}
+              disabled={shown === 0}
+              onClick={() => setShown((n) => Math.max(0, n - 1))}
+            >
+              <IconChevronLeft size={18} />
+            </button>
+            <b className={months[shown].current ? "is-current" : undefined}>{months[shown].label}</b>
+            <button
+              type="button"
+              className="btn-chip btn-chip--icon"
+              aria-label={labels.calendar_next_month}
+              title={labels.calendar_next_month}
+              disabled={shown === months.length - 1}
+              onClick={() => setShown((n) => Math.min(months.length - 1, n + 1))}
+            >
+              <IconChevronRight size={18} />
+            </button>
+          </div>
+          <div className="cal-month-view__grid">
+            {weekdays.map((name) => (
+              <span key={name} className="cal-month-view__wd">
+                {name}
+              </span>
+            ))}
+            {/* Blank cells up to the month's first weekday (Monday first). */}
+            {Array.from({ length: mondayOffset(months[shown].days[0]?.iso) }, (_, i) => (
+              <span key={`b${i}`} aria-hidden />
+            ))}
+            {months[shown].days.map((day) => (
+              <button
+                key={day.iso}
+                type="button"
+                className={`cal-mcell cal-cell ${day.cls} ${inSelection(day.iso) ? "cal-cell--sel" : ""}${
+                  day.iso === todayIso ? " is-today" : ""
+                }${day.iso === tapAnchor ? " is-anchor" : ""}`}
+                title={day.title}
+                aria-label={day.title}
+                aria-pressed={inSelection(day.iso)}
+                onClick={() => onTap(day.iso)}
+              >
+                {Number(day.iso.slice(8))}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      <p className="hint cal-hint--drag" style={{ marginTop: 8 }}>{isDaily ? labels.drag_hint_daily : labels.drag_hint}</p>
+      <p className="hint cal-hint--tap" style={{ marginTop: 8 }}>{labels.tap_hint}</p>
       {/* Saved, with a note: e.g. "not rented" over nights a contract or a
           booking holds — those stay rented until that record changes. */}
       {!range && state?.ok && state.notice && (
@@ -178,6 +262,8 @@ export default function OccupancyCalendar({
 
       {range && (
         <form
+          // A second tap extends the range: the fields start again from it.
+          key={`${range.start}|${range.end}`}
           action={formAction}
           onSubmit={() => {
             submitted.current = true;
@@ -235,6 +321,7 @@ export default function OccupancyCalendar({
                 setRange(null);
                 setAnchor(null);
                 setHover(null);
+                setTapAnchor(null);
               }}
             >
               {labels.cancel}

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { t, type Locale, type StringKey } from "@/lib/i18n/strings";
@@ -6,11 +6,10 @@ import { periodAmount, SETTLEMENT_WINDOW_DAYS, statusFor } from "@/lib/rentals/t
 import { activeContractWhere, contractPhase, recentlyEndedWhere } from "@/lib/rentals/phase";
 import { deskHref, rentalDesk } from "@/lib/rentals/desk";
 import { templateFamily } from "@/lib/notify/templates";
-import { alertCategories } from "@/lib/alerts/category";
 import { groupAlerts, type AlertGroup } from "@/lib/alerts/groups";
 import { alertHref } from "@/lib/alerts/links";
 import { URGENT_TYPES } from "@/lib/alerts/rank";
-import { aroundCards, foldIntoCards, rentCardRank } from "@/lib/dashboard/today";
+import { foldIntoCards, rentCardRank, todaySegments } from "@/lib/dashboard/today";
 import { silenceSpan } from "@/lib/geo/silence";
 import { alertSeverity } from "@/lib/ui/tone";
 import { dayKey, startOfTodayTbilisi, tbilisiFormat } from "@/lib/time";
@@ -229,9 +228,12 @@ export async function TodaySection({
     const asset = assetBy.get(assetId);
     return asset ? rentalDesk(asset.category, asset._count.contracts) : null;
   };
-  const categoryOf = await alertCategories(operatorId, urgent);
+  // The category (a flat's lease is not a car to take back) comes with the
+  // asset read just above — no second lookup.
+  const categoryOf = (payload: { assetId?: string; category?: string } | null) =>
+    payload?.category ?? (payload?.assetId ? assetBy.get(payload.assetId)?.category : undefined) ?? null;
   const isProperty = (alert: UrgentAlert) => {
-    const category = categoryOf(alert.payload as { assetId?: string; category?: string });
+    const category = categoryOf(alert.payload as { assetId?: string; category?: string } | null);
     return category != null && templateFamily(category) === "property";
   };
 
@@ -304,13 +306,14 @@ export async function TodaySection({
       };
     });
   }
-  // Most urgent first: past the grace period or outside the red line, then
-  // the most periods owed.
+  // Most urgent first: the most severe thing a card carries (a double
+  // booking, past the grace period, outside the red line), then the most
+  // periods owed. Rows and cards are then merged by severity, so a row is
+  // never below a milder card (lib/dashboard/today.ts).
   const cardRank = (item: DecideItem) =>
     rentCardRank({ severe: item.severe, flags: flags.get(item.assetId) ?? [] });
   items.sort((a, b) => cardRank(a) - cardRank(b) || b.periodsOwed - a.periodsOwed);
-  const topCard = items.length > 0 ? cardRank(items[0]) : null;
-  const { before, after } = aroundCards(rows, topCard);
+  const segments = todaySegments(rows, items, cardRank);
 
   const rowList = (list: typeof rows) =>
     list.length === 0 ? null : (
@@ -348,7 +351,26 @@ export async function TodaySection({
     "day_holiday", "day_weekend", "day_base",
     "error_required", "error_invalid_number",
   ];
-  const nothing = rows.length === 0 && items.length === 0 && !daily && !moves;
+  // Nothing urgent and no rent due: said in so many words, whatever the
+  // day's moves or daily question below it hold.
+  const nothing = rows.length === 0 && items.length === 0;
+  const decideLabels = {
+    paid: t(locale, "decide_paid"),
+    open: t(locale, "decide_open"),
+    empty: t(locale, "decide_empty"),
+    confirm: t(locale, "decide_confirm"),
+    confirmYes: t(locale, "decide_confirm_yes"),
+    confirmNo: t(locale, "decide_confirm_no"),
+    recorded: t(locale, "decide_recorded"),
+    undo: t(locale, "decide_undo"),
+    undone: t(locale, "decide_undone"),
+    error: t(locale, "decide_error"),
+    showAll: t(locale, "decide_show_all"),
+    showLess: t(locale, "decide_show_less"),
+    close: t(locale, "bot_close"),
+    errors: Object.fromEntries(errorKeys.map((key) => [key, t(locale, key)])),
+  };
+  const firstCards = segments.findIndex((segment) => segment.kind === "cards");
 
   return (
     <section className="card today" aria-labelledby="today-title">
@@ -359,46 +381,36 @@ export async function TodaySection({
         </span>
       </div>
 
-      {rowList(before)}
-
-      {items.length > 0 && (
-        <div className="today-block">
-          <div className="today-block__head">
-            <h3>
-              {t(locale, "today_rent_title")}
-              <span className="today-count">{items.length}</span>
-            </h3>
-            {fleetLink && (
-              <Link href="/fleet" className="link icon-text" style={{ gap: 4 }}>
-                {t(locale, "today_fleet_all")} <IconArrowRight size={14} />
-              </Link>
+      {segments.map((segment, i) =>
+        segment.kind === "rows" ? (
+          <Fragment key={`r${i}`}>{rowList(segment.items)}</Fragment>
+        ) : (
+          <div key={`c${i}`} className={`today-block${i === firstCards ? "" : " today-block--more"}`}>
+            {/* The heading and hint once, on the first block of cards; a
+                milder block further down continues it. */}
+            {i === firstCards && (
+              <>
+                <div className="today-block__head">
+                  <h3>
+                    {t(locale, "today_rent_title")}
+                    <span className="today-count">{items.length}</span>
+                  </h3>
+                  {fleetLink && (
+                    <Link href="/fleet" className="link icon-text" style={{ gap: 4 }}>
+                      {t(locale, "today_fleet_all")} <IconArrowRight size={14} />
+                    </Link>
+                  )}
+                </div>
+                <p className="decide-hint">{t(locale, "decide_sub")}</p>
+              </>
             )}
+            {/* Every late rent is listed — the first few, then "all (N)". */}
+            <DecideCards items={segment.items} labels={decideLabels} />
           </div>
-          <p className="decide-hint">{t(locale, "decide_sub")}</p>
-          {/* Every late rent is listed — the first few, then "all (N)". */}
-          <DecideCards
-            items={items}
-            labels={{
-              paid: t(locale, "decide_paid"),
-              open: t(locale, "decide_open"),
-              empty: t(locale, "decide_empty"),
-              confirm: t(locale, "decide_confirm"),
-              confirmYes: t(locale, "decide_confirm_yes"),
-              confirmNo: t(locale, "decide_confirm_no"),
-              recorded: t(locale, "decide_recorded"),
-              undo: t(locale, "decide_undo"),
-              undone: t(locale, "decide_undone"),
-              error: t(locale, "decide_error"),
-              showAll: t(locale, "decide_show_all"),
-              showLess: t(locale, "decide_show_less"),
-              close: t(locale, "bot_close"),
-              errors: Object.fromEntries(errorKeys.map((key) => [key, t(locale, key)])),
-            }}
-          />
-        </div>
+        ),
       )}
 
-      {rowList(after)}
+      {nothing && <p className="today__clear">{t(locale, "today_clear")}</p>}
 
       {moves}
 
@@ -420,7 +432,6 @@ export async function TodaySection({
         </div>
       )}
 
-      {nothing && <p className="today__clear">{t(locale, "today_clear")}</p>}
     </section>
   );
 }

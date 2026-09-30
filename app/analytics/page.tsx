@@ -196,7 +196,9 @@ export default async function AnalyticsPage() {
 
       <section>
         <h2>{t(locale, "monthly_title")}</h2>
-        <div className="card">
+        {/* On a phone each row becomes a small card with its labels, the
+            income first (globals.css .table-stack). */}
+        <div className="card table-stack">
           <table>
             <thead>
               <tr>
@@ -218,14 +220,19 @@ export default async function AnalyticsPage() {
                     key={row.key}
                     style={isCurrent ? { background: "var(--color-surface)", fontWeight: 500 } : undefined}
                   >
-                    <td>{fmtMonth.format(row.start)}</td>
-                    <td className="num">{pct(row.metrics.occupancyRate)}</td>
-                    <td className="num">{row.metrics.bookedNights}</td>
-                    <td className="num">{money(row.metrics.adr, "")}</td>
-                    <td className="num">
+                    <td className="table-stack__title">{fmtMonth.format(row.start)}</td>
+                    <td className="num" data-label={t(locale, "kpi_occupancy")}>{pct(row.metrics.occupancyRate)}</td>
+                    <td className="num" data-label={t(locale, "nights_sold")}>{row.metrics.bookedNights}</td>
+                    <td className="num" data-label={`${t(locale, "kpi_adr_short")} (${currencySign(currency)})`}>
+                      {money(row.metrics.adr, "")}
+                    </td>
+                    <td className="num" data-label={`${t(locale, "kpi_revpar_short")} (${currencySign(currency)})`}>
                       <PartialMoney locale={locale} value={row.metrics.revpar} metrics={row.metrics} />
                     </td>
-                    <td className="num">
+                    <td
+                      className="num table-stack__key"
+                      data-label={`${t(locale, "kpi_booking_revenue")} (${currencySign(currency)})`}
+                    >
                       <PartialMoney
                         locale={locale}
                         value={row.metrics.revenue}
@@ -243,7 +250,7 @@ export default async function AnalyticsPage() {
 
       <section>
         <h2>{t(locale, "per_unit_title")}</h2>
-        <div className="card">
+        <div className="card table-stack">
           <table>
             <thead>
               <tr>
@@ -260,14 +267,14 @@ export default async function AnalyticsPage() {
             <tbody>
               {perUnitThisMonth.map(({ unit, metrics }) => (
                 <tr key={unit.key}>
-                  <td>
+                  <td className="table-stack__title">
                     <Link href={placeHref(unit)} className="link">
                       {displayName(unit)}
                     </Link>
                     <div className="cell-sub">{cityLabel(locale, unit.city)}</div>
                   </td>
-                  <td>{districtLabel(locale, unit.district)}</td>
-                  <td className="num">
+                  <td data-label={t(locale, "unit_district")}>{districtLabel(locale, unit.district)}</td>
+                  <td className="num" data-label={t(locale, "kpi_occupancy")}>
                     {metrics.availableNights === 0 && metrics.leasedNights > 0 ? (
                       <span className="badge badge--rented" title={t(locale, "analytics_leased_hint")}>
                         {t(locale, "analytics_leased")}
@@ -276,11 +283,16 @@ export default async function AnalyticsPage() {
                       pct(metrics.occupancyRate)
                     )}
                   </td>
-                  <td className="num">{money(metrics.adr, "")}</td>
-                  <td className="num">
+                  <td className="num" data-label={`${t(locale, "kpi_adr_short")} (${currencySign(currency)})`}>
+                    {money(metrics.adr, "")}
+                  </td>
+                  <td className="num" data-label={`${t(locale, "kpi_revpar_short")} (${currencySign(currency)})`}>
                     <PartialMoney locale={locale} value={metrics.revpar} metrics={metrics} />
                   </td>
-                  <td className="num">
+                  <td
+                    className="num table-stack__key"
+                    data-label={`${t(locale, "kpi_booking_revenue")} (${currencySign(currency)})`}
+                  >
                     <PartialMoney
                       locale={locale}
                       value={metrics.revenue}

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { cache, type ReactNode } from "react";
 import type { Metadata } from "next";
 import { pageTitle } from "@/lib/i18n/metadata";
 import Link from "next/link";
@@ -13,8 +13,11 @@ import { loadRentalPlaces } from "@/lib/property/places";
 import { placeMetrics, stayOn } from "@/lib/property/stays";
 import { monthlyIncome } from "@/lib/analytics/monthly-income";
 import { incomeParts } from "@/lib/analytics/income-display";
+import { cookies } from "next/headers";
 import SplashIntro from "./splash-intro";
+import { showSplash, SPLASH_COOKIE } from "@/lib/ui/splash";
 import HeroLogo from "./hero-logo";
+import MotionPause from "./motion-pause";
 import PortfolioDeck from "./portfolio-deck";
 import CountUp from "./count-up";
 import TourPrompt from "./tour-prompt";
@@ -130,7 +133,8 @@ function Landing({ locale }: { locale: Locale }) {
   ];
   return (
     <main>
-      <section className="land-hero">
+      <MotionPause />
+      <section className="land-hero" data-motion>
         <div className="land-hero__copy">
         <HeroLogo />
         <h1 className="land-hero__title" style={{ fontSize: 32, marginTop: 14 }}>{t(locale, "land_hero")}</h1>
@@ -232,7 +236,7 @@ function Landing({ locale }: { locale: Locale }) {
             {t(locale, "land_preview_sub")}
           </p>
         </div>
-        <div className="pv" aria-hidden>
+        <div className="pv" aria-hidden data-motion>
           <div className="pv__bar"><span /><span /><span /></div>
           <div className="pv__kpis">
             {[62, 84, 47].map((h, i) => (
@@ -244,9 +248,16 @@ function Landing({ locale }: { locale: Locale }) {
               </div>
             ))}
           </div>
-          <svg className="pv__spark" viewBox="0 0 220 48">
-            <path d="M2 40 C30 38 40 24 62 26 S 100 10 124 16 S 170 30 218 6" fill="none" />
-          </svg>
+          {/* Drawn by a sliding reveal (two opposite transforms the
+              compositor runs), not by animating the stroke — which
+              repainted the path on the main thread every frame. */}
+          <div className="pv__spark">
+            <div className="pv__spark-in">
+              <svg viewBox="0 0 220 48">
+                <path d="M2 40 C30 38 40 24 62 26 S 100 10 124 16 S 170 30 218 6" fill="none" />
+              </svg>
+            </div>
+          </div>
           <div className="pv__cal">
             {Array.from({ length: 42 }, (_, i) => (
               <span
@@ -392,13 +403,29 @@ function SetupCard({ locale, profile }: { locale: Locale; profile: string }) {
   );
 }
 
-/** Nothing in the workspace yet — no asset, no unit. */
-async function isEmptyWorkspace(operatorId: string) {
+/**
+ * Nothing in the workspace yet — no asset, no unit. Read once per request
+ * (the dashboard and the tour prompt both ask).
+ */
+const isEmptyWorkspace = cache(async (operatorId: string) => {
   const [assets, units] = await Promise.all([
-    prisma.asset.count({ where: { operatorId } }),
-    prisma.unit.count({ where: { operatorId } }),
+    prisma.asset.findFirst({ where: { operatorId }, select: { id: true } }),
+    prisma.unit.findFirst({ where: { operatorId }, select: { id: true } }),
   ]);
-  return assets === 0 && units === 0;
+  return assets == null && units == null;
+});
+
+/**
+ * A dashboard's own queries, started together with the emptiness check
+ * (one round trip, not two); null for an empty workspace, which shows the
+ * setup card instead.
+ */
+async function unlessEmpty<T>(operatorId: string, load: () => Promise<T>): Promise<T | null> {
+  const data = load();
+  // Awaited below; an empty workspace drops it without an unhandled rejection.
+  data.catch(() => undefined);
+  if (await isEmptyWorkspace(operatorId)) return null;
+  return data;
 }
 
 const sourceLabel = (locale: Locale, source: string) =>
@@ -418,23 +445,13 @@ async function HotelDashboard({
   locale: Locale;
   operator: SessionOperator;
 }) {
-  if (await isEmptyWorkspace(operator.id)) {
-    return (
-      <main>
-        <DashboardHeader locale={locale} operator={operator} sub={t(locale, "profile_hotel")} />
-        <SetupCard locale={locale} profile="hotel" />
-        <MarketTips locale={locale} operatorId={operator.id} empty />
-      </main>
-    );
-  }
-
   // Tbilisi's today: arrivals after midnight belong to the new day.
   const today = startOfTodayTbilisi();
   const tomorrow = startOfTomorrowTbilisi();
   const monthStart = monthStartTbilisi(0);
   const monthEnd = monthStartTbilisi(1);
 
-  const [unitCount, moves, income, places] = await Promise.all([
+  const loaded = await unlessEmpty(operator.id, () => Promise.all([
     prisma.unit.count({ where: { operatorId: operator.id } }),
     // Stays that arrive or leave today.
     prisma.booking.findMany({
@@ -455,7 +472,17 @@ async function HotelDashboard({
       start: new Date(Math.min(monthStart.getTime(), today.getTime())),
       end: new Date(Math.max(monthEnd.getTime(), today.getTime() + DAY_MS)),
     }),
-  ]);
+  ]));
+  if (!loaded) {
+    return (
+      <main>
+        <DashboardHeader locale={locale} operator={operator} sub={t(locale, "profile_hotel")} />
+        <SetupCard locale={locale} profile="hotel" />
+        <MarketTips locale={locale} operatorId={operator.id} empty />
+      </main>
+    );
+  }
+  const [unitCount, moves, income, places] = loaded;
 
   const monthWindow = { start: monthStart, end: monthEnd };
   // Nightly metrics, one source per night; nights let on a long lease or
@@ -562,20 +589,10 @@ async function BrokerageDashboard({
   locale: Locale;
   operator: SessionOperator;
 }) {
-  if (await isEmptyWorkspace(operator.id)) {
-    return (
-      <main>
-        <DashboardHeader locale={locale} operator={operator} sub={t(locale, "profile_brokerage")} />
-        <SetupCard locale={locale} profile="brokerage" />
-        <MarketTips locale={locale} operatorId={operator.id} empty />
-      </main>
-    );
-  }
-
   const today = startOfTodayTbilisi();
   const in30 = new Date(today.getTime() + 30 * DAY_MS);
 
-  const [assets, income] = await Promise.all([
+  const loaded = await unlessEmpty(operator.id, () => Promise.all([
     prisma.asset.findMany({
       where: { operatorId: operator.id, category: { not: "income_source" } },
       include: {
@@ -585,7 +602,17 @@ async function BrokerageDashboard({
       orderBy: [{ category: "asc" }, { name: "asc" }],
     }),
     monthlyIncome(operator.id),
-  ]);
+  ]));
+  if (!loaded) {
+    return (
+      <main>
+        <DashboardHeader locale={locale} operator={operator} sub={t(locale, "profile_brokerage")} />
+        <SetupCard locale={locale} profile="brokerage" />
+        <MarketTips locale={locale} operatorId={operator.id} empty />
+      </main>
+    );
+  }
+  const [assets, income] = loaded;
 
   // The asset follows its contracts: a lease that has ended no longer
   // keeps it counted as rented.
@@ -698,20 +725,10 @@ async function CarRentalDashboard({
   locale: Locale;
   operator: SessionOperator;
 }) {
-  if (await isEmptyWorkspace(operator.id)) {
-    return (
-      <main>
-        <DashboardHeader locale={locale} operator={operator} sub={t(locale, "profile_car")} />
-        <SetupCard locale={locale} profile="car_rental" />
-        <MarketTips locale={locale} operatorId={operator.id} empty />
-      </main>
-    );
-  }
-
   const today = startOfTodayTbilisi();
   const tomorrow = startOfTomorrowTbilisi();
 
-  const [vehicles, income] = await Promise.all([
+  const loaded = await unlessEmpty(operator.id, () => Promise.all([
     prisma.asset.findMany({
       where: { operatorId: operator.id, category: "vehicle" },
       include: {
@@ -722,7 +739,17 @@ async function CarRentalDashboard({
       orderBy: { name: "asc" },
     }),
     monthlyIncome(operator.id),
-  ]);
+  ]));
+  if (!loaded) {
+    return (
+      <main>
+        <DashboardHeader locale={locale} operator={operator} sub={t(locale, "profile_car")} />
+        <SetupCard locale={locale} profile="car_rental" />
+        <MarketTips locale={locale} operatorId={operator.id} empty />
+      </main>
+    );
+  }
+  const [vehicles, income] = loaded;
 
   const rentedNow = vehicles.filter((v) => runningContract(v.contracts, today) || v.days.length > 0).length;
   const inDay = (d: Date) => d >= today && d < tomorrow;
@@ -798,7 +825,15 @@ async function PersonalDashboard({
   locale: Locale;
   operator: SessionOperator;
 }) {
-  if (await isEmptyWorkspace(operator.id)) {
+  const loaded = await unlessEmpty(operator.id, () => Promise.all([
+    prisma.asset.findMany({
+      where: { operatorId: operator.id },
+      select: { category: true, estimatedValue: true },
+    }),
+    // The one income definition: the same total as the bars and /assets.
+    monthlyIncome(operator.id),
+  ]));
+  if (!loaded) {
     return (
       <main>
         <DashboardHeader locale={locale} operator={operator} sub={t(locale, "account_personal")} />
@@ -807,15 +842,7 @@ async function PersonalDashboard({
       </main>
     );
   }
-
-  const [assets, income] = await Promise.all([
-    prisma.asset.findMany({
-      where: { operatorId: operator.id },
-      select: { category: true, estimatedValue: true },
-    }),
-    // The one income definition: the same total as the bars and /assets.
-    monthlyIncome(operator.id),
-  ]);
+  const [assets, income] = loaded;
   const totalValue = assets.reduce((sum, a) => sum + (a.estimatedValue ?? 0), 0);
   const propertyCount = assets.filter((a) => a.category !== "income_source").length;
 
@@ -859,8 +886,9 @@ async function PersonalDashboard({
 }
 
 export default async function Home() {
-  const locale = await getLocale();
-  const operator = await getSessionOperator();
+  const [locale, operator, cookieStore] = await Promise.all([getLocale(), getSessionOperator(), cookies()]);
+  // The splash: a signed-out visitor's first look this browser session.
+  const splash = showSplash(operator != null, cookieStore.get(SPLASH_COOKIE)?.value);
   const content = !operator ? (
     <Landing locale={locale} />
   ) : operator.profile === "hotel" ? (
@@ -874,7 +902,7 @@ export default async function Home() {
   );
   return (
     <>
-      <SplashIntro tapHint={t(locale, "splash_hint")} />
+      {splash && <SplashIntro tapHint={t(locale, "splash_hint")} />}
       {/* The tour is offered once there is something to show: an empty
           account gets the setup card instead of a walk past zeros. */}
       {operator && !(await isEmptyWorkspace(operator.id)) && (

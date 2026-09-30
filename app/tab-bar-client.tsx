@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import { activeHref } from "@/lib/nav/section";
 import { OPEN_ACCOUNT_MENU } from "./nav-events";
@@ -61,6 +61,16 @@ const ICONS: Record<string, React.ReactNode> = {
     </>
   ),
 };
+
+/**
+ * The tapped seat answers at once: while its page is on the way the icon
+ * takes the "you are here" tint and pulses (CSS: .tabbar__item:has(…)),
+ * instead of the old page sitting unchanged until the new one arrives.
+ */
+function PendingMark() {
+  const { pending } = useLinkStatus();
+  return <span className={pending ? "tabbar__pending is-pending" : "tabbar__pending"} aria-hidden />;
+}
 
 export default function TabBarClient({
   items,
@@ -135,6 +145,7 @@ export default function TabBarClient({
             }
           >
             {item.center ? <span className="tabbar__bubble">{icon}</span> : icon}
+            <PendingMark />
             {item.badge != null && (
               <span className={item.badge === "dot" ? "nav-badge nav-badge--dot" : "nav-badge"} aria-hidden>
                 {item.badge === "dot" ? "" : item.badge > 99 ? "99+" : item.badge}

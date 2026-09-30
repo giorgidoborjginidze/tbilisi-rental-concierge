@@ -145,7 +145,7 @@ export default function FlipCalculator({
 
           <div
             className="kpi-grid kpi-grid--3d"
-            style={{ margin: "14px 0", gridTemplateColumns: "repeat(2, 1fr)" }}
+            style={{ margin: "14px 0", gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}
           >
             <div className="kpi" style={{ "--i": 0 } as React.CSSProperties}>
               <div className="kpi__label">{labels.flip_res_invested}</div>

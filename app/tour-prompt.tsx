@@ -5,7 +5,8 @@ import { startTour } from "./tour";
 
 // One-time invitation on the dashboard: offers the guided tour to anyone
 // who has never seen it. Either choice records the visit, so it never
-// nags. Waits out the splash before appearing.
+// nags. Appears a moment after the dashboard, never over its first paint
+// (signed-in owners get no splash).
 export default function TourPrompt({
   labels,
 }: {
@@ -20,7 +21,7 @@ export default function TourPrompt({
     } catch {
       return;
     }
-    const timer = setTimeout(() => setShow(true), 2600);
+    const timer = setTimeout(() => setShow(true), 900);
     return () => clearTimeout(timer);
   }, []);
 

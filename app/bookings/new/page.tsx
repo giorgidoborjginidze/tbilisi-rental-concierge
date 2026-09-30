@@ -15,10 +15,14 @@ export const generateMetadata = titled("booking_new_title");
 export default async function NewBookingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ unit?: QueryValue }>;
+  searchParams: Promise<{ unit?: QueryValue; date?: QueryValue }>;
 }) {
   const operator = await requireOperator();
-  const unitParam = firstParam((await searchParams).unit);
+  const query = await searchParams;
+  const unitParam = firstParam(query.unit);
+  // A free night tapped on the calendar arrives as ?date=YYYY-MM-DD.
+  const dateParam = firstParam(query.date);
+  const checkIn = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : undefined;
 
   const locale = await getLocale();
   const units = await prisma.unit.findMany({
@@ -53,6 +57,7 @@ export default async function NewBookingPage({
       <BookingForm
         labels={labels}
         defaultUnitId={units.some((unit) => unit.id === unitParam) ? unitParam : undefined}
+        defaultCheckIn={checkIn}
         units={units.map((unit) => ({
           id: unit.id,
           label: `${locale === "ka" && unit.nameKa ? unit.nameKa : unit.name} (${cityLabel(locale, unit.city)})`,

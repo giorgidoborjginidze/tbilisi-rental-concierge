@@ -95,19 +95,21 @@ export default async function RentalServicePage({
   const operator = await requireOperator();
   const { id } = await params;
 
-  const asset = await prisma.asset.findFirst({
-    where: { id, operatorId: operator.id },
-    include: {
-      gpsDevice: true,
-      geofences: { orderBy: { createdAt: "asc" } },
-      contracts: { where: LIVE_CONTRACT, orderBy: { endDate: "desc" } },
-    },
-  });
+  const [asset, locale] = await Promise.all([
+    prisma.asset.findFirst({
+      where: { id, operatorId: operator.id },
+      include: {
+        gpsDevice: true,
+        geofences: { orderBy: { createdAt: "asc" } },
+        contracts: { where: LIVE_CONTRACT, orderBy: { endDate: "desc" } },
+      },
+    }),
+    getLocale(),
+  ]);
   if (!asset) notFound();
   const desk = rentalDesk(asset.category, asset.contracts.length);
   if (!desk) notFound();
 
-  const locale = await getLocale();
   const today = startOfTodayTbilisi();
   const displayName = locale === "ka" && asset.nameKa ? asset.nameKa : asset.name;
   const isVehicle = desk === "vehicle";
@@ -134,13 +136,45 @@ export default async function RentalServicePage({
   // numbers would be fiction — the page asks for the starting point instead.
   const tracked = contract?.paidThrough != null;
   const status = contract && tracked ? statusFor(contract, today, asset) : null;
-  const payments = contract
-    ? await prisma.rentPayment.findMany({
-        where: { contractId: contract.id },
-        orderBy: { paidAt: "desc" },
-        take: 12,
-      })
-    : [];
+  // Everything else the desk shows, read together (one round trip, not six).
+  const [payments, events, overrides, me, messages, autoSend] = await Promise.all([
+    contract
+      ? prisma.rentPayment.findMany({
+          where: { contractId: contract.id },
+          orderBy: { paidAt: "desc" },
+          take: 12,
+        })
+      : Promise.resolve([]),
+    isVehicle
+      ? prisma.geoEvent.findMany({
+          where: { assetId: asset.id },
+          orderBy: { createdAt: "desc" },
+          take: 8,
+        })
+      : Promise.resolve([]),
+    prisma.notifyTemplate.findMany({
+      where: { operatorId: operator.id },
+    }),
+    prisma.operator.findUnique({
+      where: { id: operator.id },
+      select: { notifyPhone: true },
+    }),
+    // Everything still to go out (however old), and the latest handled ones.
+    prisma.notifyMessage.findMany({
+      where: {
+        operatorId: operator.id,
+        assetId: asset.id,
+        OR: [
+          { status: { in: ["queued", "failed", "sending"] } },
+          { createdAt: { gte: new Date(today.getTime() - 60 * 86_400_000) } },
+        ],
+      },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    }),
+    // Never for the shared demo: its messages only get the manual send link.
+    autoSendFor(operator.id),
+  ]);
 
   // A rented car — or one whose finished contract still owes — opens on
   // its payments; otherwise on the overview.
@@ -170,18 +204,7 @@ export default async function RentalServicePage({
     return { fence, reading };
   });
 
-  const events = isVehicle
-    ? await prisma.geoEvent.findMany({
-        where: { assetId: asset.id },
-        orderBy: { createdAt: "desc" },
-        take: 8,
-      })
-    : [];
-
   // ── Messages ──
-  const overrides = await prisma.notifyTemplate.findMany({
-    where: { operatorId: operator.id },
-  });
   const overrideBy = new Map(overrides.map((row) => [row.key, row.body]));
   // Messages are written in the ACCOUNT's language (what the monitors
   // send), not necessarily the language this page is being read in.
@@ -196,26 +219,7 @@ export default async function RentalServicePage({
     };
   });
 
-  const me = await prisma.operator.findUnique({
-    where: { id: operator.id },
-    select: { notifyPhone: true },
-  });
-
-  // Everything still to go out (however old), and the latest handled ones.
-  const messages = await prisma.notifyMessage.findMany({
-    where: {
-      operatorId: operator.id,
-      assetId: asset.id,
-      OR: [
-        { status: { in: ["queued", "failed", "sending"] } },
-        { createdAt: { gte: new Date(today.getTime() - 60 * 86_400_000) } },
-      ],
-    },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-  });
-  // Never for the shared demo: its messages only get the manual send link.
-  const autoSend = await autoSendFor(operator.id);
+  // ── Messages ──
   // A reminder whose rent has been paid (or whose contract ended) since it
   // was queued must not be offered for sending, even before the next check
   // withdraws it.

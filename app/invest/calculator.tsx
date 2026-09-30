@@ -186,7 +186,7 @@ export default function Calculator({
           </span>
         </div>
 
-        <div className="kpi-grid kpi-grid--3d" style={{ margin: "14px 0", gridTemplateColumns: "repeat(2, 1fr)" }}>
+        <div className="kpi-grid kpi-grid--3d" style={{ margin: "14px 0", gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
           <div className="kpi" style={{ "--i": 0 } as React.CSSProperties}>
             <div className="kpi__label">{labels.res_total_investment}</div>
             <div className="kpi__value">{fmt(result.totalInvestment)}</div>

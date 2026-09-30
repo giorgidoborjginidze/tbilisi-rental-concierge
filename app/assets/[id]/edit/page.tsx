@@ -233,7 +233,14 @@ export default async function EditAssetPage({
     "contract_start", "contract_end", "contract_amount_monthly", "contract_amount_daily",
     "contract_tenant", "cancel", "error_required", "error_invalid_number",
     "error_dates", "error_days_taken", "notice_days_held", "notice_days_held_link",
+    "tap_hint", "calendar_prev_month", "calendar_next_month",
   ];
+  // Monday-first short weekday names for the phone's month view
+  // (5 January 2026 was a Monday).
+  const fmtWeekday = tbilisiFormat(locale, { weekday: "short" });
+  const weekdays = Array.from({ length: 7 }, (_, i) =>
+    fmtWeekday.format(new Date(Date.UTC(2026, 0, 5 + i, 12))),
+  );
   const calendarLabels = Object.fromEntries(
     calendarLabelKeys.map((key) => [key, t(locale, key)]),
   );
@@ -495,6 +502,8 @@ export default async function EditAssetPage({
             }
             isDaily={isDaily}
             labels={calendarLabels}
+            weekdays={weekdays}
+            todayIso={dayKey(startOfTodayTbilisi())}
           />
         </section>
       )}

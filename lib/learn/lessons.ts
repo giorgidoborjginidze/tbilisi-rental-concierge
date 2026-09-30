@@ -31,7 +31,7 @@ const ka: Lesson[] = [
     intro:
       "ყველა ერთეული ერთ ბადეზე: სტრიქონი ერთეულია, სვეტი — დღე, ფერი — ჯავშნის წყარო. Airbnb და Booking.com თავად სინქრონდება.",
     steps: [
-      "გახსენი „გაქირავება\" → „კალენდარი\" — მთელი თვე ერთ ეკრანზეა.",
+      "გახსენი „გაქირავება\" › „კალენდარი\" — მთელი თვე ერთ ეკრანზეა.",
       "ფერები წყაროს აჩვენებს: Airbnb, Booking.com, პირდაპირი, იჯარა; გადაფარვა წითლად ანათებს.",
       "ერთეულის დასაკავშირებლად გახსენი ის „ერთეულებიდან\" და ჩასვი iCal ბმულები Airbnb/Booking-იდან.",
       "ცალკეულ აქტივზე კალენდარში დღეებზე თითის გადასმით მონიშნავ პერიოდს და პირდაპირ ხელშეკრულებად შეინახავ.",
@@ -86,7 +86,7 @@ const en: Lesson[] = [
     intro:
       "Every unit on one grid: a row is a unit, a column is a day, colour is the booking source. Airbnb and Booking.com sync in by themselves.",
     steps: [
-      "Open “Rentals” → “Calendar” — the whole month on one screen.",
+      "Open “Rentals” › “Calendar” — the whole month on one screen.",
       "Colours show the source: Airbnb, Booking.com, direct, lease; overlaps glow red.",
       "To connect a unit, open it under “Units” and paste its Airbnb/Booking iCal links.",
       "On a single asset's calendar, drag across days to select a range and save it straight to a contract.",

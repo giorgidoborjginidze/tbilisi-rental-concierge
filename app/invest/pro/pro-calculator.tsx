@@ -51,9 +51,9 @@ export default function ProCalculator({
 
   return (
     <div className="grid items-start gap-6 lg:grid-cols-2">
-      <div className="card" style={{ padding: 20, overflow: "visible" }}>
+      <div className="card" style={{ padding: 20, overflow: "visible", minWidth: 0 }}>
         <h2 style={{ margin: "0 0 14px" }}>{labels.wor_deal}</h2>
-        <div className="grid2 grid gap-3" style={{ gridTemplateColumns: "1fr 1fr" }}>
+        <div className="grid2 grid gap-3" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
           <label className="field">
             {labels.wor_currency}
             <select
@@ -94,7 +94,7 @@ export default function ProCalculator({
           {showMore ? "−" : "+"} {labels.wor_more}
         </button>
         {showMore && (
-          <div className="grid gap-3" style={{ gridTemplateColumns: "1fr 1fr", marginTop: 14 }}>
+          <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))", marginTop: 14 }}>
             {field("insurancePerYear", `${labels.wor_insurance} (${sym})`)}
             {field("maintenancePct", labels.wor_maintenance, 0.5)}
             {field("managementPct", labels.wor_management, 0.5)}
@@ -121,7 +121,7 @@ export default function ProCalculator({
           </span>
         </div>
 
-        <div className="kpi-grid kpi-grid--3d" style={{ margin: "14px 0", gridTemplateColumns: "repeat(2, 1fr)" }}>
+        <div className="kpi-grid kpi-grid--3d" style={{ margin: "14px 0", gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
           <div className="kpi">
             <div className="kpi__label">{labels.wor_cf_month}</div>
             <div

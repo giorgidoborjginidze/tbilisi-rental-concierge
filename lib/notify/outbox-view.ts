@@ -20,6 +20,20 @@ const PENDING = PENDING_STATUSES;
 export const selfAddressed = (row: { toRole: string }, autoSend: boolean) =>
   !autoSend && row.toRole === "owner";
 
+/**
+ * May this row be sent by hand (the wa.me link and "mark sent")? A failed
+ * message, or a queued one while sending is manual — never a note to the
+ * owner, whatever the mode: the link would open the owner's WhatsApp on the
+ * owner's own number. Those only go out automatically.
+ */
+export const manualSendable = (
+  row: { toRole: string; status: string; stale?: string | null },
+  autoSend: boolean,
+) =>
+  row.toRole !== "owner" &&
+  !row.stale &&
+  (row.status === "failed" || (row.status === "queued" && !autoSend));
+
 export function outboxView<T extends OutboxRow>(
   rows: T[],
   autoSend: boolean,

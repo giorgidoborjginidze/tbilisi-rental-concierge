@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { t, type Locale, type StringKey } from "@/lib/i18n/strings";
+import { usePathname } from "next/navigation";
 import { IconChat, IconClose } from "./icons";
 import { OPEN_SUPPORT } from "./nav-events";
+import { supportLauncherHidden, type BotFaqId } from "@/lib/nav/support";
 
 // FAQ the bot can answer on its own. Each entry maps to bot_q_<id> / bot_a_<id>
 // strings and carries keywords (both languages) for free-text matching.
-const FAQ: { id: string; keywords: string[] }[] = [
+const BOT_FAQ: { id: BotFaqId; keywords: string[] }[] = [
   { id: "what", keywords: ["what is", "about", "activo", "რა არის", "შესახებ", "პლატფორმ"] },
   { id: "pricing", keywords: ["price", "cost", "how much", "fee", "plan", "subscription", "free month", "ფას", "ღირ", "თვე", "პაკეტ", "გადასახად", "ფასი"] },
   { id: "sync", keywords: ["sync", "calendar", "airbnb", "booking", "ical", "double", "სინქრ", "კალენდ", "ჯავშ"] },
@@ -16,6 +17,26 @@ const FAQ: { id: string; keywords: string[] }[] = [
   { id: "calc", keywords: ["calculator", "invest", "yield", "კალკულ", "საინვესტ", "მოგება"] },
 ];
 
+/**
+ * The bot's words, looked up on the server (app/layout.tsx) and passed in —
+ * the page never ships the whole two-language dictionary for them.
+ */
+export interface BotLabels {
+  launcher: string;
+  title: string;
+  subtitle: string;
+  greeting: string;
+  placeholder: string;
+  send: string;
+  noAnswer: string;
+  operatorIntro: string;
+  operatorCta: string;
+  close: string;
+  askHuman: string;
+  /** Question and answer per FAQ id (lib/nav/support.ts BOT_FAQ_IDS). */
+  faq: Partial<Record<BotFaqId, { q: string; a: string }>>;
+}
+
 interface Msg {
   role: "bot" | "user";
   text: string;
@@ -23,34 +44,53 @@ interface Msg {
 }
 
 export default function SupportBot({
-  locale,
+  labels,
   waUrl,
 }: {
-  locale: Locale;
+  labels: BotLabels;
   waUrl: string;
 }) {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [msgs, setMsgs] = useState<Msg[]>([]);
+  // A field has focus (the phone's keyboard is up): the floating button
+  // steps aside so it never sits over what is being typed.
+  const [typing, setTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  const tr = (key: StringKey) => t(locale, key);
+  const pathname = usePathname();
+  const greeting = labels.greeting;
 
   // Opening the panel the first time seeds the greeting.
   const toggle = () => {
-    if (!open && msgs.length === 0) setMsgs([{ role: "bot", text: tr("bot_greeting") }]);
+    if (!open && msgs.length === 0) setMsgs([{ role: "bot", text: greeting }]);
     setOpen(!open);
   };
 
-  // The account menu's Help → "Support chat" opens the panel from anywhere.
+  // The account menu's Help → "Support chat" opens the panel from anywhere
+  // — also on the form pages where the floating button is hidden.
   useEffect(() => {
     const openFromMenu = () => {
-      setMsgs((m) => (m.length === 0 ? [{ role: "bot", text: t(locale, "bot_greeting") }] : m));
+      setMsgs((m) => (m.length === 0 ? [{ role: "bot", text: greeting }] : m));
       setOpen(true);
     };
     window.addEventListener(OPEN_SUPPORT, openFromMenu);
     return () => window.removeEventListener(OPEN_SUPPORT, openFromMenu);
-  }, [locale]);
+  }, [greeting]);
+
+  useEffect(() => {
+    const isField = (el: EventTarget | null) =>
+      el instanceof HTMLElement &&
+      el.matches("input:not([type=checkbox]):not([type=radio]):not([type=hidden]), textarea, select") &&
+      !el.closest(".bot-panel");
+    const onIn = (event: FocusEvent) => setTyping(isField(event.target));
+    const onOut = () => setTyping(false);
+    document.addEventListener("focusin", onIn);
+    document.addEventListener("focusout", onOut);
+    return () => {
+      document.removeEventListener("focusin", onIn);
+      document.removeEventListener("focusout", onOut);
+    };
+  }, []);
 
   // Keep the newest message in view.
   useEffect(() => {
@@ -59,29 +99,29 @@ export default function SupportBot({
 
   const answerFor = (text: string): Msg => {
     const q = text.toLowerCase();
-    const hit = FAQ.find((f) => f.keywords.some((k) => q.includes(k.toLowerCase())));
-    if (hit) {
-      return { role: "bot", text: t(locale, `bot_a_${hit.id}` as StringKey) };
-    }
-    return { role: "bot", text: tr("bot_no_answer"), operator: true };
+    const hit = BOT_FAQ.find((f) => f.keywords.some((k) => q.includes(k.toLowerCase())));
+    const entry = hit ? labels.faq[hit.id] : undefined;
+    if (entry) return { role: "bot", text: entry.a };
+    return { role: "bot", text: labels.noAnswer, operator: true };
   };
 
-  const ask = (id: string) => {
-    const question = t(locale, `bot_q_${id}` as StringKey);
-    setMsgs((m) => [
-      ...m,
-      { role: "user", text: question },
-      { role: "bot", text: t(locale, `bot_a_${id}` as StringKey) },
-    ]);
+  const ask = (id: BotFaqId) => {
+    const entry = labels.faq[id];
+    if (!entry) return;
+    setMsgs((m) => [...m, { role: "user", text: entry.q }, { role: "bot", text: entry.a }]);
   };
 
   const askHuman = () => {
     setMsgs((m) => [
       ...m,
-      { role: "user", text: tr("bot_q_human") },
-      { role: "bot", text: tr("bot_operator_intro"), operator: true },
+      { role: "user", text: labels.askHuman },
+      { role: "bot", text: labels.operatorIntro, operator: true },
     ]);
   };
+
+  // On a form page the floating button is left out (the panel can still be
+  // opened from the menu); while typing it hides on phones (CSS).
+  const launcherHidden = !open && supportLauncherHidden(pathname);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,19 +133,21 @@ export default function SupportBot({
 
   return (
     <>
+      {!launcherHidden && (
       <button
         type="button"
-        className="bot-launcher"
-        aria-label={tr("bot_launcher")}
+        className={`bot-launcher${typing && !open ? " bot-launcher--typing" : ""}`}
+        aria-label={labels.launcher}
         aria-expanded={open}
         onClick={toggle}
       >
         {open ? (
-          <IconClose size={30} />
+          <IconClose size={26} />
         ) : (
           <svg
-            width="34"
-            height="34"
+            className="bot-launcher__ico"
+            width="30"
+            height="30"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -122,18 +164,19 @@ export default function SupportBot({
           </svg>
         )}
       </button>
+      )}
 
       {open && (
-        <div className="bot-panel" role="dialog" aria-label={tr("bot_title")}>
+        <div className="bot-panel" role="dialog" aria-label={labels.title}>
           <div className="bot-head">
             <div>
-              <div className="bot-head__title">{tr("bot_title")}</div>
-              <div className="bot-head__sub">{tr("bot_subtitle")}</div>
+              <div className="bot-head__title">{labels.title}</div>
+              <div className="bot-head__sub">{labels.subtitle}</div>
             </div>
             <button
               type="button"
               className="bot-head__close"
-              aria-label={tr("bot_close")}
+              aria-label={labels.close}
               onClick={() => setOpen(false)}
             >
               <IconClose size={20} />
@@ -151,7 +194,7 @@ export default function SupportBot({
                     rel="noopener noreferrer"
                     className="bot-wa"
                   >
-                    <IconChat size={16} /> {tr("bot_operator_cta")}
+                    <IconChat size={16} /> {labels.operatorCta}
                   </a>
                 )}
               </div>
@@ -159,13 +202,16 @@ export default function SupportBot({
 
             {/* Suggested questions — always available so the user can tap. */}
             <div className="bot-chips">
-              {FAQ.map((f) => (
-                <button key={f.id} type="button" className="bot-chip" onClick={() => ask(f.id)}>
-                  {t(locale, `bot_q_${f.id}` as StringKey)}
-                </button>
-              ))}
+              {BOT_FAQ.map((f) => {
+                const entry = labels.faq[f.id];
+                return entry ? (
+                  <button key={f.id} type="button" className="bot-chip" onClick={() => ask(f.id)}>
+                    {entry.q}
+                  </button>
+                ) : null;
+              })}
               <button type="button" className="bot-chip bot-chip--human" onClick={askHuman}>
-                {tr("bot_q_human")}
+                {labels.askHuman}
               </button>
             </div>
           </div>
@@ -174,11 +220,11 @@ export default function SupportBot({
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={tr("bot_placeholder")}
-              aria-label={tr("bot_placeholder")}
+              placeholder={labels.placeholder}
+              aria-label={labels.placeholder}
             />
             <button type="submit" className="btn-primary" disabled={!input.trim()}>
-              {tr("bot_send")}
+              {labels.send}
             </button>
           </form>
         </div>

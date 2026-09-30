@@ -40,7 +40,7 @@ export default function PlanCards({
     <section>
       <div
         className="grid gap-4"
-        style={{ gridTemplateColumns: `repeat(auto-fit, minmax(220px, 1fr))`, marginTop: 14 }}
+        style={{ gridTemplateColumns: `repeat(auto-fit, minmax(min(220px, 100%), 1fr))`, marginTop: 14 }}
       >
         {plans.map((plan) => {
           const isChosen = currentPlan === plan.id;

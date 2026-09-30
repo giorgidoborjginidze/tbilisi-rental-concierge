@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireOperator } from "@/lib/auth/session";
@@ -16,7 +17,7 @@ import { WITHDRAW_REASONS } from "@/lib/rentals/settle";
 import type { ScheduleStatus } from "@/lib/rentals/schedule";
 import { dayKey, startOfTodayTbilisi, tbilisiFormat } from "@/lib/time";
 import { lastRunFor } from "@/lib/automation/run";
-import { alertRank, rankAlerts } from "@/lib/alerts/rank";
+import { ADVICE_TYPES, alertRank, NEEDS_YOU_TYPES, rankAlerts } from "@/lib/alerts/rank";
 import { firstParam, type QueryValue } from "@/lib/params";
 import { titled } from "@/lib/i18n/metadata";
 import { alertCardClass, badgeClass, endedAlertSeverity } from "@/lib/ui/tone";
@@ -84,6 +85,9 @@ interface AlertPayload {
   autoResolved?: string;
 }
 
+/** At most this many open alerts of each list (needs you / advice) are read. */
+const OPEN_LIMIT = 200;
+
 /** Alert types whose figures are read live from their contract. */
 const CONTRACT_ALERTS = ["rent_overdue", "repossession_right", "contract_ended"];
 
@@ -107,12 +111,41 @@ export default async function AlertsPage({
   const outbox = firstParam(query.tab) === "outbox";
   const done = !outbox && view === "done";
   const locale = await getLocale();
-  const found = await prisma.alert.findMany({
-    where: { operatorId: operator.id, status: done ? "resolved" : "open" },
-    include: { unit: { select: { id: true, name: true, nameKa: true, currency: true } } },
-    orderBy: done ? { resolvedAt: "desc" } : { createdAt: "desc" },
-    take: done ? 50 : undefined,
-  });
+  const unitSelect = { unit: { select: { id: true, name: true, nameKa: true, currency: true } } } as const;
+  // Open alerts are read in two capped lists — what needs the owner and the
+  // advice — so a long tail of free windows can never push a late rent or a
+  // double booking out of the page. The handled view lists both what was
+  // done and what was hidden, so a hidden alert can be brought back.
+  const [urgentFound, adviceFound] = done
+    ? [
+        await prisma.alert.findMany({
+          where: { operatorId: operator.id, status: { in: ["resolved", "dismissed"] } },
+          include: unitSelect,
+          orderBy: { resolvedAt: "desc" },
+          take: 50,
+        }),
+        [],
+      ]
+    : await Promise.all([
+        prisma.alert.findMany({
+          where: { operatorId: operator.id, status: "open", type: { in: [...NEEDS_YOU_TYPES] } },
+          include: unitSelect,
+          orderBy: { createdAt: "desc" },
+          take: OPEN_LIMIT,
+        }),
+        prisma.alert.findMany({
+          where: { operatorId: operator.id, status: "open", type: { notIn: [...NEEDS_YOU_TYPES] } },
+          include: unitSelect,
+          orderBy: { createdAt: "desc" },
+          take: OPEN_LIMIT,
+        }),
+      ]);
+  const found = [...urgentFound, ...adviceFound];
+  // Only when a list was cut: how many are open in all.
+  const openTotal =
+    !done && (urgentFound.length === OPEN_LIMIT || adviceFound.length === OPEN_LIMIT)
+      ? await prisma.alert.count({ where: { operatorId: operator.id, status: "open" } })
+      : null;
   // Open alerts: what costs money or the car today comes first.
   const alerts = done ? found : rankAlerts(found);
   const lastRun = done ? null : await lastRunFor(operator.id);
@@ -293,7 +326,7 @@ export default async function AlertsPage({
   };
 
   // Inside a group the place is already named in its heading.
-  const detail = (type: string, payload: AlertPayload, currency: string, named = true) => {
+  const detail = (type: string, payload: AlertPayload, currency: string, named = true): ReactNode => {
     const assetLabel = (p: AlertPayload) => (named ? assetLabelOf(p) : null);
     switch (type) {
       case "vacancy_gap":
@@ -313,7 +346,15 @@ export default async function AlertsPage({
       case "lease_expiry":
         return `${payload.tenantName ?? "—"} · ${day(payload.endDate)} · ${payload.daysLeft} ${t(locale, "days_left")}`;
       case "underpriced":
-        return `${formatMoney(payload.baseNightlyRate, currency)} → ${formatMoney(payload.suggestedRate, currency)} · ${t(locale, "alert_market_adr")} ${formatMoney(payload.benchmarkAdr, currency)} (${monthLabel(payload.month)})`;
+        // A line icon, not a text "→" (that alone pulls in a symbol font file).
+        return (
+          <>
+            {formatMoney(payload.baseNightlyRate, currency)}{" "}
+            <IconArrowRight size={12} className="inline-arrow" />{" "}
+            {formatMoney(payload.suggestedRate, currency)} · {t(locale, "alert_market_adr")}{" "}
+            {formatMoney(payload.benchmarkAdr, currency)} ({monthLabel(payload.month)})
+          </>
+        );
       case "contract_expiry":
         return [
           assetLabel(payload),
@@ -439,18 +480,24 @@ export default async function AlertsPage({
         ? "action_overlap_contract"
         : (`action_${alert.type}` as StringKey);
   };
-  const severityOf = (alert: Row) => {
+  // A finished contract that still owes rent is rent, not advice
+  // (lib/alerts/owing.ts): warn-coloured and its group open.
+  const owingEnding = (alert: Row) => {
     const payload = alert.payload as AlertPayload;
-    return endedAlertSeverity(
-      alert.type,
-      alert.type === "contract_ended" && payload.contractId != null && owes(live.get(payload.contractId)),
-    );
+    return alert.type === "contract_ended" && payload.contractId != null && owes(live.get(payload.contractId));
   };
+  const severityOf = (alert: Row) => endedAlertSeverity(alert.type, owingEnding(alert));
   // The place's name as the owner reads it: the unit, else the asset.
   const placeName = (alert: Row, assetId?: string | null): string | null => {
     if (alert.unit) return displayName(alert.unit);
     const id = assetId ?? (alert.payload as AlertPayload).assetId;
     return (id && assetNames.get(id)) || assetLabelOf(alert.payload as AlertPayload) || null;
+  };
+  // Where an alert leads — null when it names no place (it would only
+  // link back to this page).
+  const hrefOf = (alert: Row): string | null => {
+    const href = alertHref(alert, deskFor);
+    return href === "/alerts" ? null : href;
   };
   // What a group's link opens, named for where it goes.
   const openLabel = (href: string): StringKey =>
@@ -481,6 +528,10 @@ export default async function AlertsPage({
     }
     return `${title} (${n})`;
   };
+
+  // Every free window on the list, and how many places have one.
+  const vacancyIds = alerts.filter((alert) => alert.type === "vacancy_gap").map((alert) => alert.id);
+  const vacancyGroups = groups.filter((group) => group.kinds.some((kind) => kind.type === "vacancy_gap")).length;
 
   return (
     <main>
@@ -596,12 +647,21 @@ export default async function AlertsPage({
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-1">
-                  <span className={badgeClass("good")}>
-                    {t(locale, "alert_done_at")}
+                  <span className={badgeClass(alert.status === "dismissed" ? "muted" : "good")}>
+                    {t(locale, alert.status === "dismissed" ? "alerts_hidden_badge" : "alert_done_at")}
                     {alert.resolvedAt
                       ? ` · ${tbilisiFormat(locale, { day: "numeric", month: "short" }).format(alert.resolvedAt)}`
                       : ""}
                   </span>
+                  {/* Hidden by mistake: one tap brings it back. */}
+                  {alert.status === "dismissed" && (
+                    <form action={reopenAlerts}>
+                      <input type="hidden" name="alertId" value={alert.id} />
+                      <button type="submit" className="btn-chip">
+                        {t(locale, "alerts_reopen")}
+                      </button>
+                    </form>
+                  )}
                   {payload.autoResolved &&
                     WITHDRAW_REASONS.includes(payload.autoResolved as never) && (
                       <span className="cell-sub">
@@ -617,6 +677,25 @@ export default async function AlertsPage({
         // One group per flat, room or car, the most severe first; inside,
         // one block per kind of alert with its advice said once.
         <div className="alert-groups">
+          {openTotal != null && (
+            <p className="field-hint">
+              {t(locale, "alerts_limited")
+                .replace("{shown}", String(alerts.length))
+                .replace("{total}", String(openTotal))}
+            </p>
+          )}
+          {vacancyGroups >= 2 && (
+            // Free windows of every place hidden with one tap.
+            <form action={setAlertStatus} className="alert-groups__bulk">
+              {vacancyIds.map((id) => (
+                <input key={id} type="hidden" name="alertId" value={id} />
+              ))}
+              <input type="hidden" name="status" value="dismissed" />
+              <button type="submit" className="btn-chip" title={t(locale, "alert_dismiss_hint")}>
+                {t(locale, "alerts_hide_windows").replace("{n}", String(vacancyIds.length))}
+              </button>
+            </form>
+          )}
           {groups.map((group) => {
             const first = group.alerts[0];
             const sev = severityOf(first);
@@ -624,10 +703,19 @@ export default async function AlertsPage({
             // Something to do today (urgent, late rent) is open; advice —
             // free windows, prices, contracts ending — waits folded.
             const open =
-              group.key === focusGroup || groups.length <= 3 || group.rank <= alertRank("rent_overdue");
+              group.key === focusGroup ||
+              groups.length <= 3 ||
+              group.rank <= alertRank("rent_overdue") ||
+              group.alerts.some(owingEnding);
             const summary = group.kinds.map((kind) => kindPhrase(kind)).join(" · ");
             const waitingHere = group.assetId ? waitingByAsset.get(group.assetId) ?? 0 : 0;
             const desk = group.assetId ? deskFor(group.assetId) : null;
+            const groupHref = hrefOf(first);
+            // "Hide all" only where everything is advice: an urgent alert or
+            // rent is closed one by one, on purpose.
+            const hideable = group.alerts.every(
+              (alert) => ADVICE_TYPES.includes(alert.type) && !owingEnding(alert),
+            );
             return (
               <details
                 key={group.key}
@@ -659,12 +747,20 @@ export default async function AlertsPage({
                         <b>{t(locale, "alert_action")}:</b> {t(locale, actionKeyOf(kind.alerts[0]))}
                       </p>
                       <ul className="alert-rows">
-                        {kind.alerts.map((alert) => (
+                        {kind.alerts.map((alert) => {
+                          const href = hrefOf(alert);
+                          const text =
+                            detail(alert.type, alert.payload as AlertPayload, alert.unit?.currency ?? "GEL", !name) ||
+                            (href ? t(locale, "alert_open_desk") : "");
+                          return (
                           <li key={alert.id} className="alert-row">
-                            <Link href={alertHref(alert, deskFor)} className="alert-row__detail link">
-                              {detail(alert.type, alert.payload as AlertPayload, alert.unit?.currency ?? "GEL", !name) ||
-                                t(locale, "alert_open_desk")}
-                            </Link>
+                            {href ? (
+                              <Link href={href} className="alert-row__detail link">
+                                {text}
+                              </Link>
+                            ) : (
+                              <span className="alert-row__detail">{text}</span>
+                            )}
                             <span className="alert-row__acts">
                               <form action={setAlertStatus}>
                                 <input type="hidden" name="alertId" value={alert.id} />
@@ -684,20 +780,23 @@ export default async function AlertsPage({
                               </form>
                             </span>
                           </li>
-                        ))}
+                          );
+                        })}
                       </ul>
                     </div>
                   ))}
                   <div className="alert-group__foot">
-                    <Link href={alertHref(first, deskFor)} className="link icon-text">
-                      {t(locale, openLabel(alertHref(first, deskFor)))} <IconArrowRight size={14} />
-                    </Link>
+                    {groupHref && (
+                      <Link href={groupHref} className="link icon-text">
+                        {t(locale, openLabel(groupHref))} <IconArrowRight size={14} />
+                      </Link>
+                    )}
                     {waitingHere > 0 && desk && (
                       <Link href={deskHref(group.assetId!, desk, "messages")} className="link">
                         {t(locale, "alert_messages_waiting").replace("{n}", String(waitingHere))}
                       </Link>
                     )}
-                    {group.alerts.length > 1 && (
+                    {group.alerts.length > 1 && hideable && (
                       <form action={setAlertStatus} className="alert-group__all">
                         {group.alerts.map((alert) => (
                           <input key={alert.id} type="hidden" name="alertId" value={alert.id} />

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { t, type Locale, type StringKey } from "@/lib/i18n/strings";
 import { badgeClass, OUTBOX_TONE, toneOf } from "@/lib/ui/tone";
 import { waLink } from "@/lib/notify/phone";
-import { selfAddressed } from "@/lib/notify/outbox-view";
+import { manualSendable } from "@/lib/notify/outbox-view";
 import { WITHDRAW_REASONS, type WithdrawReason } from "@/lib/rentals/settle";
 import { deleteMessage, markMessageSent, restoreMessage } from "@/lib/rentals/actions";
 import ConfirmAction from "./confirm-action";
@@ -121,9 +121,7 @@ export default function OutboxList({
                   a failed one is offered for sending by hand. */}
               {/* Never a link from the owner's WhatsApp to the owner's own
                   number: those notes only go out automatically. */}
-              {(message.status === "failed" || (message.status === "queued" && !autoSend)) &&
-                !message.stale &&
-                !selfAddressed(message, autoSend) && (
+              {manualSendable(message, autoSend) && (
                   <>
                     <a
                       href={waLink(message.toPhone, message.body)}
