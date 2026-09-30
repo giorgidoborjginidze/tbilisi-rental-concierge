@@ -14,6 +14,7 @@ import { isTrackerSilent } from "@/lib/geo/silence";
 import { formatDueMoney } from "@/lib/format";
 import { badgeClass, PAYMENT_TONE, TONE_BADGE, toneOf } from "@/lib/ui/tone";
 import { IconArrowRight } from "../icons";
+import { LIVE_CONTRACT } from "@/lib/rentals/live";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +33,7 @@ export default async function FleetPage() {
   const vehicles = await prisma.asset.findMany({
     where: { operatorId: operator.id, category: "vehicle" },
     include: {
-      contracts: { orderBy: { endDate: "desc" } },
+      contracts: { where: LIVE_CONTRACT, orderBy: { endDate: "desc" } },
       gpsDevice: true,
       geofences: { where: { active: true } },
     },

@@ -6,14 +6,14 @@ import type { StringKey } from "@/lib/i18n/strings";
 // Everything a UnitForm (client component) needs, resolved server-side.
 export function unitFormProps(locale: Locale) {
   const labelKeys: StringKey[] = [
-    "unit_name", "unit_name_ka", "unit_city", "unit_district", "unit_address",
+    "unit_name", "unit_city", "unit_district", "unit_address",
     "unit_type", "unit_capacity", "unit_bedrooms", "unit_base_rate",
     "unit_currency", "unit_amenities", "unit_airbnb_url", "unit_booking_url",
     "unit_ical_urls", "unit_ical_hint", "save", "cancel", "delete",
     "delete_confirm", "error_required", "error_invalid_number",
     "error_email_taken", "error_ical_url", "ph_amenities",
     "unit_asset_link", "unit_asset_new", "unit_asset_none", "unit_asset_hint",
-    "error_limit_units",
+    "error_limit_units", "error_demo_readonly", "form_required_legend", "asset_name_ka",
   ];
   const labels = Object.fromEntries(labelKeys.map((key) => [key, t(locale, key)]));
 

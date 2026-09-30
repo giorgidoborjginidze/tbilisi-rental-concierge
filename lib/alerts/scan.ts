@@ -38,6 +38,7 @@ import {
   type OverlapSignal,
 } from "./signals";
 import { LIVE_STAY } from "@/lib/bookings/live";
+import { LIVE_CONTRACT } from "@/lib/rentals/live";
 import { dayFills, emptySources, placeStays, type PlaceSources } from "@/lib/property/stays";
 
 const DAY_MS = 86_400_000;
@@ -102,7 +103,7 @@ export async function scanAlerts(
         select: {
           rentalMode: true,
           contracts: {
-            where: { endDate: { gt: start } },
+            where: { endDate: { gt: start }, ...LIVE_CONTRACT },
             select: {
               id: true,
               startDate: true,
@@ -325,7 +326,9 @@ export async function scanAlerts(
       upcomingOccupancy: occupiedNights.size / PRICING_WINDOW_DAYS,
       benchmarkAdr: benchmark?.adr ?? null,
     });
-    const underpriced = pricing.underpriced && !!benchmark;
+    // A unit with no base rate yet (made for a flat with no day rate and no
+    // district figure) has nothing to compare: 0 × anything is "under".
+    const underpriced = unit.baseNightlyRate > 0 && pricing.underpriced && !!benchmark;
     // Last month's advice is over; this month's once the rate was raised.
     await close(
       openOf("underpriced", (alert) => alert.unitId === unit.id)
@@ -354,6 +357,7 @@ export async function scanAlerts(
     where: {
       endDate: { gt: start },
       startDate: { lt: new Date(start.getTime() + OVERLAP_HORIZON_DAYS * DAY_MS) },
+      ...LIVE_CONTRACT,
       ...(operatorId ? { asset: { operatorId } } : {}),
     },
     select: {
@@ -417,6 +421,7 @@ export async function scanAlerts(
     where: {
       startDate: running.startDate,
       endDate: { gt: start, lte: leaseWindowEnd },
+      ...LIVE_CONTRACT,
       ...(operatorId ? { asset: { operatorId } } : {}),
     },
     include: { asset: true },
@@ -427,7 +432,8 @@ export async function scanAlerts(
   const expiryContracts = new Map(
     (
       await prisma.rentalContract.findMany({
-        where: { id: { in: openExpiry.map((alert) => payloadKey(alert.payload)) } },
+        // A deleted contract reads as missing: its expiry alert closes.
+        where: { id: { in: openExpiry.map((alert) => payloadKey(alert.payload)) }, ...LIVE_CONTRACT },
         select: { id: true, startDate: true, endDate: true },
       })
     ).map((contract) => [contract.id, contract]),
@@ -471,6 +477,7 @@ export async function scanAlerts(
   const recentlyEnded = await prisma.rentalContract.findMany({
     where: {
       ...recentlyEndedWhere(start, CONTRACT_ENDED_DAYS),
+      ...LIVE_CONTRACT,
       ...(operatorId ? { asset: { operatorId } } : {}),
     },
     select: { assetId: true },
@@ -490,7 +497,7 @@ export async function scanAlerts(
   const endedAssets = endedAssetIds.length
     ? await prisma.asset.findMany({
         where: { id: { in: endedAssetIds } },
-        include: { contracts: true },
+        include: { contracts: { where: LIVE_CONTRACT } },
       })
     : [];
   const rentAlertContracts = new Set(
@@ -555,7 +562,7 @@ export async function scanAlerts(
       asset: {
         ...scope,
         geofences: { some: { active: true } },
-        contracts: { some: activeContractWhere(start) },
+        contracts: { some: { ...activeContractWhere(start), ...LIVE_CONTRACT } },
       },
     },
     include: {
@@ -590,7 +597,7 @@ export async function scanAlerts(
       asset: {
         ...scope,
         geofences: { some: { active: true } },
-        contracts: { some: activeContractWhere(start) },
+        contracts: { some: { ...activeContractWhere(start), ...LIVE_CONTRACT } },
       },
     },
     select: { assetId: true },

@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { SeverityIcon } from "../alert-icon";
 import { prisma } from "@/lib/db";
 import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
@@ -54,10 +56,28 @@ export default async function PricingPage({
         />
       </div>
       <p className="mb-5" style={{ color: "var(--color-text-muted)", fontSize: 13 }}>
-        {t(locale, "pricing_intro")} · {t(locale, "base_rate_short")}:{" "}
-        {formatMoney(selected.baseNightlyRate, selected.currency)}
+        {t(locale, "pricing_intro")}
+        {selected.baseNightlyRate > 0 && (
+          <>
+            {" · "}
+            {t(locale, "base_rate_short")}: {formatMoney(selected.baseNightlyRate, selected.currency)}
+          </>
+        )}
       </p>
 
+      {/* A unit made for a flat with no day rate has nothing to build on:
+          say so, and where to set it, instead of an empty table. */}
+      {selected.baseNightlyRate <= 0 ? (
+        <div className="alert-card alert-card--info" style={{ alignItems: "center" }}>
+          <span className="alert-card__notice">
+            <SeverityIcon severity="info" />
+            <span>{t(locale, "pricing_no_base_rate")}</span>
+          </span>
+          <Link href={`/units/${selected.id}/edit`} className="btn-primary btn-compact">
+            {t(locale, "pricing_set_base_rate")}
+          </Link>
+        </div>
+      ) : (
       <div className="card">
         <table>
           <thead>
@@ -110,6 +130,7 @@ export default async function PricingPage({
           </tbody>
         </table>
       </div>
+      )}
     </main>
   );
 }

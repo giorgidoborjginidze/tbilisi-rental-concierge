@@ -12,8 +12,9 @@
 //
 // Rows added before (unlinked units, unlinked assets) stay valid: an
 // unlinked day-let asset still shows in the calendar (lib/property/places)
-// and gets its unit the next time it is saved. scripts/link-properties.ts
-// links pairs that already exist under the same name — nothing else.
+// and gets its unit from the "Add to Rentals" button (or when it gains
+// iCal links). scripts/link-properties.ts links pairs that already exist
+// under the same name — nothing else.
 //
 // The mapping helpers are pure; the rest takes a Prisma client or a
 // transaction.
@@ -38,6 +39,80 @@ export const wantsUnit = (asset: {
   icalCount: number;
 }): boolean =>
   asset.category === "real_estate" && (asset.rentalMode === "daily" || asset.icalCount > 0);
+
+/**
+ * Whether saving an asset creates its calendar unit. Only at a change that
+ * puts the flat on the calendar: when the asset is created (let by the day
+ * or with iCal links), when it moves into daily mode, or when it gains iCal
+ * links. Never while a unit is picked, never in the save that removes the
+ * link by hand, and never again on a later save of a flat whose link the
+ * owner removed (an old loose flat has the "Add to Rentals" button).
+ */
+export function shouldCreateUnit(input: {
+  category: string;
+  rentalMode: string;
+  /** The unit picked in the form (null: none). */
+  pickedUnitId: string | null;
+  /** The asset as stored before this save; null when it is being created. */
+  previous: { rentalMode: string; unitId: string | null } | null;
+  /** iCal links this save adds (see icalLinksAdded). */
+  addedIcal: number;
+}): boolean {
+  if (input.category !== "real_estate" || input.pickedUnitId) return false;
+  if (!input.previous) {
+    return wantsUnit({ category: input.category, rentalMode: input.rentalMode, icalCount: input.addedIcal });
+  }
+  if (input.previous.unitId) return false;
+  const becameDaily = input.previous.rentalMode !== "daily" && input.rentalMode === "daily";
+  return becameDaily || input.addedIcal > 0;
+}
+
+/** The links typed now that were not in the textarea when the form was shown. */
+export const icalLinksAdded = (typed: string[], shown: string[]): string[] =>
+  typed.filter((url) => !shown.includes(url));
+
+/**
+ * The iCal links a linked unit keeps after its asset is saved, or null when
+ * nothing changes. The asset form's textarea shows the links of the unit
+ * the asset was linked to when the page was drawn (`shownFor`); only that
+ * unit's list is replaced by what was typed — removing a line removes the
+ * link. A unit picked in this save (a first link, or a switch from another
+ * unit) never loses its own links: it only gains the lines the owner
+ * added, never the other unit's links that were prefilled.
+ */
+export function unitFeedsAfterSave(input: {
+  /** The unit the asset is linked to after this save. */
+  unitId: string;
+  /** The unit whose links the textarea was prefilled from (null: none). */
+  shownFor: string | null;
+  /** The textarea's prefilled links. */
+  shown: string[];
+  /** What was submitted. */
+  typed: string[];
+  /** The unit's links as stored now. */
+  current: string[];
+}): string[] | null {
+  const same = (a: string[], b: string[]) => a.length === b.length && a.every((url, i) => url === b[i]);
+  if (input.shownFor === input.unitId) {
+    return same(input.typed, input.current) ? null : input.typed;
+  }
+  const added = icalLinksAdded(input.typed, input.shown).filter((url) => !input.current.includes(url));
+  return added.length > 0 ? [...input.current, ...added] : null;
+}
+
+/**
+ * Whether the dashboard asks "rented today?" about a day-let asset. Not for
+ * a flat whose calendar unit has channel feeds (iCal): the channel is the
+ * record of its nights, and a hotel would otherwise be asked about every
+ * free room every day. Loose day-let flats, linked units without feeds and
+ * day-let cars are asked.
+ */
+export const asksDailyQuestion = (asset: {
+  rentalMode: string;
+  unit: { channelLinks: unknown } | null;
+}): boolean =>
+  asset.rentalMode === "daily" &&
+  (!asset.unit || parseChannelLinks(asset.unit.channelLinks).icalUrls.length === 0);
 
 export interface UnitForAsset {
   name: string;
@@ -186,6 +261,8 @@ export async function assetHoldsNothing(db: Db, assetId: string): Promise<boolea
     select: {
       estimatedValue: true,
       notes: true,
+      // all-contracts: a deleted contract is kept for undo and its payment
+      // history — the asset holding it is not "nothing" and stays.
       _count: { select: { contracts: true, days: true, incomes: true } },
     },
   });

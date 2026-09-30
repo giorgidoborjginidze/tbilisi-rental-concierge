@@ -1,175 +1,91 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { saveContract } from "@/lib/assets/actions";
+import { saveContract, updateContract } from "@/lib/assets/actions";
 import type { FormState } from "@/lib/units/actions";
-import { asPeriod, monthlyEquivalent } from "@/lib/rentals/amount";
-import { defaultPaidThrough } from "@/lib/rentals/schedule";
-import { dayFromKey, dayKey, todayKey } from "@/lib/time";
+import ContractFields, { type ContractValues } from "./contract-fields";
+import { FormMessage, RequiredLegend } from "@/app/form-bits";
+import { keepTyped } from "@/app/keep-typed";
 
-const AMOUNT_LABEL = {
-  daily: "contract_amount_daily",
-  weekly: "contract_amount_weekly",
-  monthly: "contract_amount_monthly",
-} as const;
-
-// A rental contract. The frequency comes first because it decides what the
-// amount means: the owner types what the renter pays per day, per week or
-// per month, exactly as agreed. "Paid up to" says how far the rent is
-// already paid, so a lease that has been running for months starts in good
-// standing instead of being announced as months late.
+// A rental contract: added on the asset page, or edited in place (a new
+// phone number, a lease extended, the rent raised) — never deleted and
+// typed again, which would lose its payment history. A save says so; an
+// error keeps everything that was typed.
 export default function ContractForm({
   assetId,
   labels,
+  contract,
+  onDone,
 }: {
   assetId: string;
   labels: Record<string, string>;
+  /** Edit mode: the contract as stored (form values). */
+  contract?: ContractValues & { id: string };
+  /** Edit mode: close the form (the row shows the saved contract). */
+  onDone?: () => void;
 }) {
-  const [period, setPeriod] = useState<"daily" | "weekly" | "monthly">("monthly");
-  const [amount, setAmount] = useState("");
-  const [start, setStart] = useState("");
-  const [end, setEnd] = useState("");
-  // Until the owner types a date, "paid up to" follows the suggestion.
-  const [paidTyped, setPaidTyped] = useState<string | null>(null);
-
-  // A saved contract clears the form (React resets only uncontrolled
-  // fields by itself).
+  const editing = contract != null;
+  // A new form after each added contract (fresh fields, same page).
+  const [round, setRound] = useState(0);
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     async (previous, formData) => {
-      const result = await saveContract(previous, formData);
-      if (!result?.error) {
-        setAmount("");
-        setStart("");
-        setEnd("");
-        setPaidTyped(null);
-      }
+      const result = await (editing ? updateContract : saveContract)(previous, formData);
+      if (result?.ok && !editing) setRound((n) => n + 1);
       return result;
     },
     null,
   );
 
-  const suggestedPaid =
-    start && end && end > start
-      ? dayKey(
-          defaultPaidThrough(dayFromKey(start), dayFromKey(end), period, dayFromKey(todayKey())),
-        )
-      : "";
-  const paidThrough = paidTyped ?? suggestedPaid;
-
-  const amountNumber = Number(amount);
-  const monthly =
-    period !== "monthly" && Number.isFinite(amountNumber) && amountNumber > 0
-      ? Math.round(monthlyEquivalent(amountNumber, period)).toLocaleString("en-US")
-      : null;
+  // After an error the form shows what was submitted, not the stored values.
+  const sent = state && "values" in state ? state.values : undefined;
+  const initial: ContractValues | undefined = sent
+    ? {
+        tenantName: sent.tenantName,
+        tenantPhone: sent.tenantPhone,
+        paymentPeriod: sent.paymentPeriod,
+        amount: sent.amount,
+        startDate: sent.startDate,
+        endDate: sent.endDate,
+        paidThrough: sent.paidThrough,
+        graceDays: sent.graceDays,
+        deposit: sent.deposit,
+        notes: sent.notes,
+        remindersEnabled: sent.remindersEnabled === "on",
+      }
+    : contract;
 
   return (
     <form
       action={formAction}
-      className="card form-grid form-grid--full" style={{ padding: 18, overflow: "visible" }}
+      onSubmit={keepTyped(formAction)}
+      className="card form-grid form-grid--full"
+      style={{ padding: 18, overflow: "visible" }}
+      aria-label={editing ? labels.contract_edit_title : labels.contract_add}
     >
       <input type="hidden" name="assetId" value={assetId} />
-      <label className="field">
-        {labels.contract_tenant}
-        <input name="tenantName" />
-      </label>
-      <label className="field">
-        {labels.tenant_phone}
-        <input name="tenantPhone" type="tel" placeholder="+995 5XX XX XX XX" />
-      </label>
-      <label className="field">
-        {labels.pay_period}
-        <select
-          name="paymentPeriod"
-          value={period}
-          onChange={(event) => setPeriod(asPeriod(event.target.value))}
-        >
-          <option value="daily">{labels.period_daily}</option>
-          <option value="weekly">{labels.period_weekly}</option>
-          <option value="monthly">{labels.period_monthly}</option>
-        </select>
-      </label>
-      <label className="field">
-        {labels[AMOUNT_LABEL[period]]}
-        <input
-          name="amount"
-          type="number"
-          min={0.01}
-          step="0.01"
-          required
-          value={amount}
-          onChange={(event) => setAmount(event.target.value)}
-        />
-        {monthly && (
-          <span className="hint">
-            {labels.contract_monthly_equiv.replace("{amount}", monthly)}
-          </span>
-        )}
-      </label>
-      <label className="field">
-        {labels.contract_start}
-        <input
-          name="startDate"
-          type="date"
-          required
-          value={start}
-          onChange={(event) => setStart(event.target.value)}
-        />
-      </label>
-      <label className="field">
-        {labels.contract_end}
-        <input
-          name="endDate"
-          type="date"
-          required
-          value={end}
-          onChange={(event) => setEnd(event.target.value)}
-        />
-      </label>
-      <label className="field">
-        {labels.contract_paid_up_to}
-        <input
-          name="paidThrough"
-          type="date"
-          min={start || undefined}
-          max={end || undefined}
-          value={paidThrough}
-          onChange={(event) => setPaidTyped(event.target.value)}
-        />
-      </label>
-      <label className="field">
-        {labels.pay_grace}
-        <input name="graceDays" type="number" min={0} max={60} step={1} defaultValue={3} />
-      </label>
-      <p className="field-hint col-span-2" style={{ marginTop: -4 }}>
-        {labels.contract_paid_up_to_hint}
-      </p>
-      <label className="field">
-        {labels.contract_deposit}
-        <input name="deposit" type="number" min={0} step="0.01" />
-      </label>
-      <label className="field">
-        {labels.asset_notes}
-        <input name="notes" />
-      </label>
-      <label
-        className="field col-span-2"
-        style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
-      >
-        <input type="hidden" name="remindersField" value="1" />
-        <input type="checkbox" name="remindersEnabled" defaultChecked />
-        {labels.contract_reminders}
-      </label>
-      {state?.error && (
-        <p className="col-span-2" style={{ color: "var(--status-danger-text)", fontSize: 13 }}>{labels[state.error]}</p>
-      )}
-      <div className="col-span-2">
-        <button
-          type="submit"
-          disabled={pending}
-          className="btn-primary"
-        >
-          {labels.contract_add}
+      {editing && <input type="hidden" name="contractId" value={contract.id} />}
+      {/* What "paid up to" showed: changing it restates the balance. */}
+      {editing && <input type="hidden" name="paidThroughWas" value={contract.paidThrough ?? ""} />}
+      <RequiredLegend text={labels.form_required_legend} />
+      <ContractFields
+        key={`${round}-${sent ? "sent" : "stored"}`}
+        labels={labels}
+        initial={initial}
+        suggestDates={!editing}
+      />
+      <div className="col-span-2 flex flex-wrap items-center gap-3">
+        <button type="submit" disabled={pending} className="btn-primary">
+          {editing ? labels.save : labels.contract_add}
         </button>
+        {editing && onDone && (
+          <button type="button" className="btn-chip" onClick={onDone}>
+            {labels.cancel}
+          </button>
+        )}
+        <FormMessage
+          error={state?.error ? labels[state.error] ?? state.error : null}
+          saved={state?.ok ? (editing ? labels.contract_saved : labels.contract_added) : null}
+        />
       </div>
     </form>
   );

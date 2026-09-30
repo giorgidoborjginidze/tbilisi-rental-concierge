@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { addTrade, deleteTrade } from "@/lib/crypto/actions";
 import type { FormState } from "@/lib/units/actions";
 import { IconClose, IconTrendDown, IconTrendUp } from "@/app/icons";
 import { formatMoney } from "@/lib/format";
+import ConfirmAction from "@/app/confirm-action";
+import { FormMessage, Req } from "@/app/form-bits";
 
 export interface TradeRow {
   id: string;
@@ -15,38 +16,62 @@ export interface TradeRow {
   date: string;
 }
 
-// Buy / Sell entry: two buttons reveal a small inline form each; below,
-// the list of trades with delete. Prices are USD per coin.
+// Buy / Sell entry: two buttons reveal a small inline form; below, the list
+// of trades, each deleted only after a question in the page. Prices are
+// USD per coin / share / troy ounce; a metal may be typed in grams. A saved
+// trade folds the form and says so; an error keeps what was typed.
 export default function CryptoTrades({
   assetId,
   symbol,
   trades,
   today,
   labels,
+  metal = false,
+  initialOpen = null,
 }: {
   assetId: string;
   symbol: string;
   trades: TradeRow[];
   today: string;
   labels: Record<string, string>;
+  metal?: boolean;
+  /** A holding with no trade yet opens on its first purchase. */
+  initialOpen?: "buy" | "sell" | null;
 }) {
-  const [open, setOpen] = useState<"buy" | "sell" | null>(null);
+  const [open, setOpen] = useState<"buy" | "sell" | null>(initialOpen);
+  const [unit, setUnit] = useState<"oz" | "g">("oz");
   const [state, formAction, pending] = useActionState<FormState, FormData>(
-    addTrade,
+    async (previous, formData) => {
+      const result = await addTrade(previous, formData);
+      if (result?.ok) setOpen(null);
+      return result;
+    },
     null,
   );
+  const sent = state && "values" in state ? state.values : undefined;
 
-  const fmt = (v: number) =>
-    v.toLocaleString("en-US", { maximumFractionDigits: 8 });
+  const fmt = (v: number) => v.toLocaleString("en-US", { maximumFractionDigits: metal ? 4 : 8 });
+  const quantityLabel = metal
+    ? `${labels.crypto_quantity} (${unit === "g" ? labels.metal_unit_g : labels.metal_unit_oz})`
+    : labels.crypto_quantity;
+  const priceLabel = metal
+    ? labels.crypto_unit_price.replace("{unit}", unit === "g" ? labels.metal_unit_g : labels.metal_unit_oz)
+    : labels.crypto_unit_price;
+  const toggle = (side: "buy" | "sell") => setOpen(open === side ? null : side);
+  // The table shows what is stored: metals in troy ounces.
+  const tableQuantity = metal ? `${labels.crypto_quantity} (${labels.metal_unit_oz})` : labels.crypto_quantity;
+  const tablePrice = metal
+    ? labels.crypto_unit_price.replace("{unit}", labels.metal_unit_oz)
+    : labels.crypto_unit_price;
 
   return (
     <div>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           className={"btn-chip btn-chip--icon-text " + (open === "buy" ? "btn-chip--active" : "")}
           aria-pressed={open === "buy"}
-          onClick={() => setOpen(open === "buy" ? null : "buy")}
+          onClick={() => toggle("buy")}
         >
           <IconTrendUp size={15} /> {labels.crypto_buy}
         </button>
@@ -54,44 +79,79 @@ export default function CryptoTrades({
           type="button"
           className={"btn-chip btn-chip--icon-text " + (open === "sell" ? "btn-chip--active" : "")}
           aria-pressed={open === "sell"}
-          onClick={() => setOpen(open === "sell" ? null : "sell")}
+          onClick={() => toggle("sell")}
         >
           <IconTrendDown size={15} /> {labels.crypto_sell}
         </button>
+        {!open && <FormMessage saved={state?.ok ? labels.trade_saved : null} />}
       </div>
 
       {open && (
-        <form
-          action={formAction}
-          className="alert-card"
-          style={{ marginTop: 12, alignItems: "flex-end", flexWrap: "wrap", gap: 12 }}
-        >
+        <form action={formAction} className="card form-grid form-grid--full trade-form" style={{ marginTop: 12, padding: 16 }}>
           <input type="hidden" name="assetId" value={assetId} />
           <input type="hidden" name="side" value={open} />
-          <div className="icon-text" style={{ fontSize: 13, fontWeight: 600, alignSelf: "center" }}>
+          {metal && <input type="hidden" name="unit" value={unit} />}
+          <div className="icon-text col-span-2" style={{ fontSize: 13.5, fontWeight: 600 }}>
             {open === "buy" ? <IconTrendUp size={16} /> : <IconTrendDown size={16} />}
             {open === "buy" ? labels.crypto_buy : labels.crypto_sell} · {symbol}
           </div>
-          <label className="field" style={{ width: 150 }}>
-            {labels.crypto_quantity}
-            <input name="quantity" type="number" step="any" min="0" required />
-          </label>
-          <label className="field" style={{ width: 160 }}>
-            {labels.crypto_unit_price}
-            <input name="unitPrice" type="number" step="any" min="0" required />
-          </label>
-          <label className="field" style={{ width: 150 }}>
-            {labels.contract_start}
-            <input name="tradedAt" type="date" defaultValue={today} />
-          </label>
-          <button type="submit" disabled={pending} className="btn-primary">
-            {labels.crypto_add_trade}
-          </button>
-          {state?.error && (
-            <p style={{ color: "var(--status-danger-text)", fontSize: 13, width: "100%" }}>
-              {labels[state.error] ?? state.error}
-            </p>
+          {metal && (
+            <div className="col-span-2 unit-toggle" role="group" aria-label={labels.metal_unit_label}>
+              {(["oz", "g"] as const).map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={`btn-chip${unit === key ? " btn-chip--active" : ""}`}
+                  aria-pressed={unit === key}
+                  onClick={() => setUnit(key)}
+                >
+                  {key === "g" ? labels.metal_unit_g : labels.metal_unit_oz}
+                </button>
+              ))}
+            </div>
           )}
+          <label className="field">
+            <span>
+              {quantityLabel}
+              <Req />
+            </span>
+            <input
+              name="quantity"
+              type="number"
+              inputMode="decimal"
+              step="any"
+              min="0"
+              required
+              aria-required="true"
+              defaultValue={sent?.quantity}
+            />
+          </label>
+          <label className="field">
+            <span>
+              {priceLabel}
+              <Req />
+            </span>
+            <input
+              name="unitPrice"
+              type="number"
+              inputMode="decimal"
+              step="any"
+              min="0"
+              required
+              aria-required="true"
+              defaultValue={sent?.unitPrice}
+            />
+          </label>
+          <label className="field">
+            {open === "buy" ? labels.trade_date_buy : labels.trade_date_sell}
+            <input name="tradedAt" type="date" max={today} defaultValue={sent?.tradedAt ?? today} />
+          </label>
+          <div className="col-span-2 flex flex-wrap items-center gap-3">
+            <button type="submit" disabled={pending} className="btn-primary">
+              {labels.crypto_add_trade}
+            </button>
+            <FormMessage error={state?.error ? labels[state.error] ?? state.error : null} />
+          </div>
         </form>
       )}
 
@@ -101,9 +161,9 @@ export default function CryptoTrades({
             <thead>
               <tr>
                 <th>{labels.crypto_side}</th>
-                <th className="num">{labels.crypto_quantity}</th>
-                <th className="num">{labels.crypto_unit_price}</th>
-                <th>{labels.contract_start}</th>
+                <th className="num">{tableQuantity}</th>
+                <th className="num">{tablePrice}</th>
+                <th>{labels.trade_date}</th>
                 <th />
               </tr>
             </thead>
@@ -118,22 +178,21 @@ export default function CryptoTrades({
                       {t.side === "buy" ? labels.crypto_buy : labels.crypto_sell}
                     </span>
                   </td>
-                  <td className="num" data-label={labels.crypto_quantity}>{fmt(t.quantity)}</td>
-                  <td className="num" data-label={labels.crypto_unit_price}>{formatMoney(t.unitPrice, "USD", 8)}</td>
-                  <td data-label={labels.contract_start}>{t.date}</td>
+                  <td className="num" data-label={tableQuantity}>{fmt(t.quantity)}</td>
+                  <td className="num" data-label={tablePrice}>{formatMoney(t.unitPrice, "USD", metal ? 2 : 8)}</td>
+                  <td data-label={labels.trade_date}>{t.date}</td>
                   <td className="num">
-                    <form action={deleteTrade}>
-                      <input type="hidden" name="tradeId" value={t.id} />
-                      <input type="hidden" name="assetId" value={assetId} />
-                      <button
-                        type="submit"
-                        className="btn-chip btn-chip--icon"
-                        aria-label={labels.aria_delete_trade}
-                        title={labels.aria_delete_trade}
-                      >
-                        <IconClose size={15} />
-                      </button>
-                    </form>
+                    <ConfirmAction
+                      action={deleteTrade}
+                      fields={{ tradeId: t.id, assetId }}
+                      trigger={<IconClose size={15} />}
+                      triggerClassName="btn-chip btn-chip--icon"
+                      ariaLabel={labels.aria_delete_trade}
+                      question={labels.trade_delete_q}
+                      confirmLabel={labels.delete}
+                      cancelLabel={labels.cancel}
+                      inline
+                    />
                   </td>
                 </tr>
               ))}

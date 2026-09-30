@@ -297,6 +297,14 @@ export function placeMetrics(src: PlaceSources, window: Interval): WindowMetrics
       owned.set(night, owner.value ?? 0);
     }
   }
+  // A "rented" answer with no amount (answered "yes" with the amount left
+  // blank, or an asset without a day rate) is still a night taken: the
+  // calendars draw it and the free windows skip it, so it is occupied and
+  // booked here too — sold for 0, which changes no money.
+  for (const fill of dayFills(src)) {
+    const night = fill.start.getTime();
+    if (night >= from && night < to && !owned.has(night)) owned.set(night, 0);
+  }
 
   const sold = new Set<number>(owned.keys());
   const bookedByBooking = new Set<number>();
@@ -364,4 +372,18 @@ export function nightsToAnswer(
     if (!rented || !taken) out.push(new Date(night));
   }
   return out;
+}
+
+/**
+ * How many nights of [start, end) a booking, lease or contract holds —
+ * nights a "not rented" mark cannot free (the stay is their record; the
+ * contract or booking has to be changed instead).
+ */
+export function nightsHeld(src: PlaceSources, start: Date, end: Date): number {
+  const stays = placeStays(src);
+  let held = 0;
+  for (let night = dayStart(start); night < dayStart(end); night += DAY_MS) {
+    if (stays.some((stay) => stay.start.getTime() <= night && stay.end.getTime() > night)) held += 1;
+  }
+  return held;
 }

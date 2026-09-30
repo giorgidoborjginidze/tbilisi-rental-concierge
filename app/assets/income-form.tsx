@@ -1,8 +1,10 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { addIncome } from "@/lib/assets/actions";
 import type { FormState } from "@/lib/units/actions";
+import { FormMessage, Req } from "@/app/form-bits";
+import { keepTyped } from "@/app/keep-typed";
 
 
 export default function IncomeForm({ labels }: { labels: Record<string, string> }) {
@@ -10,15 +12,24 @@ export default function IncomeForm({ labels }: { labels: Record<string, string> 
     addIncome,
     null,
   );
+  // An error keeps what was typed.
+  const sent = state && "values" in state ? state.values : undefined;
+  // A saved entry clears the form; an error keeps what was typed.
+  const form = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    if (state?.ok) form.current?.reset();
+  }, [state]);
 
   return (
     <form
+      ref={form}
       action={formAction}
+      onSubmit={keepTyped(formAction)}
       className="card form-grid form-grid--full h-fit" style={{ padding: 18, overflow: "visible" }}
     >
       <label className="field">
         {labels.income_source}
-        <select name="source">
+        <select name="source" defaultValue={sent?.source ?? "salary"}>
           <option value="salary">{labels.source_salary}</option>
           <option value="business">{labels.source_business}</option>
           <option value="dividend">{labels.source_dividend}</option>
@@ -26,21 +37,33 @@ export default function IncomeForm({ labels }: { labels: Record<string, string> 
         </select>
       </label>
       <label className="field">
-        {labels.income_date}
-        <input name="date" type="date" required />
+        <span>
+          {labels.income_date}
+          <Req />
+        </span>
+        <input name="date" type="date" required aria-required="true" defaultValue={sent?.date} />
       </label>
       <label className="field">
-        {labels.income_amount}
-        <input name="amount" type="number" min={0} step="0.01" required />
+        <span>
+          {labels.income_amount}
+          <Req />
+        </span>
+        <input
+          name="amount"
+          type="number"
+          inputMode="decimal"
+          min={0}
+          step="0.01"
+          required
+          aria-required="true"
+          defaultValue={sent?.amount}
+        />
       </label>
       <label className="field">
         {labels.income_desc}
-        <input name="description" />
+        <input name="description" defaultValue={sent?.description} />
       </label>
-      {state?.error && (
-        <p className="col-span-2" style={{ color: "var(--status-danger-text)", fontSize: 13 }}>{labels[state.error]}</p>
-      )}
-      <div className="col-span-2">
+      <div className="col-span-2 flex flex-wrap items-center gap-3">
         <button
           type="submit"
           disabled={pending}
@@ -48,6 +71,10 @@ export default function IncomeForm({ labels }: { labels: Record<string, string> 
         >
           {labels.income_add}
         </button>
+        <FormMessage
+          error={state?.error ? labels[state.error] ?? state.error : null}
+          saved={state?.ok ? labels.saved_short : null}
+        />
       </div>
     </form>
   );

@@ -12,37 +12,80 @@ import { POPULAR_STOCKS } from "@/lib/stocks/prices";
 import { METALS } from "@/lib/metals/prices";
 import type { FormState } from "@/lib/units/actions";
 import type { SessionOperator } from "@/lib/auth/session";
+import type { StringKey } from "@/lib/i18n/strings";
 import { startOfTodayTbilisi } from "@/lib/time";
-import { asPeriod, monthlyEquivalent } from "@/lib/rentals/amount";
-import { contractPhase } from "@/lib/rentals/phase";
-import { settlePaidRent, withdrawAsset, withdrawContract } from "@/lib/rentals/settle";
-import { defaultPaidThrough, snapToBoundary } from "@/lib/rentals/schedule";
+import { submittedValues } from "@/lib/forms";
+import { activeContract, contractPhase } from "@/lib/rentals/phase";
+import { LIVE_CONTRACT, CONTRACT_UNDO_MS } from "@/lib/rentals/live";
+import {
+  restoreDeletedContract,
+  settlePaidRent,
+  sweepStaleRentAlerts,
+  withdrawAsset,
+  withdrawContract,
+} from "@/lib/rentals/settle";
+import {
+  ledgerAfterEdit,
+  parseContractInput,
+  startingPaidThrough,
+  type ContractInput,
+} from "@/lib/rentals/contract-input";
+import { parseTradeInput } from "@/lib/assets/trade-input";
 import { cityKey, districtKey } from "@/lib/places";
 import { checkFeedUrl } from "@/lib/ical/fetch";
 import { normalizeFeedUrl } from "@/lib/ical/sync";
 import { parseChannelLinks } from "@/lib/types";
 import { benchmarkMonth } from "@/lib/pricing/nightly";
-import { createUnitForAsset, unitHoldsNothing, wantsUnit } from "@/lib/property/link";
+import {
+  createUnitForAsset,
+  icalLinksAdded,
+  shouldCreateUnit,
+  unitFeedsAfterSave,
+  unitHoldsNothing,
+} from "@/lib/property/link";
 
 const str = (formData: FormData, key: string) =>
   String(formData.get(key) ?? "").trim();
 
+/** An error that hands back what was typed, so the form shows it again. */
+const failWith =
+  (formData: FormData) =>
+  (error: StringKey, detail?: string): FormState => ({
+    error,
+    ...(detail ? { detail } : {}),
+    values: submittedValues(formData),
+  });
+
 // Categories tracked as holdings (quantity + buy price + live value) rather
-// than the generic property/income form. Created here, then the buyer lands
-// on the asset's edit page to log buys and sells.
+// than the generic property/income form.
 const HOLDING_CATEGORIES = ["crypto", "stock", "metal"] as const;
 
+// What can carry a rental contract from the add form's "tenant & rent" step.
+const CONTRACT_CATEGORIES = ["real_estate", "vehicle", "other"];
+
+/**
+ * A new holding, with its first purchase when the owner typed one (quantity
+ * and price on the same screen — no empty "0 BTC" page to fill in after).
+ */
 async function createHolding(
   operator: SessionOperator,
   category: "crypto" | "stock" | "metal",
   formData: FormData,
+  fail: ReturnType<typeof failWith>,
 ): Promise<FormState> {
   const symbol = str(formData, "symbol").toUpperCase();
-  if (!symbol) return { error: "error_required" };
+  if (!symbol) return fail("error_required");
+
+  const trade = parseTradeInput((key) => str(formData, key), {
+    metal: category === "metal",
+    today: startOfTodayTbilisi(),
+    optional: true,
+  });
+  if ("error" in trade) return fail(trade.error);
 
   const { getBillingContext } = await import("@/lib/billing/context");
   if (!(await getBillingContext(operator)).canAddAsset) {
-    return { error: "error_limit_assets" };
+    return fail("error_limit_assets");
   }
 
   let name: string;
@@ -72,10 +115,23 @@ async function createHolding(
       coingeckoId,
       currency: "USD",
       status: "personal_use",
+      ...(trade.value
+        ? {
+            trades: {
+              create: {
+                side: "buy",
+                quantity: trade.value.quantity,
+                unitPrice: trade.value.unitPrice,
+                tradedAt: trade.value.tradedAt,
+              },
+            },
+          }
+        : {}),
     },
   });
   revalidatePath("/assets");
-  redirect(`/assets/${asset.id}/edit`);
+  revalidatePath("/");
+  redirect(`/assets/${asset.id}/edit?added=1`);
 }
 
 /** The district's average night — the starting base rate of a unit made for an asset. */
@@ -96,11 +152,17 @@ const optionalNumber = (formData: FormData, key: string): number | null => {
   return Number.isFinite(value) && value >= 0 ? value : NaN;
 };
 
+/** iCal links as typed in a textarea: one per line, normalised, deduped. */
+const feedLines = (raw: string): string[] => [
+  ...new Set(raw.split("\n").map(normalizeFeedUrl).filter(Boolean)),
+];
+
 export async function saveAsset(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
   const operator = await requireWriter();
+  const fail = failWith(formData);
 
   const assetId = str(formData, "assetId") || null;
   const name = str(formData, "name");
@@ -109,7 +171,7 @@ export async function saveAsset(
   const status = str(formData, "status");
 
   if (!(ASSET_CATEGORIES as readonly string[]).includes(category)) {
-    return { error: "error_required" };
+    return fail("error_required");
   }
 
   // New crypto/stock/metal go through the holdings path (redirects on success).
@@ -121,12 +183,13 @@ export async function saveAsset(
       operator,
       category as "crypto" | "stock" | "metal",
       formData,
+      fail,
     );
   }
 
-  if (!name) return { error: "error_required" };
+  if (!name) return fail("error_required");
   if (!(ASSET_STATUSES as readonly string[]).includes(status)) {
-    return { error: "error_required" };
+    return fail("error_required");
   }
 
   const areaSqm = optionalNumber(formData, "areaSqm");
@@ -143,14 +206,22 @@ export async function saveAsset(
     Number.isNaN(weekendPct) ||
     Number.isNaN(holidayPct)
   ) {
-    return { error: "error_invalid_number" };
+    return fail("error_invalid_number");
   }
 
-  const unitId = str(formData, "unitId") || null;
+  const owned = assetId
+    ? await prisma.asset.findFirst({ where: { id: assetId, operatorId: operator.id } })
+    : null;
+  if (assetId && !owned) return fail("error_required");
+
+  // Only a flat has a calendar unit. A form without the unit picker (a car,
+  // an income stream) keeps whatever link is stored.
+  const unitField = category === "real_estate" && formData.has("unitId");
+  const unitId = unitField ? str(formData, "unitId") || null : owned?.unitId ?? null;
   // Only one of this workspace's own units can be linked — otherwise the
   // asset's calendar would show another account's bookings — and only one
   // no other asset holds.
-  if (unitId) {
+  if (unitId && unitId !== owned?.unitId) {
     const unit = await prisma.unit.findFirst({
       where: {
         id: unitId,
@@ -159,30 +230,39 @@ export async function saveAsset(
       },
       select: { id: true },
     });
-    if (!unit) return { error: "error_required" };
+    if (!unit) return fail("error_required");
   }
 
   // iCal links typed on the asset live on its unit (the calendar side of
-  // the same flat). Only real estate has them; the field may be absent.
+  // the same flat). The textarea is prefilled with the links of the unit
+  // the asset was linked to when the page was drawn (icalUnitId, icalShown):
+  // only that unit's list is replaced by what is typed.
   const icalField = category === "real_estate" && formData.has("icalUrls");
-  const icalUrls = icalField
-    ? [
-        ...new Set(
-          str(formData, "icalUrls")
-            .split("\n")
-            .map(normalizeFeedUrl)
-            .filter(Boolean),
-        ),
-      ]
-    : [];
+  const icalUrls = icalField ? feedLines(str(formData, "icalUrls")) : [];
+  const icalShown = icalField ? feedLines(str(formData, "icalShown")) : [];
+  const icalShownFor = str(formData, "icalUnitId") || null;
   for (const url of icalUrls) {
     if ("error" in checkFeedUrl(url)) {
-      return {
-        error: "error_ical_url",
-        detail: url.length > 80 ? `${url.slice(0, 77)}…` : url,
-      };
+      return fail("error_ical_url", url.length > 80 ? `${url.slice(0, 77)}…` : url);
     }
   }
+
+  // The "tenant & rent" step of a new rented asset: the contract is made in
+  // the same save, so the asset never shows "rented" with no rent.
+  let contractInput: ContractInput | null = null;
+  if (
+    !assetId &&
+    status === "rented" &&
+    CONTRACT_CATEGORIES.includes(category) &&
+    str(formData, "tenantStep") === "1" &&
+    (str(formData, "amount") || str(formData, "tenantName"))
+  ) {
+    const parsed = parseContractInput((key) => str(formData, key), (key) => formData.has(key));
+    if ("error" in parsed) return fail(parsed.error);
+    contractInput = parsed.value;
+  }
+
+  const rentalMode = str(formData, "rentalMode") === "daily" ? "daily" : "long_term";
   const data = {
     name,
     nameKa: str(formData, "nameKa") || null,
@@ -195,10 +275,10 @@ export async function saveAsset(
     areaSqm,
     estimatedValue,
     monthlyIncome,
-    currency: str(formData, "currency") || "GEL",
+    currency: str(formData, "currency") || owned?.currency || "GEL",
     status,
     unitId,
-    rentalMode: str(formData, "rentalMode") === "daily" ? "daily" : "long_term",
+    rentalMode,
     dailyRate,
     weekendPct,
     holidayPct,
@@ -208,41 +288,41 @@ export async function saveAsset(
     airbnbUrl: str(formData, "airbnbUrl") || null,
     bookingUrl: str(formData, "bookingUrl") || null,
     notes: str(formData, "notes") || null,
+    // A car's state plate (quoted in the red-line messages); the GPS
+    // settings on its desk write the same field.
+    ...(category === "vehicle" && formData.has("plateNumber")
+      ? { plateNumber: str(formData, "plateNumber").toUpperCase() || null }
+      : {}),
   };
 
-  const rentalMode = data.rentalMode;
-  // A day-let flat (or one given iCal links) belongs on the calendar: it
-  // gets a unit unless one is picked. Not when the owner has just removed
-  // the link by hand — that choice stands.
-  const needsUnit = (hadUnit: boolean) =>
-    !unitId && !hadUnit && wantsUnit({ category, rentalMode, icalCount: icalUrls.length });
+  // A flat joins the calendar (gets its unit) only at a change that puts
+  // it there: created let by the day or with links, moved into daily mode,
+  // or given new iCal links — never again after the owner unlinked it.
+  let makeUnit = shouldCreateUnit({
+    category,
+    rentalMode,
+    pickedUnitId: unitId,
+    previous: owned ? { rentalMode: owned.rentalMode, unitId: owned.unitId } : null,
+    addedIcal: icalLinksAdded(icalUrls, icalShown).length,
+  });
   const { getBillingContext } = await import("@/lib/billing/context");
+  const billing = await getBillingContext(operator);
+  if (makeUnit && !billing.canAddUnit) {
+    // Over the unit limit: calendar links cannot be kept without a unit;
+    // a plain day-let flat still shows in the calendar as it is.
+    if (icalUrls.length > 0) return fail("error_limit_units");
+    makeUnit = false;
+  }
 
   let savedId: string;
-  if (assetId) {
-    const owned = await prisma.asset.findFirst({
-      where: { id: assetId, operatorId: operator.id },
-    });
-    if (!owned) return { error: "error_required" };
-    let makeUnit = needsUnit(owned.unitId != null);
-    if (makeUnit && !(await getBillingContext(operator)).canAddUnit) {
-      // Over the unit limit: calendar links cannot be kept without a unit;
-      // a plain day-let flat still shows in the calendar as it is.
-      if (icalUrls.length > 0) return { error: "error_limit_units" };
-      makeUnit = false;
-    }
+  if (owned) {
     await prisma.asset.update({
-      where: { id: assetId },
+      where: { id: owned.id },
       // A status the owner changes by hand is stamped, so it outranks a
       // stale "rented" left behind by a finished contract.
       data: { ...data, ...(owned.status !== status ? { statusSetAt: new Date() } : {}) },
     });
-    savedId = assetId;
-    if (makeUnit) {
-      await createUnitForAsset(prisma, operator.id, { ...owned, ...data, id: assetId }, icalUrls, await districtNightRate(data.district));
-    } else if (unitId && icalField) {
-      await setUnitFeeds(unitId, icalUrls);
-    }
+    savedId = owned.id;
     // Daily contracts are priced day by day with the asset's weekend and
     // holiday premiums. New premiums must not re-price money already
     // received: each tracked daily contract opens a new ledger balance at
@@ -253,7 +333,7 @@ export async function saveAsset(
       (owned.holidayPct ?? 0) !== (holidayPct ?? 0);
     if (premiumsChanged) {
       const daily = await prisma.rentalContract.findMany({
-        where: { assetId, paymentPeriod: "daily", paidThrough: { not: null } },
+        where: { assetId: owned.id, paymentPeriod: "daily", paidThrough: { not: null }, ...LIVE_CONTRACT },
         select: { id: true, paidThrough: true, creditBalance: true },
       });
       const openedAt = new Date();
@@ -274,38 +354,44 @@ export async function saveAsset(
       }
     }
   } else {
-    const billing = await getBillingContext(operator);
-    let makeUnit = needsUnit(false);
-    if (makeUnit && !billing.canAddUnit) {
-      if (icalUrls.length > 0) return { error: "error_limit_units" };
-      makeUnit = false;
-    }
     // A linked pair counts once, as a unit; anything else is an asset.
     if (!makeUnit && !unitId && !billing.canAddAsset) {
-      return { error: "error_limit_assets" };
+      return fail("error_limit_assets");
     }
     const created = await prisma.asset.create({
       data: { ...data, operatorId: operator.id, statusSetAt: new Date() },
-      select: { id: true, category: true },
+      select: { id: true },
     });
     savedId = created.id;
-    if (makeUnit) {
-      await createUnitForAsset(
-        prisma,
-        operator.id,
-        { ...data, id: created.id },
-        icalUrls,
-        await districtNightRate(data.district),
-      );
-    } else if (unitId && icalField) {
-      await setUnitFeeds(unitId, icalUrls);
-    }
-    // A new car goes straight to its service desk, where the next step —
-    // the contract, then the tracker — is one button away.
-    if (created.category === "vehicle") {
-      revalidatePath("/assets");
-      redirect(`/assets/${created.id}/rental?tab=overview`);
-    }
+  }
+
+  if (makeUnit) {
+    await createUnitForAsset(
+      prisma,
+      operator.id,
+      { ...(owned ?? {}), ...data, id: savedId },
+      icalUrls,
+      await districtNightRate(data.district),
+    );
+  } else if (unitId && icalField) {
+    const unit = await prisma.unit.findFirst({
+      where: { id: unitId, operatorId: operator.id },
+      select: { channelLinks: true },
+    });
+    const feeds = unit
+      ? unitFeedsAfterSave({
+          unitId,
+          shownFor: icalShownFor,
+          shown: icalShown,
+          typed: icalUrls,
+          current: parseChannelLinks(unit.channelLinks).icalUrls,
+        })
+      : null;
+    if (feeds) await setUnitFeeds(unitId, feeds);
+  }
+
+  if (contractInput) {
+    await createContract({ id: savedId, currency: data.currency, status }, contractInput);
   }
 
   revalidatePath("/assets");
@@ -313,6 +399,16 @@ export async function saveAsset(
   revalidatePath("/units");
   revalidatePath("/calendar");
   revalidatePath("/");
+  if (!owned) {
+    // A new car goes straight to its rent (its service desk's payments),
+    // where the next step — the contract, then the tracker — is at hand;
+    // anything else to its own page, saying it was added.
+    redirect(
+      category === "vehicle"
+        ? `/assets/${savedId}/rental?tab=payments&added=1`
+        : `/assets/${savedId}/edit?added=1`,
+    );
+  }
   redirect("/assets");
 }
 
@@ -324,15 +420,242 @@ async function setUnitFeeds(unitId: string, icalUrls: string[]) {
   });
   if (!unit) return;
   const links = parseChannelLinks(unit.channelLinks);
-  const same =
-    links.icalUrls.length === icalUrls.length && links.icalUrls.every((url, i) => url === icalUrls[i]);
-  if (same) return;
   await prisma.unit.update({
     where: { id: unitId },
     data: { channelLinks: { ...links, icalUrls } },
   });
   // Status rows of removed links go now, not at the next sync.
   await prisma.unitFeed.deleteMany({ where: { unitId, url: { notIn: icalUrls } } });
+}
+
+// ── Rental contracts ────────────────────────────────────────────────────
+
+/** Write a new contract on an asset (the asset belongs to the caller). */
+async function createContract(
+  asset: { id: string; currency: string; status: string },
+  input: ContractInput,
+): Promise<string> {
+  const today = startOfTodayTbilisi();
+  const paidThrough = startingPaidThrough(input, today);
+  // Stored for compatibility only — every reader derives it from dates.
+  const phase = contractPhase(input, today);
+  const created = await prisma.rentalContract.create({
+    data: {
+      assetId: asset.id,
+      tenantName: input.tenantName,
+      tenantPhone: input.tenantPhone,
+      startDate: input.startDate,
+      endDate: input.endDate,
+      paymentAmount: input.amount,
+      monthlyRent: input.monthlyRent,
+      deposit: input.deposit,
+      currency: asset.currency,
+      status: phase,
+      paymentPeriod: input.paymentPeriod,
+      graceDays: input.graceDays,
+      paidThrough,
+      creditBalance: 0,
+      // The quick forms have no checkbox: reminders stay on.
+      remindersEnabled: input.remindersEnabled ?? true,
+      // The ledger's opening balance: payments recorded from now on are
+      // replayed on top of it if one of them is ever deleted.
+      openingPaidThrough: paidThrough,
+      openingCredit: 0,
+      openingAt: new Date(),
+      notes: input.notes,
+    },
+    select: { id: true },
+  });
+  // A running contract means the asset is rented.
+  if (phase === "active" && asset.status !== "rented") {
+    await prisma.asset.update({ where: { id: asset.id }, data: { status: "rented" } });
+  }
+  return created.id;
+}
+
+const refreshContract = (assetId: string) => {
+  revalidatePath("/");
+  revalidatePath("/assets");
+  revalidatePath("/alerts");
+  revalidatePath("/fleet");
+  revalidatePath("/calendar");
+  revalidatePath(`/assets/${assetId}/edit`);
+  revalidatePath(`/assets/${assetId}/rental`);
+};
+
+/**
+ * Add a rental contract. The owner types the rent PER PAYMENT PERIOD
+ * (60 a day, 350 a week, 1,200 a month); that is what the schedule
+ * charges, and monthlyRent keeps its monthly equivalent for every monthly
+ * figure. "Paid up to" says how far the rent is already paid, so a lease
+ * that has been running since March is not announced as seven months late
+ * the moment it is typed in.
+ */
+export async function saveContract(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const fail = failWith(formData);
+  const assetId = str(formData, "assetId");
+  if (!assetId) return fail("error_required");
+  const parsed = parseContractInput((key) => str(formData, key), (key) => formData.has(key));
+  if ("error" in parsed) return fail(parsed.error);
+
+  const operator = await requireWriter();
+  const asset = await prisma.asset.findFirst({
+    where: { id: assetId, operatorId: operator.id },
+    select: { id: true, currency: true, status: true },
+  });
+  if (!asset) return fail("error_required");
+
+  const id = await createContract(asset, parsed.value);
+  refreshContract(assetId);
+  return { ok: true, id };
+}
+
+/**
+ * Edit a contract in place — a new phone number, a lease extended, the
+ * rent raised — instead of deleting it (and its payment history) and
+ * typing it again. What the change does to the rent ledger is
+ * ledgerAfterEdit's rule; reminders still waiting were written under the
+ * old terms and are withdrawn, and the next check writes fresh ones.
+ */
+export async function updateContract(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const fail = failWith(formData);
+  const contractId = str(formData, "contractId");
+  const assetId = str(formData, "assetId");
+  if (!contractId || !assetId) return fail("error_required");
+  const parsed = parseContractInput((key) => str(formData, key), (key) => formData.has(key));
+  if ("error" in parsed) return fail(parsed.error);
+  const input = parsed.value;
+
+  const operator = await requireWriter();
+  const contract = await prisma.rentalContract.findFirst({
+    where: { id: contractId, assetId, asset: { operatorId: operator.id }, ...LIVE_CONTRACT },
+    include: { asset: { select: { id: true, status: true } } },
+  });
+  if (!contract) return fail("error_required");
+
+  const now = new Date();
+  const today = startOfTodayTbilisi(now);
+  const ledger = ledgerAfterEdit(
+    contract,
+    input,
+    formData.has("paidThroughWas") ? str(formData, "paidThroughWas") : null,
+    now,
+  );
+  const remindersEnabled = input.remindersEnabled ?? contract.remindersEnabled;
+  const phase = contractPhase(input, today);
+
+  await prisma.rentalContract.updateMany({
+    where: { id: contractId, ...LIVE_CONTRACT },
+    data: {
+      tenantName: input.tenantName,
+      tenantPhone: input.tenantPhone,
+      startDate: input.startDate,
+      endDate: input.endDate,
+      paymentPeriod: input.paymentPeriod,
+      paymentAmount: input.amount,
+      monthlyRent: input.monthlyRent,
+      graceDays: input.graceDays,
+      deposit: input.deposit,
+      notes: input.notes,
+      remindersEnabled,
+      status: phase,
+      ...(ledger ?? {}),
+    },
+  });
+
+  const changed =
+    ledger != null ||
+    input.graceDays !== contract.graceDays ||
+    remindersEnabled !== contract.remindersEnabled ||
+    input.tenantPhone !== contract.tenantPhone ||
+    input.tenantName !== contract.tenantName ||
+    input.startDate.getTime() !== contract.startDate.getTime() ||
+    input.endDate.getTime() !== contract.endDate.getTime();
+  if (changed) {
+    await settlePaidRent(prisma, contractId, ledger ? ledger.paidThrough : contract.paidThrough, now, {
+      cause: "changed",
+      withdrawOwed: true,
+    });
+    await sweepStaleRentAlerts(prisma, today, { contractId }, now);
+  }
+  // A contract moved onto today makes the asset rented.
+  if (phase === "active" && contract.asset.status !== "rented") {
+    await prisma.asset.update({ where: { id: assetId }, data: { status: "rented" } });
+  }
+
+  refreshContract(assetId);
+  return { ok: true, id: contractId };
+}
+
+/**
+ * Delete a contract — softly. It disappears from every screen, total,
+ * alert and reminder at once (LIVE_CONTRACT), but the row and its payment
+ * history stay for 30 days, so the owner can bring it back (restoreContract)
+ * from the notice the page shows next, or from its "deleted" list.
+ */
+export async function deleteContract(formData: FormData) {
+  const operator = await requireWriter();
+  const contractId = str(formData, "contractId");
+  const assetId = str(formData, "assetId");
+  if (!contractId || !assetId) return;
+  const contract = await prisma.rentalContract.findFirst({
+    where: { id: contractId, assetId, asset: { operatorId: operator.id }, ...LIVE_CONTRACT },
+    include: {
+      asset: {
+        select: {
+          status: true,
+          contracts: { where: { ...LIVE_CONTRACT, id: { not: contractId } } },
+        },
+      },
+    },
+  });
+  if (contract) {
+    const now = new Date();
+    await prisma.rentalContract.update({ where: { id: contractId }, data: { deletedAt: now } });
+    // Nothing more may go out about it, and its alerts (late rent,
+    // repossession right, expiry) are closed — stamped with `now`, so an
+    // undo brings back exactly these.
+    await withdrawContract(prisma, contractId, "contract_deleted", now);
+    // The asset was "rented" by this running contract alone: not any more.
+    const today = startOfTodayTbilisi(now);
+    if (
+      contract.asset.status === "rented" &&
+      contractPhase(contract, today) === "active" &&
+      !activeContract(contract.asset.contracts, today)
+    ) {
+      await prisma.asset.update({ where: { id: assetId }, data: { status: "vacant" } });
+    }
+    refreshContract(assetId);
+  }
+  redirect(`/assets/${assetId}/edit?deleted=${encodeURIComponent(contractId)}#contracts`);
+}
+
+/** Undo a contract deletion (within 30 days). */
+export async function restoreContract(formData: FormData) {
+  const operator = await requireWriter();
+  const contractId = str(formData, "contractId");
+  const assetId = str(formData, "assetId");
+  if (!contractId || !assetId) return;
+  const contract = await prisma.rentalContract.findFirst({
+    where: { id: contractId, assetId, asset: { operatorId: operator.id }, deletedAt: { not: null } },
+    include: { asset: { select: { status: true } } },
+  });
+  const now = new Date();
+  if (contract?.deletedAt && now.getTime() - contract.deletedAt.getTime() <= CONTRACT_UNDO_MS) {
+    await prisma.rentalContract.update({ where: { id: contractId }, data: { deletedAt: null } });
+    await restoreDeletedContract(prisma, contractId, contract.deletedAt);
+    if (contractPhase(contract, startOfTodayTbilisi(now)) === "active" && contract.asset.status !== "rented") {
+      await prisma.asset.update({ where: { id: assetId }, data: { status: "rented" } });
+    }
+    refreshContract(assetId);
+  }
+  redirect(`/assets/${assetId}/edit?restored=${encodeURIComponent(contractId)}#contracts`);
 }
 
 /**
@@ -419,154 +742,22 @@ export async function deleteAsset(formData: FormData) {
   redirect("/assets");
 }
 
-/**
- * Add a rental contract. The owner types the rent PER PAYMENT PERIOD
- * (60 a day, 350 a week, 1,200 a month); that is what the schedule
- * charges, and monthlyRent keeps its monthly equivalent for every monthly
- * figure. "Paid up to" says how far the rent is already paid, so a lease
- * that has been running since March is not announced as seven months late
- * the moment it is typed in.
- */
-export async function saveContract(
-  _prev: FormState,
-  formData: FormData,
-): Promise<FormState> {
-  const assetId = str(formData, "assetId");
-  const startRaw = str(formData, "startDate");
-  const endRaw = str(formData, "endDate");
-  // "amount" is the per-period rent; older clients posted "monthlyRent".
-  const amount = Number(str(formData, "amount") || str(formData, "monthlyRent"));
-
-  if (!assetId || !startRaw || !endRaw) return { error: "error_required" };
-  if (!Number.isFinite(amount) || amount <= 0) {
-    return { error: "error_invalid_number" };
-  }
-
-  const startDate = new Date(`${startRaw}T00:00:00Z`);
-  const endDate = new Date(`${endRaw}T00:00:00Z`);
-  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-    return { error: "error_required" };
-  }
-  if (endDate <= startDate) return { error: "error_dates" };
-
-  const deposit = optionalNumber(formData, "deposit");
-  if (Number.isNaN(deposit)) return { error: "error_invalid_number" };
-
-  const operator = await requireWriter();
-  const asset = await prisma.asset.findFirst({
-    where: { id: assetId, operatorId: operator.id },
-  });
-  if (!asset) return { error: "error_required" };
-
-  // Payment terms: how often rent is collected and how many days late the
-  // contract tolerates before the owner may act.
-  const paymentPeriod = asPeriod(str(formData, "paymentPeriod"));
-  const graceRaw = Number(str(formData, "graceDays"));
-  const graceDays =
-    Number.isFinite(graceRaw) && graceRaw >= 0 && graceRaw <= 60
-      ? Math.round(graceRaw)
-      : 3;
-
-  // Paid up to: the typed date moved onto the contract's due dates, or —
-  // when nothing is typed — the first due date on or after today, so a
-  // running lease starts in good standing.
-  const today = startOfTodayTbilisi();
-  const paidRaw = str(formData, "paidThrough");
-  let paidThrough: Date;
-  if (paidRaw) {
-    const typed = new Date(`${paidRaw}T00:00:00Z`);
-    if (Number.isNaN(typed.getTime())) return { error: "error_required" };
-    paidThrough = snapToBoundary(startDate, endDate, paymentPeriod, typed);
-  } else {
-    paidThrough = defaultPaidThrough(startDate, endDate, paymentPeriod, today);
-  }
-
-  // The checkbox is only on the full contract form; the calendar's quick
-  // form leaves reminders on.
-  const remindersEnabled = formData.has("remindersField")
-    ? formData.get("remindersEnabled") === "on"
-    : true;
-
-  // Stored for compatibility only — every reader derives it from dates.
-  const phase = contractPhase({ startDate, endDate }, today);
-
-  await prisma.rentalContract.create({
-    data: {
-      assetId,
-      tenantName: str(formData, "tenantName") || null,
-      tenantPhone: str(formData, "tenantPhone") || null,
-      startDate,
-      endDate,
-      paymentAmount: amount,
-      monthlyRent: monthlyEquivalent(amount, paymentPeriod),
-      deposit,
-      currency: asset.currency,
-      status: phase,
-      paymentPeriod,
-      graceDays,
-      paidThrough,
-      creditBalance: 0,
-      remindersEnabled,
-      // The ledger's opening balance: payments recorded from now on are
-      // replayed on top of it if one of them is ever deleted.
-      openingPaidThrough: paidThrough,
-      openingCredit: 0,
-      openingAt: new Date(),
-      notes: str(formData, "notes") || null,
-    },
-  });
-
-  // A running contract means the asset is rented.
-  if (phase === "active" && asset.status !== "rented") {
-    await prisma.asset.update({
-      where: { id: assetId },
-      data: { status: "rented" },
-    });
-  }
-
-  revalidatePath("/");
-  revalidatePath("/assets");
-  revalidatePath(`/assets/${assetId}/edit`);
-  revalidatePath(`/assets/${assetId}/rental`);
-  return null;
-}
-
-export async function deleteContract(formData: FormData) {
-  const operator = await requireWriter();
-  const contractId = str(formData, "contractId");
-  const assetId = str(formData, "assetId");
-  if (contractId) {
-    const { count } = await prisma.rentalContract.deleteMany({
-      where: { id: contractId, asset: { operatorId: operator.id } },
-    });
-    // Nothing more may go out about a contract that no longer exists, and
-    // its alerts (late rent, repossession right, expiry) are closed.
-    if (count > 0) await withdrawContract(prisma, contractId, "contract_deleted");
-    revalidatePath("/assets");
-    revalidatePath("/alerts");
-    revalidatePath("/");
-    if (assetId) {
-      revalidatePath(`/assets/${assetId}/edit`);
-      revalidatePath(`/assets/${assetId}/rental`);
-    }
-  }
-}
-
 export async function addIncome(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
   const operator = await requireWriter();
+  const fail = failWith(formData);
 
   const dateRaw = str(formData, "date");
   const amount = Number(str(formData, "amount"));
-  if (!dateRaw) return { error: "error_required" };
+  if (!dateRaw) return fail("error_required");
   if (!Number.isFinite(amount) || amount <= 0) {
-    return { error: "error_invalid_number" };
+    return fail("error_invalid_number");
   }
 
   const date = new Date(`${dateRaw}T00:00:00Z`);
-  if (Number.isNaN(date.getTime())) return { error: "error_required" };
+  if (Number.isNaN(date.getTime())) return fail("error_required");
   // The income can only be tied to one of this workspace's own assets.
   const assetId = str(formData, "incomeAssetId") || null;
   if (assetId) {
@@ -574,7 +765,7 @@ export async function addIncome(
       where: { id: assetId, operatorId: operator.id },
       select: { id: true },
     });
-    if (!asset) return { error: "error_required" };
+    if (!asset) return fail("error_required");
   }
 
   await prisma.incomeRecord.create({
@@ -590,7 +781,8 @@ export async function addIncome(
   });
 
   revalidatePath("/assets");
-  return null;
+  revalidatePath("/");
+  return { ok: true };
 }
 
 export async function deleteIncome(formData: FormData) {

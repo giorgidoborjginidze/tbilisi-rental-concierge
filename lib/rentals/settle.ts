@@ -22,6 +22,7 @@ import type { PrismaClient } from "../../app/generated/prisma/client";
 import { PAYMENT_TEMPLATES, type TemplateKey } from "../notify/templates";
 import { dayKey } from "../time";
 import { contractPhase } from "./phase";
+import { LIVE_CONTRACT } from "./live";
 import { hasBalance, statusFor, type ContractTermsInput, type DailyPricing } from "./terms";
 
 export type WithdrawReason =
@@ -53,7 +54,10 @@ export type WithdrawReason =
   | "escalated"
   // A tracker-silence alert whose vehicle is no longer watched: the tracker
   // was disconnected, its red lines paused or removed, or the rental ended.
-  | "not_monitored";
+  | "not_monitored"
+  // The owner removed the message from the outbox: it is kept (so the same
+  // message is never queued again) and can be put back.
+  | "owner";
 
 export const WITHDRAW_REASONS: WithdrawReason[] = [
   "paid",
@@ -76,6 +80,7 @@ export const WITHDRAW_REASONS: WithdrawReason[] = [
   "overlap_cleared",
   "escalated",
   "not_monitored",
+  "owner",
 ];
 
 /** Late-rent alerts; each carries payload.contractId and payload.dueDate. */
@@ -407,6 +412,52 @@ export async function restoreAfterUndo(
 }
 
 /**
+ * A deleted contract was brought back (undo): what its deletion withdrew
+ * comes back — the alerts it closed and the reminders it cancelled, matched
+ * by the exact time of the deletion (`deletedAt`), so nothing closed for
+ * another reason returns. A reminder whose rent was paid meanwhile is left
+ * to the next check, which withdraws it again (sweepStaleMessages).
+ */
+export async function restoreDeletedContract(
+  db: PrismaClient,
+  contractId: string,
+  deletedAt: Date,
+): Promise<{ reopened: number; requeued: number }> {
+  const alerts = await db.alert.findMany({
+    where: {
+      type: { in: [...RENT_ALERTS, "contract_expiry", "contract_ended"] },
+      status: "resolved",
+      resolvedAt: deletedAt,
+    },
+    select: { id: true, payload: true },
+  });
+  let reopened = 0;
+  for (const alert of alerts) {
+    const payload = alert.payload as { autoResolved?: string; contractId?: string };
+    if (payload.contractId !== contractId || payload.autoResolved !== "contract_deleted") continue;
+    const { autoResolved: _dropped, ...rest } = payload;
+    void _dropped;
+    await db.alert.update({
+      where: { id: alert.id },
+      data: { status: "open", resolvedAt: null, payload: rest },
+    });
+    reopened += 1;
+  }
+  const requeued = (
+    await db.notifyMessage.updateMany({
+      where: {
+        contractId,
+        status: "cancelled",
+        cancelReason: "contract_deleted",
+        cancelledAt: deletedAt,
+      },
+      data: { status: "queued", cancelReason: null, cancelledAt: null, error: null },
+    })
+  ).count;
+  return { reopened, requeued };
+}
+
+/**
  * The vehicle is back inside a red line ("returned"), or back in the safe
  * zone after nearing it ("moved_away"): the warnings still waiting about
  * that fence are withdrawn — the approach and breach texts on a return,
@@ -543,7 +594,8 @@ export async function sweepStaleMessages(
   const contracts = new Map(
     (
       await db.rentalContract.findMany({
-        where: { id: { in: contractIds } },
+        // A deleted contract reads as missing: its messages are stale.
+        where: { id: { in: contractIds }, ...LIVE_CONTRACT },
         select: {
           id: true,
           startDate: true,
@@ -667,7 +719,8 @@ export async function sweepStaleRentAlerts(
   const contracts = new Map(
     (
       await db.rentalContract.findMany({
-        where: { id: { in: ids } },
+        // A deleted contract reads as missing: its alerts close.
+        where: { id: { in: ids }, ...LIVE_CONTRACT },
         select: {
           id: true,
           startDate: true,

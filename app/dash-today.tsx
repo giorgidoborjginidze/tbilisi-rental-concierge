@@ -19,10 +19,12 @@ import { districtLabel } from "@/lib/places";
 import { dayKind, dayPrice } from "@/lib/assets/daily-price";
 import { loadAssetSources } from "@/lib/property/places";
 import { contractNightValue, placeStays } from "@/lib/property/stays";
+import { asksDailyQuestion } from "@/lib/property/link";
 import { alertGlyph } from "./alert-icon";
 import { IconArrowRight } from "./icons";
 import DecideCards, { type DecideItem } from "./decide-cards";
 import DailyCheckClient, { type DayAsset } from "./daily-check-client";
+import { LIVE_CONTRACT } from "@/lib/rentals/live";
 
 // "Today": the one block under the hero that says what needs the owner
 // today — urgent alerts (a double booking, the repossession right, a red
@@ -44,6 +46,7 @@ async function loadRentItems(locale: Locale, operatorId: string, today: Date): P
       OR: [activeContractWhere(today), recentlyEndedWhere(today, SETTLEMENT_WINDOW_DAYS)],
       paidThrough: { not: null },
       asset: { operatorId },
+      ...LIVE_CONTRACT,
     },
     include: {
       asset: {
@@ -91,13 +94,25 @@ async function loadRentItems(locale: Locale, operatorId: string, today: Date): P
 // ── The daily question: for every asset let by the day, was it rented
 // today and for how much (the day's tariff, weekend and holiday included).
 // A night a booking, lease or contract already holds is shown as answered
-// by it (lib/property/stays.ts). ──
+// by it (lib/property/stays.ts). A flat whose calendar unit syncs channel
+// feeds is not asked at all: the channel is the record of its nights. ──
 async function loadDaily(locale: Locale, operatorId: string, today: Date) {
-  const assets = await prisma.asset.findMany({
-    where: { operatorId, rentalMode: "daily" },
-    include: { days: { where: { date: today } } },
-    orderBy: { name: "asc" },
-  });
+  const assets = (
+    await prisma.asset.findMany({
+      where: { operatorId, rentalMode: "daily" },
+      include: {
+        days: { where: { date: today } },
+        unit: { select: { operatorId: true, channelLinks: true } },
+      },
+      orderBy: { name: "asc" },
+    })
+  ).filter((asset) =>
+    asksDailyQuestion({
+      rentalMode: asset.rentalMode,
+      // Only this workspace's own unit speaks for the flat.
+      unit: asset.unit && asset.unit.operatorId === operatorId ? asset.unit : null,
+    }),
+  );
   if (assets.length === 0) return null;
 
   const tomorrow = new Date(today.getTime() + DAY_MS);
@@ -206,7 +221,7 @@ export async function TodaySection({
   const assets = assetIds.length
     ? await prisma.asset.findMany({
         where: { id: { in: assetIds }, operatorId },
-        select: { id: true, name: true, nameKa: true, category: true, _count: { select: { contracts: true } } },
+        select: { id: true, name: true, nameKa: true, category: true, _count: { select: { contracts: { where: LIVE_CONTRACT } } } },
       })
     : [];
   const assetBy = new Map(assets.map((asset) => [asset.id, asset]));

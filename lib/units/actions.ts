@@ -30,7 +30,14 @@ export type FormState =
       values?: Record<string, string>;
       ok?: never;
     }
-  | { ok: true; error?: never }
+  | {
+      ok: true;
+      error?: never;
+      /** Saved, with something the owner should know (shown as a note). */
+      notice?: StringKey;
+      /** The record the save created or changed, e.g. for an undo. */
+      id?: string;
+    }
   | null;
 
 const str = (formData: FormData, key: string) =>

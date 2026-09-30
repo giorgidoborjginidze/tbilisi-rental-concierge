@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { asLocale } from "@/lib/i18n/strings";
 import { queueMessage } from "@/lib/notify/whatsapp";
 import { activeContractWhere } from "@/lib/rentals/phase";
+import { LIVE_CONTRACT } from "@/lib/rentals/live";
 import { resolveTrackerSilence, withdrawFence } from "@/lib/rentals/settle";
 import { startOfTodayTbilisi } from "@/lib/time";
 import type { TemplateKey } from "@/lib/notify/templates";
@@ -71,7 +72,7 @@ export async function processPing(
       // its dates, so a contract booked ahead is covered from its first
       // day and a finished one never gets messages meant for the new driver.
       contracts: {
-        where: activeContractWhere(startOfTodayTbilisi(ping.at ?? new Date())),
+        where: { ...activeContractWhere(startOfTodayTbilisi(ping.at ?? new Date())), ...LIVE_CONTRACT },
         orderBy: { startDate: "desc" },
         take: 1,
       },

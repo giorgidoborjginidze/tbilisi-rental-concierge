@@ -44,6 +44,9 @@ import {
 import { LIVE_STAY } from "@/lib/bookings/live";
 import { districtLabel } from "@/lib/places";
 import { formatMoney } from "@/lib/format";
+import { LIVE_CONTRACT } from "@/lib/rentals/live";
+import { setupChoices } from "@/lib/onboarding/setup";
+import { IconCalendar, IconCar, IconKey, IconTrendUp } from "./icons";
 
 export const dynamic = "force-dynamic";
 
@@ -351,21 +354,40 @@ function DashboardHeader({
 // own working section → Market Advice, last, with nothing below it. No
 // KPI grid repeats the hero's figures.
 
-/** An account with nothing in it yet: one clear first step, no zeros. */
-function EmptyStart({ locale, profile }: { locale: Locale; profile: string }) {
-  const start =
-    profile === "hotel"
-      ? { title: "empty_title_hotel", body: "empty_body", cta: "empty_cta_hotel", href: "/units/new" }
-      : profile === "car_rental"
-        ? { title: "empty_title_car", body: "empty_body", cta: "empty_cta_car", href: "/assets/new?category=vehicle" }
-        : { title: "empty_title", body: "empty_body", cta: "empty_cta", href: "/assets/new" };
+/**
+ * An account with nothing in it yet: not a feature tour over empty screens
+ * but one question — "what do you have?" — whose answers open the add form
+ * ready for it (a flat let long-term asks for the tenant and the rent in
+ * the same save; a day-let flat opens on the day rate; a car on the plate
+ * and the driver). The workspace's own kind comes first. No zeros.
+ */
+function SetupCard({ locale, profile }: { locale: Locale; profile: string }) {
+  const choices = setupChoices(profile);
+  const icon = (key: string) =>
+    key === "long_term" ? (
+      <IconKey size={22} />
+    ) : key === "daily" ? (
+      <IconCalendar size={22} />
+    ) : key === "cars" ? (
+      <IconCar size={22} />
+    ) : (
+      <IconTrendUp size={22} />
+    );
   return (
-    <section className="card empty-start">
-      <h2>{t(locale, start.title as StringKey)}</h2>
-      <p>{t(locale, start.body as StringKey)}</p>
-      <Link href={start.href} className="btn-primary">
-        {t(locale, start.cta as StringKey)}
-      </Link>
+    <section className="card setup-card" aria-labelledby="setup-title">
+      <h2 id="setup-title">{t(locale, "setup_title")}</h2>
+      <p className="setup-card__lead">{t(locale, "setup_lead")}</p>
+      <div className="setup-choices">
+        {choices.map((choice) => (
+          <Link key={choice.key} href={choice.href} className="setup-choice">
+            <span className="setup-choice__ico" aria-hidden>
+              {icon(choice.key)}
+            </span>
+            <span className="setup-choice__title">{t(locale, `setup_${choice.key}` as StringKey)}</span>
+            <span className="setup-choice__sub">{t(locale, `setup_${choice.key}_sub` as StringKey)}</span>
+          </Link>
+        ))}
+      </div>
     </section>
   );
 }
@@ -400,7 +422,7 @@ async function HotelDashboard({
     return (
       <main>
         <DashboardHeader locale={locale} operator={operator} sub={t(locale, "profile_hotel")} />
-        <EmptyStart locale={locale} profile="hotel" />
+        <SetupCard locale={locale} profile="hotel" />
         <MarketTips locale={locale} operatorId={operator.id} empty />
       </main>
     );
@@ -544,7 +566,7 @@ async function BrokerageDashboard({
     return (
       <main>
         <DashboardHeader locale={locale} operator={operator} sub={t(locale, "profile_brokerage")} />
-        <EmptyStart locale={locale} profile="brokerage" />
+        <SetupCard locale={locale} profile="brokerage" />
         <MarketTips locale={locale} operatorId={operator.id} empty />
       </main>
     );
@@ -556,7 +578,10 @@ async function BrokerageDashboard({
   const [assets, income] = await Promise.all([
     prisma.asset.findMany({
       where: { operatorId: operator.id, category: { not: "income_source" } },
-      include: { contracts: { orderBy: { endDate: "desc" } } },
+      include: {
+        contracts: { where: LIVE_CONTRACT, orderBy: { endDate: "desc" } },
+        days: { where: { date: today, rented: true }, select: { id: true } },
+      },
       orderBy: [{ category: "asc" }, { name: "asc" }],
     }),
     monthlyIncome(operator.id),
@@ -569,7 +594,7 @@ async function BrokerageDashboard({
       ? "rented"
       : asset.unitId
         ? "rented"
-        : assetStatusNow(asset, asset.contracts, today);
+        : assetStatusNow(asset, asset.contracts, today, { rentedToday: asset.days.length > 0 });
   const statusCounts = new Map<string, number>();
   for (const asset of assets) {
     const status = effectiveStatus(asset);
@@ -677,7 +702,7 @@ async function CarRentalDashboard({
     return (
       <main>
         <DashboardHeader locale={locale} operator={operator} sub={t(locale, "profile_car")} />
-        <EmptyStart locale={locale} profile="car_rental" />
+        <SetupCard locale={locale} profile="car_rental" />
         <MarketTips locale={locale} operatorId={operator.id} empty />
       </main>
     );
@@ -689,13 +714,17 @@ async function CarRentalDashboard({
   const [vehicles, income] = await Promise.all([
     prisma.asset.findMany({
       where: { operatorId: operator.id, category: "vehicle" },
-      include: { contracts: { orderBy: { endDate: "desc" } } },
+      include: {
+        contracts: { where: LIVE_CONTRACT, orderBy: { endDate: "desc" } },
+        // A car let day by day is rented today by its daily answer.
+        days: { where: { date: today, rented: true }, select: { id: true } },
+      },
       orderBy: { name: "asc" },
     }),
     monthlyIncome(operator.id),
   ]);
 
-  const rentedNow = vehicles.filter((v) => runningContract(v.contracts, today)).length;
+  const rentedNow = vehicles.filter((v) => runningContract(v.contracts, today) || v.days.length > 0).length;
   const inDay = (d: Date) => d >= today && d < tomorrow;
   const displayName = (a: { name: string; nameKa: string | null }) =>
     locale === "ka" && a.nameKa ? a.nameKa : a.name;
@@ -773,7 +802,7 @@ async function PersonalDashboard({
     return (
       <main>
         <DashboardHeader locale={locale} operator={operator} sub={t(locale, "account_personal")} />
-        <EmptyStart locale={locale} profile="personal" />
+        <SetupCard locale={locale} profile="personal" />
         <MarketTips locale={locale} operatorId={operator.id} empty />
       </main>
     );
@@ -846,7 +875,9 @@ export default async function Home() {
   return (
     <>
       <SplashIntro tapHint={t(locale, "splash_hint")} />
-      {operator && (
+      {/* The tour is offered once there is something to show: an empty
+          account gets the setup card instead of a walk past zeros. */}
+      {operator && !(await isEmptyWorkspace(operator.id)) && (
         <TourPrompt
           labels={{
             title: t(locale, "tour_prompt_title"),

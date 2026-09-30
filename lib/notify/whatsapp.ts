@@ -136,6 +136,9 @@ export async function queueMessage(input: QueueInput) {
     where: { dedupeKey: input.dedupeKey },
   });
   if (existing?.status === "sent") return null;
+  // Removed by the owner: never queued again by a later check (the owner
+  // can put it back from the outbox).
+  if (existing?.status === "cancelled" && existing.cancelReason === "owner") return null;
 
   const body = clampMessage(
     render(await resolveTemplate(input.operatorId, input.locale, input.key), input.vars),

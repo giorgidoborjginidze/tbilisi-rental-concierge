@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { cancelBooking, restoreBooking, updateBooking } from "@/lib/bookings/actions";
+import ConfirmAction from "@/app/confirm-action";
 import { currencySign } from "@/lib/format";
 import type { FormState } from "@/lib/units/actions";
+import { keepTyped } from "@/app/keep-typed";
 
 export interface EditableBooking {
   id: string;
@@ -41,7 +43,7 @@ export default function BookingEditForm({
 
   return (
     <>
-      <form action={formAction} className="mt-6 flex flex-col gap-4">
+      <form action={formAction} onSubmit={keepTyped(formAction)} className="mt-6 flex flex-col gap-4">
         <input type="hidden" name="bookingId" value={booking.id} />
         <input type="hidden" name="back" value={backHref} />
         <label className="field">
@@ -99,17 +101,15 @@ export default function BookingEditForm({
             </button>
           </form>
         ) : (
-          <form
+          <ConfirmAction
             action={cancelBooking}
-            onSubmit={(event) => {
-              if (!confirm(labels.booking_cancel_confirm)) event.preventDefault();
-            }}
-          >
-            <input type="hidden" name="bookingId" value={booking.id} />
-            <button type="submit" className="btn-danger">
-              {labels.booking_cancel_stay}
-            </button>
-          </form>
+            fields={{ bookingId: booking.id }}
+            trigger={labels.booking_cancel_stay}
+            triggerClassName="btn-danger"
+            question={labels.booking_cancel_confirm}
+            confirmLabel={labels.booking_cancel_stay}
+            cancelLabel={labels.cancel}
+          />
         )}
       </div>
     </>

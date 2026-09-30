@@ -13,6 +13,7 @@
 
 import { prisma } from "@/lib/db";
 import { LIVE_STAY } from "@/lib/bookings/live";
+import { LIVE_CONTRACT } from "@/lib/rentals/live";
 import type { Booking, Unit } from "@/app/generated/prisma/client";
 import { emptySources, type PlaceSources } from "./stays";
 
@@ -43,6 +44,7 @@ interface Range {
 
 const assetSelect = (range: Range) => ({
   id: true,
+  operatorId: true,
   name: true,
   nameKa: true,
   city: true,
@@ -53,7 +55,7 @@ const assetSelect = (range: Range) => ({
   holidayPct: true,
   currency: true,
   contracts: {
-    where: { startDate: { lt: range.end }, endDate: { gt: range.start } },
+    where: { startDate: { lt: range.end }, endDate: { gt: range.start }, ...LIVE_CONTRACT },
     select: {
       id: true,
       startDate: true,
@@ -110,7 +112,11 @@ export async function loadRentalPlaces(
         }),
   ]);
 
-  const places: RentalPlace[] = units.map(({ leases, asset, ...unit }) => ({
+  const places: RentalPlace[] = units.map(({ leases, asset: linked, ...unit }) => {
+    // Second safeguard: only this workspace's own asset speaks for the unit
+    // (a cross-workspace link left in legacy or team data is ignored).
+    const asset = linked && linked.operatorId === operatorId ? linked : null;
+    return {
     key: unit.id,
     unit,
     asset: asset
@@ -137,7 +143,8 @@ export async function loadRentalPlaces(
       weekendPct: asset?.weekendPct ?? 0,
       holidayPct: asset?.holidayPct ?? 0,
     },
-  }));
+  };
+  });
 
   for (const asset of loose) {
     places.push({
@@ -193,6 +200,7 @@ export async function loadAssetSources(
       ...assetSelect(range),
       unit: {
         select: {
+          operatorId: true,
           bookings: {
             where: { ...LIVE_STAY, checkIn: { lt: range.end }, checkOut: { gt: range.start } },
             select: { id: true, source: true, checkIn: true, checkOut: true, nights: true, amount: true },
@@ -206,17 +214,21 @@ export async function loadAssetSources(
     },
   });
   return new Map(
-    assets.map((asset) => [
+    assets.map((asset) => {
+      // Second safeguard: only this workspace's own unit's stays.
+      const unit = asset.unit && asset.unit.operatorId === operatorId ? asset.unit : null;
+      return [
       asset.id,
       {
-        bookings: asset.unit?.bookings ?? [],
-        leases: asset.unit?.leases ?? [],
+        bookings: unit?.bookings ?? [],
+        leases: unit?.leases ?? [],
         contracts: asset.contracts,
         days: asset.days,
         dailyMode: asset.rentalMode === "daily",
         weekendPct: asset.weekendPct ?? 0,
         holidayPct: asset.holidayPct ?? 0,
       },
-    ]),
+    ] as const;
+    }),
   );
 }

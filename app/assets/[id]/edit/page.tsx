@@ -4,15 +4,15 @@ import { prisma } from "@/lib/db";
 import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
-import { addAssetToRentals, deleteContract } from "@/lib/assets/actions";
+import { addAssetToRentals, restoreContract } from "@/lib/assets/actions";
 import { dayPrice } from "@/lib/assets/daily-price";
 import OccupancyCalendar from "./occupancy-calendar";
-import CryptoView from "./crypto-view";
-import StockView from "./stock-view";
-import MetalView from "./metal-view";
+import HoldingView from "./holding-view";
 import { LISTING_PLATFORMS, parseChannelLinks } from "@/lib/types";
 import AssetForm from "../../asset-form";
 import ContractForm from "../../contract-form";
+import ContractList, { type ContractRow } from "../../contract-list";
+import { CONTRACT_LABEL_KEYS } from "../../contract-labels";
 import ListingControls, { type ListingLink } from "../../listing-controls";
 import DoorKey from "../../door-key";
 import { assetFormProps } from "../../form-helpers";
@@ -25,7 +25,11 @@ import { cityLabel, districtLabel } from "@/lib/places";
 import { titled } from "@/lib/i18n/metadata";
 import { formatMoney } from "@/lib/format";
 import { rentalDesk } from "@/lib/rentals/desk";
-import { IconAlert, IconArrowLeft, IconArrowRight, IconClose } from "@/app/icons";
+import { IconAlert, IconArrowLeft, IconArrowRight, IconRestart } from "@/app/icons";
+import { SeverityIcon } from "@/app/alert-icon";
+import { LIVE_CONTRACT, restorableSince } from "@/lib/rentals/live";
+import { periodAmount } from "@/lib/rentals/terms";
+import { firstParam, type QueryValue } from "@/lib/params";
 
 export const dynamic = "force-dynamic";
 
@@ -54,16 +58,32 @@ const KIND_CLASS: Record<string, string> = {
 
 export default async function EditAssetPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{
+    added?: QueryValue;
+    deleted?: QueryValue;
+    restored?: QueryValue;
+    add?: QueryValue;
+  }>;
 }) {
   const operator = await requireOperator();
 
   const { id } = await params;
+  const query = await searchParams;
+  const justAdded = firstParam(query.added) === "1";
   const asset = await prisma.asset.findFirst({
     where: { id, operatorId: operator.id },
     include: {
-      contracts: { orderBy: { endDate: "desc" } },
+      contracts: {
+        where: LIVE_CONTRACT,
+        orderBy: { endDate: "desc" },
+        include: { _count: { select: { payments: true } } },
+      },
+      // Today's "rented" answer of a day-let asset (its nights are daily
+      // answers, not contracts).
+      days: { where: { date: startOfTodayTbilisi(), rented: true }, select: { id: true } },
       unit: { select: { id: true, name: true, nameKa: true, operatorId: true, channelLinks: true } },
     },
   });
@@ -71,30 +91,15 @@ export default async function EditAssetPage({
 
   const locale = await getLocale();
 
-  // Crypto holdings have their own view (live valuation + buy/sell).
-  if (asset.category === "crypto") {
+  // Crypto, shares and precious metals have their own view: live
+  // valuation and the buys and sells.
+  if (asset.category === "crypto" || asset.category === "stock" || asset.category === "metal") {
     return (
-      <CryptoView
+      <HoldingView
+        kind={asset.category}
         asset={{ id: asset.id, name: asset.name, symbol: asset.symbol, coingeckoId: asset.coingeckoId }}
         locale={locale}
-      />
-    );
-  }
-  // Stock holdings share the same live-valuation + buy/sell view.
-  if (asset.category === "stock") {
-    return (
-      <StockView
-        asset={{ id: asset.id, name: asset.name, symbol: asset.symbol }}
-        locale={locale}
-      />
-    );
-  }
-  // Precious-metal holdings use the same holding view (per-ounce pricing).
-  if (asset.category === "metal") {
-    return (
-      <MetalView
-        asset={{ id: asset.id, name: asset.name, symbol: asset.symbol }}
-        locale={locale}
+        justAdded={justAdded}
       />
     );
   }
@@ -106,7 +111,7 @@ export default async function EditAssetPage({
   const activeContract = runningContract(asset.contracts, today);
   // The asset follows its contracts: a lease that ended in August no
   // longer keeps it "rented".
-  const ownStatus = assetStatusNow(asset, asset.contracts, today);
+  const ownStatus = assetStatusNow(asset, asset.contracts, today, { rentedToday: asset.days.length > 0 });
   const status = activeContract ? "rented" : asset.unitId ? "str" : ownStatus;
 
   const record = asset as unknown as Record<string, string | null>;
@@ -227,23 +232,126 @@ export default async function EditAssetPage({
     "mark_amount_night", "mark_note", "nights_short",
     "contract_start", "contract_end", "contract_amount_monthly", "contract_amount_daily",
     "contract_tenant", "cancel", "error_required", "error_invalid_number",
-    "error_dates", "error_days_taken",
+    "error_dates", "error_days_taken", "notice_days_held", "notice_days_held_link",
   ];
   const calendarLabels = Object.fromEntries(
     calendarLabelKeys.map((key) => [key, t(locale, key)]),
   );
+  // A car let by the day has a driver, not a guest.
+  if (asset.category === "vehicle") calendarLabels.mark_note = t(locale, "mark_note_driver");
 
-  const contractLabelKeys: StringKey[] = [
-    "contract_add", "contract_tenant", "tenant_phone", "contract_start", "contract_end",
-    "contract_deposit", "asset_notes", "error_required",
-    "error_invalid_number", "error_dates", "error_email_taken",
-    "pay_period", "period_daily", "period_weekly", "period_monthly", "pay_grace",
-    "contract_amount_daily", "contract_amount_weekly", "contract_amount_monthly",
-    "contract_monthly_equiv", "contract_paid_up_to", "contract_paid_up_to_hint",
-    "contract_reminders",
-  ];
   const contractLabels = Object.fromEntries(
-    contractLabelKeys.map((key) => [key, t(locale, key)]),
+    CONTRACT_LABEL_KEYS.map((key) => [key, t(locale, key)]),
+  );
+  // A car has a driver, not a tenant.
+  if (asset.category === "vehicle") {
+    contractLabels.contract_tenant = t(locale, "contract_driver");
+    contractLabels.tenant_phone = t(locale, "driver_phone");
+  }
+
+  // ── Contracts: the live ones (editable), a notice after a delete or an
+  // undo, and the ones deleted in the last 30 days (can be brought back). ──
+  const deletedParam = firstParam(query.deleted);
+  const restoredParam = firstParam(query.restored);
+  const deleted = isIncome
+    ? []
+    : await prisma.rentalContract.findMany({
+        where: {
+          assetId: asset.id,
+          deletedAt: { gte: restorableSince() },
+        },
+        orderBy: { deletedAt: "desc" },
+        include: { _count: { select: { payments: true } } },
+      });
+  const justDeleted = deletedParam ? deleted.find((c) => c.id === deletedParam) : undefined;
+  const justRestored = restoredParam ? asset.contracts.find((c) => c.id === restoredParam) : undefined;
+  const contractSummary = (contract: {
+    tenantName: string | null;
+    tenantPhone: string | null;
+    startDate: Date;
+    endDate: Date;
+    paymentPeriod: string;
+    paymentAmount: number | null;
+    monthlyRent: number;
+    currency: string;
+  }) =>
+    `${rentLabel(locale, contract)} · ${contract.tenantName ?? "—"}${
+      contract.tenantPhone ? ` (${contract.tenantPhone})` : ""
+    } · ${fmtDate.format(contract.startDate)} – ${fmtDate.format(contract.endDate)}`;
+  const contractRows: ContractRow[] = asset.contracts.map((contract) => ({
+    id: contract.id,
+    summary: contractSummary(contract),
+    phase: `(${t(locale, `cstatus_${contractPhase(contract, today)}` as StringKey)})`,
+    payments: contract._count.payments,
+    values: {
+      tenantName: contract.tenantName ?? "",
+      tenantPhone: contract.tenantPhone ?? "",
+      paymentPeriod: contract.paymentPeriod,
+      amount: String(periodAmount(contract)),
+      startDate: dayKey(contract.startDate),
+      endDate: dayKey(contract.endDate),
+      paidThrough: contract.paidThrough ? dayKey(contract.paidThrough) : "",
+      graceDays: String(contract.graceDays),
+      deposit: contract.deposit?.toString() ?? "",
+      notes: contract.notes ?? "",
+      remindersEnabled: contract.remindersEnabled,
+    },
+  }));
+  const restoreButton = (contractId: string, label: string) => (
+    <form action={restoreContract}>
+      <input type="hidden" name="contractId" value={contractId} />
+      <input type="hidden" name="assetId" value={asset.id} />
+      <button type="submit" className="btn-chip btn-chip--icon-text">
+        <IconRestart size={14} /> {label}
+      </button>
+    </form>
+  );
+
+  const contractsSection = !isIncome && (
+    <section id="contracts" style={{ scrollMarginTop: 80 }}>
+      <h2>{t(locale, "contracts_title")}</h2>
+      {justDeleted && (
+        <div className="alert-card alert-card--warn undo-note" role="status">
+          <span className="alert-card__notice">
+            <SeverityIcon severity="warn" />
+            <span>
+              {t(locale, "contract_deleted_note").replace("{name}", justDeleted.tenantName ?? "—")}
+            </span>
+          </span>
+          {restoreButton(justDeleted.id, t(locale, "contract_undo"))}
+        </div>
+      )}
+      {justRestored && (
+        <p className="alert-card alert-card--good" role="status" style={{ display: "block", fontSize: 13 }}>
+          {t(locale, "contract_restored_note").replace("{name}", justRestored.tenantName ?? "—")}
+        </p>
+      )}
+      <ContractList assetId={asset.id} rows={contractRows} labels={contractLabels} />
+      <details className="desk-fold" open={asset.contracts.length === 0 || firstParam(query.add) === "contract"}>
+        <summary>{t(locale, "contract_add")}</summary>
+        <ContractForm assetId={asset.id} labels={contractLabels} />
+      </details>
+      {deleted.length > 0 && (
+        <details className="desk-fold" style={{ marginTop: 12 }}>
+          <summary>{t(locale, "contract_trash").replace("{n}", String(deleted.length))}</summary>
+          <p className="field-hint" style={{ marginTop: 0 }}>{t(locale, "contract_trash_hint")}</p>
+          <ul className="space-y-2">
+            {deleted.map((contract) => (
+              <li key={contract.id} className="alert-card contract-row">
+                <div className="contract-row__main">
+                  <div className="contract-row__text" style={{ color: "var(--color-text-muted)" }}>
+                    {contractSummary(contract)}
+                    {contract._count.payments > 0 &&
+                      ` · ${t(locale, "contract_payments_kept").replace("{n}", String(contract._count.payments))}`}
+                  </div>
+                  {restoreButton(contract.id, t(locale, "contract_restore"))}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </section>
   );
 
   return (
@@ -328,6 +436,15 @@ export default async function EditAssetPage({
         )}
       </div>
 
+      {justAdded && (
+        <p className="alert-card alert-card--good" role="status" style={{ display: "block", fontSize: 13 }}>
+          {t(locale, "asset_added_note").replace("{name}", displayName)}
+        </p>
+      )}
+
+      {/* ── Who rents it: first, so a new tenant is one tap away. ── */}
+      {contractsSection}
+
       {/* ── Occupancy calendar: when this asset was rented and when not ── */}
       {showCalendar && (
         <section>
@@ -385,6 +502,7 @@ export default async function EditAssetPage({
       <h2>{t(locale, "asset_edit_title")}</h2>
       <AssetForm
         {...props}
+        displayName={displayName}
         asset={{
           id: asset.id,
           name: asset.name,
@@ -410,50 +528,16 @@ export default async function EditAssetPage({
           // it never re-confirms a "rented" left over from an ended lease.
           status: ownStatus,
           unitId: asset.unitId ?? "",
-          icalUrls: asset.unit ? parseChannelLinks(asset.unit.channelLinks).icalUrls.join("\n") : "",
+          // Only this workspace's own unit's links are shown (and written).
+          icalUrls:
+            asset.unit && asset.unit.operatorId === operator.id
+              ? parseChannelLinks(asset.unit.channelLinks).icalUrls.join("\n")
+              : "",
+          plateNumber: asset.plateNumber ?? "",
           notes: asset.notes ?? "",
         }}
       />
 
-      {!isIncome && (
-        <section id="contracts" style={{ scrollMarginTop: 80 }}>
-          <h2>{t(locale, "contracts_title")}</h2>
-          {asset.contracts.length > 0 && (
-            <ul className="mb-4 space-y-2">
-              {asset.contracts.map((contract) => (
-                <li
-                  key={contract.id}
-                  className="alert-card"
-                  style={{ padding: "12px 18px", alignItems: "center" }}
-                >
-                  <div>
-                    <span className="font-medium">{rentLabel(locale, contract)}</span>{" "}
-                    · {contract.tenantName ?? "—"}
-                    {contract.tenantPhone ? ` (${contract.tenantPhone})` : ""} · {fmtDate.format(contract.startDate)}{" "}
-                    – {fmtDate.format(contract.endDate)}{" "}
-                    <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
-                      ({t(locale, `cstatus_${contractPhase(contract, today)}` as StringKey)})
-                    </span>
-                  </div>
-                  <form action={deleteContract}>
-                    <input type="hidden" name="contractId" value={contract.id} />
-                    <input type="hidden" name="assetId" value={asset.id} />
-                    <button
-                      type="submit"
-                      className="btn-chip btn-chip--icon btn-chip--danger"
-                      aria-label={t(locale, "aria_delete_contract")}
-                      title={t(locale, "aria_delete_contract")}
-                    >
-                      <IconClose size={15} />
-                    </button>
-                  </form>
-                </li>
-              ))}
-            </ul>
-          )}
-          <ContractForm assetId={asset.id} labels={contractLabels} />
-        </section>
-      )}
     </main>
   );
 }

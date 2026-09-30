@@ -89,6 +89,12 @@ describe("assetStatusNow", () => {
     expect(assetStatusNow({ status: "listed" }, [ended], today)).toBe("listed");
     expect(assetStatusNow({ status: "rented" }, [], today)).toBe("rented");
   });
+
+  it("a day-let asset answered 'rented' for today is rented, whatever its stored status", () => {
+    expect(assetStatusNow({ status: "vacant" }, [], today, { rentedToday: true })).toBe("rented");
+    expect(assetStatusNow({ status: "rented" }, [ended], today, { rentedToday: true })).toBe("rented");
+    expect(assetStatusNow({ status: "vacant" }, [], today, { rentedToday: false })).toBe("vacant");
+  });
 });
 
 describe("endedContractToFollowUp", () => {

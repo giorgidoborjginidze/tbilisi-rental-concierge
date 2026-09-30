@@ -31,7 +31,7 @@ export default async function NewBookingPage({
     "booking_unit", "booking_source", "source_manual", "source_direct",
     "booking_guest", "booking_check_in", "booking_check_out", "booking_amount",
     "save", "cancel", "error_required", "error_invalid_number", "error_dates",
-    "error_booking_overlap",
+    "error_booking_overlap", "error_demo_readonly", "form_required_legend",
   ];
   const labels = Object.fromEntries(labelKeys.map((key) => [key, t(locale, key)]));
 

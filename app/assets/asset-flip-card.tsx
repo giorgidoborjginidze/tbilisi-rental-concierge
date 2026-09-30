@@ -27,6 +27,8 @@ export interface FlipAsset {
   overdueHref: string | null;
   /** Asset family — drives the card's ice tint. */
   category: string;
+  /** Rented with no running contract: where to add one (null: not needed). */
+  addContractHref?: string | null;
 }
 
 // A turn icon — the only affordance the card needs, since tapping it
@@ -178,7 +180,14 @@ export default function AssetFlipCard({
         <div className="aflip__face aflip__face--back">
           <div className="aflip__row">
             <span>{labels.contracts_col}</span>
-            <b>{asset.contract ?? "—"}</b>
+            {asset.contract || !asset.addContractHref ? (
+              <b>{asset.contract ?? "—"}</b>
+            ) : (
+              // "Rented" with nobody paying: the next step, right here.
+              <Link href={asset.addContractHref} className="btn-chip btn-chip--icon-text">
+                {labels.contract_add} <IconArrowRight size={14} />
+              </Link>
+            )}
           </div>
           {asset.contractUntil && (
             <div className="aflip__row">

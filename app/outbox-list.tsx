@@ -4,9 +4,10 @@ import { badgeClass, OUTBOX_TONE, toneOf } from "@/lib/ui/tone";
 import { waLink } from "@/lib/notify/phone";
 import { selfAddressed } from "@/lib/notify/outbox-view";
 import { WITHDRAW_REASONS, type WithdrawReason } from "@/lib/rentals/settle";
-import { deleteMessage, markMessageSent } from "@/lib/rentals/actions";
+import { deleteMessage, markMessageSent, restoreMessage } from "@/lib/rentals/actions";
+import ConfirmAction from "./confirm-action";
 import { tbilisiFormat } from "@/lib/time";
-import { IconClose, IconExternal } from "./icons";
+import { IconClose, IconExternal, IconRestart } from "./icons";
 
 export interface OutboxItem {
   id: string;
@@ -141,18 +142,27 @@ export default function OutboxList({
                     </form>
                   </>
                 )}
-              <form action={deleteMessage}>
-                <input type="hidden" name="assetId" value={message.assetId ?? ""} />
-                <input type="hidden" name="messageId" value={message.id} />
-                <button
-                  type="submit"
-                  className="btn-chip btn-chip--icon btn-chip--danger"
-                  aria-label={t(locale, "aria_delete_message")}
-                  title={t(locale, "aria_delete_message")}
-                >
-                  <IconClose size={15} />
-                </button>
-              </form>
+              {/* Only what has not gone out can be removed — and put back. */}
+              {(message.status === "queued" || message.status === "failed") && (
+                <ConfirmAction
+                  action={deleteMessage}
+                  fields={{ assetId: message.assetId ?? "", messageId: message.id }}
+                  trigger={<IconClose size={15} />}
+                  ariaLabel={t(locale, "aria_delete_message")}
+                  question={t(locale, "outbox_delete_q")}
+                  confirmLabel={t(locale, "outbox_delete_yes")}
+                  cancelLabel={t(locale, "cancel")}
+                />
+              )}
+              {reason === "owner" && (
+                <form action={restoreMessage}>
+                  <input type="hidden" name="assetId" value={message.assetId ?? ""} />
+                  <input type="hidden" name="messageId" value={message.id} />
+                  <button type="submit" className="btn-chip btn-chip--icon-text">
+                    <IconRestart size={14} /> {t(locale, "outbox_restore")}
+                  </button>
+                </form>
+              )}
             </div>
           </li>
         );

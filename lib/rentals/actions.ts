@@ -3,6 +3,7 @@
 import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
+import { LIVE_CONTRACT } from "@/lib/rentals/live";
 import { getWriter, requireWriter } from "@/lib/auth/session";
 import type { FormState } from "@/lib/units/actions";
 import type { StringKey } from "@/lib/i18n/strings";
@@ -12,7 +13,7 @@ import { MAX_TEMPLATE_CHARS } from "@/lib/notify/limits";
 import { parsePolygon } from "@/lib/geo/fence";
 import { startOfTodayTbilisi } from "@/lib/time";
 import { loadAssetSources } from "@/lib/property/places";
-import { MAX_MARKED_NIGHTS, nightsToAnswer } from "@/lib/property/stays";
+import { MAX_MARKED_NIGHTS, nightsHeld, nightsToAnswer } from "@/lib/property/stays";
 import { PAYMENT_PERIODS, snapToBoundary, type PaymentPeriod } from "./schedule";
 import { monthlyEquivalent } from "./amount";
 import { alignPaidThrough, applyPayment, replayLedger, restatesBalance } from "./ledger";
@@ -88,7 +89,7 @@ export async function saveSchedule(
   }
 
   const contract = await prisma.rentalContract.findFirst({
-    where: { id: contractId, assetId },
+    where: { id: contractId, assetId, ...LIVE_CONTRACT },
   });
   if (!contract) return { error: "error_required" };
 
@@ -157,7 +158,7 @@ export async function saveSchedule(
     : contract.remindersEnabled;
 
   await prisma.rentalContract.updateMany({
-    where: { id: contractId, assetId },
+    where: { id: contractId, assetId, ...LIVE_CONTRACT },
     data: {
       paymentPeriod: period,
       paymentAmount: amount,
@@ -231,7 +232,7 @@ async function receivePayment(formData: FormData): Promise<ReceiveResult> {
   if (!owned) return { error: "error_required" };
 
   const contract = await prisma.rentalContract.findFirst({
-    where: { id: contractId, assetId },
+    where: { id: contractId, assetId, ...LIVE_CONTRACT },
   });
   if (!contract) return { error: "error_required" };
   // Without a paid-up-to date there is nothing to count the money from.
@@ -311,7 +312,7 @@ async function removePayment(
   if (!owned || !paymentId) return "error_required";
 
   const payment = await prisma.rentPayment.findFirst({
-    where: { id: paymentId, contract: { assetId } },
+    where: { id: paymentId, contract: { assetId, ...LIVE_CONTRACT } },
     include: { contract: true },
   });
   if (!payment) return "error_required";
@@ -617,16 +618,37 @@ export async function markMessageSent(formData: FormData) {
   else revalidatePath("/alerts");
 }
 
+/**
+ * Remove a message that has not gone out. It is kept as withdrawn by the
+ * owner ("owner") rather than deleted: its dedupe key then stops the next
+ * check from queueing the very same message again, and it can be put back
+ * (restoreMessage). A message already sent is history and stays.
+ */
 export async function deleteMessage(formData: FormData) {
   const operator = await requireWriter();
   const messageId = str(formData, "messageId");
   const assetId = str(formData, "assetId");
   if (!messageId) return;
-  await prisma.notifyMessage.deleteMany({
-    where: { id: messageId, operatorId: operator.id },
+  await prisma.notifyMessage.updateMany({
+    where: { id: messageId, operatorId: operator.id, status: { in: ["queued", "failed"] } },
+    data: { status: "cancelled", cancelReason: "owner", cancelledAt: new Date() },
   });
   if (assetId) refresh(assetId);
-  else revalidatePath("/alerts");
+  revalidatePath("/alerts");
+}
+
+/** Undo deleteMessage: the message waits to be sent again. */
+export async function restoreMessage(formData: FormData) {
+  const operator = await requireWriter();
+  const messageId = str(formData, "messageId");
+  const assetId = str(formData, "assetId");
+  if (!messageId) return;
+  await prisma.notifyMessage.updateMany({
+    where: { id: messageId, operatorId: operator.id, status: "cancelled", cancelReason: "owner" },
+    data: { status: "queued", cancelReason: null, cancelledAt: null, error: null },
+  });
+  if (assetId) refresh(assetId);
+  revalidatePath("/alerts");
 }
 
 /** Retry automatic delivery (no-op without Cloud API credentials). */
@@ -743,6 +765,9 @@ export async function saveDayRange(
   if (!sources) return { error: "error_required" };
   const nights = nightsToAnswer(sources, start, end, rented);
   if (nights.length === 0) return { error: "error_days_taken" };
+  // "Not rented" cannot free a night a booking, lease or contract holds:
+  // that stay is the record of it. Say so instead of a silent "saved".
+  const held = rented ? 0 : nightsHeld(sources, start, end);
 
   const amount = rented ? amountRaw ?? 0 : 0;
   const note = str(formData, "tenantName") || str(formData, "note") || null;
@@ -759,7 +784,7 @@ export async function saveDayRange(
   refresh(assetId);
   revalidatePath("/calendar");
   revalidatePath("/analytics");
-  return { ok: true };
+  return held > 0 ? { ok: true, notice: "notice_days_held" } : { ok: true };
 }
 
 export async function deleteDayEntry(formData: FormData) {

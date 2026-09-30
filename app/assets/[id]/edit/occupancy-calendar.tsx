@@ -165,6 +165,16 @@ export default function OccupancyCalendar({
         ))}
       </div>
       <p className="hint" style={{ marginTop: 8 }}>{isDaily ? labels.drag_hint_daily : labels.drag_hint}</p>
+      {/* Saved, with a note: e.g. "not rented" over nights a contract or a
+          booking holds — those stay rented until that record changes. */}
+      {!range && state?.ok && state.notice && (
+        <p className="alert-card alert-card--info" role="status" style={{ display: "block", fontSize: 13, marginTop: 8 }}>
+          {labels[state.notice] ?? state.notice}{" "}
+          {labels.notice_days_held_link && (
+            <a href="#contracts" className="link">{labels.notice_days_held_link}</a>
+          )}
+        </p>
+      )}
 
       {range && (
         <form

@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { login, register } from "@/lib/auth/actions";
 import type { FormState } from "@/lib/units/actions";
+import { keepTyped } from "@/app/keep-typed";
 
 
 export default function AuthForm({
@@ -30,9 +31,16 @@ export default function AuthForm({
     sent?.accountType === "business" ? "business" : "personal",
   );
   const sentProfile = sent?.profile ?? "hotel";
+  // The form is submitted without React's reset (keepTyped: the account
+  // type radios are controlled, and a reset would clear them); only the
+  // password is emptied after an error.
+  const password = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (state?.error && password.current) password.current.value = "";
+  }, [state]);
 
   return (
-    <form action={formAction} className="mt-6 flex flex-col gap-4">
+    <form action={formAction} onSubmit={keepTyped(formAction)} className="mt-6 flex flex-col gap-4">
       {mode === "register" && (
         <label className="field">
           {labels.operator_name_optional}
@@ -113,6 +121,7 @@ export default function AuthForm({
       <label className="field">
         {labels.password_label}
         <input
+          ref={password}
           name="password"
           type="password"
           required

@@ -5,6 +5,7 @@ import { saveGeofence } from "@/lib/rentals/actions";
 import type { FormState } from "@/lib/units/actions";
 import { FENCE_PRESETS, type FencePreset } from "@/lib/geo/presets";
 import { IconPin } from "@/app/icons";
+import { keepingValues } from "@/lib/forms";
 
 // Defining a red line. Most owners do not know coordinates, so the common
 // agreements ("stay within 30 km of Tbilisi", "do not leave Georgia") are
@@ -32,7 +33,7 @@ export default function FenceForm({
 
   const [state, save, saving] = useActionState<FormState, FormData>(
     async (previous, formData) => {
-      const result = await saveGeofence(previous, formData);
+      const result = await keepingValues(saveGeofence)(previous, formData);
       if (!result?.error) {
         // Saved: start the next red line from a clean form.
         setPreset(null);
@@ -208,7 +209,13 @@ export default function FenceForm({
 
       <label className="field">
         {labels.fence_approach}
-        <input name="approachKm" type="number" min={0.1} step="0.1" defaultValue={1} />
+        <input
+          name="approachKm"
+          type="number"
+          min={0.1}
+          step="0.1"
+          defaultValue={state && "values" in state ? state.values?.approachKm : 1}
+        />
       </label>
       <p className="field-hint col-span-2">{labels.fence_approach_hint}</p>
 

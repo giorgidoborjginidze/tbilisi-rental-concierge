@@ -3,6 +3,7 @@
 // the KPIs, the income bars and the /assets total are one number.
 
 import { prisma } from "@/lib/db";
+import { LIVE_CONTRACT } from "@/lib/rentals/live";
 import { monthStartTbilisi } from "@/lib/time";
 import {
   incomeInWindow,
@@ -36,7 +37,7 @@ export async function loadIncomeSources(
       },
     }),
     prisma.rentalContract.findMany({
-      where: { asset: { operatorId }, startDate: { lt: to }, endDate: { gt: from } },
+      where: { asset: { operatorId }, startDate: { lt: to }, endDate: { gt: from }, ...LIVE_CONTRACT },
       select: {
         assetId: true,
         startDate: true,

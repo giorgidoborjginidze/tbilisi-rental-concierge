@@ -43,10 +43,11 @@ import ScheduleForm from "./schedule-form";
 import GpsForm from "./gps-form";
 import FenceForm from "./fence-form";
 import TemplatesForm, { type TemplateField } from "./templates-form";
-import ConfirmSubmit from "./confirm-submit";
+import ConfirmAction from "@/app/confirm-action";
 import OutboxList, { type OutboxItem } from "@/app/outbox-list";
 import { outboxView, PENDING_STATUSES } from "@/lib/notify/outbox-view";
 import { titled } from "@/lib/i18n/metadata";
+import { LIVE_CONTRACT } from "@/lib/rentals/live";
 
 export const dynamic = "force-dynamic";
 
@@ -62,7 +63,7 @@ const LABEL_KEYS: StringKey[] = [
   "pay_amount", "pay_amount_hint", "pay_grace", "pay_grace_hint",
   "pay_paid_through", "pay_paid_through_hint", "contract_reminders",
   "pay_grace_hint_property", "error_untracked",
-  "pay_record", "pay_received",
+  "pay_record", "pay_received", "saved_short", "pay_recorded",
   "pay_date", "pay_method", "method_cash", "method_transfer", "method_card",
   "method_other", "pay_note", "pay_partial_hint",
   "asset_plate", "asset_plate_hint",
@@ -89,7 +90,7 @@ export default async function RentalServicePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: QueryValue }>;
+  searchParams: Promise<{ tab?: QueryValue; added?: QueryValue }>;
 }) {
   const operator = await requireOperator();
   const { id } = await params;
@@ -99,7 +100,7 @@ export default async function RentalServicePage({
     include: {
       gpsDevice: true,
       geofences: { orderBy: { createdAt: "asc" } },
-      contracts: { orderBy: { endDate: "desc" } },
+      contracts: { where: LIVE_CONTRACT, orderBy: { endDate: "desc" } },
     },
   });
   if (!asset) notFound();
@@ -143,8 +144,10 @@ export default async function RentalServicePage({
 
   // A rented car — or one whose finished contract still owes — opens on
   // its payments; otherwise on the overview.
+  const query = await searchParams;
+  const justAdded = firstParam(query.added) === "1";
   const tab: DeskTab = deskTab(
-    firstParam((await searchParams).tab),
+    firstParam(query.tab),
     running != null || contractEnded || otherUnsettled.length > 0,
   );
 
@@ -419,17 +422,15 @@ export default async function RentalServicePage({
                     {/* Only payments recorded since the balance was last
                         stated can be taken back — they are replayed. */}
                     {(!contract.openingAt || payment.createdAt > contract.openingAt) && (
-                      <form action={deletePayment}>
-                        <input type="hidden" name="assetId" value={asset.id} />
-                        <input type="hidden" name="paymentId" value={payment.id} />
-                        <ConfirmSubmit
-                          className="btn-chip btn-chip--icon btn-chip--danger"
-                          ariaLabel={t(locale, "aria_delete_payment")}
-                          message={t(locale, "pay_delete_confirm")}
-                        >
-                          <IconClose size={15} />
-                        </ConfirmSubmit>
-                      </form>
+                      <ConfirmAction
+                        action={deletePayment}
+                        fields={{ assetId: asset.id, paymentId: payment.id }}
+                        trigger={<IconClose size={15} />}
+                        ariaLabel={t(locale, "aria_delete_payment")}
+                        question={t(locale, "pay_delete_confirm")}
+                        confirmLabel={t(locale, "delete")}
+                        cancelLabel={t(locale, "cancel")}
+                      />
                     )}
                   </li>
                 ))}
@@ -598,18 +599,15 @@ export default async function RentalServicePage({
                       {t(locale, fence.active ? "fence_pause" : "fence_resume")}
                     </button>
                   </form>
-                  <form action={deleteGeofence}>
-                    <input type="hidden" name="assetId" value={asset.id} />
-                    <input type="hidden" name="fenceId" value={fence.id} />
-                    <button
-                      type="submit"
-                      className="btn-chip btn-chip--icon btn-chip--danger"
-                      aria-label={t(locale, "aria_delete_fence")}
-                      title={t(locale, "aria_delete_fence")}
-                    >
-                      <IconClose size={15} />
-                    </button>
-                  </form>
+                  <ConfirmAction
+                    action={deleteGeofence}
+                    fields={{ assetId: asset.id, fenceId: fence.id }}
+                    trigger={<IconClose size={15} />}
+                    ariaLabel={t(locale, "aria_delete_fence")}
+                    question={t(locale, "fence_delete_q").replace("{name}", fence.name)}
+                    confirmLabel={t(locale, "delete")}
+                    cancelLabel={t(locale, "cancel")}
+                  />
                 </div>
               </li>
             ))}
@@ -671,18 +669,25 @@ export default async function RentalServicePage({
         />
         {device && (
           <div className="flex flex-wrap gap-1.5" style={{ marginTop: 12 }}>
-            <form action={rotateGpsToken}>
-              <input type="hidden" name="assetId" value={asset.id} />
-              <button type="submit" className="btn-chip">
-                {t(locale, "gps_rotate")}
-              </button>
-            </form>
-            <form action={deleteGpsDevice}>
-              <input type="hidden" name="assetId" value={asset.id} />
-              <button type="submit" className="btn-chip">
-                {t(locale, "gps_remove")}
-              </button>
-            </form>
+            <ConfirmAction
+              action={rotateGpsToken}
+              fields={{ assetId: asset.id }}
+              trigger={t(locale, "gps_rotate")}
+              triggerClassName="btn-chip"
+              question={t(locale, "gps_rotate_q")}
+              confirmLabel={t(locale, "gps_rotate")}
+              confirmClassName="btn-primary btn-compact"
+              cancelLabel={t(locale, "cancel")}
+            />
+            <ConfirmAction
+              action={deleteGpsDevice}
+              fields={{ assetId: asset.id }}
+              trigger={t(locale, "gps_remove")}
+              triggerClassName="btn-chip"
+              question={t(locale, "gps_remove_q")}
+              confirmLabel={t(locale, "gps_remove")}
+              cancelLabel={t(locale, "cancel")}
+            />
           </div>
         )}
       </details>
@@ -905,6 +910,12 @@ export default async function RentalServicePage({
           <IconEdit size={14} /> {t(locale, "edit")}
         </Link>
       </div>
+
+      {justAdded && (
+        <p className="alert-card alert-card--good" role="status" style={{ display: "block", fontSize: 13 }}>
+          {t(locale, "asset_added_note").replace("{name}", displayName)}
+        </p>
+      )}
 
       {isVehicle ? (
         <>

@@ -6,9 +6,12 @@ import { prisma } from "@/lib/db";
 import { requireWriter } from "@/lib/auth/session";
 import { COINS } from "@/lib/crypto/prices";
 import type { FormState } from "@/lib/units/actions";
+import type { StringKey } from "@/lib/i18n/strings";
+import { submittedValues } from "@/lib/forms";
+import { parseTradeInput } from "@/lib/assets/trade-input";
+import { startOfTodayTbilisi } from "@/lib/time";
 
 const str = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
-const num = (fd: FormData, k: string) => Number(str(fd, k));
 
 // Create a crypto holding (an Asset with category "crypto"). The user
 // picks a known coin (symbol → CoinGecko id) or types a custom one.
@@ -45,39 +48,43 @@ export async function createCrypto(
   redirect(`/assets/${asset.id}/edit`);
 }
 
-// Record a buy or sell on a crypto asset.
+// Record a buy or sell on a holding (coin, share or precious metal). A
+// metal may be typed in grams; it is stored in troy ounces
+// (lib/assets/trade-input.ts). An error hands back what was typed.
 export async function addTrade(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
   const operator = await requireWriter();
+  const fail = (error: StringKey): FormState => ({ error, values: submittedValues(formData) });
   const assetId = str(formData, "assetId");
-  const side = str(formData, "side") === "sell" ? "sell" : "buy";
-  const quantity = num(formData, "quantity");
-  const unitPrice = num(formData, "unitPrice");
-  const dateRaw = str(formData, "tradedAt");
-
-  if (!assetId) return { error: "error_required" };
-  if (!Number.isFinite(quantity) || quantity <= 0) return { error: "error_invalid_number" };
-  if (!Number.isFinite(unitPrice) || unitPrice < 0) return { error: "error_invalid_number" };
+  if (!assetId) return fail("error_required");
 
   const asset = await prisma.asset.findFirst({
     where: { id: assetId, operatorId: operator.id, category: { in: ["crypto", "stock", "metal"] } },
   });
-  if (!asset) return { error: "error_required" };
+  if (!asset) return fail("error_required");
+
+  const parsed = parseTradeInput((key) => str(formData, key), {
+    metal: asset.category === "metal",
+    today: startOfTodayTbilisi(),
+  });
+  if ("error" in parsed) return fail(parsed.error);
+  const trade = parsed.value!;
 
   await prisma.cryptoTrade.create({
     data: {
       assetId,
-      side,
-      quantity,
-      unitPrice,
-      tradedAt: dateRaw ? new Date(`${dateRaw}T00:00:00Z`) : new Date(),
+      side: trade.side,
+      quantity: trade.quantity,
+      unitPrice: trade.unitPrice,
+      tradedAt: trade.tradedAt,
     },
   });
   revalidatePath("/assets");
+  revalidatePath("/");
   revalidatePath(`/assets/${assetId}/edit`);
-  return null;
+  return { ok: true };
 }
 
 export async function deleteTrade(formData: FormData) {

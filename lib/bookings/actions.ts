@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
+import { LIVE_CONTRACT } from "@/lib/rentals/live";
 import { requireWriter } from "@/lib/auth/session";
 import { refreshUnitMirrors, summarizeSync, syncAllUnits } from "@/lib/ical/run-sync";
 import { LIVE_STAY } from "./live";
@@ -258,7 +259,7 @@ async function firstClash(
     }`;
   }
   const contract = await prisma.rentalContract.findFirst({
-    where: { asset: { unitId }, startDate: { lt: checkOut }, endDate: { gt: checkIn } },
+    where: { asset: { unitId }, startDate: { lt: checkOut }, endDate: { gt: checkIn }, ...LIVE_CONTRACT },
     orderBy: { startDate: "asc" },
   });
   if (contract) {

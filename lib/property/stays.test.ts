@@ -3,6 +3,7 @@ import {
   dayFills,
   emptySources,
   nightOwners,
+  nightsHeld,
   nightsToAnswer,
   occupiedIntervals,
   placeMetrics,
@@ -92,6 +93,40 @@ describe("one source per night", () => {
     expect(metrics.revenue).toBe(220);
     expect(metrics.occupiedNights).toBe(2);
     expect(metrics.adr).toBe(110);
+  });
+
+  it("a 'rented' answer with no amount is an occupied, booked night worth 0 — as the calendar draws it", () => {
+    const place = src({
+      dailyMode: true,
+      days: [
+        { date: d("2026-09-10"), amount: 0 },
+        { date: d("2026-09-11"), amount: 120 },
+      ],
+    });
+    expect(dayFills(place)).toHaveLength(2);
+    expect(stayOn(place, d("2026-09-10"))?.record).toBe("day");
+    const metrics = placeMetrics(place, september);
+    expect(metrics.occupiedNights).toBe(2);
+    expect(metrics.bookedNights).toBe(2);
+    expect(metrics.revenue).toBe(120);
+    // The money is unchanged: the income total adds nothing for it.
+    const income = incomeInWindow(
+      {
+        assets: [
+          {
+            id: "a1", unitId: null, category: "real_estate", rentalMode: "daily",
+            monthlyIncome: null, createdAt: d("2026-01-01"), weekendPct: 0, holidayPct: 0,
+          },
+        ],
+        contracts: [],
+        leases: [],
+        bookings: [],
+        dayEntries: place.days.map((day) => ({ ...day, assetId: "a1" })),
+        records: [],
+      },
+      september,
+    );
+    expect(income.daily).toBe(metrics.revenue);
   });
 
   it("a priced booking wins over a day-let contract on the same night; revenue once", () => {
@@ -206,6 +241,11 @@ describe("marking nights on the asset calendar (the same record as the daily que
 
   it("'not rented' answers every night (under a stay it is never shown)", () => {
     expect(nightsToAnswer(place, d("2026-10-02"), d("2026-10-06"), false)).toHaveLength(4);
+  });
+
+  it("counts the nights a stay holds, which 'not rented' cannot free", () => {
+    expect(nightsHeld(place, d("2026-10-02"), d("2026-10-06"))).toBe(2);
+    expect(nightsHeld(place, d("2026-10-06"), d("2026-10-09"))).toBe(0);
   });
 
   it("marked nights then read like the dashboard's answers: counted once, beside the booking", () => {

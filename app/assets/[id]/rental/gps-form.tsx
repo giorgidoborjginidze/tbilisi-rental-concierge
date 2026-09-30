@@ -5,6 +5,8 @@ import { saveGpsDevice, savePlate } from "@/lib/rentals/actions";
 import type { FormState } from "@/lib/units/actions";
 import { EXAMPLE_POSITION } from "@/lib/geo/presets";
 import { IconCheck, IconCopy } from "@/app/icons";
+import { keepingValues } from "@/lib/forms";
+import { keepTyped } from "@/app/keep-typed";
 
 // Binding the tracker to this vehicle, and the plate that the geofence
 // messages quote. A tracker cannot start reporting here by itself: the
@@ -31,14 +33,17 @@ export default function GpsForm({
   endpoint: string;
   labels: Record<string, string>;
 }) {
+  // An error keeps what was typed.
   const [deviceState, save, saving] = useActionState<FormState, FormData>(
-    saveGpsDevice,
+    keepingValues(saveGpsDevice),
     null,
   );
   const [plateState, storePlate, savingPlate] = useActionState<FormState, FormData>(
-    savePlate,
+    keepingValues(savePlate),
     null,
   );
+  const sentDevice = deviceState && "values" in deviceState ? deviceState.values : undefined;
+  const sentPlate = plateState && "values" in plateState ? plateState.values : undefined;
   const [copied, setCopied] = useState<string | null>(null);
 
   const pingUrl = device
@@ -58,12 +63,12 @@ export default function GpsForm({
 
   return (
     <div className="rental-two">
-      <form action={storePlate} className="card form-grid" style={{ padding: 18 }}>
+      <form action={storePlate} onSubmit={keepTyped(storePlate)} className="card form-grid" style={{ padding: 18 }}>
         <label className="field col-span-2">
           {labels.asset_plate}
           <input
             name="plateNumber"
-            defaultValue={plate}
+            defaultValue={sentPlate?.plateNumber ?? plate}
             placeholder="AA-123-BB"
             style={{ textTransform: "uppercase" }}
           />
@@ -80,21 +85,21 @@ export default function GpsForm({
         </div>
       </form>
 
-      <form action={save} className="card form-grid" style={{ padding: 18 }}>
+      <form action={save} onSubmit={keepTyped(save)} className="card form-grid" style={{ padding: 18 }}>
         <input type="hidden" name="assetId" value={assetId} />
         <label className="field">
           {labels.gps_device_id}
-          <input name="deviceId" defaultValue={device?.deviceId ?? ""} required />
+          <input name="deviceId" defaultValue={sentDevice?.deviceId ?? device?.deviceId ?? ""} required aria-required="true" />
         </label>
         <label className="field">
           {labels.gps_label}
-          <input name="label" defaultValue={device?.label ?? ""} />
+          <input name="label" defaultValue={sentDevice?.label ?? device?.label ?? ""} />
         </label>
         <label className="field col-span-2">
           {labels.gps_provider}
           <input
             name="provider"
-            defaultValue={device?.provider ?? ""}
+            defaultValue={sentDevice?.provider ?? device?.provider ?? ""}
             placeholder="Teltonika / Concox / …"
           />
         </label>

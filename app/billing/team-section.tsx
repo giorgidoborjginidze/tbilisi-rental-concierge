@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { createInvite, removeMember, revokeInvite } from "@/lib/billing/actions";
 import type { FormState } from "@/lib/units/actions";
 import { IconCheck, IconClose, IconCopy } from "../icons";
+import ConfirmAction from "../confirm-action";
 
 export interface MemberRow {
   id: string;
@@ -100,17 +101,17 @@ export default function TeamSection({
                             {copied === invite.id ? labels.copied : labels.copy_link}
                           </button>
                         )}
-                        <form action={revokeInvite}>
-                          <input type="hidden" name="inviteId" value={invite.id} />
-                          <button
-                            type="submit"
-                            className="btn-chip btn-chip--icon"
-                            aria-label={labels.aria_revoke_invite}
-                            title={labels.aria_revoke_invite}
-                          >
-                            <IconClose size={15} />
-                          </button>
-                        </form>
+                        <ConfirmAction
+                          action={revokeInvite}
+                          fields={{ inviteId: invite.id }}
+                          trigger={<IconClose size={15} />}
+                          triggerClassName="btn-chip btn-chip--icon"
+                          ariaLabel={labels.aria_revoke_invite}
+                          question={labels.team_revoke_q.replace("{email}", invite.email)}
+                          confirmLabel={labels.team_revoke_yes}
+                          cancelLabel={labels.cancel}
+                          inline
+                        />
                       </div>
                     </td>
                   </tr>
@@ -138,12 +139,16 @@ export default function TeamSection({
                       {labels.billing_units}
                     </td>
                     <td className="num">
-                      <form action={removeMember}>
-                        <input type="hidden" name="memberId" value={member.id} />
-                        <button type="submit" className="btn-chip">
-                          {labels.team_remove}
-                        </button>
-                      </form>
+                      <ConfirmAction
+                        action={removeMember}
+                        fields={{ memberId: member.id }}
+                        trigger={labels.team_remove}
+                        triggerClassName="btn-chip"
+                        question={labels.team_remove_q.replace("{name}", member.name ?? member.email)}
+                        confirmLabel={labels.team_remove}
+                        cancelLabel={labels.cancel}
+                        inline
+                      />
                     </td>
                   </tr>
                 ))}

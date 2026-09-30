@@ -75,15 +75,19 @@ export function recentlyEndedWhere(today: Date, days: number) {
 
 /**
  * The asset's rental status as it stands today. A running contract means
- * rented. A stored "rented" that dates from a contract which has since
- * ended is stale — unless the owner set it by hand after that contract
- * ended — and reads as vacant. Every other stored status stands.
+ * rented, and so does today's "rented" daily answer of a day-let asset
+ * (its nights are DayEntry rows, not contracts — `rentedToday`). A stored
+ * "rented" that dates from a contract which has since ended is stale —
+ * unless the owner set it by hand after that contract ended — and reads as
+ * vacant. Every other stored status stands.
  */
 export function assetStatusNow(
   asset: { status: string; statusSetAt?: Date | null },
   contracts: ContractDates[],
   today: Date,
+  opts: { rentedToday?: boolean } = {},
 ): string {
+  if (opts.rentedToday) return "rented";
   if (contracts.some((contract) => isActiveContract(contract, today))) return "rented";
   if (asset.status !== "rented") return asset.status;
   const ended = contracts.filter((contract) => contractPhase(contract, today) === "ended");

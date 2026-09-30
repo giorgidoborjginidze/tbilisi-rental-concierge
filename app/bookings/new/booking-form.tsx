@@ -1,9 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { createBooking } from "@/lib/bookings/actions";
 import type { FormState } from "@/lib/units/actions";
+import { Req, RequiredLegend } from "@/app/form-bits";
+import { keepTyped } from "@/app/keep-typed";
+
+/** "YYYY-MM-DD" of the next day. */
+const dayAfter = (key: string) => {
+  const date = new Date(`${key}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return undefined;
+  date.setUTCDate(date.getUTCDate() + 1);
+  return date.toISOString().slice(0, 10);
+};
 
 
 export default function BookingForm({
@@ -23,12 +33,17 @@ export default function BookingForm({
   // After an error the fields show what was submitted (React resets the
   // form after its action; a clash must not wipe the dates and the guest).
   const sent = state && "values" in state ? state.values : undefined;
+  const [checkIn, setCheckIn] = useState(sent?.checkIn ?? "");
 
   return (
-    <form action={formAction} className="mt-6 flex flex-col gap-4">
+    <form action={formAction} onSubmit={keepTyped(formAction)} className="mt-6 flex flex-col gap-4">
+      <RequiredLegend text={labels.form_required_legend} />
       <label className="field">
-        {labels.booking_unit}
-        <select name="unitId" required defaultValue={sent?.unitId ?? defaultUnitId}>
+        <span>
+          {labels.booking_unit}
+          <Req />
+        </span>
+        <select name="unitId" required aria-required="true" defaultValue={sent?.unitId ?? defaultUnitId}>
           {units.map((unit) => (
             <option key={unit.id} value={unit.id}>{unit.label}</option>
           ))}
@@ -50,12 +65,34 @@ export default function BookingForm({
 
       <div className="grid grid-cols-2 gap-4">
         <label className="field">
-          {labels.booking_check_in}
-          <input name="checkIn" type="date" required defaultValue={sent?.checkIn ?? ""} />
+          <span>
+            {labels.booking_check_in}
+            <Req />
+          </span>
+          <input
+            name="checkIn"
+            type="date"
+            required
+            aria-required="true"
+            defaultValue={sent?.checkIn ?? ""}
+            onChange={(event) => setCheckIn(event.target.value)}
+          />
         </label>
         <label className="field">
-          {labels.booking_check_out}
-          <input name="checkOut" type="date" required defaultValue={sent?.checkOut ?? ""} />
+          <span>
+            {labels.booking_check_out}
+            <Req />
+          </span>
+          {/* The day after check-in at the earliest: the browser says so
+              before anything is sent. */}
+          <input
+            name="checkOut"
+            type="date"
+            required
+            aria-required="true"
+            min={checkIn ? dayAfter(checkIn) : undefined}
+            defaultValue={sent?.checkOut ?? ""}
+          />
         </label>
       </div>
 

@@ -3,6 +3,10 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { saveUnit, deleteUnit, type FormState } from "@/lib/units/actions";
+import ConfirmAction from "@/app/confirm-action";
+import { FormMessage, Req, RequiredLegend } from "@/app/form-bits";
+import { IconTrash } from "@/app/icons";
+import { keepTyped } from "@/app/keep-typed";
 
 export interface UnitFormValues {
   id?: string;
@@ -55,15 +59,20 @@ export default function UnitForm({
     sent ? (sent[name] ?? "") : unit?.[name] === undefined ? undefined : String(unit[name]);
 
   return (
-    <form action={formAction} className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <>
+    <form action={formAction} onSubmit={keepTyped(formAction)} className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
       {unit?.id && <input type="hidden" name="unitId" value={unit.id} />}
+      <RequiredLegend text={labels.form_required_legend} />
 
       <label className="field">
-        {labels.unit_name}
-        <input name="name" required defaultValue={val("name")} />
+        <span>
+          {labels.unit_name}
+          <Req />
+        </span>
+        <input name="name" required aria-required="true" defaultValue={val("name")} />
       </label>
       <label className="field">
-        {labels.unit_name_ka}
+        {labels.asset_name_ka}
         <input name="nameKa" defaultValue={val("nameKa")} />
       </label>
 
@@ -76,10 +85,14 @@ export default function UnitForm({
         </select>
       </label>
       <label className="field">
-        {labels.unit_district}
+        <span>
+          {labels.unit_district}
+          <Req />
+        </span>
         <input
           name="district"
           required
+          aria-required="true"
           list="district-options"
           defaultValue={val("district")}
          
@@ -92,8 +105,11 @@ export default function UnitForm({
       </label>
 
       <label className="field sm:col-span-2">
-        {labels.unit_address}
-        <input name="address" required defaultValue={val("address")} />
+        <span>
+          {labels.unit_address}
+          <Req />
+        </span>
+        <input name="address" required aria-required="true" defaultValue={val("address")} />
       </label>
 
       <label className="field">
@@ -114,24 +130,33 @@ export default function UnitForm({
       </label>
 
       <label className="field">
-        {labels.unit_capacity}
+        <span>
+          {labels.unit_capacity}
+          <Req />
+        </span>
         <input
-          name="capacity" type="number" min={1} required
+          name="capacity" type="number" min={1} required aria-required="true"
           defaultValue={val("capacity") ?? 2}
         />
       </label>
       <label className="field">
-        {labels.unit_bedrooms}
+        <span>
+          {labels.unit_bedrooms}
+          <Req />
+        </span>
         <input
-          name="bedrooms" type="number" min={0} required
+          name="bedrooms" type="number" min={0} required aria-required="true"
           defaultValue={val("bedrooms") ?? 1}
         />
       </label>
 
       <label className="field">
-        {labels.unit_base_rate}
+        <span>
+          {labels.unit_base_rate}
+          <Req />
+        </span>
         <input
-          name="baseNightlyRate" type="number" min={1} step="0.01" required
+          name="baseNightlyRate" type="number" inputMode="decimal" min={1} step="0.01" required aria-required="true"
           defaultValue={val("baseNightlyRate")}
         />
       </label>
@@ -189,14 +214,7 @@ export default function UnitForm({
         </label>
       )}
 
-      {state?.error && (
-        <p className="sm:col-span-2" style={{ color: "var(--status-danger-text)", fontSize: 13, overflowWrap: "anywhere" }}>
-          {labels[state.error]}
-          {state.detail ? ` ${state.detail}` : ""}
-        </p>
-      )}
-
-      <div className="flex items-center gap-3 sm:col-span-2">
+      <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
         <button
           type="submit"
           disabled={pending}
@@ -207,19 +225,31 @@ export default function UnitForm({
         <Link href="/units" className="link">
           {labels.cancel}
         </Link>
-        {unit?.id && (
-          <button
-            type="submit"
-            formAction={(formData) => {
-              if (confirm(labels.delete_confirm)) return deleteUnit(formData);
-            }}
-            formNoValidate
-            className="ml-auto btn-danger"
-          >
-            {labels.delete}
-          </button>
-        )}
+        <FormMessage
+          error={state?.error ? labels[state.error] ?? state.error : null}
+          detail={state?.error ? state.detail : null}
+        />
       </div>
     </form>
+
+    {/* Deleting sits apart from saving and asks in the page. */}
+    {unit?.id && (
+      <div className="danger-zone">
+        <ConfirmAction
+          action={deleteUnit}
+          fields={{ unitId: unit.id }}
+          trigger={
+            <>
+              <IconTrash size={15} /> {labels.delete}
+            </>
+          }
+          triggerClassName="btn-danger btn-compact icon-text"
+          question={labels.delete_confirm}
+          confirmLabel={labels.delete}
+          cancelLabel={labels.cancel}
+        />
+      </div>
+    )}
+    </>
   );
 }

@@ -1,5 +1,6 @@
 import { t, type Locale, type StringKey } from "@/lib/i18n/strings";
 import { deleteIncome } from "@/lib/assets/actions";
+import ConfirmAction from "@/app/confirm-action";
 import IncomeForm from "./income-form";
 import { formatMoney } from "@/lib/format";
 import { IconClose } from "../icons";
@@ -21,7 +22,7 @@ export default function IncomeSection({
   incomes: IncomeRow[];
 }) {
   const labelKeys: StringKey[] = [
-    "income_add", "income_source", "income_amount", "income_date",
+    "income_add", "income_source", "income_amount", "income_date", "saved_short",
     "income_desc", "source_salary", "source_business", "source_dividend",
     "source_other", "save", "error_required", "error_invalid_number",
     "error_email_taken", "error_dates",
@@ -57,17 +58,16 @@ export default function IncomeSection({
                       {formatMoney(income.amount, income.currency, "auto")}
                     </td>
                     <td className="num">
-                      <form action={deleteIncome}>
-                        <input type="hidden" name="incomeId" value={income.id} />
-                        <button
-                          type="submit"
-                          className="btn-chip btn-chip--icon btn-chip--danger"
-                          aria-label={t(locale, "aria_delete_income")}
-                          title={t(locale, "aria_delete_income")}
-                        >
-                          <IconClose size={15} />
-                        </button>
-                      </form>
+                      <ConfirmAction
+                        action={deleteIncome}
+                        fields={{ incomeId: income.id }}
+                        trigger={<IconClose size={15} />}
+                        ariaLabel={t(locale, "aria_delete_income")}
+                        question={t(locale, "income_delete_q")}
+                        confirmLabel={t(locale, "delete")}
+                        cancelLabel={t(locale, "cancel")}
+                        inline
+                      />
                     </td>
                   </tr>
                 ))

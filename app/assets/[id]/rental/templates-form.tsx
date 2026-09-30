@@ -5,6 +5,9 @@ import { saveNotifySetup } from "@/lib/rentals/actions";
 import type { FormState } from "@/lib/units/actions";
 import { IconEdit } from "@/app/icons";
 import { MAX_TEMPLATE_CHARS } from "@/lib/notify/limits";
+import { keepingValues } from "@/lib/forms";
+import { FormMessage } from "@/app/form-bits";
+import { keepTyped } from "@/app/keep-typed";
 
 export interface TemplateField {
   key: string;
@@ -29,13 +32,15 @@ export default function TemplatesForm({
   fields: TemplateField[];
   labels: Record<string, string>;
 }) {
+  // An error keeps what was typed; a save says so.
   const [state, save, saving] = useActionState<FormState, FormData>(
-    saveNotifySetup,
+    keepingValues(saveNotifySetup),
     null,
   );
+  const sent = state && "values" in state ? state.values : undefined;
 
   return (
-    <form action={save} className="card" style={{ padding: 18 }}>
+    <form action={save} onSubmit={keepTyped(save)} className="card" style={{ padding: 18 }}>
       <input type="hidden" name="assetId" value={assetId} />
 
       <label className="field" style={{ maxWidth: 320 }}>
@@ -43,7 +48,7 @@ export default function TemplatesForm({
         <input
           name="notifyPhone"
           type="tel"
-          defaultValue={notifyPhone}
+          defaultValue={sent?.notifyPhone ?? notifyPhone}
           placeholder="+995 5XX XX XX XX"
         />
         <span className="field-hint">{labels.tpl_notify_phone_hint}</span>
@@ -73,22 +78,22 @@ export default function TemplatesForm({
               name={`tpl_${field.key}`}
               rows={6}
               maxLength={MAX_TEMPLATE_CHARS}
-              defaultValue={field.isDefault ? "" : field.body}
+              defaultValue={sent?.[`tpl_${field.key}`] ?? (field.isDefault ? "" : field.body)}
               placeholder={field.body}
             />
           </label>
         ))}
       </div>
 
-      {state?.error && <p className="form-error">{labels[state.error]}</p>}
-      <button
-        type="submit"
-        className="btn-primary"
-        disabled={saving}
-        style={{ marginTop: 14 }}
-      >
-        {labels.tpl_save}
-      </button>
+      <div className="flex flex-wrap items-center gap-3" style={{ marginTop: 14 }}>
+        <button type="submit" className="btn-primary" disabled={saving}>
+          {labels.tpl_save}
+        </button>
+        <FormMessage
+          error={state?.error ? labels[state.error] ?? state.error : null}
+          saved={state?.ok ? labels.saved_short : null}
+        />
+      </div>
     </form>
   );
 }

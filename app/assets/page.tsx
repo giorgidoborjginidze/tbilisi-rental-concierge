@@ -24,6 +24,10 @@ import { districtLabel } from "@/lib/places";
 import { titled } from "@/lib/i18n/metadata";
 import { formatMoney } from "@/lib/format";
 import { deskHref, rentalDesk } from "@/lib/rentals/desk";
+import { LIVE_CONTRACT } from "@/lib/rentals/live";
+
+// What can be let to someone with a contract.
+const CONTRACT_CATEGORIES = ["real_estate", "vehicle", "other"];
 
 export const dynamic = "force-dynamic";
 
@@ -144,7 +148,8 @@ export default async function AssetsPage() {
     prisma.asset.findMany({
       where: { operatorId: operator.id },
       include: {
-        contracts: { orderBy: { endDate: "desc" } },
+        contracts: { where: LIVE_CONTRACT, orderBy: { endDate: "desc" } },
+        days: { where: { date: today, rented: true }, select: { id: true } },
         unit: { select: { id: true, name: true } },
       },
       orderBy: [{ category: "asc" }, { name: "asc" }],
@@ -163,7 +168,7 @@ export default async function AssetsPage() {
       ? "rented"
       : asset.unitId
         ? "str"
-        : assetStatusNow(asset, asset.contracts, today);
+        : assetStatusNow(asset, asset.contracts, today, { rentedToday: asset.days.length > 0 });
 
   // Listing links per asset: platform set follows the category; assets in
   // personal use get no links at all (nothing is published for them).
@@ -293,7 +298,7 @@ export default async function AssetsPage() {
   const flipLabels = Object.fromEntries(
     (
       [
-        "edit", "contracts_col", "contract_until",
+        "edit", "contracts_col", "contract_until", "contract_add",
         "market_rent_est", "below_market", "asset_value_col", "mode_daily",
         "rental_service",
       ] as StringKey[]
@@ -391,6 +396,10 @@ export default async function AssetsPage() {
                   serviceHref: desk ? deskHref(asset.id, desk) : null,
                   overdueHref: desk ? deskHref(asset.id, desk, "payments") : null,
                   category: asset.category,
+                  addContractHref:
+                    status === "rented" && !contract && CONTRACT_CATEGORIES.includes(asset.category)
+                      ? `/assets/${asset.id}/edit?add=contract#contracts`
+                      : null,
                 };
                 return (
                   <AssetFlipCard

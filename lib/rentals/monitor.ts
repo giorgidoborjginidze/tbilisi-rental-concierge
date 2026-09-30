@@ -8,6 +8,7 @@ import {
 } from "@/lib/notify/templates";
 import { dayKey, sameTbilisiDay, startOfTodayTbilisi } from "@/lib/time";
 import { activeContractWhere } from "./phase";
+import { LIVE_CONTRACT } from "./live";
 import { statusFor } from "./terms";
 import { formatDue } from "./money";
 import { baseVars, messageDate } from "@/lib/notify/vars";
@@ -51,6 +52,7 @@ export async function monitorRentPayments(
   const contracts = await prisma.rentalContract.findMany({
     where: {
       ...activeContractWhere(today),
+      ...LIVE_CONTRACT,
       paidThrough: { not: null },
       ...(operatorId ? { asset: { operatorId } } : {}),
     },

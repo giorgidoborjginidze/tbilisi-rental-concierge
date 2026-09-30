@@ -19,6 +19,7 @@ import { monthlyIncomeSeries } from "@/lib/analytics/monthly-income";
 import CountUp from "./count-up";
 import AssetDeckClient, { type DeckAsset, type DeckSlide } from "./asset-deck-client";
 import { districtLabel } from "@/lib/places";
+import { LIVE_CONTRACT } from "@/lib/rentals/live";
 
 // The Ice dashboard pieces shared by every profile: the one hero number,
 // the composition ring, the property deck, the income bars and the closing
@@ -234,7 +235,7 @@ export async function MarketTips({
   const assets = assetIds.length
     ? await prisma.asset.findMany({
         where: { id: { in: assetIds }, operatorId },
-        select: { id: true, name: true, nameKa: true, category: true, _count: { select: { contracts: true } } },
+        select: { id: true, name: true, nameKa: true, category: true, _count: { select: { contracts: { where: LIVE_CONTRACT } } } },
       })
     : [];
   const assetBy = new Map(assets.map((asset) => [asset.id, asset]));
@@ -407,7 +408,11 @@ export async function AssetDeck({
       operatorId,
       category: { in: ["real_estate", "vehicle", "other"] },
     },
-    include: { contracts: { orderBy: { endDate: "desc" } } },
+    include: {
+      contracts: { where: LIVE_CONTRACT, orderBy: { endDate: "desc" } },
+      // Today's "rented" answer of a day-let asset counts as rented.
+      days: { where: { date: today, rented: true }, select: { id: true } },
+    },
     orderBy: [{ category: "asc" }, { name: "asc" }],
     take: 12,
   });
@@ -443,7 +448,7 @@ export async function AssetDeck({
       ? "rented"
       : asset.unitId
         ? "str"
-        : assetStatusNow(asset, asset.contracts, today);
+        : assetStatusNow(asset, asset.contracts, today, { rentedToday: asset.days.length > 0 });
     const property = templateFamily(asset.category) === "property";
     const displayName =
       locale === "ka" && asset.nameKa ? asset.nameKa : asset.name;

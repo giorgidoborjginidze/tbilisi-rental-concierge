@@ -101,7 +101,7 @@ export default async function SettingsPage({
 
   const labelKeys: StringKey[] = [
     "team_invite", "team_invite_hint", "team_remove", "copy_link", "team_invite_expired",
-    "copied", "aria_revoke_invite",
+    "copied", "aria_revoke_invite", "team_revoke_q", "team_revoke_yes", "team_remove_q", "cancel",
     "operator_email", "error_required", "error_limit_members",
     "error_owner_only", "save",
   ];

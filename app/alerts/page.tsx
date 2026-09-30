@@ -28,6 +28,7 @@ import { autoSendFor } from "@/lib/notify/whatsapp";
 import { outboxView } from "@/lib/notify/outbox-view";
 import { stalePaymentMessage } from "@/lib/rentals/settle";
 import { retryOutbox } from "@/lib/rentals/actions";
+import { LIVE_CONTRACT } from "@/lib/rentals/live";
 
 export const dynamic = "force-dynamic";
 
@@ -156,12 +157,12 @@ export default async function AlertsPage({
     messageAssetIds.length
       ? prisma.asset.findMany({
           where: { id: { in: messageAssetIds }, operatorId: operator.id },
-          select: { id: true, name: true, nameKa: true, category: true, _count: { select: { contracts: true } } },
+          select: { id: true, name: true, nameKa: true, category: true, _count: { select: { contracts: { where: LIVE_CONTRACT } } } },
         })
       : [],
     messageContractIds.length
       ? prisma.rentalContract.findMany({
-          where: { id: { in: messageContractIds }, asset: { operatorId: operator.id } },
+          where: { id: { in: messageContractIds }, asset: { operatorId: operator.id }, ...LIVE_CONTRACT },
         })
       : [],
   ]);
@@ -209,7 +210,7 @@ export default async function AlertsPage({
   const alertAssets = assetIds.length
     ? await prisma.asset.findMany({
         where: { id: { in: assetIds }, operatorId: operator.id },
-        select: { id: true, name: true, nameKa: true, category: true, _count: { select: { contracts: true } } },
+        select: { id: true, name: true, nameKa: true, category: true, _count: { select: { contracts: { where: LIVE_CONTRACT } } } },
       })
     : [];
   const assetNames = new Map(
@@ -253,7 +254,7 @@ export default async function AlertsPage({
   ] as string[];
   const contracts = contractIds.length
     ? await prisma.rentalContract.findMany({
-        where: { id: { in: contractIds }, asset: { operatorId: operator.id } },
+        where: { id: { in: contractIds }, asset: { operatorId: operator.id }, ...LIVE_CONTRACT },
         include: {
           asset: { select: { dailyRate: true, weekendPct: true, holidayPct: true } },
         },

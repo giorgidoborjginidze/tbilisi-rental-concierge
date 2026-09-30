@@ -404,11 +404,16 @@ model RentalContract {
   openingPaidThrough DateTime?
   openingCredit      Float     @default(0)
   openingAt          DateTime?
+  // Deleted by the owner (soft delete): the contract and its payments are
+  // kept for the record and for "undo", but every screen, total, alert and
+  // reminder leaves it out (lib/rentals/live.ts LIVE_CONTRACT).
+  deletedAt          DateTime?
 
   asset    Asset         @relation(fields: [assetId], references: [id], onDelete: Cascade)
   payments RentPayment[]
 
   @@index([assetId, endDate])
+  @@index([assetId, deletedAt])
 }
 
 // One received payment against a contract. Recording a payment advances

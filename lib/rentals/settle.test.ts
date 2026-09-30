@@ -4,6 +4,7 @@ import {
   dueDateOfDedupeKey,
   geoEventOfDedupeKey,
   restoreAfterUndo,
+  restoreDeletedContract,
   settlePaidRent,
   staleGeoMessage,
   stalePaymentMessage,
@@ -23,6 +24,8 @@ type Row = Record<string, unknown> & { id: string };
 function matches(row: Row, where: Record<string, unknown> = {}): boolean {
   return Object.entries(where).every(([field, cond]) => {
     const value = row[field];
+    // Prisma's `field: null` is IS NULL (a row without the field counts).
+    if (cond === null) return value == null;
     if (cond instanceof Date) return value instanceof Date && value.getTime() === cond.getTime();
     if (cond && typeof cond === "object") {
       const c = cond as { in?: unknown[]; gte?: Date; lte?: Date; not?: unknown };
@@ -248,6 +251,42 @@ describe("a deleted contract", () => {
     const result = await withdrawContract(db, "c1", "contract_deleted");
     expect(result).toEqual({ resolved: 2, cancelled: 2 });
     expect(db.notifyMessage.rows.every((r) => r.cancelReason === "contract_deleted")).toBe(true);
+  });
+
+  it("undo brings back exactly what its deletion withdrew", async () => {
+    const deletedAt = new Date("2026-09-30T10:00:00Z");
+    const earlier = new Date("2026-09-29T10:00:00Z");
+    const db = fakeDb(
+      [
+        alert("a1", "2026-09-22"),
+        { ...alert("a2", "2026-09-22"), type: "contract_expiry" },
+        // Closed the day before, for another reason: stays closed.
+        alert("a3", "2026-09-15", { status: "resolved", resolvedAt: earlier, payload: { contractId: "c1", dueDate: "2026-09-15", autoResolved: "paid" } }),
+      ],
+      [
+        message("m1", "pay|c1|2026-09-22|repossess"),
+        message("m2", "pay|c1|2026-09-15|late1", { status: "cancelled", cancelReason: "paid", cancelledAt: earlier }),
+      ],
+    );
+    await withdrawContract(db, "c1", "contract_deleted", deletedAt);
+    expect(await restoreDeletedContract(db, "c1", deletedAt)).toEqual({ reopened: 2, requeued: 1 });
+    const status = (rows: Row[], id: string) => rows.find((r) => r.id === id)!.status;
+    expect(status(db.alert.rows, "a1")).toBe("open");
+    expect(status(db.alert.rows, "a2")).toBe("open");
+    expect(status(db.alert.rows, "a3")).toBe("resolved");
+    expect((db.alert.rows[0].payload as { autoResolved?: string }).autoResolved).toBeUndefined();
+    expect(status(db.notifyMessage.rows, "m1")).toBe("queued");
+    expect(status(db.notifyMessage.rows, "m2")).toBe("cancelled");
+  });
+
+  it("reads as missing to the sweep: its waiting reminders are withdrawn", async () => {
+    const db = fakeDb(
+      [],
+      [message("m1", "pay|c1|2026-09-22|repossess")],
+      [{ id: "c1", startDate: d("2026-09-01"), endDate: d("2027-09-01"), paidThrough: d("2026-09-15"), remindersEnabled: true, deletedAt: d("2026-09-30") }],
+    );
+    expect(await sweepStaleMessages(db, d("2026-09-30"))).toBe(1);
+    expect(db.notifyMessage.rows[0].cancelReason).toBe("contract_deleted");
   });
 });
 
