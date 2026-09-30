@@ -23,6 +23,8 @@ export interface FlipAsset {
   overdue: { label: string; severe: boolean } | null;
   /** Rentable assets link straight to their service desk. */
   serviceHref: string | null;
+  /** The late badge opens the desk's payments (null: no desk). */
+  overdueHref: string | null;
   /** Asset family — drives the card's ice tint. */
   category: string;
 }
@@ -137,13 +139,21 @@ export default function AssetFlipCard({
             <div className="aflip__badges">
               <span className={`badge ${asset.statusClass}`}>{asset.statusLabel}</span>
               {/* Late rent is the one thing worth interrupting a scan for. */}
-              {asset.overdue && (
-                <span
-                  className={`badge ${asset.overdue.severe ? "badge--danger" : "badge--warn"}`}
-                >
-                  {asset.overdue.label}
-                </span>
-              )}
+              {asset.overdue &&
+                (asset.overdueHref ? (
+                  <Link
+                    href={asset.overdueHref}
+                    className={`badge badge--link ${asset.overdue.severe ? "badge--danger" : "badge--warn"}`}
+                  >
+                    {asset.overdue.label}
+                  </Link>
+                ) : (
+                  <span
+                    className={`badge ${asset.overdue.severe ? "badge--danger" : "badge--warn"}`}
+                  >
+                    {asset.overdue.label}
+                  </span>
+                ))}
             </div>
           </div>
 

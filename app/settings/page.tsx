@@ -4,7 +4,12 @@ import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
 import { toggleLocale } from "@/lib/i18n/actions";
-import { signOutOtherDevices, updateProfileName } from "@/lib/account/actions";
+import {
+  signOutOtherDevices,
+  updateProfileName,
+  updateWorkspaceProfile,
+} from "@/lib/account/actions";
+import { WORKSPACE_PROFILES } from "@/lib/nav/model";
 import { currentSessionId } from "@/lib/auth/session";
 import { ChangeEmailForm, ChangePasswordForm } from "./security-forms";
 import { getBillingContext } from "@/lib/billing/context";
@@ -18,6 +23,13 @@ import { titled } from "@/lib/i18n/metadata";
 export const dynamic = "force-dynamic";
 
 export const generateMetadata = titled("settings_title");
+
+const PROFILE_LABEL: Record<(typeof WORKSPACE_PROFILES)[number], StringKey> = {
+  personal: "account_personal",
+  hotel: "profile_hotel",
+  brokerage: "profile_brokerage",
+  car_rental: "profile_car",
+};
 
 const PLAN_LATIN: Record<string, string> = {
   starter: "Starter", standard: "Standard", pro: "Pro",
@@ -104,6 +116,25 @@ export default async function SettingsPage() {
             </label>
             <button type="submit" className="btn-secondary">{t(locale, "save")}</button>
           </form>
+          {/* The workspace type chosen at sign-up — changeable here. */}
+          <form action={updateWorkspaceProfile} className="flex flex-wrap items-end gap-3">
+            <label className="field" style={{ flex: 1, minWidth: 200 }}>
+              {t(locale, "settings_profile")}
+              <select name="profile" defaultValue={operator.profile} disabled={isMember}>
+                {WORKSPACE_PROFILES.map((value) => (
+                  <option key={value} value={value}>
+                    {t(locale, PROFILE_LABEL[value])}
+                  </option>
+                ))}
+              </select>
+              <span className="field-hint">
+                {t(locale, isMember ? "settings_profile_member" : "settings_profile_hint")}
+              </span>
+            </label>
+            {!isMember && (
+              <button type="submit" className="btn-secondary">{t(locale, "save")}</button>
+            )}
+          </form>
           <div className="flex items-center justify-between gap-3">
             <span style={row}>{t(locale, "operator_email")}</span>
             <strong>{operator.email}</strong>
@@ -120,7 +151,7 @@ export default async function SettingsPage() {
               )}
               {!isMember && (
                 <Link href="/billing" className="btn-chip">
-                  {t(locale, "billing_upgrade")}
+                  {t(locale, "nav_billing")}
                 </Link>
               )}
             </span>
@@ -180,7 +211,14 @@ export default async function SettingsPage() {
             </span>
             <form action={toggleLocale}>
               <input type="hidden" name="locale" value={other} />
-              <button type="submit" className="btn-chip">{locale === "ka" ? "KA" : "EN"}</button>
+              <button
+                type="submit"
+                className="btn-chip"
+                aria-label={t(locale, "aria_language_switch")}
+                title={t(locale, "aria_language_switch")}
+              >
+                {locale === "ka" ? "KA" : "EN"}
+              </button>
             </form>
           </div>
           <div className="flex items-center justify-between gap-3">

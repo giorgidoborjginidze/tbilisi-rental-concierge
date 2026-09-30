@@ -6,6 +6,7 @@ import { after } from "next/server";
 import { prisma } from "@/lib/db";
 import { emailConfigured, escapeHtml, sendEmail } from "@/lib/email";
 import { chosenLocale, getLocale, LOCALE_COOKIE } from "@/lib/i18n/locale";
+import { signInLocale } from "@/lib/i18n/sign-in-locale";
 import { t, type Locale } from "@/lib/i18n/strings";
 import { siteUrl } from "@/lib/site";
 import { inviteProblem } from "./invite";
@@ -155,7 +156,7 @@ export async function login(
   const ip = await clientIp();
   const operator = await prisma.operator.findUnique({
     where: { email },
-    select: { id: true, passwordHash: true, isDemo: true, locale: true },
+    select: { id: true, passwordHash: true, isDemo: true, locale: true, localeSetAt: true },
   });
 
   // 5 failures per email and per address in 15 minutes, then a pause. The
@@ -181,31 +182,29 @@ export async function login(
 }
 
 /**
- * One language per owner across devices: a language picked on this device
- * becomes the account's (and so its messages'); a device with no choice
- * yet opens in the account's language. The shared demo keeps its own.
+ * One language per owner across devices. The account's language (also its
+ * tenants' and drivers' messages) changes only with the language switch
+ * while signed in; the device's cookie is taken only for an account that
+ * never had one chosen (lib/i18n/sign-in-locale.ts). The shared demo keeps
+ * its own.
  */
 async function syncLocaleAtSignIn(
-  operator: { id: string; isDemo: boolean; locale: string },
+  operator: { id: string; isDemo: boolean; locale: string; localeSetAt: Date | null },
   now: Date,
 ): Promise<void> {
-  const chosen = await chosenLocale();
-  if (chosen) {
-    // Written even when unchanged: it marks the language as chosen
-    // (scripts/backfill-locale.ts never touches a chosen one).
-    if (!operator.isDemo) {
-      await prisma.operator.update({
-        where: { id: operator.id },
-        data: { locale: chosen, localeSetAt: now },
-      });
-    }
-    return;
+  const plan = signInLocale(operator, await chosenLocale());
+  if (plan.save) {
+    // Marks the language as chosen (scripts/backfill-locale.ts never
+    // touches a chosen one).
+    await prisma.operator.update({
+      where: { id: operator.id },
+      data: { locale: plan.save, localeSetAt: now },
+    });
   }
-  const store = await cookies();
-  store.set(LOCALE_COOKIE, operator.locale === "en" ? "en" : "ka", {
-    path: "/",
-    maxAge: 60 * 60 * 24 * 365,
-  });
+  if (plan.cookie) {
+    const store = await cookies();
+    store.set(LOCALE_COOKIE, plan.cookie, { path: "/", maxAge: 60 * 60 * 24 * 365 });
+  }
 }
 
 /** Sign out; the demo ribbon's "register free" continues to /register. */

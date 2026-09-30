@@ -2,18 +2,19 @@ import Link from "next/link";
 import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 
-// Sub-tabs of the "Rentals" section: units / calendar / bookings / pricing / analytics.
+// Sub-tabs of the Rentals section: the calendar (its landing page — with
+// the free windows and their suggested prices), the units, the analytics.
+// The bookings list and the day-by-day price table open from the calendar
+// and light its tab.
 export default async function RentalsSubnav({
   active,
 }: {
-  active: "units" | "calendar" | "bookings" | "pricing" | "analytics";
+  active: "calendar" | "units" | "analytics";
 }) {
   const locale = await getLocale();
   const tabs = [
-    { key: "units", href: "/units", label: t(locale, "nav_units") },
     { key: "calendar", href: "/calendar", label: t(locale, "nav_calendar") },
-    { key: "bookings", href: "/bookings", label: t(locale, "nav_bookings") },
-    { key: "pricing", href: "/pricing", label: t(locale, "nav_pricing") },
+    { key: "units", href: "/units", label: t(locale, "nav_units") },
     { key: "analytics", href: "/analytics", label: t(locale, "nav_analytics") },
   ] as const;
 

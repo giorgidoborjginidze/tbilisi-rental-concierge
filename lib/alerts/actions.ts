@@ -23,6 +23,21 @@ export async function setAlertStatus(formData: FormData) {
 }
 
 /**
+ * Close every open free-window alert at once. Free windows live on the
+ * calendar (with a suggested price); the alerts page shows them as one
+ * summary card instead of one card per window.
+ */
+export async function dismissVacancyAlerts() {
+  const operator = await requireWriter();
+  await prisma.alert.updateMany({
+    where: { operatorId: operator.id, status: "open", type: "vacancy_gap" },
+    data: { status: "dismissed", resolvedAt: new Date() },
+  });
+  revalidatePath("/alerts");
+  revalidatePath("/");
+}
+
+/**
  * "Scan now": the same scan the daily job runs, for this workspace only,
  * then its own outbox is delivered (sent at once when the WhatsApp Cloud
  * API is configured; otherwise the messages wait with a send link).

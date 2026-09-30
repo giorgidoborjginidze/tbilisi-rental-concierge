@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { activeHref } from "@/lib/nav/section";
+import { OPEN_ACCOUNT_MENU } from "./nav-events";
 
 const ICONS: Record<string, React.ReactNode> = {
   home: (
@@ -39,19 +40,42 @@ const ICONS: Record<string, React.ReactNode> = {
       <path d="M10 19a2 2 0 0 0 4 0" />
     </>
   ),
+  car: (
+    <>
+      <path d="M5 16.5V12l1.8-4.2A2 2 0 0 1 8.6 6.5h6.8a2 2 0 0 1 1.8 1.3L19 12v4.5" />
+      <path d="M3.5 16.5h17M5 12h14" />
+      <circle cx="8" cy="16.5" r="1.8" />
+      <circle cx="16" cy="16.5" r="1.8" />
+    </>
+  ),
+  invest: (
+    <>
+      <path d="M4 19h16" />
+      <path d="M5 15l4.5-4.5 3.5 3L19 7.5" />
+      <path d="M14.5 7.5H19V12" />
+    </>
+  ),
+  menu: (
+    <>
+      <path d="M5 7h14M5 12h14M5 17h14" />
+    </>
+  ),
 };
 
 export default function TabBarClient({
   items,
   navLabel,
 }: {
-  items: { href: string; label: string; icon: string; center?: boolean }[];
+  items: { href: string; label: string; icon: string; center?: boolean; action?: "menu" }[];
   /** The bar's name for screen readers, in the owner's language. */
   navLabel: string;
 }) {
   const pathname = usePathname();
-  // A sub-page lights its parent: /pricing and /analytics → Rentals.
-  const current = activeHref(pathname, items.map((item) => item.href));
+  // A sub-page lights its parent: /bookings and /analytics → Calendar.
+  const current = activeHref(
+    pathname,
+    items.filter((item) => !item.action).map((item) => item.href),
+  );
   const active = (href: string) => href === current;
 
   return (
@@ -70,6 +94,24 @@ export default function TabBarClient({
             {ICONS[item.icon]}
           </svg>
         );
+        if (item.action === "menu") {
+          // Workspaces with no fifth section: the seat opens the account
+          // menu (settings, plan, help) instead of an empty page.
+          return (
+            <button
+              key={item.href}
+              type="button"
+              aria-label={item.label}
+              title={item.label}
+              aria-haspopup="menu"
+              data-account-menu-seat
+              className="tabbar__item"
+              onClick={() => window.dispatchEvent(new Event(OPEN_ACCOUNT_MENU))}
+            >
+              {icon}
+            </button>
+          );
+        }
         const on = active(item.href);
         return (
           <Link

@@ -14,6 +14,7 @@ import { hashPassword, MIN_PASSWORD_LENGTH, verifyPassword } from "@/lib/auth/pa
 import { validEmail } from "@/lib/auth/reset";
 import { destroyOtherSessions, requireWriter, type SessionOperator } from "@/lib/auth/session";
 import type { FormState } from "@/lib/units/actions";
+import { WORKSPACE_PROFILES } from "@/lib/nav/model";
 
 // Update the operator's display name (Company / Operator Name). Empty
 // clears it (the UI then falls back to the email local-part).
@@ -25,6 +26,23 @@ export async function updateProfileName(formData: FormData) {
     data: { name: name || null },
   });
   revalidatePath("/settings");
+}
+
+/**
+ * Change the workspace type chosen at sign-up: it decides which sections
+ * the menu and the tab bar show and which dashboard opens — nothing is
+ * deleted. Only the account owner changes it; the team's members follow.
+ */
+export async function updateWorkspaceProfile(formData: FormData) {
+  const operator = await requireWriter();
+  if (operator.companyId) return; // a member: the owner decides
+  const profile = String(formData.get("profile") ?? "");
+  if (!(WORKSPACE_PROFILES as readonly string[]).includes(profile)) return;
+  await prisma.$transaction([
+    prisma.operator.update({ where: { id: operator.id }, data: { profile } }),
+    prisma.operator.updateMany({ where: { companyId: operator.id }, data: { profile } }),
+  ]);
+  revalidatePath("/", "layout");
 }
 
 /**

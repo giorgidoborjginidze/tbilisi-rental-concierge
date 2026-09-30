@@ -24,6 +24,7 @@ import { LIVE_STAY } from "@/lib/bookings/live";
 import { cityLabel, districtLabel } from "@/lib/places";
 import { titled } from "@/lib/i18n/metadata";
 import { formatMoney } from "@/lib/format";
+import { rentalDesk } from "@/lib/rentals/desk";
 import { IconAlert, IconArrowLeft, IconArrowRight, IconClose } from "@/app/icons";
 
 export const dynamic = "force-dynamic";
@@ -96,6 +97,7 @@ export default async function EditAssetPage({
   }
   const props = await assetFormProps(locale, operator.id, asset.id);
   const isIncome = asset.category === "income_source";
+  const desk = rentalDesk(asset.category, asset.contracts.length);
 
   const today = startOfTodayTbilisi();
   const activeContract = runningContract(asset.contracts, today);
@@ -244,11 +246,11 @@ export default async function EditAssetPage({
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
         <h1 style={{ marginBottom: 0 }}>{displayName}</h1>
         <div className="flex flex-wrap gap-1.5">
-          {/* Cars and other rented-out property get the service desk:
-              payment schedule, GPS red lines, WhatsApp notifications. */}
-          {!isIncome && (
+          {/* Only what is rented out gets the service desk (a car: payments,
+              GPS red lines, messages; a flat: payments and tenant messages). */}
+          {desk && (
             // A real button, not a "selected" chip: it is the way into the
-            // payment schedule, GPS red lines and messages.
+            // payment schedule and the messages.
             <Link href={`/assets/${asset.id}/rental`} className="btn-primary btn-compact icon-text">
               {t(locale, "rental_open_service")} <IconArrowRight size={15} />
             </Link>
@@ -396,7 +398,7 @@ export default async function EditAssetPage({
       />
 
       {!isIncome && (
-        <section>
+        <section id="contracts" style={{ scrollMarginTop: 80 }}>
           <h2>{t(locale, "contracts_title")}</h2>
           {asset.contracts.length > 0 && (
             <ul className="mb-4 space-y-2">

@@ -98,3 +98,26 @@ export function planMirrors(
   }
   return changes;
 }
+
+/** A channel whose export repeats the nights it imported (its stays can be copies). */
+export const isMirroringSource = (source: string): boolean => MIRRORING_SOURCES.has(source);
+
+/**
+ * Of the live stays overlapping a stay the owner is entering by hand
+ * (`entered`), the ones that really clash with it. The owner often closes
+ * the nights on Booking.com first and records the direct booking later;
+ * the sync in between brings those nights back as a Booking.com block with
+ * no price and no guest. Once the booking is saved that block is only a
+ * copy of it (mirrorSource, with the entered stay as one more cover), so
+ * it is no second guest and must not refuse the booking. `covers` are the
+ * unit's other live stays and leases (not the entered stay itself).
+ */
+export function realClashes<T extends MirrorCandidate>(
+  entered: Cover,
+  overlapping: T[],
+  covers: Cover[],
+): T[] {
+  if (isMirroringSource(entered.source)) return overlapping;
+  const withEntered = [...covers.filter((cover) => !isMirroringSource(cover.source)), entered];
+  return overlapping.filter((stay) => mirrorSource(stay, withEntered) === null);
+}

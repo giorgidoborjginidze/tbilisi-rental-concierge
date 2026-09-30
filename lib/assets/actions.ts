@@ -213,9 +213,16 @@ export async function saveAsset(
     if (!(await getBillingContext(operator)).canAddAsset) {
       return { error: "error_limit_assets" };
     }
-    await prisma.asset.create({
+    const created = await prisma.asset.create({
       data: { ...data, operatorId: operator.id, statusSetAt: new Date() },
+      select: { id: true, category: true },
     });
+    // A new car goes straight to its service desk, where the next step —
+    // the contract, then the tracker — is one button away.
+    if (created.category === "vehicle") {
+      revalidatePath("/assets");
+      redirect(`/assets/${created.id}/rental?tab=overview`);
+    }
   }
 
   revalidatePath("/assets");

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { t, type Locale, type StringKey } from "@/lib/i18n/strings";
 import { IconChat, IconClose } from "./icons";
+import { OPEN_SUPPORT } from "./nav-events";
 
 // FAQ the bot can answer on its own. Each entry maps to bot_q_<id> / bot_a_<id>
 // strings and carries keywords (both languages) for free-text matching.
@@ -40,6 +41,16 @@ export default function SupportBot({
     if (!open && msgs.length === 0) setMsgs([{ role: "bot", text: tr("bot_greeting") }]);
     setOpen(!open);
   };
+
+  // The account menu's Help → "Support chat" opens the panel from anywhere.
+  useEffect(() => {
+    const openFromMenu = () => {
+      setMsgs((m) => (m.length === 0 ? [{ role: "bot", text: t(locale, "bot_greeting") }] : m));
+      setOpen(true);
+    };
+    window.addEventListener(OPEN_SUPPORT, openFromMenu);
+    return () => window.removeEventListener(OPEN_SUPPORT, openFromMenu);
+  }, [locale]);
 
   // Keep the newest message in view.
   useEffect(() => {

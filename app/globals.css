@@ -4024,3 +4024,206 @@ main > p + section { margin-top: 24px; }
 }
 .bot-input input { border-color: var(--color-border-strong); }
 main > header + section { margin-top: 16px; }
+
+/* ── P09 navigation: one model for the top nav, the tab bar and the
+   account menu. ── */
+/* The top nav can never push the account controls off-screen: the links
+   give way (and scroll sideways inside their own strip if they must),
+   the theme/language/account controls never shrink. */
+.nav__meta { flex: none; }
+.nav__links--app {
+  flex: 0 1 auto;
+  min-width: 0;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  /* Room for the "you are here" underline inside the scrolling strip. */
+  padding-block: 6px;
+  margin-block: -6px;
+}
+.nav__links--app::-webkit-scrollbar { display: none; }
+.nav__links--app a { white-space: nowrap; flex: none; }
+@media (min-width: 761px) and (max-width: 1180px) {
+  .nav { padding-inline: 20px; }
+  .nav__links a { padding: 6px 9px; }
+  /* The avatar alone names the account; the name · plan pill returns
+     on wider screens. */
+  .account-btn .account-label { display: none; }
+  .account-btn { padding-right: 7px; }
+}
+
+/* The tab bar's menu seat is a button, not a link. */
+button.tabbar__item {
+  background: none;
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* Account menu: a collapsible Help group. */
+.account-menu { min-width: 210px; }
+.account-menu__group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.account-menu__chevron { display: inline-flex; color: var(--color-text-muted); transition: transform 0.15s ease; }
+.account-menu__chevron[data-open] { transform: rotate(180deg); }
+.account-menu__sub {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-left: 10px;
+  padding-left: 6px;
+  border-left: 1px solid var(--color-border);
+}
+.bars-card__action { display: inline-flex; margin-top: 10px; }
+
+/* ── Rental service desk: tabs, overview cards, folded setup. ── */
+.desk-eyebrow {
+  margin: 0 0 2px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+.desk-plate {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border-strong);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+  color: var(--color-text);
+  background: var(--color-bg);
+}
+.desk-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 14px 0 20px;
+}
+.desk-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+.desk-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 18px;
+}
+.desk-card__label { font-size: 12.5px; font-weight: 600; color: var(--color-text-muted); }
+.desk-card__value { font-size: 20px; font-weight: 700; color: var(--color-text); }
+.desk-card__sub { font-size: 13px; color: var(--color-text); line-height: 1.5; }
+.desk-card__link { margin-top: auto; align-self: flex-start; padding-top: 6px; }
+.desk-fold {
+  margin-top: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 14px);
+  padding: 12px 16px;
+  background: color-mix(in srgb, var(--color-bg) 60%, transparent);
+}
+.desk-fold > summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14.5px;
+  list-style-position: outside;
+}
+.desk-fold--settings { margin-top: 28px; }
+.desk-fold__hint {
+  display: block;
+  margin-top: 2px;
+  font-weight: 400;
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+}
+.desk-fold[open] > summary { margin-bottom: 12px; }
+/* A late badge that opens the payments: a badge, underlined on hover. */
+a.badge--link { text-decoration: none; }
+a.badge--link:hover { text-decoration: underline; }
+
+/* ── Fleet: one row per car, the most urgent first. ── */
+.fleet-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.fleet-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+}
+.fleet-row__main { flex: 1 1 auto; min-width: 0; }
+.fleet-row__name { font-weight: 700; font-size: 15px; }
+.fleet-row .desk-plate { font-size: 12px; margin-left: 8px; }
+.fleet-row__sub { margin-top: 3px; font-size: 13px; color: var(--color-text-muted); }
+.fleet-row__badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  max-width: 55%;
+}
+@media (max-width: 560px) {
+  .fleet-row { flex-wrap: wrap; }
+  .fleet-row__main { flex-basis: calc(100% - 50px); }
+  .fleet-row__badges { order: 3; max-width: none; justify-content: flex-start; flex-basis: 100%; }
+}
+/* An alert about a car or a flat: its desk and its waiting messages. */
+.alert-card__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 6px;
+  font-size: 13px;
+}
+.desk-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin-top: 28px;
+}
+.desk-head h2 { margin: 0; }
+@media (max-width: 440px) {
+  /* Four tabs on one line on a phone. */
+  .desk-tabs { gap: 4px; }
+  .desk-tabs .btn-chip { padding: 5px 8px; font-size: 12px; letter-spacing: -0.01em; }
+}
+
+/* ── Calendar: free windows per unit, each with a suggested price. ── */
+.gap-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 12px;
+}
+.gap-unit { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.gap-unit__head { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; }
+.gap-unit__head svg { color: var(--status-str-text, var(--color-primary)); flex: none; }
+.gap-unit__name { color: var(--color-text); text-decoration: none; }
+.gap-unit__name:hover { text-decoration: underline; }
+.gap-unit__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.gap-unit__list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  padding: 5px 0;
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
+}
+.gap-unit__list li:first-child { border-top: 0; }
+.gap-unit__list b { white-space: nowrap; font-weight: 600; }
+.gap-unit__nights { color: var(--color-text-muted); }
+.gap-unit__more { font-size: 12.5px; margin-top: auto; }
+/* A card's one action keeps its label on one line. */
+.alert-card > .btn-primary.btn-compact { flex: none; white-space: nowrap; }

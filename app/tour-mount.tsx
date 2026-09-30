@@ -1,37 +1,38 @@
 import { getSessionOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
+import { workspaceNav } from "@/lib/nav/facts";
+import { tourStops } from "@/lib/nav/model";
 import Tour, { type TourStep } from "./tour";
+
+// Where each tour stop lives and what it spotlights.
+const STOPS: Record<string, { path: string; target: string }> = {
+  s1: { path: "/", target: ".kpi-grid" },
+  s2: { path: "/", target: "[data-tour='account']" },
+  s3: { path: "/assets", target: "[data-tour='new-asset']" },
+  s5: { path: "/assets", target: ".aflip" },
+  s7: { path: "/calendar", target: ".cal-board" },
+  s8: { path: "/units", target: ".ical-cell" },
+  s9: { path: "/invest", target: "[data-tour='invest-tabs']" },
+  fleet: { path: "/fleet", target: "[data-tour='fleet']" },
+  alerts: { path: "/alerts", target: "[data-tour='alerts']" },
+};
 
 // The guided tour, mounted once in the layout so it survives navigation
 // between the pages its steps live on. Signed-out visitors never see it —
-// every step points at a signed-in screen. Steps whose section a profile
-// does not have (no units → no calendar) are skipped by the engine.
+// every step points at a signed-in screen. The stops follow the workspace
+// (lib/nav/model.ts tourStops): six at most, only on pages it has.
 export default async function TourMount() {
   const operator = await getSessionOperator();
   if (!operator) return null;
   const locale = await getLocale();
+  const { primary } = await workspaceNav(operator.id, operator.profile);
 
-  const step = (path: string, target: string, n: number): TourStep => ({
-    path,
-    target,
-    title: t(locale, `tour_s${n}_t` as StringKey),
-    body: t(locale, `tour_s${n}_b` as StringKey),
-  });
-
-  const steps: TourStep[] = [
-    step("/", ".kpi-grid", 1),
-    step("/", "[data-tour='account']", 2),
-    step("/assets", "[data-tour='new-asset']", 3),
-    step("/assets", "[data-tour='segments']", 4),
-    step("/assets", ".aflip", 5),
-    step("/assets", "[data-tour='digital']", 6),
-    step("/calendar", ".cal-board", 7),
-    step("/units", ".ical-cell", 8),
-    step("/invest", "[data-tour='invest-tabs']", 9),
-    step("/billing", "[data-tour='plans']", 10),
-    step("/", ".bot-launcher", 11),
-  ];
+  const steps: TourStep[] = tourStops(primary).map((id) => ({
+    ...STOPS[id],
+    title: t(locale, `tour_${id}_t` as StringKey),
+    body: t(locale, `tour_${id}_b` as StringKey),
+  }));
 
   return (
     <Tour

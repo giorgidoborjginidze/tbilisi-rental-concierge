@@ -189,14 +189,22 @@ export async function MarketTips({
   // The three that matter most — a double booking or the repossession
   // right before any "free window" advice — each named after its unit or
   // asset.
-  const alerts = rankAlerts(
+  const ranked = rankAlerts(
     await prisma.alert.findMany({
       where: { operatorId, status: "open" },
-      include: { unit: { select: { name: true, nameKa: true } } },
+      include: { unit: { select: { id: true, name: true, nameKa: true } } },
       orderBy: { createdAt: "desc" },
       take: 200,
     }),
-  ).slice(0, 3);
+  );
+  // Free windows are listed in one place — the calendar, with a suggested
+  // price — so here they take at most one tip that counts them.
+  const gaps = ranked.filter((alert) => alert.type === "vacancy_gap");
+  const firstGap = ranked.findIndex((alert) => alert.type === "vacancy_gap");
+  const alerts = ranked
+    .filter((alert, i) => alert.type !== "vacancy_gap" || i === firstGap)
+    .slice(0, 3);
+  const gapUnits = new Set(gaps.map((alert) => alert.unitId)).size;
   // Older alerts carry no category — it is looked up from the asset.
   const categoryOf = await alertCategories(operatorId, alerts);
   // Named as the owner reads the asset (its Georgian name), not as the
@@ -245,6 +253,29 @@ export async function MarketTips({
                 ? alert.unit.nameKa
                 : alert.unit.name
               : (payload.assetId && assetNames.get(payload.assetId)) || payload.assetName;
+            if (alert.type === "vacancy_gap" && gaps.length > 1) {
+              return (
+                <div key={alert.id} className="card tip-card">
+                  <span className="tip-card__ico" data-sev={alertSeverity(alert.type)}>
+                    {alertGlyph(alert.type, 19)}
+                  </span>
+                  <div style={{ minWidth: 0 }}>
+                    <b className="t">
+                      {t(locale, "alerts_gaps_title").replace("{n}", String(gaps.length))}
+                    </b>
+                    <p>
+                      {t(locale, "alerts_gaps_detail").replace("{units}", String(gapUnits))}{" "}
+                      <Link href="/calendar" className="link icon-text" style={{ gap: 4 }}>
+                        {t(locale, "alerts_gaps_open")} <IconArrowRight size={14} />
+                      </Link>
+                      <span className="tip-card__src">
+                        {t(locale, "tips_source")}: {t(locale, TIP_SOURCE.vacancy_gap ?? "tips_src_contract")}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+              );
+            }
             return (
               <div key={alert.id} className="card tip-card">
                 <span className="tip-card__ico" data-sev={alertSeverity(alert.type)}>
@@ -271,7 +302,11 @@ export async function MarketTips({
                           ? "action_overlap_contract"
                           : (`action_${alert.type}` as StringKey),
                     )}{" "}
-                    <Link href="/alerts" className="link icon-text" style={{ gap: 4 }}>
+                    <Link
+                      href={alert.type === "vacancy_gap" && alert.unit ? `/calendar?unit=${alert.unit.id}` : "/alerts"}
+                      className="link icon-text"
+                      style={{ gap: 4 }}
+                    >
                       {t(locale, "tips_open")} <IconArrowRight size={14} />
                     </Link>
                     <span className="tip-card__src">
@@ -663,9 +698,12 @@ export async function AssetDeck({
 export async function IncomeBars({
   locale,
   operatorId,
+  action,
 }: {
   locale: Locale;
   operatorId: string;
+  /** One contextual action beside the heading (e.g. add an income source). */
+  action?: { href: string; label: string };
 }) {
   const series = await monthlyIncomeSeries(operatorId, monthStartTbilisi(-5), 6);
   const months = series.map(({ start, income }) => ({
@@ -684,6 +722,11 @@ export async function IncomeBars({
       <div className="bars-card__head">
         <h2>{t(locale, "bars_title")}</h2>
         <p>{t(locale, "bars_sub")}</p>
+        {action && (
+          <Link href={action.href} className="btn-chip bars-card__action">
+            {action.label}
+          </Link>
+        )}
       </div>
       {max <= 0 ? (
         <p style={{ color: "var(--color-text-muted)", fontSize: 13, margin: 0 }}>

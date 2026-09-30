@@ -132,7 +132,7 @@ export default function UnitForm({
       <label className="field">
         {labels.unit_amenities}
         <input
-          name="amenities" placeholder="wifi, ac, washer"
+          name="amenities" placeholder={labels.ph_amenities}
           defaultValue={val("amenities")}
         />
       </label>

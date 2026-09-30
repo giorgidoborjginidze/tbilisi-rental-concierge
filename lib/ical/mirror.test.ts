@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mirrorSource, planMirrors, type MirrorCandidate } from "./mirror";
+import { mirrorSource, planMirrors, realClashes, type MirrorCandidate } from "./mirror";
 import { eventsToBookings } from "./sync";
 import { overlapSignals } from "@/lib/alerts/signals";
 import { unitWindowMetrics } from "@/lib/analytics/metrics";
@@ -101,5 +101,42 @@ describe("mirrorSource / planMirrors", () => {
     );
     expect(metrics.unpricedNights).toBe(0);
     expect(metrics.occupiedNights).toBe(3);
+  });
+});
+
+describe("realClashes — the owner closes Booking.com first, then records the direct booking", () => {
+  const block = stay("b1", "booking", "2026-10-10", "2026-10-13");
+  const entered = { source: "direct", start: d("2026-10-10"), end: d("2026-10-13") };
+
+  it("a Booking.com block with no price or guest inside the new stay is not a clash", () => {
+    expect(realClashes(entered, [block], [])).toEqual([]);
+    // …and once the booking is saved, the refresh marks the block a copy of it.
+    const saved = stay("m1", "direct", "2026-10-10", "2026-10-13");
+    expect(planMirrors([block, saved])).toEqual([{ id: "b1", mirrorOf: "direct" }]);
+  });
+
+  it("a block held partly by the new stay and partly by another stay is a copy too", () => {
+    const wide = stay("b2", "booking", "2026-10-08", "2026-10-13");
+    const airbnb = { source: "airbnb", start: d("2026-10-08"), end: d("2026-10-10") };
+    expect(realClashes(entered, [wide], [airbnb])).toEqual([]);
+    expect(realClashes(entered, [wide], [])).toEqual([wide]);
+  });
+
+  it("a block with nights outside the new stay, a priced or named block, or another channel's stay still clashes", () => {
+    const longer = stay("b3", "booking", "2026-10-10", "2026-10-15");
+    const priced = stay("b4", "booking", "2026-10-10", "2026-10-13", { amount: 240 });
+    const named = stay("b5", "booking", "2026-10-11", "2026-10-12", { guestName: "Giorgi" });
+    const airbnb = stay("a1", "airbnb", "2026-10-11", "2026-10-12");
+    expect(realClashes(entered, [longer, priced, named, airbnb], [])).toEqual([longer, priced, named, airbnb]);
+  });
+
+  it("an entered Booking.com stay is never a cover (restoring one keeps every clash)", () => {
+    expect(realClashes({ ...entered, source: "booking" }, [block], [])).toEqual([block]);
+  });
+
+  it("a Booking.com cover does not count (only real stays and leases hold nights)", () => {
+    const wide = stay("b2", "booking", "2026-10-08", "2026-10-13");
+    const otherBlock = { source: "booking", start: d("2026-10-08"), end: d("2026-10-10") };
+    expect(realClashes(entered, [wide], [otherBlock])).toEqual([wide]);
   });
 });

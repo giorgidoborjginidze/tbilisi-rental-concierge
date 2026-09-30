@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import { pageTitle } from "@/lib/i18n/metadata";
 import Link from "next/link";
+import { deskHref } from "@/lib/rentals/desk";
 import { prisma } from "@/lib/db";
 import { getSessionOperator, type SessionOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
@@ -399,7 +400,7 @@ async function HotelDashboard({
     Math.min(monthStart.getTime(), today.getTime()) - DAY_MS,
   );
 
-  const [units, alertCount, income] = await Promise.all([
+  const [units, income] = await Promise.all([
     prisma.unit.findMany({
       where: { operatorId: operator.id },
       orderBy: [{ city: "asc" }, { district: "asc" }, { name: "asc" }],
@@ -417,7 +418,6 @@ async function HotelDashboard({
         },
       },
     }),
-    openAlertCount(operator.id),
     monthlyIncome(operator.id, monthStart),
   ]);
 
@@ -586,26 +586,6 @@ async function HotelDashboard({
             {stayList(departures, "dash_no_departures")}
           </section>
 
-          <section>
-            <h2>{t(locale, "dash_quick")}</h2>
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              <Link href="/analytics" className="btn-chip">
-                {t(locale, "nav_analytics")}
-              </Link>
-              <Link href="/calendar" className="btn-chip">
-                {t(locale, "nav_calendar")}
-              </Link>
-              <Link href="/bookings" className="btn-chip">
-                {t(locale, "nav_bookings")}
-              </Link>
-              <Link href="/pricing" className="btn-chip">
-                {t(locale, "nav_pricing")}
-              </Link>
-              <Link href="/alerts" className="btn-chip">
-                {t(locale, "dash_open_alerts")}: {alertCount}
-              </Link>
-            </div>
-          </section>
         </>
       )}
 
@@ -770,23 +750,6 @@ async function BrokerageDashboard({
             )}
           </section>
 
-          <section>
-            <h2>{t(locale, "dash_quick")}</h2>
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              <Link href="/assets" className="btn-chip">
-                {t(locale, "nav_assets")}
-              </Link>
-              <Link href="/assets/new" className="btn-chip">
-                {t(locale, "assets_add")}
-              </Link>
-              <Link href="/alerts" className="btn-chip">
-                {t(locale, "nav_alerts")}
-              </Link>
-              <Link href="/invest" className="btn-chip">
-                {t(locale, "nav_invest")}
-              </Link>
-            </div>
-          </section>
         </>
       )}
 
@@ -855,7 +818,8 @@ async function CarRentalDashboard({
             {rows.map(({ vehicle, contract }) => (
               <tr key={contract.id}>
                 <td>
-                  <Link href={`/assets/${vehicle.id}/edit`} className="link">
+                  {/* A handover or a return: straight to the car's desk. */}
+                  <Link href={deskHref(vehicle.id, "vehicle")} className="link">
                     {displayName(vehicle)}
                   </Link>
                 </td>
@@ -931,23 +895,6 @@ async function CarRentalDashboard({
         </>
       )}
 
-      <section>
-        <h2>{t(locale, "dash_quick")}</h2>
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          <Link href="/assets" className="btn-chip">
-            {t(locale, "nav_assets")}
-          </Link>
-          <Link href="/assets/new" className="btn-chip">
-            {t(locale, "assets_add")}
-          </Link>
-          <Link href="/invest" className="btn-chip">
-            {t(locale, "car_title")}
-          </Link>
-          <Link href="/alerts" className="btn-chip">
-            {t(locale, "nav_alerts")}
-          </Link>
-        </div>
-      </section>
 
       <MarketTips locale={locale} operatorId={operator.id} />
     </main>
@@ -962,14 +909,13 @@ async function PersonalDashboard({
   locale: Locale;
   operator: SessionOperator;
 }) {
-  const [assets, income, unitCount, alertCount] = await Promise.all([
+  const [assets, income, alertCount] = await Promise.all([
     prisma.asset.findMany({
       where: { operatorId: operator.id },
       select: { category: true, estimatedValue: true },
     }),
     // The one income definition: the same total as the bars and /assets.
     monthlyIncome(operator.id),
-    prisma.unit.count({ where: { operatorId: operator.id } }),
     openAlertCount(operator.id),
   ]);
   const totalValue = assets.reduce((sum, a) => sum + (a.estimatedValue ?? 0), 0);
@@ -1001,7 +947,13 @@ async function PersonalDashboard({
 
       <AssetDeck locale={locale} operatorId={operator.id} />
 
-      <IncomeBars locale={locale} operatorId={operator.id} />
+      {/* The one action the dashboard offers on its own: adding a salary,
+          dividend or other income, next to the income it would show in. */}
+      <IncomeBars
+        locale={locale}
+        operatorId={operator.id}
+        action={{ href: "/assets/new?category=income_source", label: t(locale, "add_income_source") }}
+      />
 
       <section className="kpi-grid kpi-grid--3d kpi-grid--3">
         <Kpi
@@ -1034,28 +986,6 @@ async function PersonalDashboard({
         </div>
       )}
 
-      <section>
-        <h2>{t(locale, "dash_quick")}</h2>
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          <Link href="/assets" className="btn-chip">
-            {t(locale, "nav_assets")}
-          </Link>
-          <Link href="/assets/new?category=income_source" className="btn-chip">
-            {t(locale, "add_income_source")}
-          </Link>
-          {unitCount > 0 && (
-            <Link href="/units" className="btn-chip">
-              {t(locale, "nav_rentals")}
-            </Link>
-          )}
-          <Link href="/invest" className="btn-chip">
-            {t(locale, "nav_invest")}
-          </Link>
-          <Link href="/alerts" className="btn-chip">
-            {t(locale, "nav_alerts")}
-          </Link>
-        </div>
-      </section>
 
       <MarketTips locale={locale} operatorId={operator.id} />
     </main>

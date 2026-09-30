@@ -9,6 +9,7 @@ import { suggestRate, type PricingResult } from "./engine";
 import { generateRationales } from "@/lib/ai/rationale";
 import type { Locale } from "@/lib/i18n/strings";
 import { LIVE_STAY } from "@/lib/bookings/live";
+import { benchmarkMonth, occupancyShare } from "./nightly";
 
 const DAY_MS = 86_400_000;
 
@@ -18,8 +19,7 @@ export interface SuggestionRow {
   rationale: string;
 }
 
-const monthKey = (date: Date) =>
-  `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+const monthKey = benchmarkMonth;
 
 export async function computeSuggestionsForUnit(
   unitId: string,
@@ -42,17 +42,11 @@ export async function computeSuggestionsForUnit(
       checkOut: { gt: start },
     },
   });
-  const occupiedNights = new Set<number>();
-  for (const booking of upcoming) {
-    for (
-      let t = Math.max(booking.checkIn.getTime(), start.getTime());
-      t < Math.min(booking.checkOut.getTime(), next30End.getTime());
-      t += DAY_MS
-    ) {
-      occupiedNights.add(t);
-    }
-  }
-  const upcomingOccupancy = occupiedNights.size / 30;
+  const upcomingOccupancy = occupancyShare(
+    upcoming.map((booking) => ({ start: booking.checkIn, end: booking.checkOut })),
+    start,
+    30,
+  );
 
   const market = getMarketDataSource();
   const benchmarkCache = new Map<string, number | null>();

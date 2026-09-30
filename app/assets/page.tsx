@@ -23,6 +23,7 @@ import RevenuePartial, { monthKeyOf } from "../revenue-partial";
 import { districtLabel } from "@/lib/places";
 import { titled } from "@/lib/i18n/metadata";
 import { formatMoney } from "@/lib/format";
+import { deskHref, rentalDesk } from "@/lib/rentals/desk";
 
 export const dynamic = "force-dynamic";
 
@@ -356,6 +357,7 @@ export default async function AssetsPage() {
               {group.map((asset) => {
                 const contract = activeContract(asset);
                 const status = effectiveStatus(asset);
+                const desk = rentalDesk(asset.category, asset.contracts.length);
                 const benchmark = asset.district
                   ? rentBenchmarks.get(asset.district) ?? null
                   : null;
@@ -384,7 +386,10 @@ export default async function AssetsPage() {
                   // The running contract when late, else a finished one
                   // that still has rent owed.
                   overdue: overdueBadge(lateContract(asset.contracts, today, asset), asset),
-                  serviceHref: `/assets/${asset.id}/rental`,
+                  // Only what is rented out has a service desk; late rent
+                  // on the card's face opens its payments directly.
+                  serviceHref: desk ? deskHref(asset.id, desk) : null,
+                  overdueHref: desk ? deskHref(asset.id, desk, "payments") : null,
                   category: asset.category,
                 };
                 return (

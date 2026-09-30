@@ -612,6 +612,7 @@ export async function markMessageSent(formData: FormData) {
     data: { status: "sent", sentAt: new Date(), error: null },
   });
   if (assetId) refresh(assetId);
+  else revalidatePath("/alerts");
 }
 
 export async function deleteMessage(formData: FormData) {
@@ -623,6 +624,7 @@ export async function deleteMessage(formData: FormData) {
     where: { id: messageId, operatorId: operator.id },
   });
   if (assetId) refresh(assetId);
+  else revalidatePath("/alerts");
 }
 
 /** Retry automatic delivery (no-op without Cloud API credentials). */
@@ -635,6 +637,7 @@ export async function retryOutbox(formData: FormData) {
   });
   await flushOutbox(operator.id).catch(() => undefined);
   if (assetId) refresh(assetId);
+  else revalidatePath("/alerts");
 }
 
 // ── Daily lets: one answer per day ─────────────────────────────────────

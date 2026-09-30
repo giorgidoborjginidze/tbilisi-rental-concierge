@@ -17,11 +17,14 @@ import { LIVE_STAY } from "@/lib/bookings/live";
 import { titled } from "@/lib/i18n/metadata";
 import { AlertTypeIcon } from "../alert-icon";
 import { formatMoney } from "@/lib/format";
-import { IconAlert, IconChevronLeft, IconChevronRight } from "../icons";
+import { IconAlert, IconArrowRight, IconChevronLeft, IconChevronRight } from "../icons";
+import { getMarketDataSource } from "@/lib/market/source";
+import { benchmarkMonth, freeWindowRange, occupancyShare, windowPrice } from "@/lib/pricing/nightly";
 
 export const dynamic = "force-dynamic";
 
-export const generateMetadata = titled("nav_calendar");
+// The Rentals section's landing page: its title is the nav entry's name.
+export const generateMetadata = titled("nav_rentals");
 
 const DAY_MS = 86_400_000;
 
@@ -100,6 +103,8 @@ export default async function CalendarPage({
       })
     : units;
 
+  const today = startOfTodayTbilisi();
+
   const rows = units.map((unit) => {
     const stays: Stay[] = [
       ...unit.bookings.map((b) => ({
@@ -134,10 +139,83 @@ export default async function CalendarPage({
     return {
       unit,
       days,
-      gaps: findGaps(stays, { start: windowStart, end: windowEnd }, 2),
       overlaps: findOverlaps(stays),
     };
   });
+
+  // ── Free windows worth acting on — from today on, two nights or more
+  // (lib/pricing/nightly.ts freeWindowRange) — each with a suggested price:
+  // the same rule-based engine as the day-by-day price table (/pricing),
+  // without its written explanation: seasonality, the unit's own demand
+  // over the next 30 nights, and the district's average nightly price. ──
+  const range = freeWindowRange({ start: windowStart, end: windowEnd }, today);
+  const aheadEnd = range
+    ? new Date(Math.max(range.end.getTime(), today.getTime() + 30 * DAY_MS))
+    : today;
+  const [aheadBookings, aheadLeases] = range
+    ? await Promise.all([
+        prisma.booking.findMany({
+          where: {
+            unitId: { in: units.map((unit) => unit.id) },
+            ...LIVE_STAY,
+            checkIn: { lt: aheadEnd },
+            checkOut: { gt: today },
+          },
+          select: { unitId: true, checkIn: true, checkOut: true },
+        }),
+        prisma.lease.findMany({
+          where: {
+            unitId: { in: units.map((unit) => unit.id) },
+            startDate: { lt: aheadEnd },
+            endDate: { gt: today },
+          },
+          select: { unitId: true, startDate: true, endDate: true },
+        }),
+      ])
+    : [[], []];
+  const aheadOf = (unitId: string) => [
+    ...aheadBookings
+      .filter((booking) => booking.unitId === unitId)
+      .map((booking) => ({ start: booking.checkIn, end: booking.checkOut })),
+    ...aheadLeases
+      .filter((lease) => lease.unitId === unitId)
+      .map((lease) => ({ start: lease.startDate, end: lease.endDate })),
+  ];
+  const gapsOf = new Map(
+    rows.map((row) => [row.unit.id, range ? findGaps(aheadOf(row.unit.id), range, 2) : []]),
+  );
+  const market = getMarketDataSource();
+  const benchmarkCache = new Map<string, number | null>();
+  const benchmarksFor = async (district: string | null, nights: Date[]) => {
+    const byMonth = new Map<string, number | null>();
+    for (const month of new Set(nights.map(benchmarkMonth))) {
+      const key = `${district ?? ""}|${month}`;
+      if (!benchmarkCache.has(key)) {
+        benchmarkCache.set(key, district ? (await market.getBenchmark(district, month))?.adr ?? null : null);
+      }
+      byMonth.set(month, benchmarkCache.get(key) ?? null);
+    }
+    return byMonth;
+  };
+  const priced = await Promise.all(
+    rows.map(async (row) => {
+      const occupancy = occupancyShare(aheadOf(row.unit.id), today, 30);
+      return Promise.all(
+        (gapsOf.get(row.unit.id) ?? []).map(async (gap) => {
+          const nights = Array.from({ length: gap.nights }, (_, i) => new Date(gap.start.getTime() + i * DAY_MS));
+          const benchmarks = await benchmarksFor(row.unit.district, nights);
+          return windowPrice(row.unit, gap, occupancy, benchmarks);
+        }),
+      );
+    }),
+  );
+  // Each free night's suggested price, for the grid's hover text.
+  const nightPrice = new Map<string, number>();
+  rows.forEach((row, r) =>
+    priced[r].forEach((window) =>
+      window?.nights.forEach((night) => nightPrice.set(`${row.unit.id}|${night.date.getTime()}`, night.rate)),
+    ),
+  );
 
   const prev = month === 1 ? { year: year - 1, month: 12 } : { year, month: month - 1 };
   const next = month === 12 ? { year: year + 1, month: 1 } : { year, month: month + 1 };
@@ -166,9 +244,32 @@ export default async function CalendarPage({
     <main>
       <RentalsSubnav active="calendar" />
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-        <h1 style={{ marginBottom: 0 }}>
-          {t(locale, "nav_calendar")} — {monthLabel}
-        </h1>
+        <h1 style={{ marginBottom: 0 }}>{t(locale, "nav_rentals")}</h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/bookings" className="btn-chip">
+            {t(locale, "calendar_all_bookings")}
+          </Link>
+          <Link
+            href={unitQuery ? `/bookings/new?unit=${unitQuery}` : "/bookings/new"}
+            className="btn-secondary"
+          >
+            {t(locale, "bookings_add")}
+          </Link>
+        </div>
+      </div>
+      {allUnits.length === 0 ? (
+        <div className="alert-card alert-card--info" style={{ alignItems: "center" }}>
+          <div className="alert-card__detail" style={{ marginTop: 0 }}>
+            {t(locale, "calendar_no_units")}
+          </div>
+          <Link href="/units/new" className="btn-primary btn-compact">
+            {t(locale, "units_add")}
+          </Link>
+        </div>
+      ) : (
+      <>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="cal-month" style={{ margin: 0 }}>{monthLabel}</h2>
         <div className="flex flex-wrap items-center gap-3">
           <UnitFilter
             units={allUnits.map((u) => ({ id: u.id, label: displayName(u) }))}
@@ -241,65 +342,105 @@ export default async function CalendarPage({
                 {displayName(unit)}
               </Link>
             </span>
-            {days.map((day, i) => (
-              <span key={i} className={`cal-cell ${day.className}`} />
-            ))}
+            {days.map((day, i) => {
+              const night = windowStart.getTime() + i * DAY_MS;
+              const rate = day.className ? undefined : nightPrice.get(`${unit.id}|${night}`);
+              return (
+                <span
+                  key={i}
+                  className={`cal-cell ${day.className}`}
+                  title={
+                    rate != null
+                      ? `${fmtDay.format(new Date(night))} — ${t(locale, "calendar_cell_free")} · ${formatMoney(rate, unit.currency)}`
+                      : undefined
+                  }
+                />
+              );
+            })}
           </Fragment>
         ))}
       </div>
 
-      <div className="mt-4 grid gap-x-8 md:grid-cols-2">
-        <section>
-          <h2>{t(locale, "calendar_gaps")}</h2>
-          {rows.every((r) => r.gaps.length === 0) ? (
-            <p style={{ color: "var(--color-text-muted)" }}>{t(locale, "calendar_no_gaps")}</p>
-          ) : (
-            rows.flatMap(({ unit, gaps }) =>
-              gaps.map((gap, i) => (
-                <div key={`${unit.id}-${i}`} className="alert-card alert-card--info">
-                  <div>
-                    <div className="alert-card__title">
-                      <AlertTypeIcon type="vacancy_gap" />
-                      {displayName(unit)}
-                    </div>
-                    <div className="alert-card__detail">
-                      {fmtDay.format(gap.start)} – {fmtDay.format(gap.end)} ·{" "}
-                      {gap.nights} {t(locale, "nights_short")}
-                    </div>
+      {/* A double booking first — it costs money today. */}
+      <section style={{ marginTop: 28 }}>
+        <h2>{t(locale, "calendar_overlaps")}</h2>
+        {rows.every((r) => r.overlaps.length === 0) ? (
+          <p style={{ color: "var(--color-text-muted)" }}>{t(locale, "calendar_no_overlaps")}</p>
+        ) : (
+          rows.flatMap(({ unit, overlaps }) =>
+            overlaps.map((overlap, i) => (
+              <div key={`${unit.id}-${i}`} className="alert-card alert-card--danger">
+                <div>
+                  <div className="alert-card__title">
+                    <AlertTypeIcon type="overlap" />
+                    {displayName(unit)}{" "}
+                    <span style={{ fontWeight: 400, fontSize: 12, color: "var(--color-text-muted)" }}>
+                      ({overlap.kinds.join(" + ")})
+                    </span>
+                  </div>
+                  <div className="alert-card__detail">
+                    {fmtDay.format(overlap.start)} – {fmtDay.format(overlap.end)} ·{" "}
+                    {overlap.nights} {t(locale, "nights_short")}
                   </div>
                 </div>
-              )),
-            )
-          )}
-        </section>
+              </div>
+            )),
+          )
+        )}
+      </section>
 
-        <section>
-          <h2>{t(locale, "calendar_overlaps")}</h2>
-          {rows.every((r) => r.overlaps.length === 0) ? (
-            <p style={{ color: "var(--color-text-muted)" }}>{t(locale, "calendar_no_overlaps")}</p>
-          ) : (
-            rows.flatMap(({ unit, overlaps }) =>
-              overlaps.map((overlap, i) => (
-                <div key={`${unit.id}-${i}`} className="alert-card alert-card--danger">
-                  <div>
-                    <div className="alert-card__title">
-                      <AlertTypeIcon type="overlap" />
-                      {displayName(unit)}{" "}
-                      <span style={{ fontWeight: 400, fontSize: 12, color: "var(--color-text-muted)" }}>
-                        ({overlap.kinds.join(" + ")})
-                      </span>
-                    </div>
-                    <div className="alert-card__detail">
-                      {fmtDay.format(overlap.start)} – {fmtDay.format(overlap.end)} ·{" "}
-                      {overlap.nights} {t(locale, "nights_short")}
-                    </div>
+      {/* The one place free windows are listed: per unit, each with the
+          price to ask per night (the alerts page only counts them). */}
+      <section>
+        <h2>{t(locale, "calendar_gaps")}</h2>
+        <p className="section-hint">{t(locale, "calendar_gaps_hint")}</p>
+        {rows.every((r) => (gapsOf.get(r.unit.id) ?? []).length === 0) ? (
+          <p style={{ color: "var(--color-text-muted)" }}>{t(locale, "calendar_no_gaps")}</p>
+        ) : (
+          <div className="gap-grid">
+            {rows.map(({ unit }, r) => {
+              const gaps = gapsOf.get(unit.id) ?? [];
+              if (gaps.length === 0) return null;
+              return (
+                <div key={unit.id} className="card gap-unit">
+                  <div className="gap-unit__head">
+                    <AlertTypeIcon type="vacancy_gap" />
+                    <Link
+                      href={`/calendar?month=${monthParam(year, month)}&unit=${unit.id}`}
+                      className="gap-unit__name"
+                    >
+                      {displayName(unit)}
+                    </Link>
                   </div>
+                  <ul className="gap-unit__list">
+                    {gaps.map((gap, i) => (
+                      <li key={i}>
+                        <span>
+                          {fmtDay.format(gap.start)} – {fmtDay.format(gap.end)}
+                          <span className="gap-unit__nights">
+                            {" "}· {gap.nights} {t(locale, "nights_short")}
+                          </span>
+                        </span>
+                        {priced[r][i] && (
+                          <b>
+                            {t(locale, "calendar_gap_price").replace(
+                              "{price}",
+                              formatMoney(priced[r][i]!.perNight, unit.currency),
+                            )}
+                          </b>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                  <Link href={`/pricing?unit=${unit.id}`} className="link icon-text gap-unit__more">
+                    {t(locale, "calendar_gap_prices")} <IconArrowRight size={13} />
+                  </Link>
                 </div>
-              )),
-            )
-          )}
-        </section>
-      </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
       {/* One unit picked: its stays this month, with the price (or "no
           price" for iCal imports) and a way to add it. */}
@@ -348,6 +489,8 @@ export default async function CalendarPage({
             </div>
           )}
         </section>
+      )}
+      </>
       )}
     </main>
   );

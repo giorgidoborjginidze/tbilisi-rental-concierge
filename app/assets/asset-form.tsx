@@ -173,11 +173,11 @@ export default function AssetForm({
             <>
               <label className="field">
                 {labels.crypto_custom_symbol}
-                <input name="symbol" placeholder="e.g. PEPE" autoCapitalize="characters" required />
+                <input name="symbol" placeholder={labels.ph_crypto_symbol} autoCapitalize="characters" required />
               </label>
               <label className="field">
                 {labels.crypto_custom_id}
-                <input name="coingeckoId" placeholder="e.g. pepe" />
+                <input name="coingeckoId" placeholder={labels.ph_crypto_id} />
                 <span className="hint">{labels.crypto_custom_id_hint}</span>
               </label>
               <label className="field sm:col-span-2">
@@ -190,7 +190,7 @@ export default function AssetForm({
             <>
               <label className="field">
                 {labels.stock_custom_ticker}
-                <input name="symbol" placeholder="e.g. ORCL" autoCapitalize="characters" required />
+                <input name="symbol" placeholder={labels.ph_stock_symbol} autoCapitalize="characters" required />
               </label>
               <label className="field">
                 {labels.unit_name}

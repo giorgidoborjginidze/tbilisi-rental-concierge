@@ -121,7 +121,7 @@ export default async function BookingsPage({
 
   return (
     <main>
-      <RentalsSubnav active="bookings" />
+      <RentalsSubnav active="calendar" />
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
         <h1 style={{ marginBottom: 0 }}>{t(locale, "bookings_title")}</h1>
         <Link href="/bookings/new" className="btn-secondary">

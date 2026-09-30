@@ -1,23 +1,24 @@
 // Which navigation entry a page belongs to — the "you are here" cue of the
 // top nav, the phone's account menu and the tab bar. Pure, client-safe.
 //
-// A sub-page lights its parent: /calendar, /bookings, /pricing and
-// /analytics are part of Rentals (/units); /assets/<id>/rental is part of
-// Assets; /invest/pro is part of Invest.
+// A sub-page lights its parent: /units, /bookings, /pricing and /analytics
+// are part of Rentals, whose landing page is the calendar (/calendar);
+// /assets/<id>/rental is part of Assets; /invest/pro is part of Invest.
+// A bar that has its own seat for /units lights that seat instead.
 
 /** Pages that live under another entry than their own path. */
 const SECTION_OF: { prefix: string; section: string }[] = [
-  { prefix: "/units", section: "/units" },
-  { prefix: "/calendar", section: "/units" },
-  { prefix: "/bookings", section: "/units" },
-  { prefix: "/pricing", section: "/units" },
-  { prefix: "/analytics", section: "/units" },
+  { prefix: "/calendar", section: "/calendar" },
+  { prefix: "/units", section: "/calendar" },
+  { prefix: "/bookings", section: "/calendar" },
+  { prefix: "/pricing", section: "/calendar" },
+  { prefix: "/analytics", section: "/calendar" },
 ];
 
 const under = (pathname: string, href: string): boolean =>
   href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
 
-/** The top-level section of a path: "/", "/units", "/assets", … */
+/** The top-level section of a path: "/", "/calendar", "/assets", … */
 export function sectionOf(pathname: string): string {
   const path = pathname.split(/[?#]/)[0] || "/";
   if (path === "/") return "/";

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
-import { runAlertScan, setAlertStatus } from "@/lib/alerts/actions";
+import { dismissVacancyAlerts, runAlertScan, setAlertStatus } from "@/lib/alerts/actions";
 import { alertCategories } from "@/lib/alerts/category";
 import { templateFamily } from "@/lib/notify/templates";
 import { periodWordKey } from "@/lib/rentals/display";
@@ -19,6 +19,13 @@ import { firstParam, type QueryValue } from "@/lib/params";
 import { titled } from "@/lib/i18n/metadata";
 import { alertCardClass, alertSeverity, badgeClass } from "@/lib/ui/tone";
 import { AlertTypeIcon } from "../alert-icon";
+import { IconArrowRight } from "../icons";
+import OutboxList, { type OutboxItem } from "../outbox-list";
+import { alertDeskTab, deskHref, rentalDesk } from "@/lib/rentals/desk";
+import { autoSendFor } from "@/lib/notify/whatsapp";
+import { outboxView } from "@/lib/notify/outbox-view";
+import { stalePaymentMessage } from "@/lib/rentals/settle";
+import { retryOutbox } from "@/lib/rentals/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -80,12 +87,15 @@ const CONTRACT_ALERTS = ["rent_overdue", "repossession_right", "contract_ended"]
 export default async function AlertsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: QueryValue }>;
+  searchParams: Promise<{ view?: QueryValue; tab?: QueryValue }>;
 }) {
   const operator = await requireOperator();
 
-  const view = firstParam((await searchParams).view);
-  const done = view === "done";
+  const query = await searchParams;
+  const view = firstParam(query.view);
+  // Three views: open alerts, the workspace-wide outbox, handled alerts.
+  const outbox = firstParam(query.tab) === "outbox";
+  const done = !outbox && view === "done";
   const locale = await getLocale();
   const found = await prisma.alert.findMany({
     where: { operatorId: operator.id, status: done ? "resolved" : "open" },
@@ -95,7 +105,72 @@ export default async function AlertsPage({
   });
   // Open alerts: what costs money or the car today comes first.
   const alerts = done ? found : rankAlerts(found);
+  // Free windows are listed on the calendar (with a suggested price); the
+  // open view sums them up in one card.
+  const gapAlerts = done ? [] : alerts.filter((alert) => alert.type === "vacancy_gap");
+  const listed = done ? alerts : alerts.filter((alert) => alert.type !== "vacancy_gap");
   const lastRun = done ? null : await lastRunFor(operator.id);
+
+  // ── The outbox: every message of every asset, one list ──
+  const now0 = new Date();
+  const today0 = startOfTodayTbilisi(now0);
+  const autoSend = await autoSendFor(operator.id);
+  const messageRows = await prisma.notifyMessage.findMany({
+    where: {
+      operatorId: operator.id,
+      OR: [
+        { status: { in: ["queued", "failed", "sending"] } },
+        { createdAt: { gte: new Date(now0.getTime() - 8 * 86_400_000) } },
+      ],
+    },
+    orderBy: { createdAt: "desc" },
+    take: 300,
+  });
+  const messageAssetIds = [
+    ...new Set(messageRows.map((message) => message.assetId).filter(Boolean)),
+  ] as string[];
+  const messageContractIds = [
+    ...new Set(messageRows.map((message) => message.contractId).filter(Boolean)),
+  ] as string[];
+  const [messageAssets, messageContracts] = await Promise.all([
+    messageAssetIds.length
+      ? prisma.asset.findMany({
+          where: { id: { in: messageAssetIds }, operatorId: operator.id },
+          select: { id: true, name: true, nameKa: true, category: true, _count: { select: { contracts: true } } },
+        })
+      : [],
+    messageContractIds.length
+      ? prisma.rentalContract.findMany({
+          where: { id: { in: messageContractIds }, asset: { operatorId: operator.id } },
+        })
+      : [],
+  ]);
+  const messageAssetBy = new Map(messageAssets.map((asset) => [asset.id, asset]));
+  const messageContractBy = new Map(messageContracts.map((contract) => [contract.id, contract]));
+  const outboxItems: OutboxItem[] = messageRows.map((message) => {
+    const asset = message.assetId ? messageAssetBy.get(message.assetId) : undefined;
+    const desk = asset ? rentalDesk(asset.category, asset._count.contracts) : null;
+    return {
+      ...message,
+      stale:
+        (message.status === "queued" || message.status === "failed") && message.contractId
+          ? stalePaymentMessage(message, messageContractBy.get(message.contractId) ?? null, today0)
+          : null,
+      property: asset ? asset.category !== "vehicle" : false,
+      asset: asset
+        ? {
+            name: locale === "ka" && asset.nameKa ? asset.nameKa : asset.name,
+            href: desk ? deskHref(asset.id, desk, "messages") : `/assets/${asset.id}/edit`,
+          }
+        : null,
+    };
+  });
+  const outboxNow = outboxView(outboxItems, autoSend, now0);
+  // Messages waiting per asset, for the alert cards' "messages" link.
+  const waitingByAsset = new Map<string, number>();
+  for (const item of outboxNow.waiting) {
+    if (item.assetId) waitingByAsset.set(item.assetId, (waitingByAsset.get(item.assetId) ?? 0) + 1);
+  }
 
   // Older alerts carry no category — it is looked up from the asset.
   const categoryOf = await alertCategories(operator.id, alerts);
@@ -108,14 +183,19 @@ export default async function AlertsPage({
   const assetIds = [
     ...new Set(alerts.map((alert) => (alert.payload as AlertPayload).assetId).filter(Boolean)),
   ] as string[];
+  const alertAssets = assetIds.length
+    ? await prisma.asset.findMany({
+        where: { id: { in: assetIds }, operatorId: operator.id },
+        select: { id: true, name: true, nameKa: true, category: true, _count: { select: { contracts: true } } },
+      })
+    : [];
   const assetNames = new Map(
-    (assetIds.length
-      ? await prisma.asset.findMany({
-          where: { id: { in: assetIds }, operatorId: operator.id },
-          select: { id: true, name: true, nameKa: true },
-        })
-      : []
-    ).map((asset) => [asset.id, locale === "ka" && asset.nameKa ? asset.nameKa : asset.name]),
+    alertAssets.map((asset) => [asset.id, locale === "ka" && asset.nameKa ? asset.nameKa : asset.name]),
+  );
+  // An alert about a car or a flat leads to its service desk (the tab the
+  // alert is about); assets without a desk have none.
+  const deskOf = new Map(
+    alertAssets.map((asset) => [asset.id, rentalDesk(asset.category, asset._count.contracts)]),
   );
   const assetLabel = (payload: AlertPayload) =>
     (payload.assetId && assetNames.get(payload.assetId)) || payload.assetName;
@@ -297,9 +377,9 @@ export default async function AlertsPage({
 
   return (
     <main>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3" data-tour="alerts">
         <h1 style={{ marginBottom: 0 }}>{t(locale, "alerts_title")}</h1>
-        {!done && (
+        {!done && !outbox && (
           <form action={runAlertScan}>
             <button type="submit" className="btn-secondary">
               {t(locale, "alerts_scan")}
@@ -308,7 +388,7 @@ export default async function AlertsPage({
         )}
       </div>
 
-      {!done && (
+      {!done && !outbox && (
         // When the platform last looked by itself — so "all clear" is never
         // a guess, and a stopped schedule is noticed.
         <p
@@ -331,28 +411,70 @@ export default async function AlertsPage({
       )}
 
       <div className="mb-5 flex flex-wrap gap-1.5">
-        <Link
-          href="/alerts"
-          className={`btn-chip ${done ? "" : "btn-chip--active"}`}
-          aria-current={done ? undefined : "page"}
-        >
-          {t(locale, "alerts_active_tab")}
-        </Link>
-        <Link
-          href="/alerts?view=done"
-          className={`btn-chip ${done ? "btn-chip--active" : ""}`}
-          aria-current={done ? "page" : undefined}
-        >
-          {t(locale, "alerts_done_tab")}
-        </Link>
+        {(
+          [
+            { key: "open", href: "/alerts", label: t(locale, "alerts_active_tab"), on: !done && !outbox },
+            {
+              key: "outbox",
+              href: "/alerts?tab=outbox",
+              label:
+                outboxNow.waiting.length > 0
+                  ? `${t(locale, "alerts_outbox_tab")} (${outboxNow.waiting.length})`
+                  : t(locale, "alerts_outbox_tab"),
+              on: outbox,
+            },
+            { key: "done", href: "/alerts?view=done", label: t(locale, "alerts_done_tab"), on: done },
+          ] as const
+        ).map((chip) => (
+          <Link
+            key={chip.key}
+            href={chip.href}
+            className={`btn-chip ${chip.on ? "btn-chip--active" : ""}`}
+            aria-current={chip.on ? "page" : undefined}
+          >
+            {chip.label}
+          </Link>
+        ))}
       </div>
 
-      {alerts.length === 0 ? (
+      {outbox ? (
+        <section style={{ marginTop: 0 }}>
+          <p className="section-hint" style={{ maxWidth: 640 }}>
+            {t(locale, autoSend ? "alerts_outbox_intro_auto" : "alerts_outbox_intro")}
+          </p>
+          {outboxNow.waiting.length === 0 ? (
+            <p style={{ color: "var(--color-text-muted)" }}>{t(locale, "alerts_outbox_empty")}</p>
+          ) : (
+            <OutboxList locale={locale} items={outboxNow.waiting} autoSend={autoSend} />
+          )}
+          {outboxNow.hiddenOwner > 0 && (
+            <p className="field-hint" style={{ marginTop: 10 }}>
+              {t(locale, "alerts_outbox_owner_hidden").replace("{n}", String(outboxNow.hiddenOwner))}
+            </p>
+          )}
+          {outboxNow.waiting.some((item) => item.status === "failed") && (
+            <form action={retryOutbox} style={{ marginTop: 12 }}>
+              <button type="submit" className="btn-secondary">
+                {t(locale, "outbox_retry")}
+              </button>
+            </form>
+          )}
+          {outboxNow.recent.length > 0 && (
+            <details className="desk-fold">
+              <summary>
+                {t(locale, "alerts_outbox_recent").replace("{n}", String(outboxNow.recent.length))}
+              </summary>
+              <OutboxList locale={locale} items={outboxNow.recent.slice(0, 40)} autoSend={autoSend} />
+            </details>
+          )}
+        </section>
+      ) : alerts.length === 0 ? (
         <p style={{ color: "var(--color-text-muted)" }}>
           {t(locale, done ? "alerts_done_empty" : "alerts_empty")}
         </p>
       ) : (
-        alerts.map((alert) => {
+        <>
+        {listed.map((alert) => {
           const payload = alert.payload as AlertPayload;
           const currency = alert.unit?.currency ?? "GEL";
           // Late rent on a flat is not a vehicle to take back.
@@ -368,6 +490,10 @@ export default async function AlertsPage({
             : contracts
               ? "alert_overlap_contract"
               : (`alert_${alert.type}` as StringKey);
+          const desk = payload.assetId ? deskOf.get(payload.assetId) ?? null : null;
+          const deskLink =
+            desk && payload.assetId ? deskHref(payload.assetId, desk, alertDeskTab(alert.type)) : null;
+          const waitingHere = payload.assetId ? waitingByAsset.get(payload.assetId) ?? 0 : 0;
           const actionKey: StringKey = property
             ? "action_repossession_right_property"
             : contracts
@@ -388,6 +514,19 @@ export default async function AlertsPage({
                     </>
                   )}
                 </div>
+                {!done && deskLink && (
+                  <div className="alert-card__links">
+                    <Link href={deskLink} className="link icon-text">
+                      {assetLabel(payload) ?? t(locale, "alert_open_desk")}{" "}
+                      <IconArrowRight size={14} />
+                    </Link>
+                    {waitingHere > 0 && (
+                      <Link href={deskHref(payload.assetId!, desk!, "messages")} className="link">
+                        {t(locale, "alert_messages_waiting").replace("{n}", String(waitingHere))}
+                      </Link>
+                    )}
+                  </div>
+                )}
                 <div className="alert-card__detail">
                   {detail(alert.type, payload, currency)}
                 </div>
@@ -430,7 +569,36 @@ export default async function AlertsPage({
               )}
             </div>
           );
-        })
+        })}
+        {/* Free windows live on the calendar, with a suggested price: here
+            they are one card, not one card per window. */}
+        {gapAlerts.length > 0 && (
+          <div className={alertCardClass("info")}>
+            <div>
+              <div className="alert-card__title">
+                <AlertTypeIcon type="vacancy_gap" />
+                {t(locale, "alerts_gaps_title").replace("{n}", String(gapAlerts.length))}
+              </div>
+              <div className="alert-card__detail">
+                {t(locale, "alerts_gaps_detail").replace(
+                  "{units}",
+                  String(new Set(gapAlerts.map((alert) => alert.unitId)).size),
+                )}
+              </div>
+              <div className="alert-card__links">
+                <Link href="/calendar" className="link icon-text">
+                  {t(locale, "alerts_gaps_open")} <IconArrowRight size={14} />
+                </Link>
+              </div>
+            </div>
+            <form action={dismissVacancyAlerts}>
+              <button type="submit" className="btn-chip">
+                {t(locale, "alerts_gaps_dismiss")}
+              </button>
+            </form>
+          </div>
+        )}
+        </>
       )}
     </main>
   );

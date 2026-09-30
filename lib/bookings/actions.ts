@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { requireWriter } from "@/lib/auth/session";
 import { refreshUnitMirrors, summarizeSync, syncAllUnits } from "@/lib/ical/run-sync";
 import { LIVE_STAY } from "./live";
+import { isMirroringSource, realClashes, type Cover } from "@/lib/ical/mirror";
 import { tbilisiFormat } from "@/lib/time";
 import type { FormState } from "@/lib/units/actions";
 import { getLocale } from "@/lib/i18n/locale";
@@ -60,7 +61,8 @@ export async function createBooking(
 
   // A direct booking must never land on nights already sold on a channel
   // or let on a lease: that is the double booking the owner pays for.
-  const clash = await firstClash(unitId, dates.checkIn, dates.checkOut);
+  // A Booking.com block the owner closed for this very stay is no clash.
+  const clash = await firstClash(unitId, dates.checkIn, dates.checkOut, { source });
   if (clash) return { error: "error_booking_overlap", detail: clash, values };
 
   await prisma.booking.create({
@@ -76,6 +78,8 @@ export async function createBooking(
       status: "confirmed",
     },
   });
+  // The Booking.com block closed for this stay is marked a copy right away.
+  await refreshUnitMirrors(unitId);
 
   refresh();
   // Straight to the unit's calendar, where the new stay now shows.
@@ -121,13 +125,19 @@ export async function updateBooking(
       dates.checkOut.getTime() !== booking.checkOut.getTime();
     // New nights must be free (the booking's own old nights do not count).
     if (moved && booking.status !== "cancelled") {
-      const clash = await firstClash(booking.unitId, dates.checkIn, dates.checkOut, booking.id);
+      const clash = await firstClash(booking.unitId, dates.checkIn, dates.checkOut, {
+        except: booking.id,
+        source: booking.source,
+      });
       if (clash) return { error: "error_booking_overlap", detail: clash, values };
     }
     Object.assign(data, dates);
   }
 
   await prisma.booking.update({ where: { id: booking.id }, data });
+  // New dates (or a price given to / taken from a block) change which
+  // Booking.com blocks are copies.
+  await refreshUnitMirrors(booking.unitId);
   refresh();
   redirect(safeBack(str(formData, "back")));
 }
@@ -165,7 +175,10 @@ export async function restoreBooking(
   });
   if (!booking) return { error: "error_required" };
   if (booking.status === "cancelled") {
-    const clash = await firstClash(booking.unitId, booking.checkIn, booking.checkOut, booking.id);
+    const clash = await firstClash(booking.unitId, booking.checkIn, booking.checkOut, {
+      except: booking.id,
+      source: booking.source,
+    });
     if (clash) return { error: "error_booking_overlap", detail: clash };
     await prisma.booking.update({
       where: { id: booking.id },
@@ -180,13 +193,15 @@ export async function restoreBooking(
 /**
  * The first stay on the unit sharing a night with [checkIn, checkOut),
  * described for the owner: a booking, a lease, or a rental contract on the
- * asset linked to the unit (the same flat).
+ * asset linked to the unit (the same flat). `source` is the channel of the
+ * stay being entered: a Booking.com block that only repeats its nights
+ * (closed there for this very stay) is not a clash (lib/ical/mirror.ts).
  */
 async function firstClash(
   unitId: string,
   checkIn: Date,
   checkOut: Date,
-  exceptBookingId?: string,
+  { except, source }: { except?: string; source?: string } = {},
 ): Promise<string | null> {
   const locale = await getLocale();
   const SOURCE_NAMES: Record<string, string> = {
@@ -197,17 +212,37 @@ async function firstClash(
   };
   const dayFormat = tbilisiFormat(locale, { day: "numeric", month: "short", year: "numeric" });
   const day = (date: Date) => dayFormat.format(date);
-  const booking = await prisma.booking.findFirst({
+  const overlapping = await prisma.booking.findMany({
     where: {
       unitId,
       // A copy of another stay is not a stay of its own: that stay is found.
       ...LIVE_STAY,
       checkIn: { lt: checkOut },
       checkOut: { gt: checkIn },
-      ...(exceptBookingId ? { id: { not: exceptBookingId } } : {}),
+      ...(except ? { id: { not: except } } : {}),
     },
     orderBy: { checkIn: "asc" },
   });
+  let clashing = overlapping;
+  if (source && overlapping.some((stay) => isMirroringSource(stay.source))) {
+    const [others, leases] = await Promise.all([
+      prisma.booking.findMany({
+        where: {
+          unitId,
+          status: { not: "cancelled" },
+          ...(except ? { id: { not: except } } : {}),
+        },
+        select: { source: true, checkIn: true, checkOut: true },
+      }),
+      prisma.lease.findMany({ where: { unitId }, select: { startDate: true, endDate: true } }),
+    ]);
+    const covers: Cover[] = [
+      ...others.map((stay) => ({ source: stay.source, start: stay.checkIn, end: stay.checkOut })),
+      ...leases.map((lease) => ({ source: "lease", start: lease.startDate, end: lease.endDate })),
+    ];
+    clashing = realClashes({ source, start: checkIn, end: checkOut }, overlapping, covers);
+  }
+  const booking = clashing[0];
   if (booking) {
     return `${SOURCE_NAMES[booking.source] ?? booking.source} ${day(booking.checkIn)} – ${day(booking.checkOut)}${
       booking.guestName ? ` (${booking.guestName})` : ""
