@@ -44,7 +44,7 @@ export default async function EditBookingPage({
     "booking_guest", "booking_check_in", "booking_check_out", "booking_amount_total",
     "save", "cancel", "error_required", "error_invalid_number", "error_dates",
     "error_booking_overlap", "booking_cancel_stay", "booking_cancel_confirm",
-    "booking_restore",
+    "booking_restore", "form_required_legend",
   ];
   const labels = Object.fromEntries(labelKeys.map((key) => [key, t(locale, key)]));
   const unitName = locale === "ka" && booking.unit.nameKa ? booking.unit.nameKa : booking.unit.name;

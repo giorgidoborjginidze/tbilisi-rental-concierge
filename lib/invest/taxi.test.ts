@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { evaluateTaxi, type TaxiInputs } from "./taxi";
+import { evaluateTaxi, taxiVsRental, type TaxiInputs } from "./taxi";
 
 // Round numbers so the arithmetic stays checkable by hand.
 const base: TaxiInputs = {
@@ -64,3 +64,13 @@ describe("evaluateTaxi", () => {
     expect(evaluateTaxi({ ...base, daysPerMonth: 90 }).grossMonthly).toBe(3_100);
   });
 });
+
+describe("taxiVsRental", () => {
+  it("compares both sides after the car's lost value", () => {
+    // Audit case: taxi 2,387 cash / 1,987 after depreciation vs rental 945.
+    expect(taxiVsRental(1_987, 945)).toEqual({ diff: 1_042, winner: "taxi" });
+    expect(taxiVsRental(900, 945).winner).toBe("equal");
+    expect(taxiVsRental(500, 945).winner).toBe("rental");
+  });
+});
+

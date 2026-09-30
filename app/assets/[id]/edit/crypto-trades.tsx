@@ -150,7 +150,10 @@ export default function CryptoTrades({
             <button type="submit" disabled={pending} className="btn-primary">
               {labels.crypto_add_trade}
             </button>
-            <FormMessage error={state?.error ? labels[state.error] ?? state.error : null} />
+            <FormMessage
+              error={state?.error ? labels[state.error] ?? state.error : null}
+              detail={state?.error ? state.detail : null}
+            />
           </div>
         </form>
       )}

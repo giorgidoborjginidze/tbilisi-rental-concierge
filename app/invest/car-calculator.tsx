@@ -9,9 +9,9 @@ import {
   compareToMarket,
   evaluateCar,
 } from "@/lib/invest/car";
-import { TAXI_DEFAULTS, evaluateTaxi } from "@/lib/invest/taxi";
+import { TAXI_DEFAULTS, TAXI_GOOD_PCT, TAXI_OK_PCT, evaluateTaxi, taxiVsRental } from "@/lib/invest/taxi";
 import { formatMoney } from "@/lib/format";
-import { TONE_BADGE } from "@/lib/ui/tone";
+import { TONE_BADGE, VERDICT_BADGE } from "@/lib/ui/tone";
 
 const fmt = (v: number) => formatMoney(v);
 
@@ -62,16 +62,17 @@ export default function CarCalculator({
   );
 
   // The question an owner here actually has: rent it out, or drive it?
-  // Compared on cash per month, since that is what both produce.
-  const diff = taxi.cashMonthly - result.netMonthly;
+  // Like for like: both after the car's lost value (the rental's running
+  // costs already include amortisation).
+  const vs = taxiVsRental(taxi.netMonthly, result.netMonthly);
   const vsLabel =
-    Math.abs(diff) < 50
+    vs.winner === "equal"
       ? labels.taxi_vs_equal
-      : diff > 0
+      : vs.winner === "taxi"
         ? labels.taxi_vs_taxi_better
         : labels.taxi_vs_rental_better;
   // Which earns more is advice, not a warning: blue either way, grey when even.
-  const vsBadge = Math.abs(diff) < 50 ? TONE_BADGE.muted : TONE_BADGE.info;
+  const vsBadge = vs.winner === "equal" ? TONE_BADGE.muted : TONE_BADGE.info;
 
   const taxiNum =
     (setter: (v: number) => void, max = Infinity) =>
@@ -248,10 +249,18 @@ export default function CarCalculator({
         <div className="card" style={{ padding: 20 }}>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 style={{ margin: 0 }}>{labels.inv_results}</h2>
+            {/* The taxi's own verdict: is it worth the hours? */}
             {mode === "taxi" && (
-              <span className={`badge ${vsBadge}`}>{vsLabel}</span>
+              <span className={VERDICT_BADGE[taxi.verdict]}>{labels[`taxi_verdict_${taxi.verdict}`]}</span>
             )}
           </div>
+          {mode === "taxi" && (
+            <p className="hint" style={{ margin: "8px 0 0" }}>
+              {labels.taxi_verdict_basis
+                .replace("{good}", `${TAXI_GOOD_PCT}%`)
+                .replace("{ok}", `${TAXI_OK_PCT}%`)}
+            </p>
+          )}
 
           {mode === "rental" ? (
             <div className="kpi-grid kpi-grid--3d" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))", marginTop: 14 }}>
@@ -297,6 +306,7 @@ export default function CarCalculator({
                 <div className="kpi" style={{ "--i": 2 } as React.CSSProperties}>
                   <div className="kpi__label">{labels.taxi_res_yield}</div>
                   <div className="kpi__value">{taxi.annualYieldPct.toFixed(1)}%</div>
+                  <div className="kpi__sub">{labels.taxi_res_yield_hint}</div>
                 </div>
                 <div className="kpi" style={{ "--i": 3 } as React.CSSProperties}>
                   <div className="kpi__label">{labels.taxi_res_payback}</div>
@@ -325,14 +335,15 @@ export default function CarCalculator({
                 </div>
               </div>
 
-              {/* Rent it out or drive it? Compared on cash per month. */}
-              <div className="alert-card" style={{ alignItems: "center", marginTop: 14 }}>
-                <div>
+              {/* Rent it out or drive it? Both after the car's lost value. */}
+              <div className="alert-card" style={{ alignItems: "center", marginTop: 14, flexWrap: "wrap" }}>
+                <div style={{ flex: "1 1 auto", minWidth: 0 }}>
                   <div className="alert-card__title">{labels.taxi_vs_rental}</div>
                   <div className="alert-card__detail">{labels.taxi_vs_hint}</div>
                 </div>
-                <div style={{ fontWeight: 700, whiteSpace: "nowrap" }}>
-                  {fmt(result.netMonthly)}
+                <div style={{ display: "grid", justifyItems: "end", gap: 4 }}>
+                  <span style={{ fontWeight: 700, whiteSpace: "nowrap" }}>{fmt(result.netMonthly)}</span>
+                  <span className={`badge ${vsBadge}`}>{vsLabel}</span>
                 </div>
               </div>
             </>

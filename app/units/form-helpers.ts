@@ -14,6 +14,7 @@ export function unitFormProps(locale: Locale) {
     "error_email_taken", "error_ical_url", "ph_amenities",
     "unit_asset_link", "unit_asset_new", "unit_asset_none", "unit_asset_hint",
     "error_limit_units", "error_demo_readonly", "form_required_legend", "asset_name_ka",
+    "form_more", "form_more_hint_unit",
   ];
   const labels = Object.fromEntries(labelKeys.map((key) => [key, t(locale, key)]));
 

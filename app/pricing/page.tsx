@@ -6,6 +6,7 @@ import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 import { computeSuggestionsForUnit } from "@/lib/pricing/run";
+import { groupRuns, type PricingResult } from "@/lib/pricing/engine";
 import UnitFilter from "../calendar/unit-filter";
 import RentalsSubnav from "../rentals-subnav";
 import { firstParam, type QueryValue } from "@/lib/params";
@@ -36,11 +37,38 @@ export default async function PricingPage({
   const suggestions = await computeSuggestionsForUnit(selected.id, locale);
 
   const intl = locale === "ka" ? "ka-GE" : "en-GB";
+  // Stored dates are UTC midnight of the Tbilisi day: format them in UTC.
   const fmtDay = new Intl.DateTimeFormat(intl, {
     weekday: "short",
     day: "numeric",
     month: "short",
+    timeZone: "UTC",
   });
+  // Nights with the same price and reason read as one run.
+  const runs = groupRuns(suggestions ?? []);
+  const whole = (v: number) => Math.round(v).toLocaleString("en-US");
+  const money = (v: number) => formatMoney(v, selected.currency);
+  // The arithmetic behind a price, in the words of the page header.
+  const maths = ({ steps, factors }: PricingResult) => {
+    let line = t(locale, "pricing_math")
+      .replace("{base}", whole(steps.base))
+      .replace("{s}", steps.seasonality.toFixed(2))
+      .replace("{d}", steps.demand.toFixed(2))
+      .replace("{raw}", whole(steps.raw));
+    if (steps.nudged != null) {
+      line += t(locale, "pricing_math_nudge")
+        .replace("{adr}", money(factors.benchmarkAdr ?? 0))
+        .replace("{value}", whole(steps.nudged));
+    }
+    if (steps.capped) {
+      line += t(locale, steps.capped === "floor" ? "pricing_math_floor" : "pricing_math_ceiling").replace(
+        "{value}",
+        whole(steps.final),
+      );
+    }
+    return line;
+  };
+
   const displayName = (unit: { name: string; nameKa: string | null }) =>
     locale === "ka" && unit.nameKa ? unit.nameKa : unit.name;
 
@@ -91,13 +119,25 @@ export default async function PricingPage({
             </tr>
           </thead>
           <tbody>
-            {(suggestions ?? []).map((row, i, rows) => {
+            {runs.map((run, i) => {
+              const row = run.first;
               const delta = row.result.suggestedRate - selected.baseNightlyRate;
               // The reason is written out when it changes, not on every row.
-              const sameReason = i > 0 && rows[i - 1].rationale === row.rationale;
+              const sameReason = i > 0 && runs[i - 1].last.rationale === row.rationale;
               return (
                 <tr key={row.date.toISOString()}>
-                  <td className="table-stack__title">{fmtDay.format(row.date)}</td>
+                  <td className="table-stack__title" style={{ minWidth: 150 }}>
+                    <span style={{ whiteSpace: "nowrap" }}>{fmtDay.format(row.date)}</span>
+                    {run.nights > 1 && (
+                      <>
+                        {" – "}
+                        <span style={{ whiteSpace: "nowrap" }}>{fmtDay.format(run.last.date)}</span>
+                      </>
+                    )}
+                    {run.nights > 1 && (
+                      <div className="cell-sub">{t(locale, "pricing_nights").replace("{n}", String(run.nights))}</div>
+                    )}
+                  </td>
                   <td className="num table-stack__key" data-label={t(locale, "pricing_suggested")}>
                     {formatMoney(row.result.suggestedRate, selected.currency)}{" "}
                     <span
@@ -135,6 +175,8 @@ export default async function PricingPage({
                     style={{ color: "var(--color-text-muted)", fontWeight: 400 }}
                   >
                     {sameReason ? <span className="cell-sub">{t(locale, "pricing_same_reason")}</span> : row.rationale}
+                    {/* The sum itself, so the price can be checked by hand. */}
+                    <div className="cell-sub pricing-maths">{maths(row.result)}</div>
                   </td>
                 </tr>
               );

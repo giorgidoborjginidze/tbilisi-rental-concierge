@@ -1,14 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
   analyzeWorthiness,
-  WORTHINESS_DEFAULTS,
+  isWorthinessExample,
+  SHEET_SCENARIO,
+  WORTHINESS_DEFAULTS_GEL,
+  WORTHINESS_DEFAULTS_USD,
   type WorthinessInputs,
 } from "./worthiness";
 
 // The spreadsheet's own scenario: $30k purchase, 20% down, 9% / 10y,
 // $500 rent growing 4%/yr, 5% vacancy, $51 insurance, 6% maintenance,
 // 3% utilities, 20% tax, $1k extra initial costs.
-const sheet: WorthinessInputs = { ...WORTHINESS_DEFAULTS };
+const sheet: WorthinessInputs = { ...SHEET_SCENARIO };
 
 describe("loan math (matches the spreadsheet's PMT block exactly)", () => {
   const r = analyzeWorthiness(sheet);
@@ -121,14 +124,60 @@ describe("edge cases", () => {
   });
 });
 
-describe("lari defaults", () => {
-  it("are the dollar example at about 2.7 ₾/$ and still a sensible deal", async () => {
-    const { WORTHINESS_DEFAULTS_GEL } = await import("./worthiness");
-    expect(WORTHINESS_DEFAULTS_GEL.price / WORTHINESS_DEFAULTS.price).toBeCloseTo(2.7, 1);
-    expect(WORTHINESS_DEFAULTS_GEL.monthlyRent / WORTHINESS_DEFAULTS.monthlyRent).toBeCloseTo(2.7, 1);
-    const usd = analyzeWorthiness(WORTHINESS_DEFAULTS);
-    const gel = analyzeWorthiness(WORTHINESS_DEFAULTS_GEL);
-    expect(gel.verdict).toBe(usd.verdict);
+describe("the example the page opens with", () => {
+  it("is a Tbilisi flat in lari, taxed the Georgian way", () => {
+    expect(WORTHINESS_DEFAULTS_GEL.taxModel).toBe("gross");
+    expect(WORTHINESS_DEFAULTS_GEL.grossTaxPct).toBe(5);
+    // Rent under 1% of the price a month, like the market — not 1.67%.
+    expect(WORTHINESS_DEFAULTS_GEL.monthlyRent / WORTHINESS_DEFAULTS_GEL.price).toBeLessThan(0.01);
+  });
+
+  it("does not open on 'worth it'", () => {
+    expect(analyzeWorthiness(WORTHINESS_DEFAULTS_GEL).verdict).not.toBe("good");
+  });
+
+  it("the dollar example is the lari one at about 2.7 ₾/$", () => {
+    expect(WORTHINESS_DEFAULTS_GEL.price / WORTHINESS_DEFAULTS_USD.price).toBeCloseTo(2.7, 1);
+    expect(WORTHINESS_DEFAULTS_GEL.monthlyRent / WORTHINESS_DEFAULTS_USD.monthlyRent).toBeCloseTo(2.7, 1);
+    expect(analyzeWorthiness(WORTHINESS_DEFAULTS_USD).verdict).toBe(
+      analyzeWorthiness(WORTHINESS_DEFAULTS_GEL).verdict,
+    );
+  });
+
+  it("counts as an example only until a figure changes", () => {
+    expect(isWorthinessExample({ ...WORTHINESS_DEFAULTS_GEL }, "GEL")).toBe(true);
+    expect(isWorthinessExample({ ...WORTHINESS_DEFAULTS_GEL, monthlyRent: 1_600 }, "GEL")).toBe(false);
+    expect(isWorthinessExample({ ...WORTHINESS_DEFAULTS_GEL }, "USD")).toBe(false);
+  });
+});
+
+describe("tax models", () => {
+  // Audit case: a cash deal of 150,000 ₾ at 1,500 ₾ a month.
+  const cash: WorthinessInputs = {
+    ...WORTHINESS_DEFAULTS_GEL,
+    price: 150_000,
+    equityPct: 100,
+    otherInitialCosts: 0,
+    monthlyRent: 1_500,
+    vacancyPct: 5,
+  };
+
+  it("Georgian: 5% of the rent received, nothing deducted", () => {
+    const y1 = analyzeWorthiness(cash).years[0];
+    expect(y1.incomeTax).toBeCloseTo(1_500 * 12 * 0.95 * 0.05, 6); // 855 a year, ~71 a month
+    expect(y1.depreciation).toBe(0);
+  });
+
+  it("the US model is still there when chosen", () => {
+    const y1 = analyzeWorthiness({ ...cash, taxModel: "profit" }).years[0];
+    expect(y1.depreciation).toBeCloseTo((150_000 * 0.6) / 27.5, 6);
+    expect(y1.incomeTax).toBeCloseTo(Math.max(0, y1.btIncome) * 0.2, 6);
+  });
+
+  it("the Georgian tax is due even when the loan leaves a loss", () => {
+    const y1 = analyzeWorthiness({ ...cash, equityPct: 20, monthlyRent: 500 }).years[0];
+    expect(y1.btIncome).toBeLessThan(0);
+    expect(y1.incomeTax).toBeGreaterThan(0);
   });
 });
 
@@ -136,7 +185,7 @@ describe("switchWorthinessCurrency", () => {
   it("loads the other currency's example while the inputs are untouched", async () => {
     const { switchWorthinessCurrency, WORTHINESS_DEFAULTS_GEL } = await import("./worthiness");
     const toUsd = switchWorthinessCurrency({ ...WORTHINESS_DEFAULTS_GEL }, "GEL", "USD");
-    expect(toUsd).toEqual({ inputs: WORTHINESS_DEFAULTS, kept: false });
+    expect(toUsd).toEqual({ inputs: WORTHINESS_DEFAULTS_USD, kept: false });
     const back = switchWorthinessCurrency(toUsd.inputs, "USD", "GEL");
     expect(back).toEqual({ inputs: WORTHINESS_DEFAULTS_GEL, kept: false });
   });

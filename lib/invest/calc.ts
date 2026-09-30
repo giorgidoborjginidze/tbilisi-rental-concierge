@@ -10,8 +10,13 @@ export interface InvestInputs {
   monthlyRent: number;
   /** % of the year the unit is expected to sit empty (0–100). */
   vacancyPct: number;
-  /** Rental income tax, % (0–100). */
+  /** Rental income tax, % (0–100) — Georgia: 5% of rent received. */
   incomeTaxPct: number;
+  /**
+   * Upkeep — repairs, wear, the odd appliance — as % of the rent received
+   * (0–100). Optional (0) so older callers keep their figures.
+   */
+  upkeepPct?: number;
   /** Finance the purchase with a mortgage? */
   useLoan: boolean;
   /** Down payment, % of price (0–100). Ignored without a loan. */
@@ -36,8 +41,10 @@ export interface InvestResult {
   totalLoanCost: number;
   /** Rent after the vacancy allowance. */
   effectiveMonthlyRent: number;
-  /** After vacancy and income tax. */
+  /** After vacancy, income tax and upkeep — before any loan payment. */
   netMonthlyIncome: number;
+  /** Upkeep per month (part of the difference to the effective rent). */
+  upkeepMonthly: number;
   /** netMonthlyIncome minus the loan payment. */
   monthlyCashFlow: number;
   /** rent × 12 ÷ total investment, %. */
@@ -48,8 +55,14 @@ export interface InvestResult {
   paybackYears: number | null;
   /** Years for post-loan cash flow to repay the cash invested. */
   cashPaybackYears: number | null;
-  /** What the same cash would earn per month on deposit. */
+  /**
+   * The whole investment (price + renovation) on deposit, per month — the
+   * same money netMonthlyIncome is earned on, and the verdict's basis.
+   */
   depositMonthlyIncome: number;
+  /** Only the owner's own cash on deposit, per month — set against the
+   *  cash flow after the loan payment. */
+  depositOnCashMonthly: number;
   verdict: "good" | "ok" | "poor";
 }
 
@@ -84,9 +97,10 @@ export function analyzeInvestment(inputs: InvestInputs): InvestResult {
 
   const effectiveMonthlyRent =
     inputs.monthlyRent * (1 - Math.min(100, Math.max(0, inputs.vacancyPct)) / 100);
-  const netMonthlyIncome =
-    effectiveMonthlyRent *
-    (1 - Math.min(100, Math.max(0, inputs.incomeTaxPct)) / 100);
+  const tax = effectiveMonthlyRent * (Math.min(100, Math.max(0, inputs.incomeTaxPct)) / 100);
+  const upkeepMonthly =
+    effectiveMonthlyRent * (Math.min(100, Math.max(0, inputs.upkeepPct ?? 0)) / 100);
+  const netMonthlyIncome = effectiveMonthlyRent - tax - upkeepMonthly;
   const monthlyCashFlow = netMonthlyIncome - monthlyPayment;
 
   const grossYieldPct =
@@ -99,7 +113,11 @@ export function analyzeInvestment(inputs: InvestInputs): InvestResult {
   const cashPaybackYears =
     monthlyCashFlow > 0 ? cashInvested / (monthlyCashFlow * 12) : null;
 
-  const depositMonthlyIncome = (cashInvested * inputs.depositRatePct) / 100 / 12;
+  // Like for like: rent before the loan is earned on the whole
+  // investment, so it is set against the whole investment on deposit; the
+  // cash flow after the loan is set against the owner's own cash.
+  const depositMonthlyIncome = (totalInvestment * inputs.depositRatePct) / 100 / 12;
+  const depositOnCashMonthly = (cashInvested * inputs.depositRatePct) / 100 / 12;
 
   // Unlevered net yield vs the deposit rate: clearly above → good,
   // roughly at par → ok, below → the deposit wins.
@@ -118,12 +136,14 @@ export function analyzeInvestment(inputs: InvestInputs): InvestResult {
     totalLoanCost,
     effectiveMonthlyRent,
     netMonthlyIncome,
+    upkeepMonthly,
     monthlyCashFlow,
     grossYieldPct,
     netYieldPct,
     paybackYears,
     cashPaybackYears,
     depositMonthlyIncome,
+    depositOnCashMonthly,
     verdict,
   };
 }

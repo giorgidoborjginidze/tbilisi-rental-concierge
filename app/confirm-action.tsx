@@ -81,7 +81,13 @@ export default function ConfirmAction({
 
   return (
     <form
-      action={action}
+      // Close the question once the action has run: an action that keeps
+      // this component mounted (rotating a tracker key) must not leave a
+      // second "confirm" on screen that would run it again.
+      action={async (formData: FormData) => {
+        await action(formData);
+        setOpen(false);
+      }}
       className={`confirm-inline${inline ? " confirm-inline--row" : ""}`}
       role="alertdialog"
       aria-label={question}

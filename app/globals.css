@@ -2890,7 +2890,7 @@ details.faq,
   margin-top: 18px;
   text-align: left;
 }
-.comp-ring svg {
+.comp-ring__body > svg {
   flex: 0 0 152px;
   filter: drop-shadow(0 10px 16px rgba(38, 92, 130, 0.22));
 }
@@ -5347,4 +5347,29 @@ td:has(> .confirm-inline) { white-space: normal; }
   body:has(> .tabbar) .tour-prompt {
     bottom: calc(96px + env(safe-area-inset-bottom, 0px));
   }
+}
+
+/* ── P14 · Figures built on a last known or purchase price ──
+   "≈" is a drawn icon (a typed ≈ pulls a symbol font in late); it sits on
+   the text's baseline, sized with the figure. */
+.approx {
+  display: inline-flex;
+  vertical-align: -0.08em;
+  margin-right: 0.18em;
+  color: var(--color-text-muted);
+}
+.approx svg { flex: none; width: 0.78em; height: 0.78em; stroke-width: 2.2; filter: none; }
+.price-age { white-space: nowrap; }
+/* A figure still on its way (streamed in after the page). */
+.hero-wait {
+  display: inline-block;
+  width: min(240px, 60%);
+  height: 0.9em;
+  vertical-align: middle;
+}
+.kpi-wait {
+  display: inline-block;
+  width: 9ch;
+  height: 0.9em;
+  vertical-align: middle;
 }

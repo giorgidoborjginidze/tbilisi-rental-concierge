@@ -11,6 +11,7 @@ import HoldingView from "./holding-view";
 import { LISTING_PLATFORMS, parseChannelLinks } from "@/lib/types";
 import AssetForm from "../../asset-form";
 import ContractForm from "../../contract-form";
+import KeepOpenFold from "@/app/keep-open-fold";
 import ContractList, { type ContractRow } from "../../contract-list";
 import { CONTRACT_LABEL_KEYS } from "../../contract-labels";
 import ListingControls, { type ListingLink } from "../../listing-controls";
@@ -66,6 +67,7 @@ export default async function EditAssetPage({
     deleted?: QueryValue;
     restored?: QueryValue;
     add?: QueryValue;
+    trade?: QueryValue;
   }>;
 }) {
   const operator = await requireOperator();
@@ -100,6 +102,7 @@ export default async function EditAssetPage({
         asset={{ id: asset.id, name: asset.name, symbol: asset.symbol, coingeckoId: asset.coingeckoId }}
         locale={locale}
         justAdded={justAdded}
+        deleteBlocked={firstParam(query.trade) === "blocked"}
       />
     );
   }
@@ -113,6 +116,10 @@ export default async function EditAssetPage({
   // longer keeps it "rented".
   const ownStatus = assetStatusNow(asset, asset.contracts, today, { rentedToday: asset.days.length > 0 });
   const status = activeContract ? "rented" : asset.unitId ? "str" : ownStatus;
+  // The form's status select ignores today's daily "rented" answer: that
+  // answer is one night, not the asset's standing status, and saving the
+  // form must never turn it into a permanent "rented".
+  const formStatus = assetStatusNow(asset, asset.contracts, today);
 
   const record = asset as unknown as Record<string, string | null>;
   const links: ListingLink[] =
@@ -334,10 +341,15 @@ export default async function EditAssetPage({
         </p>
       )}
       <ContractList assetId={asset.id} rows={contractRows} labels={contractLabels} />
-      <details className="desk-fold" open={asset.contracts.length === 0 || firstParam(query.add) === "contract"}>
-        <summary>{t(locale, "contract_add")}</summary>
+      {/* Starts open for a first contract (or ?add=contract) and stays
+          open after the save, so its "added" line is seen. */}
+      <KeepOpenFold
+        key={firstParam(query.add) ?? "fold"}
+        initialOpen={asset.contracts.length === 0 || firstParam(query.add) === "contract"}
+        summary={t(locale, "contract_add")}
+      >
         <ContractForm assetId={asset.id} labels={contractLabels} />
-      </details>
+      </KeepOpenFold>
       {deleted.length > 0 && (
         <details className="desk-fold" style={{ marginTop: 12 }}>
           <summary>{t(locale, "contract_trash").replace("{n}", String(deleted.length))}</summary>
@@ -534,8 +546,9 @@ export default async function EditAssetPage({
           weekendPct: asset.weekendPct?.toString() ?? "",
           holidayPct: asset.holidayPct?.toString() ?? "",
           // The form starts from the status as it stands today, so saving
-          // it never re-confirms a "rented" left over from an ended lease.
-          status: ownStatus,
+          // it never re-confirms a "rented" left over from an ended lease
+          // (nor one night's daily answer).
+          status: formStatus,
           unitId: asset.unitId ?? "",
           // Only this workspace's own unit's links are shown (and written).
           icalUrls:

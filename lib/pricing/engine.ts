@@ -33,8 +33,32 @@ export interface PricingResult {
   suggestedRate: number;
   factors: PricingFactors;
   underpriced: boolean;
-  /** Machine-readable reason codes, e.g. "high_season", "low_occupancy". */
+  /**
+   * Machine-readable reason codes, one per force that moved the price and
+   * in the direction it moved it: "high_season" / "low_season" (the
+   * seasonality factor), "high_occupancy" / "low_occupancy" (the demand
+   * factor), "below_benchmark" (the district average pulled it UP) /
+   * "above_benchmark" (pulled it DOWN), "at_floor" / "at_ceiling".
+   */
   reasons: string[];
+  /** The arithmetic, step by step, for the page to show. */
+  steps: RateSteps;
+}
+
+/** How a suggestion was reached — every figure the page prints. */
+export interface RateSteps {
+  base: number;
+  seasonality: number;
+  demand: number;
+  /** base × seasonality × demand. */
+  raw: number;
+  /** After the pull toward the district average (null without one). */
+  nudged: number | null;
+  /** The pull as a share of the gap (0.25). */
+  nudgeShare: number;
+  /** The floor or ceiling that capped it, if any. */
+  capped: "floor" | "ceiling" | null;
+  final: number;
 }
 
 const BENCHMARK_NUDGE = 0.25; // pull 25% of the way toward benchmark ADR
@@ -59,25 +83,33 @@ export function suggestRate(input: PricingInput): PricingResult {
   const floor = input.baseNightlyRate * FLOOR_RATIO;
   const ceiling = input.baseNightlyRate * CEILING_RATIO;
 
-  let rate = input.baseNightlyRate * seasonality * demand;
+  const raw = input.baseNightlyRate * seasonality * demand;
+  let rate = raw;
 
   const benchmarkAdr = input.benchmarkAdr ?? null;
-  if (benchmarkAdr != null && benchmarkAdr > 0) {
-    rate += (benchmarkAdr - rate) * BENCHMARK_NUDGE;
-  }
+  const pulls = benchmarkAdr != null && benchmarkAdr > 0;
+  if (pulls) rate += (benchmarkAdr - rate) * BENCHMARK_NUDGE;
+  const nudged = pulls ? rate : null;
 
+  const capped = rate < floor ? "floor" : rate > ceiling ? "ceiling" : null;
   rate = Math.min(ceiling, Math.max(floor, rate));
   const suggestedRate = Math.round(rate);
 
+  // One reason per force that actually moved the price, named in the
+  // direction it moved it — so "lowered for low season" never sits next to
+  // an unexplained factor, and the district average is said to pull the
+  // price up or down, not merely to be "above" or "below".
   const reasons: string[] = [];
-  if (seasonality > 1.05) reasons.push("high_season");
-  else if (seasonality < 0.95) reasons.push("low_season");
-  if (input.upcomingOccupancy >= 0.7) reasons.push("high_occupancy");
-  else if (input.upcomingOccupancy < 0.3) reasons.push("low_occupancy");
-  if (benchmarkAdr != null) {
-    if (benchmarkAdr > suggestedRate) reasons.push("below_benchmark");
-    else if (benchmarkAdr < suggestedRate) reasons.push("above_benchmark");
+  if (seasonality > 1) reasons.push("high_season");
+  else if (seasonality < 1) reasons.push("low_season");
+  if (demand > 1) reasons.push("high_occupancy");
+  else if (demand < 1) reasons.push("low_occupancy");
+  if (pulls && capped == null) {
+    if (benchmarkAdr > raw) reasons.push("below_benchmark");
+    else if (benchmarkAdr < raw) reasons.push("above_benchmark");
   }
+  if (capped === "floor") reasons.push("at_floor");
+  if (capped === "ceiling") reasons.push("at_ceiling");
 
   return {
     suggestedRate,
@@ -85,5 +117,42 @@ export function suggestRate(input: PricingInput): PricingResult {
     underpriced:
       benchmarkAdr != null && benchmarkAdr > suggestedRate * UNDERPRICED_RATIO,
     reasons,
+    steps: {
+      base: input.baseNightlyRate,
+      seasonality,
+      demand,
+      raw,
+      nudged,
+      nudgeShare: BENCHMARK_NUDGE,
+      capped,
+      final: suggestedRate,
+    },
   };
+}
+
+/**
+ * Consecutive nights with the same price and the same reasons, as one
+ * run ("1–13 Oct: 122") — a fortnight of identical rows says nothing the
+ * first one did not.
+ */
+export function groupRuns<T extends { result: PricingResult; rationale: string }>(
+  rows: T[],
+): { first: T; last: T; nights: number }[] {
+  const runs: { first: T; last: T; nights: number }[] = [];
+  for (const row of rows) {
+    const current = runs[runs.length - 1];
+    if (
+      current &&
+      current.last.result.suggestedRate === row.result.suggestedRate &&
+      current.last.rationale === row.rationale &&
+      current.last.result.underpriced === row.result.underpriced &&
+      current.last.result.factors.benchmarkAdr === row.result.factors.benchmarkAdr
+    ) {
+      current.last = row;
+      current.nights += 1;
+    } else {
+      runs.push({ first: row, last: row, nights: 1 });
+    }
+  }
+  return runs;
 }

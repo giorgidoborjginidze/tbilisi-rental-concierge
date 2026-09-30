@@ -1,6 +1,9 @@
 // Live stock prices via Stooq (free, no API key). Quotes are USD for the
-// US market. Like the crypto fetchers, every call is best-effort: on any
-// failure the caller gets null and the UI shows "—" gracefully.
+// US market. Like the crypto fetchers, every call is best-effort and
+// time-limited; on failure lib/prices/quotes.ts uses the last good price
+// with its age.
+
+import { PRICE_TIMEOUT_MS, withTimeout } from "@/lib/prices/timeout";
 //
 // Prices are fetched server-side (works on Vercel). A local dev box
 // without outbound network simply returns {}.
@@ -35,47 +38,43 @@ export const POPULAR_STOCKS: Record<string, string> = {
   BABA: "Alibaba",
 };
 
-const withTimeout = (ms: number) => {
-  const c = new AbortController();
-  const t = setTimeout(() => c.abort(), ms);
-  return { signal: c.signal, done: () => clearTimeout(t) };
-};
-
 /**
  * Latest USD price per US ticker → { TICKER: usdPrice }.
  *
- * Prefers Finnhub when FINNHUB_API_KEY is set (reliable from datacenter IPs);
- * otherwise, or for any tickers Finnhub can't resolve, falls back to Stooq.
- * Both are best-effort — a missing ticker just won't appear in the result.
+ * With FINNHUB_API_KEY set, Finnhub (reliable from datacenter IPs) and
+ * Stooq are asked AT THE SAME TIME and Finnhub wins where both answer —
+ * one after the other, a hanging Finnhub used to double the wait. Both
+ * are best-effort — a missing ticker just won't appear in the result.
  */
 export async function fetchStockPrices(
   tickers: string[],
+  timeoutMs = PRICE_TIMEOUT_MS,
 ): Promise<Record<string, number>> {
   const unique = [...new Set(tickers.map((t) => t.trim().toUpperCase()))].filter(Boolean);
   if (unique.length === 0) return {};
 
   const key = process.env.FINNHUB_API_KEY?.trim();
   if (key) {
-    const primary = await fetchFinnhub(unique, key);
-    const missing = unique.filter((t) => !(t in primary));
-    if (missing.length === 0) return primary;
-    // Fill gaps (e.g. tickers Finnhub doesn't cover) with Stooq.
-    const secondary = await fetchStooq(missing);
+    const [primary, secondary] = await Promise.all([
+      fetchFinnhub(unique, key, timeoutMs),
+      fetchStooq(unique, timeoutMs),
+    ]);
     return { ...secondary, ...primary };
   }
 
-  return fetchStooq(unique);
+  return fetchStooq(unique, timeoutMs);
 }
 
 /** Finnhub /quote — one request per symbol (free tier: 60/min). */
 async function fetchFinnhub(
   tickers: string[],
   key: string,
+  timeoutMs: number,
 ): Promise<Record<string, number>> {
   const out: Record<string, number> = {};
   await Promise.all(
     tickers.map(async (ticker) => {
-      const to = withTimeout(6000);
+      const to = withTimeout(timeoutMs);
       try {
         const url =
           "https://finnhub.io/api/v1/quote?symbol=" +
@@ -85,8 +84,7 @@ async function fetchFinnhub(
         const res = await fetch(url, {
           signal: to.signal,
           headers: { accept: "application/json" },
-          // Quotes update through the trading day; 2-minute cache is plenty.
-          next: { revalidate: 120 },
+          cache: "no-store",
         });
         if (!res.ok) return;
         // { c: current, d, dp, h, l, o, pc, t } — c is 0 for unknown symbols.
@@ -106,9 +104,9 @@ async function fetchFinnhub(
 const stooqSymbol = (ticker: string) => `${ticker.trim().toLowerCase()}.us`;
 
 /** Stooq light CSV quote endpoint (symbol,date,time,o,h,l,close,vol). */
-async function fetchStooq(tickers: string[]): Promise<Record<string, number>> {
+async function fetchStooq(tickers: string[], timeoutMs: number): Promise<Record<string, number>> {
   if (tickers.length === 0) return {};
-  const to = withTimeout(6000);
+  const to = withTimeout(timeoutMs);
   try {
     const symbols = tickers.map(stooqSymbol).join(",");
     const url =
@@ -118,7 +116,7 @@ async function fetchStooq(tickers: string[]): Promise<Record<string, number>> {
     const res = await fetch(url, {
       signal: to.signal,
       headers: { accept: "text/csv" },
-      next: { revalidate: 120 },
+      cache: "no-store",
     });
     if (!res.ok) return {};
     const text = await res.text();

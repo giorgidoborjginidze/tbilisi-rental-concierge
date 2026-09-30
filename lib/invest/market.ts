@@ -35,3 +35,7 @@ export const DEFAULT_DEPOSIT_RATE = 9.5;
 export const DEFAULT_INCOME_TAX = 5;
 /** Default vacancy allowance, % of the year the unit sits empty. */
 export const DEFAULT_VACANCY = 8;
+/** Default upkeep (repairs, wear, appliances), % of the rent received. */
+export const DEFAULT_UPKEEP = 5;
+/** Beyond this many years a payback is shown as "30+ years". */
+export const PAYBACK_CAP_YEARS = 30;

@@ -1,9 +1,17 @@
 // Live crypto prices via CoinGecko (free, no key) and a USD→GEL rate
-// via the National Bank of Georgia. All network calls are best-effort:
-// on any failure the caller gets null and the UI shows "—" gracefully.
+// via the National Bank of Georgia. All network calls are best-effort and
+// time-limited (PRICE_TIMEOUT_MS): on any failure the caller gets nothing
+// for that symbol, and lib/prices/quotes.ts falls back to the last good
+// price it stored, labelled with its age.
+//
+// No framework caching (`cache: "no-store"`): the PriceQuote table is the
+// cache, with an honest fetchedAt — a Next data-cache entry could be days
+// old and still look "live".
 //
 // Note: prices are fetched server-side (works on Vercel). A local dev
-// box without outbound network simply returns null.
+// box without outbound network simply gets nothing back.
+
+import { PRICE_TIMEOUT_MS, withTimeout } from "@/lib/prices/timeout";
 
 /** Popular coins: display symbol → CoinGecko id. Extend as needed. */
 export const COINS: Record<string, { id: string; name: string }> = {
@@ -36,22 +44,20 @@ export const COINS: Record<string, { id: string; name: string }> = {
 
 export const COIN_SYMBOLS = Object.keys(COINS);
 
-/** Fallback USD→GEL rate if the NBG API is unreachable (approximate). */
+/**
+ * USD→GEL used only when the NBG never answered and no earlier rate is
+ * stored — always shown as "approximate rate", never as the NBG rate.
+ */
 export const FALLBACK_USD_GEL = 2.72;
-
-const withTimeout = (ms: number) => {
-  const c = new AbortController();
-  const t = setTimeout(() => c.abort(), ms);
-  return { signal: c.signal, done: () => clearTimeout(t) };
-};
 
 /** USD price per coin for the given CoinGecko ids → { id: usdPrice }. */
 export async function fetchUsdPrices(
   ids: string[],
+  timeoutMs = PRICE_TIMEOUT_MS,
 ): Promise<Record<string, number>> {
   const unique = [...new Set(ids)].filter(Boolean);
   if (unique.length === 0) return {};
-  const to = withTimeout(6000);
+  const to = withTimeout(timeoutMs);
   try {
     const url =
       "https://api.coingecko.com/api/v3/simple/price?ids=" +
@@ -60,8 +66,7 @@ export async function fetchUsdPrices(
     const res = await fetch(url, {
       signal: to.signal,
       headers: { accept: "application/json" },
-      // Revalidate at most every 2 minutes across requests.
-      next: { revalidate: 120 },
+      cache: "no-store",
     });
     if (!res.ok) return {};
     const data = (await res.json()) as Record<string, { usd?: number }>;
@@ -77,23 +82,23 @@ export async function fetchUsdPrices(
   }
 }
 
-/** Current USD→GEL rate from the NBG; falls back to a constant. */
-export async function fetchUsdGel(): Promise<number> {
-  const to = withTimeout(5000);
+/** Official USD→GEL rate from the NBG, or null when it does not answer. */
+export async function fetchUsdGelRate(timeoutMs = PRICE_TIMEOUT_MS): Promise<number | null> {
+  const to = withTimeout(timeoutMs);
   try {
     const res = await fetch(
       "https://nbg.gov.ge/gw/api/ct/monetarypolicy/currencies/en/json?currencies=USD",
-      { signal: to.signal, headers: { accept: "application/json" }, next: { revalidate: 3600 } },
+      { signal: to.signal, headers: { accept: "application/json" }, cache: "no-store" },
     );
-    if (!res.ok) return FALLBACK_USD_GEL;
+    if (!res.ok) return null;
     const data = (await res.json()) as Array<{
       currencies?: Array<{ code?: string; rate?: number; quantity?: number }>;
     }>;
     const usd = data?.[0]?.currencies?.find((c) => c.code === "USD");
     if (usd?.rate && usd.rate > 0) return usd.rate / (usd.quantity || 1);
-    return FALLBACK_USD_GEL;
+    return null;
   } catch {
-    return FALLBACK_USD_GEL;
+    return null;
   } finally {
     to.done();
   }

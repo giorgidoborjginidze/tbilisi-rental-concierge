@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { demandFactor, suggestRate } from "./engine";
+import { demandFactor, groupRuns, suggestRate } from "./engine";
 import { seasonalityFactor } from "./seasonality";
 
 const d = (iso: string) => new Date(`${iso}T00:00:00Z`);
@@ -102,5 +102,84 @@ describe("suggestRate", () => {
       benchmarkAdr: 115,
     });
     expect(result.underpriced).toBe(false);
+  });
+});
+
+describe("suggestRate explains itself", () => {
+  // persona-hotel-10: Batumi in October, base 130, district average 135.
+  const october = suggestRate({
+    baseNightlyRate: 130,
+    city: "Batumi",
+    date: d("2026-10-05"), // 0.9
+    upcomingOccupancy: 0.6, // 1.0
+    benchmarkAdr: 135,
+  });
+
+  it("shows the arithmetic that reaches the price", () => {
+    expect(october.steps.raw).toBeCloseTo(117, 6);
+    expect(october.steps.nudged).toBeCloseTo(117 + (135 - 117) * 0.25, 6);
+    expect(october.steps.capped).toBeNull();
+    expect(october.steps.final).toBe(122);
+    expect(october.suggestedRate).toBe(122);
+  });
+
+  it("names each force in the direction it moved the price", () => {
+    // Lowered by the season, pulled UP by the district average — not
+    // "lowered … still below the average".
+    expect(october.reasons).toEqual(["low_season", "below_benchmark"]);
+  });
+
+  it("explains every factor that is not 1, including mild demand", () => {
+    const r = suggestRate({
+      baseNightlyRate: 100,
+      city: "Tbilisi",
+      date: d("2026-04-15"), // 1.0
+      upcomingOccupancy: 0.4, // 0.93 — used to move the price with no reason given
+      benchmarkAdr: null,
+    });
+    expect(r.suggestedRate).toBe(93);
+    expect(r.reasons).toEqual(["low_occupancy"]);
+  });
+
+  it("says when the floor or ceiling decided the price", () => {
+    const floor = suggestRate({
+      baseNightlyRate: 100,
+      city: "Batumi",
+      date: d("2026-01-15"),
+      upcomingOccupancy: 0.1,
+      benchmarkAdr: null,
+    });
+    expect(floor.steps.capped).toBe("floor");
+    expect(floor.reasons).toContain("at_floor");
+  });
+});
+
+describe("groupRuns", () => {
+  const row = (date: string, rate: number, rationale = "r") => ({
+    date: d(date),
+    rationale,
+    result: suggestRate({
+      baseNightlyRate: rate,
+      city: "Tbilisi",
+      date: d("2026-04-15"),
+      upcomingOccupancy: 0.5,
+      benchmarkAdr: null,
+    }),
+  });
+
+  it("folds consecutive nights with the same price and reason", () => {
+    const runs = groupRuns([
+      row("2026-10-01", 120),
+      row("2026-10-02", 120),
+      row("2026-10-03", 120),
+      row("2026-10-04", 130),
+      row("2026-10-05", 120),
+    ]);
+    expect(runs.map((run) => run.nights)).toEqual([3, 1, 1]);
+    expect(runs[0].last.date).toEqual(d("2026-10-03"));
+  });
+
+  it("keeps nights apart when the reason differs", () => {
+    expect(groupRuns([row("2026-10-01", 120, "a"), row("2026-10-02", 120, "b")])).toHaveLength(2);
   });
 });

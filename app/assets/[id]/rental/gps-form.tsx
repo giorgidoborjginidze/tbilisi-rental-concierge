@@ -7,6 +7,7 @@ import { EXAMPLE_POSITION } from "@/lib/geo/presets";
 import { IconCheck, IconCopy } from "@/app/icons";
 import { keepingValues } from "@/lib/forms";
 import { keepTyped } from "@/app/keep-typed";
+import { Req } from "@/app/form-bits";
 
 // Binding the tracker to this vehicle, and the plate that the geofence
 // messages quote. A tracker cannot start reporting here by itself: the
@@ -88,7 +89,10 @@ export default function GpsForm({
       <form action={save} onSubmit={keepTyped(save)} className="card form-grid" style={{ padding: 18 }}>
         <input type="hidden" name="assetId" value={assetId} />
         <label className="field">
-          {labels.gps_device_id}
+          <span>
+            {labels.gps_device_id}
+            <Req />
+          </span>
           <input name="deviceId" defaultValue={sentDevice?.deviceId ?? device?.deviceId ?? ""} required aria-required="true" />
         </label>
         <label className="field">

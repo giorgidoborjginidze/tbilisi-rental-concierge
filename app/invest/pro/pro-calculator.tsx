@@ -3,13 +3,16 @@
 import { useMemo, useState } from "react";
 import {
   analyzeWorthiness,
+  isWorthinessExample,
   switchWorthinessCurrency,
   WORTHINESS_DEFAULTS_GEL,
+  type TaxModel,
   type WorthinessCurrency,
   type WorthinessInputs,
 } from "@/lib/invest/worthiness";
+import { PAYBACK_CAP_YEARS } from "@/lib/invest/market";
 import { currencySign, formatMoney } from "@/lib/format";
-import { VERDICT_BADGE } from "@/lib/ui/tone";
+import { TONE_BADGE, VERDICT_BADGE } from "@/lib/ui/tone";
 
 export default function ProCalculator({
   labels,
@@ -27,8 +30,16 @@ export default function ProCalculator({
   const sym = currencySign(currency);
   const fmt = (v: number) => formatMoney(v, currency);
   const pct = (v: number) => `${v.toFixed(1)}%`;
+  // Past 30 years a payback is not a plan: "30+ years", not "483.3".
   const years = (v: number | null) =>
-    v == null ? labels.res_never : `${v.toFixed(1)} ${labels.res_years}`;
+    v == null
+      ? labels.res_never
+      : v > PAYBACK_CAP_YEARS
+        ? labels.res_years_over.replace("{n}", String(PAYBACK_CAP_YEARS))
+        : `${v.toFixed(1)} ${labels.res_years}`;
+  // Until the owner types a figure, the page shows an example — and says
+  // so instead of handing out a verdict about nobody's flat.
+  const example = isWorthinessExample(inputs, currency);
 
   const set =
     (key: keyof WorthinessInputs) =>
@@ -83,6 +94,19 @@ export default function ProCalculator({
           {field("monthlyRent", `${labels.wor_rent} (${sym})`)}
           {field("rentGrowthPct", labels.wor_growth, 0.5)}
           {field("vacancyPct", labels.wor_vacancy)}
+          <label className="field" style={{ gridColumn: "1 / -1" }}>
+            {labels.wor_tax_model}
+            <select
+              value={inputs.taxModel}
+              onChange={(e) =>
+                setInputs((prev) => ({ ...prev, taxModel: e.target.value as TaxModel }))
+              }
+            >
+              <option value="gross">{labels.wor_tax_gross}</option>
+              <option value="profit">{labels.wor_tax_profit}</option>
+            </select>
+            <span className="hint">{labels.wor_tax_hint}</span>
+          </label>
         </div>
 
         <button
@@ -103,8 +127,15 @@ export default function ProCalculator({
             {field("hoaPerYear", `${labels.wor_hoa} (${sym})`)}
             {field("propertyTaxPct", labels.wor_proptax, 0.1)}
             {field("pointsPct", labels.wor_points, 0.5)}
-            {field("incomeTaxPct", labels.wor_tax)}
-            {field("units", labels.wor_units_n)}
+            {inputs.taxModel === "gross" ? (
+              field("grossTaxPct", labels.wor_tax_gross_pct, 0.5)
+            ) : (
+              <>
+                {field("incomeTaxPct", labels.wor_tax)}
+                {field("buildingSharePct", labels.wor_building_share)}
+                {field("depreciationYears", labels.wor_depr_years, 0.5)}
+              </>
+            )}
           </div>
         )}
       </div>
@@ -112,14 +143,26 @@ export default function ProCalculator({
       {/* min-width 0: a grid item may shrink below its table, which then
           scrolls inside its card instead of widening the phone page. */}
       <div style={{ minWidth: 0 }}>
-        <div className="alert-card" style={{ alignItems: "center" }}>
-          <h3 className="alert-card__title" style={{ fontSize: 16 }}>
-            {labels[`wor_verdict_${result.verdict}`]}
-          </h3>
-          <span className={VERDICT_BADGE[result.verdict]}>
-            {pct(y1.capRatePct)} {labels.wor_cap_short}
-          </span>
-        </div>
+        {example ? (
+          <div className="alert-card" style={{ alignItems: "center", flexWrap: "wrap" }}>
+            <h3 className="alert-card__title" style={{ fontSize: 16 }}>
+              {labels.wor_example_title}
+            </h3>
+            <span className={`badge ${TONE_BADGE.muted}`}>{labels.wor_example_badge}</span>
+            <div className="alert-card__detail" style={{ flexBasis: "100%" }}>
+              {labels.wor_example_hint}
+            </div>
+          </div>
+        ) : (
+          <div className="alert-card" style={{ alignItems: "center" }}>
+            <h3 className="alert-card__title" style={{ fontSize: 16 }}>
+              {labels[`wor_verdict_${result.verdict}`]}
+            </h3>
+            <span className={VERDICT_BADGE[result.verdict]}>
+              {pct(y1.capRatePct)} {labels.wor_cap_short}
+            </span>
+          </div>
+        )}
 
         <div className="kpi-grid kpi-grid--3d" style={{ margin: "14px 0", gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
           <div className="kpi">

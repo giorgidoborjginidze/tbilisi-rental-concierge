@@ -57,6 +57,11 @@ export default function UnitForm({
   const sent = state && "values" in state ? state.values : undefined;
   const val = (name: keyof UnitFormValues) =>
     sent ? (sent[name] ?? "") : unit?.[name] === undefined ? undefined : String(unit[name]);
+  // The extra details start open when the unit already has some (or an
+  // error came back with some typed).
+  const hasExtra = Boolean(
+    val("nameKa") || val("amenities") || val("airbnbUrl") || val("bookingUrl"),
+  );
 
   return (
     <>
@@ -71,11 +76,6 @@ export default function UnitForm({
         </span>
         <input name="name" required aria-required="true" defaultValue={val("name")} />
       </label>
-      <label className="field">
-        {labels.asset_name_ka}
-        <input name="nameKa" defaultValue={val("nameKa")} />
-      </label>
-
       <label className="field">
         {labels.unit_city}
         <select name="city" defaultValue={val("city") ?? cities[0]?.value}>
@@ -160,22 +160,6 @@ export default function UnitForm({
           defaultValue={val("baseNightlyRate")}
         />
       </label>
-      <label className="field">
-        {labels.unit_amenities}
-        <input
-          name="amenities" placeholder={labels.ph_amenities}
-          defaultValue={val("amenities")}
-        />
-      </label>
-
-      <label className="field">
-        {labels.unit_airbnb_url}
-        <input name="airbnbUrl" type="url" defaultValue={val("airbnbUrl")} />
-      </label>
-      <label className="field">
-        {labels.unit_booking_url}
-        <input name="bookingUrl" type="url" defaultValue={val("bookingUrl")} />
-      </label>
 
       <label className="field sm:col-span-2">
         {labels.unit_ical_urls}
@@ -186,7 +170,38 @@ export default function UnitForm({
         <span className="hint">{labels.unit_ical_hint}</span>
       </label>
 
+
       {feedStatus && <div className="sm:col-span-2">{feedStatus}</div>}
+
+      {/* One name up top; the Georgian name and the rest wait here, as on
+          the asset form. */}
+      <details className="form-fold" open={hasExtra}>
+        <summary>
+          {labels.form_more}
+          <span className="form-fold__hint">{labels.form_more_hint_unit}</span>
+        </summary>
+        <div className="form-fold__body">
+          <label className="field">
+            {labels.asset_name_ka}
+            <input name="nameKa" defaultValue={val("nameKa")} />
+          </label>
+          <label className="field">
+            {labels.unit_amenities}
+            <input
+              name="amenities" placeholder={labels.ph_amenities}
+              defaultValue={val("amenities")}
+            />
+          </label>
+          <label className="field">
+            {labels.unit_airbnb_url}
+            <input name="airbnbUrl" type="url" defaultValue={val("airbnbUrl")} />
+          </label>
+          <label className="field">
+            {labels.unit_booking_url}
+            <input name="bookingUrl" type="url" defaultValue={val("bookingUrl")} />
+          </label>
+        </div>
+      </details>
 
       {/* The same flat under Assets: its value, contracts and daily
           answers. A new unit gets one unless an existing one is picked. */}

@@ -256,6 +256,15 @@ export const IconAlert = glyph(
   </>,
 );
 
+/**
+ * Two waves — "approximately": a figure built partly on a last known or
+ * purchase price. Drawn, not typed: a text "≈" would pull a whole symbol
+ * font file in late.
+ */
+export const IconApprox = glyph(
+  <path d="M4 9.5c2.7-2.4 5.3-2.4 8 0s5.3 2.4 8 0M4 15.5c2.7-2.4 5.3-2.4 8 0s5.3 2.4 8 0" />,
+);
+
 /** Circle with i — for information. */
 export const IconInfo = glyph(
   <>

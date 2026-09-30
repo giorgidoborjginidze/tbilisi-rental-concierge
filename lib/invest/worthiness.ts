@@ -41,18 +41,35 @@ export interface WorthinessInputs {
   propertyTaxPct: number;
   /** Points paid on the mortgage, % of the loan. */
   pointsPct: number;
-  /** Income tax rate, %. */
+  /**
+   * How the rent is taxed. "gross" — Georgia, an individual letting a
+   * home: a flat % of the rent received (5%), nothing deducted. "profit" —
+   * the US-style model of the original spreadsheet: a % of the profit left
+   * after loan interest, depreciation and points.
+   */
+  taxModel: TaxModel;
+  /** "gross" model: tax on the rent received, %. */
+  grossTaxPct: number;
+  /** "profit" model: income tax rate on the profit, %. */
   incomeTaxPct: number;
-  /** Number of units the rent covers. */
-  units: number;
-  /** Depreciable building share of price, % (rest is land). */
+  /** "profit" model: depreciable building share of price, % (rest is land). */
   buildingSharePct: number;
-  /** Straight-line depreciation period, years. */
+  /** "profit" model: straight-line depreciation period, years. */
   depreciationYears: number;
 }
 
-/** Sheet defaults, adapted (tax 20%, dep 27.5y, building 60%). */
-export const WORTHINESS_DEFAULTS: WorthinessInputs = {
+export type TaxModel = "gross" | "profit";
+
+/** Georgian tax on rent an individual receives from a home, %. */
+export const GEORGIAN_RENT_TAX_PCT = 5;
+
+/**
+ * The original spreadsheet's own scenario ($30k purchase, $500 rent, US
+ * tax model: 20% on profit after interest and 27.5-year depreciation).
+ * Kept to check the maths against the sheet — NOT what the page opens
+ * with: 1.67% of the price in rent a month is not a Tbilisi flat.
+ */
+export const SHEET_SCENARIO: WorthinessInputs = {
   price: 30000,
   equityPct: 20,
   otherInitialCosts: 1000,
@@ -69,31 +86,67 @@ export const WORTHINESS_DEFAULTS: WorthinessInputs = {
   hoaPerYear: 0,
   propertyTaxPct: 0,
   pointsPct: 0,
+  taxModel: "profit",
+  grossTaxPct: GEORGIAN_RENT_TAX_PCT,
   incomeTaxPct: 20,
-  units: 1,
   buildingSharePct: 60,
   depreciationYears: 27.5,
 };
 
 /**
- * The same example in lari (the defaults above are the spreadsheet's
- * dollar figures, converted at about 2.7 ₾/$ and rounded): what the PRO
- * calculator opens with, so it starts in the same currency as the rest
- * of the app.
+ * What the PRO calculator opens with: a Tbilisi flat in lari — Saburtalo,
+ * 60 m² at the district estimates the free calculator uses (3,100 ₾/m²,
+ * ~26 ₾/m² rent), cosmetic renovation, a GEL mortgage at the usual rate,
+ * and Georgia's 5% tax on rent received. The page labels it an example
+ * until the owner changes a figure.
  */
 export const WORTHINESS_DEFAULTS_GEL: WorthinessInputs = {
-  ...WORTHINESS_DEFAULTS,
-  price: 81_000,
-  otherInitialCosts: 2_700,
-  monthlyRent: 1_350,
-  insurancePerYear: 140,
+  price: 186_000,
+  equityPct: 30,
+  otherInitialCosts: 15_000,
+  annualRatePct: 11.5,
+  loanYears: 15,
+  monthlyRent: 1_550,
+  rentGrowthPct: 3,
+  vacancyPct: 8,
+  insurancePerYear: 200,
+  maintenancePct: 5,
+  managementPct: 0,
+  utilitiesPct: 0,
+  brokerPct: 0,
+  hoaPerYear: 240,
+  propertyTaxPct: 0,
+  pointsPct: 0,
+  taxModel: "gross",
+  grossTaxPct: GEORGIAN_RENT_TAX_PCT,
+  incomeTaxPct: 20,
+  buildingSharePct: 60,
+  depreciationYears: 27.5,
+};
+
+/** The same example in dollars (at about 2.7 ₾/$, rounded). */
+export const WORTHINESS_DEFAULTS_USD: WorthinessInputs = {
+  ...WORTHINESS_DEFAULTS_GEL,
+  price: 69_000,
+  otherInitialCosts: 5_500,
+  monthlyRent: 575,
+  insurancePerYear: 75,
+  hoaPerYear: 90,
 };
 
 export type WorthinessCurrency = "GEL" | "USD";
 
 /** The example a currency opens with. */
 export const worthinessDefaults = (currency: WorthinessCurrency): WorthinessInputs =>
-  currency === "USD" ? WORTHINESS_DEFAULTS : WORTHINESS_DEFAULTS_GEL;
+  currency === "USD" ? WORTHINESS_DEFAULTS_USD : WORTHINESS_DEFAULTS_GEL;
+
+/** Still the example the page opened with (nothing typed yet)? */
+export function isWorthinessExample(inputs: WorthinessInputs, currency: WorthinessCurrency): boolean {
+  const example = worthinessDefaults(currency);
+  return (Object.keys(example) as (keyof WorthinessInputs)[]).every(
+    (key) => inputs[key] === example[key],
+  );
+}
 
 /**
  * Switching the currency does not convert anything. While the inputs are
@@ -108,11 +161,7 @@ export function switchWorthinessCurrency(
   to: WorthinessCurrency,
 ): { inputs: WorthinessInputs; kept: boolean } {
   if (from === to) return { inputs, kept: false };
-  const example = worthinessDefaults(from);
-  const untouched = (Object.keys(example) as (keyof WorthinessInputs)[]).every(
-    (key) => inputs[key] === example[key],
-  );
-  return untouched
+  return isWorthinessExample(inputs, from)
     ? { inputs: { ...worthinessDefaults(to) }, kept: false }
     : { inputs, kept: true };
 }
@@ -129,7 +178,7 @@ export interface YearRow {
   principalPaydown: number;
   depreciation: number;
   pointsAmortization: number;
-  /** Taxable income: NOI − interest − depreciation − points. */
+  /** Profit before tax: NOI − interest − depreciation − points. */
   btIncome: number;
   incomeTax: number;
   atIncome: number;
@@ -196,8 +245,11 @@ export function analyzeWorthiness(inputs: WorthinessInputs): WorthinessResult {
   }
   const totalPaid = loanAmount + totalInterest;
 
+  // Depreciation is a deduction of the profit model only; under the
+  // Georgian 5%-of-rent regime nothing is deducted.
+  const profitModel = inputs.taxModel === "profit";
   const depreciation =
-    inputs.depreciationYears > 0
+    profitModel && inputs.depreciationYears > 0
       ? (price * pct(inputs.buildingSharePct)) / inputs.depreciationYears
       : 0;
   const pointsAmortization =
@@ -225,7 +277,9 @@ export function analyzeWorthiness(inputs: WorthinessInputs): WorthinessResult {
     cumulativePrincipal += principalPaydown;
 
     const btIncome = noi - loanInterest - depreciation - pointsAmortization;
-    const incomeTax = Math.max(0, btIncome) * pct(inputs.incomeTaxPct);
+    const incomeTax = profitModel
+      ? Math.max(0, btIncome) * pct(inputs.incomeTaxPct)
+      : goi * pct(inputs.grossTaxPct);
     const atIncome = btIncome - incomeTax;
 
     const btCashFlow = noi - loanInterest - principalPaydown;

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { prisma } from "@/lib/db";
 import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
@@ -6,10 +7,10 @@ import { t, type StringKey, type Locale } from "@/lib/i18n/strings";
 import { monthlyIncome } from "@/lib/analytics/monthly-income";
 import { incomeParts } from "@/lib/analytics/income-display";
 import { estimateMarketRent, getRentBenchmark } from "@/lib/market/rent";
-import { fetchUsdGel, fetchUsdPrices, FALLBACK_USD_GEL } from "@/lib/crypto/prices";
-import { fetchStockPrices } from "@/lib/stocks/prices";
-import { fetchMetalPrices } from "@/lib/metals/prices";
-import { value as cryptoValue } from "@/lib/crypto/holdings";
+import { getNetWorth, type HoldingLine } from "@/lib/wealth/net-worth";
+import { isHolding } from "@/lib/wealth/compose";
+import { priceAge, rateLine } from "@/lib/prices/labels";
+import Approx from "../approx";
 import { LISTING_PLATFORMS } from "@/lib/types";
 import ListingControls, { type ListingLink } from "./listing-controls";
 import DoorKey from "./door-key";
@@ -41,7 +42,7 @@ const STATUS_BADGE: Record<string, string> = {
   listed: "badge--listed",
 };
 
-function Kpi({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function Kpi({ label, value, sub }: { label: string; value: React.ReactNode; sub?: React.ReactNode }) {
   return (
     <div className="kpi">
       <div className="kpi__label">{label}</div>
@@ -51,40 +52,34 @@ function Kpi({ label, value, sub }: { label: string; value: string; sub?: string
   );
 }
 
-interface HoldingRow {
-  asset: { id: string; name: string; symbol: string | null };
-  price: number | null;
-  v: {
-    quantity: number;
-    avgBuyPrice: number | null;
-    currentValue: number | null;
-    profit: number | null;
-    profitPct: number | null;
-  };
-}
-
 // One holding sub-table (crypto / stock / metal) inside Digital Assets.
+// Every row says where its price comes from: live (nothing added), the
+// last known price with its age, or no price (valued at what was paid).
 function HoldingTable({
-  locale, heading, subUsd, subGel, holdingsLabel, qtyDigits, rows,
+  locale, heading, lines, qtyDigits, approxLabel, now,
 }: {
   locale: Locale;
   heading: string;
-  subUsd: number;
-  subGel: number;
-  holdingsLabel: string;
+  lines: HoldingLine[];
   qtyDigits: number;
-  rows: HoldingRow[];
+  approxLabel: string;
+  now: Date;
 }) {
-  if (rows.length === 0) return null;
+  if (lines.length === 0) return null;
   // Prices are in dollars, written like every other amount: "1,250 $".
   const d = (n: number | null, dp = 2) => formatMoney(n, "USD", dp);
+  const subUsd = lines.reduce((sum, line) => sum + line.valueUsd, 0);
+  const subGel = lines.reduce((sum, line) => sum + line.valueGel, 0);
+  const approx = lines.some((line) => line.valuation.quantity > 0 && line.basis !== "live");
+  const holdingsLabel = t(locale, "holding_quantity");
   return (
     <div style={{ marginTop: 18 }}>
       <h3 style={{ marginBottom: 0 }}>
         {heading}
         {subUsd > 0 && (
           <span style={{ color: "var(--color-text-muted)", fontWeight: 400, fontSize: 13 }}>
-            {" "}· {formatMoney(subUsd, "USD")} ≈ {formatMoney(subGel)}
+            {" "}· {approx && <Approx label={approxLabel} />}
+            {formatMoney(subUsd, "USD")} · {formatMoney(subGel)}
           </span>
         )}
       </h3>
@@ -102,30 +97,53 @@ function HoldingTable({
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ asset, price, v }) => {
+            {lines.map((line) => {
+              const v = line.valuation;
               const pc = v.profit == null ? undefined : v.profit >= 0 ? "var(--status-rented-text)" : "var(--status-danger-text)";
+              const held = v.quantity > 0;
               return (
-                <tr key={asset.id}>
+                <tr key={line.id}>
                   <td>
-                    <Link href={`/assets/${asset.id}/edit`} className="link">{asset.name}</Link>
-                    <div className="cell-sub">{asset.symbol}</div>
+                    <Link href={`/assets/${line.id}/edit`} className="link">{line.name}</Link>
+                    <div className="cell-sub">{line.symbol}</div>
                   </td>
                   <td className="num" data-label={holdingsLabel}>
                     {v.quantity.toLocaleString("en-US", { maximumFractionDigits: qtyDigits })}
                   </td>
-                  <td className="num" data-label={t(locale, "crypto_avg_price")}>{d(v.avgBuyPrice)}</td>
-                  <td className="num" data-label={t(locale, "crypto_current_price")}>{d(price)}</td>
-                  <td className="num" data-label={t(locale, "crypto_value")}>{d(v.currentValue, 0)}</td>
+                  <td className="num" data-label={t(locale, "crypto_avg_price")}>{held ? d(v.avgBuyPrice) : "—"}</td>
+                  <td className="num" data-label={t(locale, "crypto_current_price")}>
+                    {line.quote ? d(line.quote.price) : "—"}
+                    {line.basis === "stale" && line.quote && (
+                      <div className="cell-sub price-age">
+                        {t(locale, "price_last_known").replace("{age}", priceAge(locale, line.quote.fetchedAt, now))}
+                      </div>
+                    )}
+                    {line.basis === "cost" && held && (
+                      <div className="cell-sub price-age">{t(locale, "price_none")}</div>
+                    )}
+                  </td>
+                  <td className="num" data-label={t(locale, "crypto_value")}>
+                    {held && line.basis !== "live" && <Approx label={approxLabel} />}
+                    {d(line.valueUsd, 0)}
+                    {held && line.basis === "cost" && (
+                      <div className="cell-sub price-age">{t(locale, "price_at_cost")}</div>
+                    )}
+                  </td>
                   <td className="num" data-label={t(locale, "crypto_pnl")} style={{ color: pc, fontWeight: 600 }}>
-                    {v.profit == null ? "—" : `${v.profit >= 0 ? "+" : ""}${d(v.profit, 0)}`}
-                    {v.profitPct != null && (
+                    {v.profit == null || !held ? "—" : `${v.profit >= 0 ? "+" : ""}${d(v.profit, 0)}`}
+                    {held && v.profitPct != null && (
                       <div className="cell-sub" style={{ color: pc }}>
                         {v.profitPct >= 0 ? "+" : ""}{(v.profitPct * 100).toFixed(1)}%
                       </div>
                     )}
+                    {Math.abs(v.realizedProfit) >= 0.005 && (
+                      <div className="cell-sub" style={{ fontWeight: 400 }}>
+                        {t(locale, "holding_realized")}: {v.realizedProfit >= 0 ? "+" : ""}{d(v.realizedProfit, 0)}
+                      </div>
+                    )}
                   </td>
                   <td className="num">
-                    <Link href={`/assets/${asset.id}/edit`} className="link">{t(locale, "edit")}</Link>
+                    <Link href={`/assets/${line.id}/edit`} className="link">{t(locale, "edit")}</Link>
                   </td>
                 </tr>
               );
@@ -134,6 +152,78 @@ function HoldingTable({
         </table>
       </div>
     </div>
+  );
+}
+
+// The page's one total: what the flats and cars are estimated at plus
+// every holding in GEL — the same figure as the dashboard (getNetWorth).
+// It streams in, so the property cards never wait on a price API.
+async function TotalValueKpi({ locale, operatorId }: { locale: Locale; operatorId: string }) {
+  const worth = await getNetWorth(operatorId);
+  const approxLabel = t(locale, "approx_word");
+  return (
+    <Kpi
+      label={t(locale, "assets_total_value")}
+      value={
+        <>
+          {worth.approximate && <Approx label={approxLabel} />}
+          {formatMoney(worth.total)}
+        </>
+      }
+      sub={
+        worth.holdingsBasis === "none"
+          ? undefined
+          : t(locale, "assets_total_parts")
+              .replace("{p}", formatMoney(worth.physical))
+              .replace("{d}", formatMoney(worth.holdings))
+      }
+    />
+  );
+}
+
+// Crypto, shares and metals: valued with the stored-or-live prices.
+async function DigitalHoldings({ locale, operatorId }: { locale: Locale; operatorId: string }) {
+  const worth = await getNetWorth(operatorId);
+  const now = new Date();
+  const approxLabel = t(locale, "approx_word");
+  const of = (kind: HoldingLine["kind"]) => worth.lines.filter((line) => line.kind === kind);
+  const heldLines = worth.lines.filter((line) => line.valuation.quantity > 0);
+  const allLive = heldLines.every((line) => line.basis === "live");
+  const oversold = worth.lines.filter((line) => line.valuation.oversold > 0);
+  return (
+    <>
+      <h2 style={{ marginBottom: 0 }}>
+        {t(locale, "section_digital")}
+        {worth.holdingsUsd > 0 && (
+          <span style={{ color: "var(--color-text-muted)", fontWeight: 400, fontSize: 14 }}>
+            {" "}· {worth.approximate && <Approx label={approxLabel} />}
+            {formatMoney(worth.holdingsUsd, "USD")} · {formatMoney(worth.holdings)}
+          </span>
+        )}
+      </h2>
+
+      {oversold.map((line) => (
+        <p key={line.id} className="alert-card alert-card--warn" role="status" style={{ display: "block", fontSize: 13, marginTop: 10 }}>
+          <Link href={`/assets/${line.id}/edit`} className="link">{line.name}</Link>:{" "}
+          {t(locale, "holding_oversold").replace(
+            "{n}",
+            line.valuation.oversold.toLocaleString("en-US", { maximumFractionDigits: 8 }),
+          )}
+        </p>
+      ))}
+
+      <HoldingTable locale={locale} heading={t(locale, "section_crypto")} lines={of("crypto")} qtyDigits={8} approxLabel={approxLabel} now={now} />
+      <HoldingTable locale={locale} heading={t(locale, "section_stock")} lines={of("stock")} qtyDigits={4} approxLabel={approxLabel} now={now} />
+      <HoldingTable locale={locale} heading={t(locale, "section_metal")} lines={of("metal")} qtyDigits={4} approxLabel={approxLabel} now={now} />
+
+      {/* "Live" only when every price shown is; otherwise say what is not. */}
+      {heldLines.length > 0 && (
+        <p className="hint" style={{ marginTop: 10 }}>
+          {allLive ? t(locale, "holdings_live_note") : t(locale, "holdings_stale_note")}{" "}
+          {rateLine(locale, worth.rate, now)}
+        </p>
+      )}
+    </>
   );
 }
 
@@ -184,77 +274,7 @@ export default async function AssetsPage() {
       }));
   };
 
-  // ── Crypto, stock & metal holdings: live valuation in USD → GEL. ──
-  const [cryptoAssets, stockAssets, metalAssets] = await Promise.all([
-    prisma.asset.findMany({
-      where: { operatorId: operator.id, category: "crypto" },
-      include: { trades: true },
-      orderBy: { name: "asc" },
-    }),
-    prisma.asset.findMany({
-      where: { operatorId: operator.id, category: "stock" },
-      include: { trades: true },
-      orderBy: { name: "asc" },
-    }),
-    prisma.asset.findMany({
-      where: { operatorId: operator.id, category: "metal" },
-      include: { trades: true },
-      orderBy: { name: "asc" },
-    }),
-  ]);
-  const needRate = cryptoAssets.length > 0 || stockAssets.length > 0 || metalAssets.length > 0;
-  const [cryptoPrices, stockPrices, metalPrices, usdGel] = await Promise.all([
-    cryptoAssets.length
-      ? fetchUsdPrices(cryptoAssets.map((c) => c.coingeckoId).filter(Boolean) as string[])
-      : Promise.resolve<Record<string, number>>({}),
-    stockAssets.length
-      ? fetchStockPrices(stockAssets.map((s) => s.symbol).filter(Boolean) as string[])
-      : Promise.resolve<Record<string, number>>({}),
-    metalAssets.length
-      ? fetchMetalPrices(metalAssets.map((m) => m.symbol).filter(Boolean) as string[])
-      : Promise.resolve<Record<string, number>>({}),
-    needRate ? fetchUsdGel() : Promise.resolve(FALLBACK_USD_GEL),
-  ]);
-
-  const holdingRows = (
-    list: typeof cryptoAssets,
-    priceOf: (a: (typeof cryptoAssets)[number]) => number | null,
-  ) =>
-    list.map((a) => {
-      const price = priceOf(a);
-      const v = cryptoValue(
-        a.trades.map((tr) => ({ side: tr.side as "buy" | "sell", quantity: tr.quantity, unitPrice: tr.unitPrice })),
-        price,
-      );
-      return { asset: a, price, v };
-    });
-
-  const cryptoRows = holdingRows(cryptoAssets, (c) =>
-    c.coingeckoId ? cryptoPrices[c.coingeckoId] ?? null : null,
-  );
-  const stockRows = holdingRows(stockAssets, (s) =>
-    s.symbol ? stockPrices[s.symbol.toUpperCase()] ?? null : null,
-  );
-  const metalRows = holdingRows(metalAssets, (m) =>
-    m.symbol ? metalPrices[m.symbol.toUpperCase()] ?? null : null,
-  );
-
-  const sumUsd = (rows: { v: { currentValue: number | null } }[]) =>
-    rows.reduce((s, r) => s + (r.v.currentValue ?? 0), 0);
-  const cryptoValueUsd = sumUsd(cryptoRows);
-  const stockValueUsd = sumUsd(stockRows);
-  const metalValueUsd = sumUsd(metalRows);
-  const cryptoValueGel = cryptoValueUsd * usdGel;
-  const stockValueGel = stockValueUsd * usdGel;
-  const metalValueGel = metalValueUsd * usdGel;
-
-  // Digital assets = crypto + stocks + metals, shown together in one segment.
-  const digitalValueUsd = cryptoValueUsd + stockValueUsd + metalValueUsd;
-  const digitalValueGel = cryptoValueGel + stockValueGel + metalValueGel;
-
-  const totalValue =
-    assets.reduce((sum, a) => sum + (a.estimatedValue ?? 0), 0) +
-    digitalValueGel;
+  const holdingCount = assets.filter((a) => isHolding(a.category)).length;
 
   // Market-rent benchmarks per district (current month).
   const districts = [...new Set(assets.map((a) => a.district).filter(Boolean))] as string[];
@@ -315,7 +335,9 @@ export default async function AssetsPage() {
       </div>
 
       <section className="kpi-grid kpi-grid--3d kpi-grid--2">
-        <Kpi label={t(locale, "assets_total_value")} value={formatMoney(totalValue)} />
+        <Suspense fallback={<Kpi label={t(locale, "assets_total_value")} value={<span className="skel__block kpi-wait" />} />}>
+          <TotalValueKpi locale={locale} operatorId={operator.id} />
+        </Suspense>
         <Kpi
           label={t(locale, "income_all_month")}
           value={formatMoney(income.total)}
@@ -396,8 +418,14 @@ export default async function AssetsPage() {
                   serviceHref: desk ? deskHref(asset.id, desk) : null,
                   overdueHref: desk ? deskHref(asset.id, desk, "payments") : null,
                   category: asset.category,
+                  // "Rented" with no contract behind it: offer to add one —
+                  // but not for a day let, whose "rented" is today's answer.
                   addContractHref:
-                    status === "rented" && !contract && CONTRACT_CATEGORIES.includes(asset.category)
+                    status === "rented" &&
+                    !contract &&
+                    asset.rentalMode !== "daily" &&
+                    asset.days.length === 0 &&
+                    CONTRACT_CATEGORIES.includes(asset.category)
                       ? `/assets/${asset.id}/edit?add=contract#contracts`
                       : null,
                 };
@@ -441,41 +469,24 @@ export default async function AssetsPage() {
           </section>
           ) };
           }),
-          { group: "digital", empty: cryptoRows.length === 0 && stockRows.length === 0 && metalRows.length === 0, addHref: "/assets/new?category=crypto", node: (
+          { group: "digital", empty: holdingCount === 0, addHref: "/assets/new?category=crypto", node: (
       <section data-tour="digital">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 style={{ marginBottom: 0 }}>
-            {t(locale, "section_digital")}
-            {digitalValueUsd > 0 && (
-              <span style={{ color: "var(--color-text-muted)", fontWeight: 400, fontSize: 14 }}>
-                {" "}· {formatMoney(digitalValueUsd, "USD")} ≈ {formatMoney(digitalValueGel)}
-              </span>
-            )}
-          </h2>
-        </div>
-
-        {cryptoRows.length === 0 && stockRows.length === 0 && metalRows.length === 0 && (
-          <p className="hint" style={{ marginTop: 10 }}>{t(locale, "digital_empty")}</p>
-        )}
-
-        <HoldingTable
-          locale={locale} heading={t(locale, "section_crypto")}
-          subUsd={cryptoValueUsd} subGel={cryptoValueGel}
-          holdingsLabel={t(locale, "holding_quantity")} qtyDigits={8} rows={cryptoRows}
-        />
-        <HoldingTable
-          locale={locale} heading={t(locale, "section_stock")}
-          subUsd={stockValueUsd} subGel={stockValueGel}
-          holdingsLabel={t(locale, "holding_quantity")} qtyDigits={4} rows={stockRows}
-        />
-        <HoldingTable
-          locale={locale} heading={t(locale, "section_metal")}
-          subUsd={metalValueUsd} subGel={metalValueGel}
-          holdingsLabel={t(locale, "holding_quantity")} qtyDigits={4} rows={metalRows}
-        />
-
-        {(cryptoRows.length > 0 || stockRows.length > 0 || metalRows.length > 0) && (
-          <p className="hint" style={{ marginTop: 10 }}>{t(locale, "digital_footnote")}</p>
+        {holdingCount === 0 ? (
+          <>
+            <h2 style={{ marginBottom: 0 }}>{t(locale, "section_digital")}</h2>
+            <p className="hint" style={{ marginTop: 10 }}>{t(locale, "digital_empty")}</p>
+          </>
+        ) : (
+          <Suspense
+            fallback={
+              <>
+                <h2 style={{ marginBottom: 0 }}>{t(locale, "section_digital")}</h2>
+                <div className="skel__block skel__card" style={{ height: 160, marginTop: 14 }} aria-busy="true" />
+              </>
+            }
+          >
+            <DigitalHoldings locale={locale} operatorId={operator.id} />
+          </Suspense>
         )}
       </section>
           ) },

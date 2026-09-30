@@ -6,7 +6,9 @@ import {
   DEFAULT_DEPOSIT_RATE,
   DEFAULT_INCOME_TAX,
   DEFAULT_MORTGAGE_RATE,
+  DEFAULT_UPKEEP,
   DEFAULT_VACANCY,
+  PAYBACK_CAP_YEARS,
   RENOVATION_LEVELS,
   RENOVATION_PER_SQM,
   type RenovationLevel,
@@ -41,6 +43,7 @@ export default function Calculator({
   const [rentOverride, setRentOverride] = useState<number | null>(null);
   const [vacancy, setVacancy] = useState(DEFAULT_VACANCY);
   const [tax, setTax] = useState(DEFAULT_INCOME_TAX);
+  const [upkeep, setUpkeep] = useState(DEFAULT_UPKEEP);
   const [useLoan, setUseLoan] = useState(true);
   const [downPayment, setDownPayment] = useState(20);
   const [rate, setRate] = useState(DEFAULT_MORTGAGE_RATE);
@@ -61,17 +64,23 @@ export default function Calculator({
         monthlyRent: rent,
         vacancyPct: vacancy,
         incomeTaxPct: tax,
+        upkeepPct: upkeep,
         useLoan,
         downPaymentPct: downPayment,
         annualRatePct: rate,
         termYears: term,
         depositRatePct: depositRate,
       }),
-    [price, renovCost, rent, vacancy, tax, useLoan, downPayment, rate, term, depositRate],
+    [price, renovCost, rent, vacancy, tax, upkeep, useLoan, downPayment, rate, term, depositRate],
   );
 
+  // Past 30 years a payback is not a plan: say so instead of "483.3 yrs".
   const years = (v: number | null) =>
-    v == null ? labels.res_never : `${v.toFixed(1)} ${labels.res_years}`;
+    v == null
+      ? labels.res_never
+      : v > PAYBACK_CAP_YEARS
+        ? labels.res_years_over.replace("{n}", String(PAYBACK_CAP_YEARS))
+        : `${v.toFixed(1)} ${labels.res_years}`;
 
   const num =
     (setter: (v: number) => void) =>
@@ -140,6 +149,10 @@ export default function Calculator({
           {labels.inv_tax}
           <input type="number" min={0} max={100} value={tax} onChange={num(setTax)} />
         </label>
+        <label className="field">
+          {labels.inv_upkeep}
+          <input type="number" min={0} max={100} step={0.5} value={upkeep} onChange={num(setUpkeep)} />
+        </label>
 
         <h2 className="col-span-2" style={{ margin: "8px 0 0" }}>{labels.inv_financing}</h2>
 
@@ -179,11 +192,18 @@ export default function Calculator({
       </div>
 
       <div>
-        <div className="alert-card" style={{ alignItems: "center" }}>
+        {/* The verdict and what it compares, on the same money. */}
+        <div className="alert-card" style={{ alignItems: "center", flexWrap: "wrap" }}>
           <div className="alert-card__title">{labels.inv_results}</div>
           <span className={VERDICT_BADGE[result.verdict]}>
             {labels[`res_verdict_${result.verdict}`]}
           </span>
+          <div className="alert-card__detail" style={{ flexBasis: "100%" }}>
+            {labels.res_verdict_basis
+              .replace("{yield}", pct(result.netYieldPct))
+              .replace("{amount}", fmt(result.totalInvestment))
+              .replace("{rate}", pct(depositRate))}
+          </div>
         </div>
 
         <div className="kpi-grid kpi-grid--3d" style={{ margin: "14px 0", gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
@@ -200,7 +220,8 @@ export default function Calculator({
             <div className="kpi__label">{labels.res_net_income}</div>
             <div className="kpi__value">{fmt(result.netMonthlyIncome)}</div>
             <div className="kpi__sub">
-              {labels.res_deposit_income}: {fmt(result.depositMonthlyIncome)}
+              {labels.res_deposit_income.replace("{amount}", fmt(result.totalInvestment))}:{" "}
+              {fmt(result.depositMonthlyIncome)}
             </div>
           </div>
           {useLoan && (
@@ -225,6 +246,10 @@ export default function Calculator({
                 }}
               >
                 {fmt(result.monthlyCashFlow)}
+              </div>
+              <div className="kpi__sub">
+                {labels.res_deposit_own.replace("{amount}", fmt(result.cashInvested))}:{" "}
+                {fmt(result.depositOnCashMonthly)}
               </div>
               <div className="kpi__sub">
                 {labels.res_cash_payback}: {years(result.cashPaybackYears)}

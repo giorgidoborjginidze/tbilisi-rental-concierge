@@ -88,12 +88,27 @@ export function evaluateTaxi(input: TaxiInputs): TaxiResult {
   };
 }
 
+/** Earnings after the car's lost value, % of its price a year, at which
+ *  a taxi is worth the hours ("good") or modest ("ok"). */
+export const TAXI_GOOD_PCT = 25;
+export const TAXI_OK_PCT = 12;
+
 /** Graded harder than passive rent: a taxi is a job, not an investment,
  *  so it has to clear a higher bar to be worth the hours. */
 function verdictFor(annualYieldPct: number): TaxiResult["verdict"] {
-  if (annualYieldPct >= 25) return "good";
-  if (annualYieldPct >= 12) return "ok";
+  if (annualYieldPct >= TAXI_GOOD_PCT) return "good";
+  if (annualYieldPct >= TAXI_OK_PCT) return "ok";
   return "poor";
+}
+
+/**
+ * Taxi or renting the same car out, like for like: both AFTER the car's
+ * lost value (the rental's running costs already include amortisation),
+ * and neither pays for the owner's hours. Positive = taxi leaves more.
+ */
+export function taxiVsRental(taxiNetMonthly: number, rentalNetMonthly: number) {
+  const diff = taxiNetMonthly - rentalNetMonthly;
+  return { diff, winner: Math.abs(diff) < 50 ? ("equal" as const) : diff > 0 ? ("taxi" as const) : ("rental" as const) };
 }
 
 /** Sensible Georgian starting points, editable in the UI. */

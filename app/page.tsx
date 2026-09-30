@@ -1,4 +1,4 @@
-import { cache, type ReactNode } from "react";
+import { cache, Suspense, type ReactNode } from "react";
 import type { Metadata } from "next";
 import { pageTitle } from "@/lib/i18n/metadata";
 import Link from "next/link";
@@ -24,13 +24,12 @@ import TourPrompt from "./tour-prompt";
 import RevenuePartial, { monthKeyOf } from "./revenue-partial";
 import {
   AssetDeck,
-  CompositionRing,
   IncomeBars,
   MarketTips,
   PortfolioRing,
   WealthHero,
-  ringPartsFromAssets,
 } from "./dash-extras";
+import { getNetWorth } from "@/lib/wealth/net-worth";
 import { TodayMoves, TodaySection } from "./dash-today";
 import {
   activeContract as runningContract,
@@ -826,9 +825,8 @@ async function PersonalDashboard({
   operator: SessionOperator;
 }) {
   const loaded = await unlessEmpty(operator.id, () => Promise.all([
-    prisma.asset.findMany({
-      where: { operatorId: operator.id },
-      select: { category: true, estimatedValue: true },
+    prisma.asset.count({
+      where: { operatorId: operator.id, category: { not: "income_source" } },
     }),
     // The one income definition: the same total as the bars and /assets.
     monthlyIncome(operator.id),
@@ -842,24 +840,24 @@ async function PersonalDashboard({
       </main>
     );
   }
-  const [assets, income] = loaded;
-  const totalValue = assets.reduce((sum, a) => sum + (a.estimatedValue ?? 0), 0);
-  const propertyCount = assets.filter((a) => a.category !== "income_source").length;
+  const [propertyCount, income] = loaded;
+  const chips = [
+    `${t(locale, "income_all_month")}: ${formatMoney(income.total)}${
+      income.unpricedNights > 0 ? ` (${t(locale, "revenue_partial_short")})` : ""
+    }`,
+    `${t(locale, "nav_assets")}: ${propertyCount}`,
+  ];
 
   return (
     <main>
       <DashboardHeader locale={locale} operator={operator} sub={t(locale, "account_personal")} />
 
-      <WealthHero
-        label={t(locale, "dash_wealth")}
-        total={totalValue}
-        chips={[
-          `${t(locale, "income_all_month")}: ${formatMoney(income.total)}${
-            income.unpricedNights > 0 ? ` (${t(locale, "revenue_partial_short")})` : ""
-          }`,
-          `${t(locale, "nav_assets")}: ${propertyCount}`,
-        ]}
-      />
+      {/* What I own today — flats, cars AND coins, shares and metal (the
+          same getNetWorth as the ring and /assets). It streams in, so a
+          price API taking its time never holds the page. */}
+      <Suspense fallback={<WealthHeroWaiting label={t(locale, "dash_wealth")} chips={chips} />}>
+        <NetWorthHero locale={locale} operatorId={operator.id} chips={chips} />
+      </Suspense>
       <RevenuePartial
         locale={locale}
         nights={income.unpricedNights}
@@ -869,7 +867,7 @@ async function PersonalDashboard({
 
       <TodaySection locale={locale} operatorId={operator.id} />
 
-      <CompositionRing locale={locale} parts={ringPartsFromAssets(locale, assets)} />
+      <PortfolioRing locale={locale} operatorId={operator.id} />
       <AssetDeck locale={locale} operatorId={operator.id} />
 
       {/* The one action the dashboard offers on its own: adding a salary,
@@ -882,6 +880,53 @@ async function PersonalDashboard({
 
       <MarketTips locale={locale} operatorId={operator.id} />
     </main>
+  );
+}
+
+async function NetWorthHero({
+  locale,
+  operatorId,
+  chips,
+}: {
+  locale: Locale;
+  operatorId: string;
+  chips: string[];
+}) {
+  const worth = await getNetWorth(operatorId);
+  return (
+    <WealthHero
+      label={t(locale, "dash_wealth")}
+      total={worth.total}
+      chips={chips}
+      approx={
+        worth.approximate
+          ? {
+              label: t(locale, "approx_word"),
+              reason: t(
+                locale,
+                worth.holdingsBasis === "live" ? "net_worth_approx_rate" : "net_worth_approx",
+              ),
+            }
+          : undefined
+      }
+    />
+  );
+}
+
+/** The hero's place while the net worth is on its way (keeps the tour's target). */
+function WealthHeroWaiting({ label, chips }: { label: string; chips: string[] }) {
+  return (
+    <section className="card wealth-hero" aria-busy="true">
+      <div className="wealth-hero__label">{label}</div>
+      <div className="wealth-hero__figure">
+        <span className="skel__block hero-wait" />
+      </div>
+      <div className="wealth-hero__chips">
+        {chips.map((chip) => (
+          <span key={chip} className="chip">{chip}</span>
+        ))}
+      </div>
+    </section>
   );
 }
 

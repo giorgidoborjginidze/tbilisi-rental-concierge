@@ -641,3 +641,15 @@ model SystemRun {
 
   @@index([kind, startedAt])
 }
+
+// The last good price of a holding's symbol — and the USD→GEL rate — shared
+// by every workspace. A price API that fails or hangs never makes a holding
+// worthless: the page shows this price with its age instead. Not personal
+// data (a market price), so it has no operator.
+model PriceQuote {
+  // "crypto:<coingecko id>" | "stock:<TICKER>" | "metal:<XAU…>" | "fx:USDGEL"
+  key       String   @id
+  price     Float // USD per unit (fx: GEL per USD)
+  source    String   @default("") // "coingecko" | "finnhub" | "stooq" | "gold-api" | "nbg"
+  fetchedAt DateTime // when the source last answered with this price
+}

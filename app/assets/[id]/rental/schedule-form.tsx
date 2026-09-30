@@ -6,7 +6,7 @@ import type { FormState } from "@/lib/units/actions";
 import { currencySign } from "@/lib/format";
 import { todayKey } from "@/lib/time";
 import { keepingValues } from "@/lib/forms";
-import { FormMessage } from "@/app/form-bits";
+import { FormMessage, Req } from "@/app/form-bits";
 import { keepTyped } from "@/app/keep-typed";
 
 export interface ScheduleDefaults {
@@ -77,7 +77,10 @@ export default function ScheduleForm({
         </label>
 
         <label className="field">
-          {labels.pay_amount} ({currencySign(currency)})
+          <span>
+            {labels.pay_amount} ({currencySign(currency)})
+            <Req />
+          </span>
           <input
             name="paymentAmount"
             type="number"
@@ -91,7 +94,10 @@ export default function ScheduleForm({
         </label>
 
         <label className="field">
-          {labels.pay_grace}
+          <span>
+            {labels.pay_grace}
+            <Req />
+          </span>
           <input
             name="graceDays"
             type="number"
@@ -105,7 +111,10 @@ export default function ScheduleForm({
         </label>
 
         <label className="field">
-          {labels.pay_paid_through}
+          <span>
+            {labels.pay_paid_through}
+            <Req />
+          </span>
           <input
             name="paidThrough"
             type="date"
@@ -157,7 +166,10 @@ export default function ScheduleForm({
         </h3>
 
         <label className="field">
-          {labels.pay_received} ({currencySign(currency)})
+          <span>
+            {labels.pay_received} ({currencySign(currency)})
+            <Req />
+          </span>
           <input
             name="amount"
             type="number"

@@ -6,6 +6,8 @@ import { saveContract } from "@/lib/assets/actions";
 import { saveDayRange } from "@/lib/rentals/actions";
 import type { FormState } from "@/lib/units/actions";
 import { IconChevronLeft, IconChevronRight } from "@/app/icons";
+import { keepTyped } from "@/app/keep-typed";
+import { Req } from "@/app/form-bits";
 
 /** Blank cells before a month's first day in a Monday-first week. */
 const mondayOffset = (iso: string | undefined) =>
@@ -265,8 +267,11 @@ export default function OccupancyCalendar({
           // A second tap extends the range: the fields start again from it.
           key={`${range.start}|${range.end}`}
           action={formAction}
-          onSubmit={() => {
+          // Submitted without React's form reset: an error keeps the
+          // typed tenant name and amount.
+          onSubmit={(event) => {
             submitted.current = true;
+            keepTyped(formAction)(event);
           }}
           className="alert-card mark-form"
           style={{ marginTop: 10, alignItems: "flex-end", flexWrap: "wrap", gap: 12 }}
@@ -278,15 +283,31 @@ export default function OccupancyCalendar({
             {labels.mark_range_title}: {nights} {labels.nights_short}
           </div>
           <label className="field" style={{ width: 150 }}>
-            {labels.contract_start}
-            <input type="date" name="startDate" defaultValue={range.start} required />
+            <span>
+              {labels.contract_start}
+              <Req />
+            </span>
+            <input type="date" name="startDate" defaultValue={range.start} required aria-required="true" />
           </label>
           <label className="field" style={{ width: 150 }}>
-            {labels.contract_end}
-            <input type="date" name="endDate" defaultValue={dayAfter(range.end)} required />
+            <span>
+              {labels.contract_end}
+              <Req />
+            </span>
+            <input
+              type="date"
+              name="endDate"
+              defaultValue={dayAfter(range.end)}
+              min={dayAfter(range.start)}
+              required
+              aria-required="true"
+            />
           </label>
           <label className="field" style={{ width: 130 }}>
-            {isDaily ? labels.mark_amount_night : labels.contract_amount_monthly}
+            <span>
+              {isDaily ? labels.mark_amount_night : labels.contract_amount_monthly}
+              {!isDaily && <Req />}
+            </span>
             <input
               type="number"
               name="amount"
@@ -294,6 +315,7 @@ export default function OccupancyCalendar({
               step="0.01"
               defaultValue={defaultRate ?? undefined}
               required={!isDaily}
+              aria-required={!isDaily || undefined}
             />
           </label>
           <label className="field" style={{ width: 170 }}>

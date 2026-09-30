@@ -8,6 +8,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { Locale } from "@/lib/i18n/strings";
 import type { PricingResult } from "@/lib/pricing/engine";
+import { formatMoney } from "@/lib/format";
 
 export interface RationaleRequest {
   date: Date;
@@ -23,25 +24,39 @@ export interface RationaleContext {
   locale: Locale;
 }
 
+// Each force that moved the price, said in the direction it moved it.
+// {s} seasonality factor, {d} demand factor, {adr} district average.
 const REASON_TEXT: Record<Locale, Record<string, string>> = {
   en: {
-    high_season: "peak season demand",
-    low_season: "low season",
-    high_occupancy: "your calendar is nearly full",
-    low_occupancy: "low upcoming occupancy",
-    below_benchmark: `still below the district average`,
-    above_benchmark: "above the district average",
+    high_season: "the season raises it (×{s})",
+    low_season: "the low season lowers it (×{s})",
+    high_occupancy: "a nearly full calendar raises it (×{d})",
+    low_occupancy: "few bookings ahead lower it (×{d})",
+    below_benchmark: "the district average ({adr}) pulls it up",
+    above_benchmark: "the district average ({adr}) pulls it down",
+    at_floor: "held at the lowest price (60% of base)",
+    at_ceiling: "held at the highest price (180% of base)",
   },
   ka: {
-    high_season: "პიკური სეზონის მოთხოვნა",
-    low_season: "დაბალი სეზონი",
-    high_occupancy: "კალენდარი თითქმის სავსეა",
-    low_occupancy: "დაბალი მოახლოებული დატვირთულობა",
-    below_benchmark: "ჯერ კიდევ უბნის საშუალოზე დაბალია",
-    above_benchmark: "უბნის საშუალოზე მაღალია",
+    high_season: "სეზონი ზრდის (×{s})",
+    low_season: "დაბალი სეზონი ამცირებს (×{s})",
+    high_occupancy: "თითქმის სავსე კალენდარი ზრდის (×{d})",
+    low_occupancy: "წინ ცოტა ჯავშანია — ამცირებს (×{d})",
+    below_benchmark: "უბნის საშუალო ({adr}) ზემოთ სწევს",
+    above_benchmark: "უბნის საშუალო ({adr}) ქვემოთ სწევს",
+    at_floor: "დაჭერილია ყველაზე დაბალ ფასზე (საბაზოს 60%)",
+    at_ceiling: "დაჭერილია ყველაზე მაღალ ფასზე (საბაზოს 180%)",
   },
 };
 
+const factor = (v: number) => v.toFixed(2);
+
+/**
+ * "Below base: the low season lowers it (×0.90); the district average
+ * (135 ₾) pulls it up." — the direction first, then every force with the
+ * way it pushed. Never "lowered … still below the average" without saying
+ * which force did what.
+ */
 export function stubRationale(
   request: RationaleRequest,
   context: RationaleContext,
@@ -50,19 +65,24 @@ export function stubRationale(
   const { locale } = context;
   const direction =
     result.suggestedRate > context.baseNightlyRate
-      ? locale === "ka" ? "აწეული" : "raised"
+      ? locale === "ka" ? "საბაზოზე მაღალი" : "Above base"
       : result.suggestedRate < context.baseNightlyRate
-        ? locale === "ka" ? "დაწეული" : "lowered"
-        : locale === "ka" ? "უცვლელი" : "kept at base";
+        ? locale === "ka" ? "საბაზოზე დაბალი" : "Below base"
+        : locale === "ka" ? "საბაზოს ტოლი" : "At base";
 
+  const adr = result.factors.benchmarkAdr;
   const reasonText = result.reasons
     .map((reason) => REASON_TEXT[locale][reason])
     .filter(Boolean)
-    .join(locale === "ka" ? ", " : ", ");
+    .map((text) =>
+      text
+        .replace("{s}", factor(result.factors.seasonality))
+        .replace("{d}", factor(result.factors.demand))
+        .replace("{adr}", adr == null ? "—" : formatMoney(adr, request.currency)),
+    )
+    .join("; ");
 
-  return locale === "ka"
-    ? `ტარიფი ${direction}${reasonText ? ` — ${reasonText}` : ""}.`
-    : `Rate ${direction}${reasonText ? " — " + reasonText : ""}.`;
+  return `${direction}${reasonText ? `: ${reasonText}` : ""}.`;
 }
 
 export async function generateRationales(
@@ -92,7 +112,10 @@ export async function generateRationales(
       system:
         `You write one-line pricing rationales for a short-term-rental dashboard, in ${language}. ` +
         `For each input row, output exactly one plain-text sentence (max ~20 words) explaining the suggested ` +
-        `nightly rate to the property operator. Respond with a JSON array of strings, one per row, in order. ` +
+        `nightly rate to the property operator. Name each force in the direction it moved the price ` +
+        `(seasonality < 1 lowers it, > 1 raises it; the district average pulls it toward itself), and ` +
+        `never call the rate lowered and "still below average" without saying which force did what. ` +
+        `Address the operator informally. Respond with a JSON array of strings, one per row, in order. ` +
         `No markdown, no extra keys.`,
       messages: [
         {

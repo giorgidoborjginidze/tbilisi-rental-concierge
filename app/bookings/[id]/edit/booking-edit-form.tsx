@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { cancelBooking, restoreBooking, updateBooking } from "@/lib/bookings/actions";
 import ConfirmAction from "@/app/confirm-action";
 import { currencySign } from "@/lib/format";
 import type { FormState } from "@/lib/units/actions";
 import { keepTyped } from "@/app/keep-typed";
+import { Req, RequiredLegend } from "@/app/form-bits";
 
 export interface EditableBooking {
   id: string;
@@ -15,6 +16,13 @@ export interface EditableBooking {
   checkIn: string;
   checkOut: string;
   currency: string;
+}
+
+/** "YYYY-MM-DD" of the day after `key`; undefined for an empty or bad date. */
+function nextDayKey(key: string): string | undefined {
+  const at = Date.parse(`${key}T00:00:00Z`);
+  if (!key || Number.isNaN(at)) return undefined;
+  return new Date(at + 86_400_000).toISOString().slice(0, 10);
 }
 
 export default function BookingEditForm({
@@ -40,6 +48,9 @@ export default function BookingEditForm({
   const sent = state && "values" in state ? state.values : undefined;
   const val = (name: keyof EditableBooking) => (sent ? (sent[name] ?? "") : booking[name]);
   const error = state?.error ? state : restoreState?.error ? restoreState : null;
+  // Check-out is at least the night after check-in.
+  const [checkIn, setCheckIn] = useState(val("checkIn"));
+  const minCheckOut = nextDayKey(checkIn);
 
   return (
     <>
@@ -64,13 +75,34 @@ export default function BookingEditForm({
         </label>
         {datesEditable && (
           <div className="grid grid-cols-2 gap-4">
+            <RequiredLegend text={labels.form_required_legend} />
             <label className="field">
-              {labels.booking_check_in}
-              <input name="checkIn" type="date" required defaultValue={val("checkIn")} />
+              <span>
+                {labels.booking_check_in}
+                <Req />
+              </span>
+              <input
+                name="checkIn"
+                type="date"
+                required
+                aria-required="true"
+                defaultValue={val("checkIn")}
+                onChange={(event) => setCheckIn(event.currentTarget.value)}
+              />
             </label>
             <label className="field">
-              {labels.booking_check_out}
-              <input name="checkOut" type="date" required defaultValue={val("checkOut")} />
+              <span>
+                {labels.booking_check_out}
+                <Req />
+              </span>
+              <input
+                name="checkOut"
+                type="date"
+                required
+                aria-required="true"
+                min={minCheckOut}
+                defaultValue={val("checkOut")}
+              />
             </label>
           </div>
         )}

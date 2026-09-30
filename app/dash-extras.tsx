@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { t, type Locale, type StringKey } from "@/lib/i18n/strings";
@@ -22,6 +22,9 @@ import CountUp from "./count-up";
 import AssetDeckClient, { type DeckAsset, type DeckSlide } from "./asset-deck-client";
 import { districtLabel } from "@/lib/places";
 import { LIVE_CONTRACT } from "@/lib/rentals/live";
+import { getNetWorth, type NetWorth } from "@/lib/wealth/net-worth";
+import { PHYSICAL_GROUPS } from "@/lib/wealth/compose";
+import Approx from "./approx";
 
 // The Ice dashboard pieces shared by every profile: the one hero number,
 // the composition ring, the property deck, the income bars and the closing
@@ -33,11 +36,14 @@ export function WealthHero({
   sub,
   chips,
   link,
+  approx,
 }: {
   label: string;
   total: number;
   /** What the figure is made of (e.g. rent · daily · bookings · other). */
   sub?: string;
+  /** The figure rests partly on a last known or purchase price: "≈" + why. */
+  approx?: { label: string; reason: string };
   chips: string[];
   /** Where the figures are broken down (analytics, the fleet list). */
   link?: { href: string; label: string };
@@ -46,9 +52,11 @@ export function WealthHero({
     <section className="card wealth-hero">
       <div className="wealth-hero__label">{label}</div>
       <div className="wealth-hero__figure">
+        {approx && <Approx label={approx.label} />}
         <CountUp to={Math.round(total)} /> <small>₾</small>
       </div>
       {sub && <div className="wealth-hero__sub">{sub}</div>}
+      {approx && <div className="wealth-hero__sub">{approx.reason}</div>}
       {(chips.length > 0 || link) && (
         <div className="wealth-hero__chips">
           {chips.map((chip) => (
@@ -69,6 +77,8 @@ export interface RingPart {
   key: string;
   label: string;
   value: number;
+  /** Valued partly at a last known or purchase price. */
+  approx?: boolean;
   /** Ice gradient stops, light → deep. */
   tint: [string, string];
 }
@@ -154,7 +164,10 @@ export function CompositionRing({
           <div key={seg.key}>
             <i style={{ background: `linear-gradient(140deg, ${seg.tint[0]}, ${seg.tint[1]})` }} />
             {seg.label}
-            <b>{short(seg.value)}</b>
+            <b>
+              {seg.approx && <Approx label={t(locale, "approx_word")} />}
+              {short(seg.value)}
+            </b>
           </div>
         ))}
       </div>
@@ -363,42 +376,43 @@ export async function MarketTips({
   );
 }
 
-/** Ring parts from the operator's assets, valued at estimatedValue. */
-export function ringPartsFromAssets(
-  locale: Locale,
-  assets: { category: string; estimatedValue: number | null }[],
-): RingPart[] {
-  const byCategory = new Map<string, number>();
-  for (const asset of assets) {
-    if (!asset.estimatedValue) continue;
-    // Holdings (crypto/stock/metal) are valued live elsewhere; physical
-    // categories carry their estimate here.
-    const key = ["real_estate", "vehicle", "income_source"].includes(asset.category)
-      ? asset.category
-      : "other";
-    byCategory.set(key, (byCategory.get(key) ?? 0) + asset.estimatedValue);
-  }
-  return [...byCategory.entries()].map(([key, value]) => ({
+/**
+ * Ring parts from the one net-worth figure (lib/wealth/net-worth.ts): the
+ * physical categories at their estimated value, and one "digital" slice for
+ * every coin, share and ounce in GEL — so the ring adds up to the hero.
+ */
+export function ringPartsFromWorth(locale: Locale, worth: NetWorth): RingPart[] {
+  const parts: RingPart[] = PHYSICAL_GROUPS.map((key) => ({
     key,
     label: t(locale, `category_${key}` as StringKey),
-    value,
+    value: worth.physicalByGroup[key],
     tint: CATEGORY_TINTS[key] ?? CATEGORY_TINTS.other,
   }));
+  parts.push({
+    key: "digital",
+    label: t(locale, "category_digital"),
+    value: worth.holdings,
+    approx: worth.approximate,
+    tint: CATEGORY_TINTS.digital,
+  });
+  return parts.filter((part) => part.value > 0);
 }
 
-/** The ring, fetching its own data — one line to add on any dashboard. */
-export async function PortfolioRing({
-  locale,
-  operatorId,
-}: {
-  locale: Locale;
-  operatorId: string;
-}) {
-  const assets = await prisma.asset.findMany({
-    where: { operatorId },
-    select: { category: true, estimatedValue: true },
-  });
-  return <CompositionRing locale={locale} parts={ringPartsFromAssets(locale, assets)} />;
+async function PortfolioRingData({ locale, operatorId }: { locale: Locale; operatorId: string }) {
+  const worth = await getNetWorth(operatorId);
+  return <CompositionRing locale={locale} parts={ringPartsFromWorth(locale, worth)} />;
+}
+
+/**
+ * The ring, fetching its own data — one line to add on any dashboard. It
+ * streams in: a price API taking its time never holds the page above it.
+ */
+export function PortfolioRing({ locale, operatorId }: { locale: Locale; operatorId: string }) {
+  return (
+    <Suspense fallback={null}>
+      <PortfolioRingData locale={locale} operatorId={operatorId} />
+    </Suspense>
+  );
 }
 
 const DAY_MS = 86_400_000;

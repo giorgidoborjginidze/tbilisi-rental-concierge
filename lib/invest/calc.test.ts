@@ -114,3 +114,44 @@ describe("analyzeInvestment (verdict vs deposit)", () => {
     expect(r.depositMonthlyIncome).toBeCloseTo((220_000 * 0.095) / 12, 5);
   });
 });
+
+describe("analyzeInvestment (like-for-like with the verdict)", () => {
+  // Audit scenario: Saburtalo, 60 m², all defaults (201,000 invested, 20%
+  // down, 11.5% over 10 years, rent 1,560, 8% vacancy, 5% tax).
+  const saburtalo: InvestInputs = {
+    price: 186_000,
+    renovation: 15_000,
+    monthlyRent: 1_560,
+    vacancyPct: 8,
+    incomeTaxPct: 5,
+    useLoan: true,
+    downPaymentPct: 20,
+    annualRatePct: 11.5,
+    termYears: 10,
+    depositRatePct: 9.5,
+  };
+
+  it("sets rent before the loan against the WHOLE investment on deposit", () => {
+    const r = analyzeInvestment(saburtalo);
+    expect(r.depositMonthlyIncome).toBeCloseTo((201_000 * 0.095) / 12, 5); // 1,591
+    expect(r.depositOnCashMonthly).toBeCloseTo((r.cashInvested * 0.095) / 12, 5); // 413
+    // The verdict says the deposit earns more — and so does the tile now.
+    expect(r.verdict).toBe("poor");
+    expect(r.netMonthlyIncome).toBeLessThan(r.depositMonthlyIncome);
+  });
+
+  it("a better-than-deposit verdict always shows a bigger rent than deposit", () => {
+    const r = analyzeInvestment({ ...saburtalo, monthlyRent: 2_600 });
+    expect(r.verdict).toBe("good");
+    expect(r.netMonthlyIncome).toBeGreaterThan(r.depositMonthlyIncome);
+  });
+
+  it("takes upkeep out of the net income", () => {
+    const without = analyzeInvestment({ ...base, vacancyPct: 10, incomeTaxPct: 5 });
+    const withUpkeep = analyzeInvestment({ ...base, vacancyPct: 10, incomeTaxPct: 5, upkeepPct: 5 });
+    expect(withUpkeep.upkeepMonthly).toBeCloseTo(1350 * 0.05, 5);
+    expect(withUpkeep.netMonthlyIncome).toBeCloseTo(without.netMonthlyIncome - 1350 * 0.05, 5);
+    expect(withUpkeep.netYieldPct).toBeLessThan(without.netYieldPct);
+  });
+});
+

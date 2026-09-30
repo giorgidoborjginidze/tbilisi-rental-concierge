@@ -72,3 +72,27 @@ describe("analyzeFlip", () => {
       .toBe("poor");
   });
 });
+
+describe("analyzeFlip (verdict against a deposit)", () => {
+  // 15% a year: above the default 9.5% deposit, below a strong 19.5%.
+  const fifteen = { ...base, holdingMonths: 12 };
+  const at = (annual: number) => analyzeFlip({ ...fifteen, salePrice: 0 }).totalInvested * (1 + annual / 100);
+
+  it("calls a return above a deposit modest, never 'about a deposit'", () => {
+    const r = analyzeFlip({ ...fifteen, salePrice: at(15), sellingFeePct: 0, taxPct: 0 });
+    expect(r.annualizedPct).toBeCloseTo(15, 6);
+    expect(r.verdict).toBe("ok");
+    expect(r.thresholds).toEqual({ strongPct: 19.5, depositPct: 9.5 });
+  });
+
+  it("is weak below the deposit rate and strong 10 points above it", () => {
+    expect(analyzeFlip({ ...fifteen, salePrice: at(9), sellingFeePct: 0, taxPct: 0 }).verdict).toBe("poor");
+    expect(analyzeFlip({ ...fifteen, salePrice: at(19.6), sellingFeePct: 0, taxPct: 0 }).verdict).toBe("good");
+  });
+
+  it("follows a different deposit rate", () => {
+    const r = analyzeFlip({ ...fifteen, salePrice: at(15), sellingFeePct: 0, taxPct: 0, depositRatePct: 16 });
+    expect(r.verdict).toBe("poor");
+  });
+});
+

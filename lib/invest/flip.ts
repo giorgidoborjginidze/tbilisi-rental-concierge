@@ -4,6 +4,11 @@
 // decides whether the deal was actually good. Pure and framework-free,
 // like lib/invest/calc.ts.
 
+import { DEFAULT_DEPOSIT_RATE } from "./market";
+
+/** A flip counts as strong this many points a year above a deposit. */
+export const FLIP_STRONG_MARGIN = 10;
+
 export interface FlipInputs {
   /** Purchase price, GEL. */
   price: number;
@@ -21,6 +26,11 @@ export interface FlipInputs {
   sellingFeePct: number;
   /** Tax on the gain, % (0–100). */
   taxPct: number;
+  /**
+   * What the same money earns in a bank deposit, % a year — the bar the
+   * yearly rate is judged against. Defaults to the usual GEL deposit.
+   */
+  depositRatePct?: number;
 }
 
 export interface FlipResult {
@@ -48,7 +58,13 @@ export interface FlipResult {
   profitPerMonth: number;
   /** Sale price at which the deal breaks even (net profit = 0). */
   breakEvenPrice: number;
+  /**
+   * On the yearly rate: good = at least FLIP_STRONG_MARGIN points above a
+   * deposit, ok = at least a deposit, poor = a deposit earns more.
+   */
   verdict: "good" | "ok" | "poor";
+  /** The yearly rates the verdict used (for saying what it measured). */
+  thresholds: { strongPct: number; depositPct: number };
 }
 
 export function analyzeFlip(input: FlipInputs): FlipResult {
@@ -68,6 +84,7 @@ export function analyzeFlip(input: FlipInputs): FlipResult {
   // A loss is not taxed.
   const tax = grossProfit > 0 ? grossProfit * (clampPct(input.taxPct) / 100) : 0;
   const netProfit = grossProfit - tax;
+  const depositPct = Math.max(0, input.depositRatePct ?? DEFAULT_DEPOSIT_RATE);
 
   const roiPct = totalInvested > 0 ? (netProfit / totalInvested) * 100 : 0;
   // Compound the period return up to a year: (1 + r)^(12/months) − 1.
@@ -92,16 +109,18 @@ export function analyzeFlip(input: FlipInputs): FlipResult {
     annualizedPct,
     profitPerMonth: netProfit / months,
     breakEvenPrice,
-    verdict: verdictFor(annualizedPct),
+    verdict: verdictFor(annualizedPct, depositPct),
+    thresholds: { strongPct: depositPct + FLIP_STRONG_MARGIN, depositPct },
   };
 }
 
 const clampPct = (v: number) => Math.min(100, Math.max(0, v || 0));
 
 /** Judged on the annualized rate — the only fair way to rank flips of
- *  different lengths against each other and against renting out. */
-function verdictFor(annualizedPct: number): FlipResult["verdict"] {
-  if (annualizedPct >= 20) return "good";
-  if (annualizedPct >= 8) return "ok";
+ *  different lengths against each other — and against a bank deposit, the
+ *  thing the same money could do with no work and no risk. */
+function verdictFor(annualizedPct: number, depositPct: number): FlipResult["verdict"] {
+  if (annualizedPct >= depositPct + FLIP_STRONG_MARGIN) return "good";
+  if (annualizedPct >= depositPct) return "ok";
   return "poor";
 }

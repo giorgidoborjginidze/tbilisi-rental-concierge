@@ -28,7 +28,8 @@ const LABEL_KEYS: StringKey[] = [
   "res_cash_invested", "res_monthly_payment", "res_total_loan_cost",
   "res_net_income", "res_cash_flow", "res_gross_yield", "res_net_yield",
   "res_payback", "res_cash_payback", "res_years", "res_never",
-  "res_deposit_income", "res_verdict_good", "res_verdict_ok",
+  "res_deposit_income", "res_deposit_own", "res_verdict_basis", "res_years_over",
+  "inv_upkeep", "res_verdict_good", "res_verdict_ok",
   "res_verdict_poor", "invest_disclaimer",
   "car_title", "car_intro", "car_model", "car_custom", "car_price",
   "car_daily", "car_days", "car_costs", "car_costs_hint",
@@ -41,6 +42,7 @@ const LABEL_KEYS: StringKey[] = [
   "taxi_depreciation_hint", "taxi_driver_share", "taxi_driver_share_hint",
   "taxi_res_cash", "taxi_res_net", "taxi_res_net_hint", "taxi_res_gross",
   "taxi_res_costs", "taxi_res_yield", "taxi_res_payback", "taxi_vs_rental",
+  "taxi_res_yield_hint", "taxi_verdict_good", "taxi_verdict_ok", "taxi_verdict_poor", "taxi_verdict_basis",
   "taxi_vs_taxi_better", "taxi_vs_rental_better", "taxi_vs_equal", "taxi_vs_hint",
   "taxi_c_platform", "taxi_c_fuel", "taxi_c_running", "taxi_c_driver",
   "flip_title", "flip_intro", "flip_price", "flip_renovation",
@@ -49,7 +51,8 @@ const LABEL_KEYS: StringKey[] = [
   "flip_res_invested", "flip_res_holding", "flip_res_net_proceeds",
   "flip_res_selling_fee", "flip_res_profit", "flip_res_tax", "flip_res_roi",
   "flip_res_annual", "flip_res_per_month", "flip_res_breakeven",
-  "flip_res_breakeven_hint",
+  "flip_res_breakeven_hint", "flip_verdict_good", "flip_verdict_ok", "flip_verdict_poor",
+  "flip_verdict_basis",
 ];
 
 const TABS = ["re", "car", "flip"] as const;

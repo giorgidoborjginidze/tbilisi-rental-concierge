@@ -136,11 +136,18 @@ export default function FlipCalculator({
         </div>
 
         <div>
-          <div className="alert-card" style={{ alignItems: "center" }}>
+          {/* The verdict says what it measured: the yearly rate, against a
+              bank deposit — not "about a deposit" for 15% a year. */}
+          <div className="alert-card" style={{ alignItems: "center", flexWrap: "wrap" }}>
             <div className="alert-card__title">{labels.inv_results}</div>
             <span className={VERDICT_BADGE[result.verdict]}>
-              {labels[`res_verdict_${result.verdict}`]}
+              {labels[`flip_verdict_${result.verdict}`].replace("{x}", pct(result.annualizedPct))}
             </span>
+            <div className="alert-card__detail" style={{ flexBasis: "100%" }}>
+              {labels.flip_verdict_basis
+                .replace("{strong}", pct(result.thresholds.strongPct))
+                .replace("{rate}", pct(result.thresholds.depositPct))}
+            </div>
           </div>
 
           <div
