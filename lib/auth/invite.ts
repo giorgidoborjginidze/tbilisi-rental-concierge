@@ -28,3 +28,10 @@ export function inviteProblem(invite: InviteRow | null, email: string, now: Date
   if (invite.email.trim().toLowerCase() !== email.trim().toLowerCase()) return "error_invite_email";
   return null;
 }
+
+/** Prisma filter for a company's invites that still hold a seat (unused, not expired). */
+export const openInviteWhere = (companyId: string, now: Date) => ({
+  companyId,
+  usedAt: null,
+  createdAt: { gt: new Date(now.getTime() - INVITE_DAYS * 86_400_000) },
+});

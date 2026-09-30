@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { activeHref } from "@/lib/nav/section";
 
 const ICONS: Record<string, React.ReactNode> = {
   home: (
@@ -49,8 +50,9 @@ export default function TabBarClient({
   navLabel: string;
 }) {
   const pathname = usePathname();
-  const active = (href: string) =>
-    href === "/" ? pathname === "/" : pathname.startsWith(href);
+  // A sub-page lights its parent: /pricing and /analytics → Rentals.
+  const current = activeHref(pathname, items.map((item) => item.href));
+  const active = (href: string) => href === current;
 
   return (
     <nav className="tabbar" aria-label={navLabel}>
@@ -74,6 +76,7 @@ export default function TabBarClient({
             key={item.href}
             href={item.href}
             aria-label={item.label}
+            aria-current={on ? "page" : undefined}
             title={item.label}
             className={
               item.center

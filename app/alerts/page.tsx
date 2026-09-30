@@ -6,9 +6,9 @@ import { t, type StringKey } from "@/lib/i18n/strings";
 import { runAlertScan, setAlertStatus } from "@/lib/alerts/actions";
 import { alertCategories } from "@/lib/alerts/category";
 import { templateFamily } from "@/lib/notify/templates";
-import { formatAmount, periodWordKey } from "@/lib/rentals/display";
+import { periodWordKey } from "@/lib/rentals/display";
 import { statusFor } from "@/lib/rentals/terms";
-import { formatDue } from "@/lib/rentals/money";
+import { formatDueMoney, formatMoney } from "@/lib/format";
 import { silenceSpan } from "@/lib/geo/silence";
 import { WITHDRAW_REASONS } from "@/lib/rentals/settle";
 import type { ScheduleStatus } from "@/lib/rentals/schedule";
@@ -17,23 +17,12 @@ import { lastRunFor } from "@/lib/automation/run";
 import { rankAlerts } from "@/lib/alerts/rank";
 import { firstParam, type QueryValue } from "@/lib/params";
 import { titled } from "@/lib/i18n/metadata";
+import { alertCardClass, alertSeverity, badgeClass } from "@/lib/ui/tone";
+import { AlertTypeIcon } from "../alert-icon";
 
 export const dynamic = "force-dynamic";
 
 export const generateMetadata = titled("alerts_title");
-
-const TYPE_STYLE: Record<string, string> = {
-  vacancy_gap: "alert-card--gap",
-  lease_expiry: "alert-card--lease",
-  underpriced: "alert-card--underpriced",
-  contract_expiry: "alert-card--contract",
-  contract_ended: "alert-card--contract",
-  overlap: "alert-card--overlap",
-  rent_overdue: "alert-card--overdue",
-  repossession_right: "alert-card--repossess",
-  geofence_breach: "alert-card--geofence",
-  tracker_silent: "alert-card--geofence",
-};
 
 interface OverlapStay {
   source?: string;
@@ -174,7 +163,7 @@ export default async function AlertsPage({
   );
   const currencyOf = new Map(contracts.map((contract) => [contract.id, contract.currency]));
   // Amounts owed are quoted rounded up to the tetri, as in the WhatsApp text.
-  const money = formatDue;
+  const owed = formatDueMoney;
   const owes = (status: ScheduleStatus | null | undefined) =>
     status != null && status.periodsOwed > 0 && status.amountDue > 0;
 
@@ -202,7 +191,7 @@ export default async function AlertsPage({
     switch (type) {
       case "vacancy_gap":
         return payload.openEnd
-          ? `${day(payload.start)} → · ${payload.nights}+ ${t(locale, "nights_short")} · ${t(locale, "gap_open_end")}`
+          ? `${day(payload.start)} – … · ${payload.nights}+ ${t(locale, "nights_short")} · ${t(locale, "gap_open_end")}`
           : `${span(payload.start, payload.end)} · ${payload.nights} ${t(locale, "nights_short")}`;
       case "overlap":
         return [
@@ -217,12 +206,12 @@ export default async function AlertsPage({
       case "lease_expiry":
         return `${payload.tenantName ?? "—"} · ${day(payload.endDate)} · ${payload.daysLeft} ${t(locale, "days_left")}`;
       case "underpriced":
-        return `${payload.baseNightlyRate} → ${payload.suggestedRate} ${currency} · ${t(locale, "alert_market_adr")} ${payload.benchmarkAdr} ${currency} (${monthLabel(payload.month)})`;
+        return `${formatMoney(payload.baseNightlyRate, currency)} → ${formatMoney(payload.suggestedRate, currency)} · ${t(locale, "alert_market_adr")} ${formatMoney(payload.benchmarkAdr, currency)} (${monthLabel(payload.month)})`;
       case "contract_expiry":
         return `${assetLabel(payload)} · ${payload.tenantName ?? "—"} · ${
           payload.paymentAmount != null && payload.paymentPeriod
-            ? `${formatAmount(payload.paymentAmount)} ${currency} / ${t(locale, periodWordKey(payload.paymentPeriod))}`
-            : `${payload.monthlyRent} ${currency}`
+            ? `${formatMoney(payload.paymentAmount, currency, 2)} / ${t(locale, periodWordKey(payload.paymentPeriod))}`
+            : formatMoney(payload.monthlyRent, currency, 2)
         } · ${day(payload.endDate)} · ${payload.daysLeft} ${t(locale, "days_left")}`;
       case "contract_ended": {
         const status = payload.contractId ? live.get(payload.contractId) : null;
@@ -232,7 +221,7 @@ export default async function AlertsPage({
           `${t(locale, "cstatus_ended")}: ${day(payload.endDate)}`,
           // Rent still owed when it ended stays in sight.
           owes(status)
-            ? `${t(locale, "alert_unpaid")}: ${money(status!.amountDue)} ${currencyOf.get(payload.contractId!) ?? currency}`
+            ? `${t(locale, "alert_unpaid")}: ${owed(status!.amountDue, currencyOf.get(payload.contractId!) ?? currency)}`
             : null,
         ]
           .filter(Boolean)
@@ -249,7 +238,7 @@ export default async function AlertsPage({
             payload.plate,
             payload.tenantName ?? "—",
             owes(status)
-              ? `${money(status.amountDue)} ${unit}`
+              ? owed(status.amountDue, unit)
               : t(locale, `pstate_${status.state}` as StringKey),
             `${t(locale, "pay_next_due")}: ${day(dayKey(status.nextDueDate))}`,
             `${t(locale, "pay_days_overdue")}: ${status.daysOverdue}/${status.graceDays}`,
@@ -261,7 +250,7 @@ export default async function AlertsPage({
           assetLabel(payload),
           payload.plate,
           payload.tenantName ?? "—",
-          payload.amountDue != null ? `${money(payload.amountDue)} ${unit}` : null,
+          payload.amountDue != null ? owed(payload.amountDue, unit) : null,
           `${t(locale, "pay_next_due")}: ${day(payload.dueDate)}`,
           `${t(locale, "pay_days_overdue")}: ${payload.daysOverdue}/${payload.graceDays}`,
           !done && payload.contractId && !live.has(payload.contractId)
@@ -342,10 +331,18 @@ export default async function AlertsPage({
       )}
 
       <div className="mb-5 flex flex-wrap gap-1.5">
-        <Link href="/alerts" className={`btn-chip ${done ? "" : "btn-chip--active"}`}>
+        <Link
+          href="/alerts"
+          className={`btn-chip ${done ? "" : "btn-chip--active"}`}
+          aria-current={done ? undefined : "page"}
+        >
           {t(locale, "alerts_active_tab")}
         </Link>
-        <Link href="/alerts?view=done" className={`btn-chip ${done ? "btn-chip--active" : ""}`}>
+        <Link
+          href="/alerts?view=done"
+          className={`btn-chip ${done ? "btn-chip--active" : ""}`}
+          aria-current={done ? "page" : undefined}
+        >
           {t(locale, "alerts_done_tab")}
         </Link>
       </div>
@@ -377,9 +374,10 @@ export default async function AlertsPage({
               ? "action_overlap_contract"
               : (`action_${alert.type}` as StringKey);
           return (
-            <div key={alert.id} className={`alert-card ${TYPE_STYLE[alert.type] ?? ""}`}>
+            <div key={alert.id} className={alertCardClass(done ? "muted" : alertSeverity(alert.type))}>
               <div>
                 <div className="alert-card__title">
+                  <AlertTypeIcon type={alert.type} />
                   {t(locale, titleKey)}
                   {alert.unit && (
                     <>
@@ -399,7 +397,7 @@ export default async function AlertsPage({
               </div>
               {done ? (
                 <div className="flex flex-col items-end gap-1">
-                  <span className="badge badge--rented">
+                  <span className={badgeClass("good")}>
                     {t(locale, "alert_done_at")}
                     {alert.resolvedAt
                       ? ` · ${tbilisiFormat(locale, { day: "numeric", month: "short" }).format(alert.resolvedAt)}`

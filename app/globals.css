@@ -6,8 +6,9 @@
 @theme {
   /* Brand — the glacial palette from the approved "Activo Ice" round.
      The logo mark is theme-coloured, so changing primary recolours it. */
-  --color-primary: #2679ad;
-  --color-primary-hover: #1f6493;
+  /* #226f9f: 4.96:1 on the page, white on it 5.47:1 (was #2679ad, 4.32). */
+  --color-primary: #226f9f;
+  --color-primary-hover: #1b5a82;
   --color-primary-contrast: #ffffff;
   --color-accent: #6a5bc7;
 
@@ -15,12 +16,14 @@
   --color-page: #eef5fa;
   --color-bg: #ffffff;
   --color-surface: #e9f2f8;
-  --color-border: #d8e6ef;
-  --color-border-strong: #b9d2e1;
+  --color-border: #d8e6ef; /* decorative dividers only */
+  /* Form fields and other control outlines: ≥3:1 against white (3.09). */
+  --color-border-strong: #7597ae;
 
   /* Text */
   --color-text: #16354a;
-  --color-text-muted: #5b7488;
+  /* 5.29:1 on the page, ≥4.8 on glass (was #5b7488, 4.31–4.44). */
+  --color-text-muted: #4f687c;
 
   /* Shape & type */
   --radius-sm: 8px;
@@ -72,8 +75,9 @@
   --status-danger-bg: #fde3e3;
   --status-danger-text: #a41d2c;
 
-  /* Calendar cell colors (booking sources) */
-  --cal-airbnb: #fb5d76;
+  /* Calendar cell colors (booking sources). Red is kept for a conflict
+     alone, so Airbnb is a coral orange, not its brand pink-red. */
+  --cal-airbnb: #f5894f;
   --cal-booking: #2fa8ec;
   --cal-direct: #23c185;
   --cal-lease: #9a7bf7;
@@ -94,7 +98,7 @@
   --color-bg: #101c2a;
   --color-surface: #16283a;
   --color-border: #1f3347;
-  --color-border-strong: #2d4a63;
+  --color-border-strong: #4d6f8a; /* fields: 3.24:1 on the dark surface */
   --color-text: #e8f1f8;
   --color-text-muted: #92a9bb;
   --brand-mint: #6ee0c4;
@@ -393,7 +397,7 @@ a:hover {
   text-decoration: none;
   border-radius: 999px;
   padding: 0 8px 0 3px;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1;
   font-weight: 700;
   letter-spacing: -0.01em;
@@ -480,11 +484,12 @@ a:hover {
   background: var(--color-bg);
   box-shadow: var(--shadow-card);
 }
+/* Labels in sentence case at 12 px: upper-case with wide tracking made
+   the Georgian labels the hardest text on the screen to read. */
 .kpi__label {
-  font-size: 10.5px;
+  font-size: 12.5px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.005em;
   color: var(--color-text-muted);
 }
 .kpi__value {
@@ -495,7 +500,7 @@ a:hover {
   font-variant-numeric: tabular-nums;
 }
 .kpi__sub {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--color-text-muted);
   margin-top: 6px;
 }
@@ -533,9 +538,7 @@ thead {
 th {
   padding: 12px 18px;
   font-weight: 600;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-size: 12px;
   color: var(--color-text-muted);
   border-bottom: 1px solid var(--color-border);
 }
@@ -629,26 +632,9 @@ td:first-child {
   background: var(--color-bg);
   box-shadow: var(--shadow-card);
 }
-.alert-card--gap {
-  border-color: color-mix(in srgb, var(--status-vacant-text) 25%, var(--color-bg));
-  background: color-mix(in srgb, var(--status-vacant-bg) 40%, var(--color-bg));
-}
-.alert-card--lease {
-  border-color: color-mix(in srgb, var(--status-str-text) 25%, var(--color-bg));
-  background: color-mix(in srgb, var(--status-str-bg) 40%, var(--color-bg));
-}
-.alert-card--contract {
-  border-color: color-mix(in srgb, var(--status-listed-text) 25%, var(--color-bg));
-  background: color-mix(in srgb, var(--status-listed-bg) 40%, var(--color-bg));
-}
-.alert-card--underpriced {
-  border-color: color-mix(in srgb, var(--status-rented-text) 25%, var(--color-bg));
-  background: color-mix(in srgb, var(--status-rented-bg) 40%, var(--color-bg));
-}
-.alert-card--overlap {
-  border-color: color-mix(in srgb, var(--status-danger-text) 25%, var(--color-bg));
-  background: color-mix(in srgb, var(--status-danger-bg) 40%, var(--color-bg));
-}
+/* Severity tints live in the "visual signals" block at the end of this
+   file (alert-card--danger/--warn/--info/--good/--muted), after the glass
+   skin that used to flatten them. */
 .alert-card__title {
   font-weight: 600;
   font-size: 14.5px;
@@ -710,7 +696,7 @@ td:first-child {
   width: 22px;
   flex-shrink: 0;
   text-align: center;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--color-text-muted);
 }
 .legend {
@@ -883,7 +869,7 @@ td:first-child {
   }
   .cal-name {
     width: 34px;
-    font-size: 10px;
+    font-size: 12px;
   }
   .cal-cell {
     width: 7px;
@@ -892,7 +878,7 @@ td:first-child {
   }
   .cal-daynum {
     width: 7px;
-    font-size: 8px;
+    font-size: 12px;
     overflow: visible;
   }
   .btn-primary,
@@ -950,10 +936,8 @@ td:first-child {
   .card--stack td[data-label]::before {
     content: attr(data-label);
     display: block;
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
     color: var(--color-text-muted);
     margin-bottom: 4px;
   }
@@ -1161,7 +1145,7 @@ td:first-child {
 }
 .cal-grid .cal-daynum {
   width: auto;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1;
   text-align: center;
   color: var(--color-text-muted);
@@ -1188,10 +1172,7 @@ td:first-child {
     padding: 12px 8px;
   }
   .cal-grid .cal-name {
-    font-size: 9px;
-  }
-  .cal-grid .cal-daynum {
-    font-size: 7px;
+    font-size: 12px;
   }
 }
 
@@ -1214,7 +1195,7 @@ td:first-child {
 }
 .cal-board .cal-daynum {
   width: auto;
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1;
   text-align: center;
   color: var(--color-text-muted);
@@ -1230,14 +1211,8 @@ td:first-child {
     gap: 3px 1.5px;
     padding: 12px 8px;
   }
-  .cal-board .cal-name {
-    font-size: 8px;
-  }
-  .cal-board .cal-daynum {
-    font-size: 6.5px;
-  }
   .cal-board .cal-cell {
-    height: 10px;
+    height: 16px;
   }
 }
 
@@ -2340,7 +2315,7 @@ details[open] .faq__plus {
   pointer-events: auto;
 }
 .tour__count {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.06em;
   color: var(--color-primary);
@@ -2624,19 +2599,10 @@ details[open] .faq__plus {
 }
 /* A pencil marks the ones this workspace has rewritten. */
 .tpl-grid__edited {
+  display: inline-flex;
   color: var(--color-primary);
-  font-size: 11px;
 }
 
-.alert-card--overdue {
-  border-color: color-mix(in srgb, var(--status-listed-text) 30%, var(--color-bg));
-  background: color-mix(in srgb, var(--status-listed-bg) 45%, var(--color-bg));
-}
-.alert-card--repossess,
-.alert-card--geofence {
-  border-color: color-mix(in srgb, var(--status-danger-text) 32%, var(--color-bg));
-  background: color-mix(in srgb, var(--status-danger-bg) 45%, var(--color-bg));
-}
 /* Currency and grace-day suffixes ride along with the KPI number instead
    of wrapping onto their own line on a narrow screen. */
 .kpi__unit {
@@ -2737,8 +2703,10 @@ h1, h2,
 details.faq,
 .bot-panel {
   background: var(--glass-fill);
+  /* Unprefixed only: the build adds -webkit- for Safari. Writing both
+     makes the CSS compiler keep just the last one — which, prefixed,
+     left Chrome and Android with no blur at all. */
   backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
   border-color: transparent;
   box-shadow: var(--glass-edge);
   border-radius: var(--radius-lg);
@@ -2757,9 +2725,10 @@ details.faq,
 
 /* ── The top nav becomes a glass shelf. ── */
 .nav {
-  background: color-mix(in srgb, var(--color-page) 40%, transparent);
+  /* Dense enough that a page heading scrolling under it never reads
+     through the logo, even where the blur is missing. */
+  background: color-mix(in srgb, var(--color-page) 82%, transparent);
   backdrop-filter: blur(18px) saturate(1.7);
-  -webkit-backdrop-filter: blur(18px) saturate(1.7);
   border-bottom: 1px solid color-mix(in srgb, var(--color-border) 55%, transparent);
 }
 
@@ -2774,7 +2743,6 @@ details.faq,
 .btn-secondary {
   background: var(--glass-fill);
   backdrop-filter: blur(10px) saturate(1.6);
-  -webkit-backdrop-filter: blur(10px) saturate(1.6);
   border-color: color-mix(in srgb, var(--color-border) 70%, transparent);
   box-shadow: inset 0 1.2px 1px rgba(255, 255, 255, 0.6);
 }
@@ -2859,10 +2827,9 @@ details.faq,
   border-radius: var(--radius-lg);
 }
 .wealth-hero__label {
-  font-size: 11.5px;
+  font-size: 13.5px;
   font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
   color: var(--color-text-muted);
 }
 .wealth-hero__figure {
@@ -2891,8 +2858,8 @@ details.faq,
   font-weight: 600;
   padding: 4px 12px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
-  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-bg));
+  color: color-mix(in srgb, var(--color-primary) 80%, var(--color-text));
   border: 1px solid color-mix(in srgb, var(--color-primary) 25%, transparent);
 }
 
@@ -3000,7 +2967,6 @@ details.faq,
   /* Denser than card glass: content scrolls right underneath it. */
   background: color-mix(in srgb, var(--color-bg) 74%, transparent);
   backdrop-filter: blur(24px) saturate(1.9);
-  -webkit-backdrop-filter: blur(24px) saturate(1.9);
   box-shadow: var(--glass-edge);
   z-index: 40;
 }
@@ -3077,7 +3043,7 @@ details.faq,
 }
 .decide-txt { min-width: 0; }
 .decide-txt b { display: block; font-size: 13.5px; }
-.decide-txt span { font-size: 11.5px; color: var(--color-text-muted); }
+.decide-txt span { font-size: 12px; color: var(--color-text-muted); }
 .decide-amount {
   margin-left: auto;
   font-weight: 800;
@@ -3086,7 +3052,7 @@ details.faq,
   white-space: nowrap;
 }
 .decide-hint {
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--color-text-muted);
   margin: 2px 0 12px;
 }
@@ -3299,7 +3265,7 @@ details.faq,
 }
 .adeck__name:hover { color: var(--color-primary); }
 .adeck__place {
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--color-text-muted);
   margin-top: -6px;
 }
@@ -3323,10 +3289,9 @@ details.faq,
   border-radius: var(--radius-md);
 }
 .adeck__k {
-  font-size: 10.5px;
+  font-size: 12.5px;
   font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: 0.005em;
   color: var(--color-text-muted);
 }
 .adeck__v {
@@ -3341,7 +3306,7 @@ details.faq,
   color: var(--color-text-muted);
 }
 .adeck__note {
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--color-text-muted);
   line-height: 1.45;
 }
@@ -3381,7 +3346,14 @@ details.faq,
   border-radius: 999px;
   background: var(--color-primary);
 }
-.adeck__hint { font-size: 11px; color: var(--color-text-muted); font-weight: 500; }
+.adeck__hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
 @media (max-width: 760px) {
   .adeck-outer { margin: 14px -18px 0; }
   .adeck { padding: 6px 18px 20px; }
@@ -3436,9 +3408,9 @@ details.faq,
   border-radius: 999px;
   background: linear-gradient(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0));
 }
-.bar__m { font-size: 10.5px; color: var(--color-text-muted); font-weight: 600; }
+.bar__m { font-size: 12px; color: var(--color-text-muted); font-weight: 600; }
 .bar__val {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--color-text-muted);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -3449,7 +3421,7 @@ details.faq,
 .tip-card__src {
   display: block;
   margin-top: 6px;
-  font-size: 10.5px;
+  font-size: 12px;
   color: var(--color-text-muted);
 }
 
@@ -3489,7 +3461,7 @@ main > section > h2:first-child {
 .daily-row__txt { min-width: 0; flex: 1 1 190px; }
 .daily-row__txt b { display: block; font-size: 13.5px; }
 .daily-row__txt > span {
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--color-text-muted);
   display: inline-flex;
   align-items: center;
@@ -3498,7 +3470,7 @@ main > section > h2:first-child {
 }
 .daily-tag {
   font-style: normal;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
   padding: 2px 8px;
   border-radius: 999px;
@@ -3516,10 +3488,8 @@ main > section > h2:first-child {
   flex-direction: column;
   gap: 3px;
   flex: 0 0 auto;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   color: var(--color-text-muted);
 }
 .daily-row__amount input {
@@ -3585,22 +3555,6 @@ main > section > h2:first-child {
 .alerts-run[data-state="never"] {
   color: var(--status-danger-text);
 }
-.alert-card.alert-card--overlap,
-.alert-card.alert-card--repossess,
-.alert-card.alert-card--geofence {
-  background:
-    linear-gradient(
-      color-mix(in srgb, var(--status-danger-bg) 55%, transparent),
-      color-mix(in srgb, var(--status-danger-bg) 55%, transparent)
-    ),
-    var(--glass-fill);
-  box-shadow: var(--glass-edge), inset 3px 0 0 var(--status-danger-text);
-}
-.alert-card.alert-card--overlap .alert-card__title,
-.alert-card.alert-card--repossess .alert-card__title,
-.alert-card.alert-card--geofence .alert-card__title {
-  color: var(--status-danger-text);
-}
 
 /* ── Calendar sync: how each iCal link last synced (/units, unit edit),
    the sync button's answer, and bookings without a price. ── */
@@ -3624,7 +3578,7 @@ main > section > h2:first-child {
   color: var(--status-danger-text);
 }
 .feed-status--compact {
-  font-size: 11.5px;
+  font-size: 12px;
   min-width: 180px;
   max-width: 280px;
 }
@@ -3689,7 +3643,7 @@ main > section > h2:first-child {
 }
 .demo-ribbon__tag {
   font-weight: 700;
-  font-size: 10.5px;
+  font-size: 12px;
   letter-spacing: 0.08em;
   padding: 1px 7px;
   border-radius: 999px;
@@ -3812,3 +3766,261 @@ main > section > h2:first-child {
   color: var(--color-text-muted);
   cursor: default;
 }
+
+/* ═══════════════ VISUAL SIGNALS — one meaning per colour ═══════════════
+   Placed last: these must win over the liquid-glass skin above.
+   The semantic map, used by badges, alert cards, fence zones, the outbox,
+   calculator verdicts and the calendar alike (lib/ui/tone.ts):
+     green  good · paid · safe · sent · active
+     amber  grace · approaching · below market · needs a look
+     red    repossess · outside the line · overlap · failed
+     grey   ended · paused · unknown
+     blue   information
+     violet the "listed" status only
+     tag    neutral (PRO, symbols, recipients, buy/sell)            */
+
+/* ── Badges ── */
+.badge--good { background: var(--status-rented-bg); color: var(--status-rented-text); }
+.badge--warn { background: var(--status-vacant-bg); color: var(--status-vacant-text); }
+.badge--muted { background: var(--status-personal-bg); color: var(--status-personal-text); }
+.badge--info { background: var(--status-str-bg); color: var(--status-str-text); }
+.badge--tag {
+  background: color-mix(in srgb, var(--color-surface) 70%, transparent);
+  color: var(--color-text);
+  border-color: color-mix(in srgb, var(--color-text) 16%, transparent);
+}
+.badge--tag::before { display: none; }
+.badge--sm { height: 20px; padding: 0 8px; font-size: 12px; }
+/* A badge that carries a line icon shows the icon instead of the dot. */
+.badge--icon::before { display: none; }
+.badge--icon { padding-left: 8px; gap: 5px; }
+.badge--icon svg { flex-shrink: 0; }
+
+/* ── Line icons inside text and chips ── */
+.icon-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.icon-text svg { flex-shrink: 0; }
+.btn-chip--icon-text { gap: 6px; }
+.btn-chip--icon-text svg { flex-shrink: 0; }
+.btn-chip.btn-chip--icon {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  justify-content: center;
+  color: var(--color-text-muted);
+}
+.btn-chip.btn-chip--icon:hover { color: var(--color-text); }
+.btn-chip.btn-chip--icon.btn-chip--danger:hover { color: var(--status-danger-text); }
+.btn-chip--wa,
+.btn-chip--wa:hover { color: #0f7a3c; } /* 5.3:1 on white (was #128c46, 4.32) */
+:root[data-theme="dark"] .btn-chip--wa,
+:root[data-theme="dark"] .btn-chip--wa:hover { color: #6fdc9c; }
+
+/* The theme button shows the theme it switches TO, from the first paint. */
+.theme-toggle { width: 30px; padding: 0; justify-content: center; }
+.theme-toggle__sun { display: none; }
+:root[data-theme="dark"] .theme-toggle__sun { display: block; }
+:root[data-theme="dark"] .theme-toggle__moon { display: none; }
+.nav__burger { display: inline-grid; place-items: center; padding: 5px 8px; }
+.account-btn__caret { display: inline-flex; color: var(--color-text-muted); }
+
+/* ── You are here: the current section in the top nav and menus. ── */
+.nav__links a[aria-current="page"] {
+  color: var(--color-text);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: var(--color-primary);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 7px;
+}
+.account-menu__item[aria-current="page"],
+.nav__drawer a[aria-current="page"] {
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-text);
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
+/* ── Alert cards: a tint, a 4 px stripe and an icon per severity, so the
+   meaning never rests on the fill alone. ── */
+.alert-card.alert-card--danger,
+.alert-card.alert-card--warn,
+.alert-card.alert-card--info,
+.alert-card.alert-card--good,
+.alert-card.alert-card--muted {
+  --sev: var(--color-text-muted);
+  --sev-bg: transparent;
+  background:
+    linear-gradient(color-mix(in srgb, var(--sev-bg) 55%, transparent), color-mix(in srgb, var(--sev-bg) 55%, transparent)),
+    var(--glass-fill);
+  box-shadow: var(--glass-edge), inset 4px 0 0 var(--sev);
+}
+.alert-card.alert-card--danger { --sev: var(--status-danger-text); --sev-bg: var(--status-danger-bg); }
+.alert-card.alert-card--warn { --sev: var(--status-vacant-text); --sev-bg: var(--status-vacant-bg); }
+.alert-card.alert-card--info { --sev: var(--status-str-text); --sev-bg: var(--status-str-bg); }
+.alert-card.alert-card--good { --sev: var(--status-rented-text); --sev-bg: var(--status-rented-bg); }
+.alert-card.alert-card--muted { --sev: var(--status-personal-text); --sev-bg: var(--status-personal-bg); }
+.alert-card.alert-card--danger .alert-card__title { color: var(--status-danger-text); }
+.alert-card__icon {
+  display: inline-grid;
+  place-items: center;
+  vertical-align: -3px;
+  margin-right: 7px;
+  color: var(--sev, var(--color-text-muted));
+}
+.alert-card__icon svg { display: block; }
+/* A notice without a title: icon and text side by side. */
+.alert-card__notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 13px;
+  color: var(--color-text);
+}
+.alert-card__notice .alert-card__icon { margin: 1px 0 0; }
+
+/* Market advice tiles: the same line icons, on the same severity tints. */
+.tip-card__ico { color: #16354a; }
+.tip-card__ico[data-sev="danger"] { background: var(--status-danger-bg) !important; color: var(--status-danger-text); }
+.tip-card__ico[data-sev="warn"] { background: var(--status-vacant-bg) !important; color: var(--status-vacant-text); }
+.tip-card__ico[data-sev="info"] { background: var(--status-str-bg) !important; color: var(--status-str-text); }
+.tip-card__ico[data-sev="good"] { background: var(--status-rented-bg) !important; color: var(--status-rented-text); }
+.tip-card__ico[data-sev="muted"] { background: var(--status-personal-bg) !important; color: var(--status-personal-text); }
+
+/* ── Glass where blur is missing: a denser fill, never text on text. ── */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .card,
+  .alert-card,
+  .learn-lesson,
+  details.faq,
+  .bot-panel {
+    background: var(--glass-fill-solid);
+  }
+  .nav { background: var(--color-page); }
+  .tabbar { background: var(--color-bg); }
+  .btn-chip,
+  .btn-secondary { background: var(--color-bg); }
+}
+
+/* ── Calendar: a double booking is hatched red, so it is found without
+   telling two colours apart; every other source keeps its own hue. ── */
+.cal-cell--overlap,
+.legend i.cal-swatch--overlap {
+  background:
+    repeating-linear-gradient(
+      135deg,
+      var(--cal-overlap) 0 2.5px,
+      color-mix(in srgb, var(--cal-overlap) 30%, #ffffff) 2.5px 5px
+    );
+  box-shadow: inset 0 0 0 1.5px var(--cal-overlap);
+}
+.legend__overlap { color: var(--status-danger-text); font-weight: 600; }
+.cal-board .cal-name,
+.cal-grid .cal-name { font-size: 12px; }
+/* Wide screens: room for the unit's name, not its first eight letters. */
+.cal-board { grid-template-columns: minmax(110px, 170px) repeat(var(--days, 31), minmax(0, 1fr)); }
+.cal-board .cal-daynum,
+.cal-grid .cal-daynum { font-size: 12px; }
+.cal-board .cal-name a:hover { color: var(--color-primary) !important; }
+@media (max-width: 760px) {
+  /* Phones: each unit's full name gets its own line above its row of
+     days — no more "ძველ… ძველ…" pairs — and the day numbers are marked
+     every five days at a readable size. */
+  .cal-board {
+    grid-template-columns: repeat(var(--days, 31), minmax(0, 1fr));
+    gap: 2px 1.5px;
+    padding: 12px 10px;
+  }
+  .cal-board .cal-name {
+    grid-column: 1 / -1;
+    font-size: 12.5px;
+    font-weight: 600;
+    margin-top: 8px;
+    white-space: normal;
+    overflow: visible;
+  }
+  .cal-board .cal-name--head { display: none; }
+  .cal-board .cal-cell { height: 16px; border-radius: 2px; }
+  .cal-grid {
+    grid-template-columns: 34px repeat(31, minmax(0, 1fr));
+  }
+  .cal-grid .cal-name { font-size: 12px; }
+  .cal-board .cal-daynum,
+  .cal-grid .cal-daynum {
+    font-size: 12px;
+    overflow: visible;
+    white-space: nowrap;
+  }
+  .cal-board .cal-daynum:not(.cal-daynum--tick),
+  .cal-grid .cal-daynum:not(.cal-daynum--tick) {
+    visibility: hidden;
+  }
+}
+
+/* ── Page intro under the title: breathing room before the first
+   section, and a steady heading → hint → content rhythm. ── */
+.page-lead {
+  margin: 0 0 28px;
+  color: var(--color-text-muted);
+  font-size: 13.5px;
+  max-width: 720px;
+}
+/* 6 px from the heading to its hint, 14 px from the hint to the content —
+   the heading gives up its own bottom margin instead of the hint pulling
+   itself up with a negative one. */
+h2:has(+ .section-hint) { margin-bottom: 6px; }
+.section-hint {
+  margin: 0 0 14px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+/* ── Typography: one step between a section heading and body text. ── */
+h2 { font-size: 18px; }
+.comp-ring__head h2,
+.bars-card__head h2 { font-size: 18px; }
+
+/* ── Landing tiles on the palette's own ice tints, navy line icons. ── */
+.feature-card__icon {
+  color: #16354a;
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.8), 0 6px 14px -8px rgba(38, 92, 130, 0.45);
+}
+
+/* ── Income bars: one ice tint; the current month in the primary blue. ── */
+.bar__slab {
+  background: linear-gradient(180deg, #cfe6f4, #8fbfdc);
+}
+.bar--current .bar__slab {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--color-primary) 55%, #ffffff),
+    var(--color-primary));
+}
+.bar--current .bar__m,
+.bar--current .bar__val { color: var(--color-text); }
+:root[data-theme="dark"] .bar__slab {
+  background: linear-gradient(180deg, #3b5a74, #27445c);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+:root[data-theme="dark"] .bar--current .bar__slab {
+  background: linear-gradient(180deg, #a9d5f4, var(--color-primary));
+}
+.decide-ico[data-sev="danger"] { background: var(--status-danger-bg); color: var(--status-danger-text); }
+.decide-ico[data-sev="warn"] { background: var(--status-vacant-bg); color: var(--status-vacant-text); }
+.btn-primary.btn-compact { padding: 6px 14px; font-size: 13px; line-height: 1.4; }
+.bot-head__close { display: inline-grid; place-items: center; }
+/* An intro paragraph straight before a section keeps its distance. */
+main > p + section { margin-top: 24px; }
+/* Price kinds on the daily question: a holiday is information, not a
+   danger; a weekend is a plain tag. */
+.daily-tag--holiday { background: var(--status-str-bg); color: var(--status-str-text); }
+.daily-tag--weekend {
+  background: color-mix(in srgb, var(--color-surface) 70%, transparent);
+  color: var(--color-text);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-text) 16%, transparent);
+}
+.bot-input input { border-color: var(--color-border-strong); }
+main > header + section { margin-top: 16px; }

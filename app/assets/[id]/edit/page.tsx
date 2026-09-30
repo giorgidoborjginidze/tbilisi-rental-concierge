@@ -23,6 +23,8 @@ import { rentLabel } from "@/lib/rentals/display";
 import { LIVE_STAY } from "@/lib/bookings/live";
 import { cityLabel, districtLabel } from "@/lib/places";
 import { titled } from "@/lib/i18n/metadata";
+import { formatMoney } from "@/lib/format";
+import { IconAlert, IconArrowLeft, IconArrowRight, IconClose } from "@/app/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -192,10 +194,10 @@ export default async function EditAssetPage({
         const rented = covering.length > 0;
         const priceText = rented
           ? covering[0].dayAmount != null
-            ? ` · ${covering[0].dayAmount} GEL`
+            ? ` · ${formatMoney(covering[0].dayAmount)}`
             : ""
           : hasDailyPricing
-            ? ` · ${dayPrice(dayStart, asset.dailyRate!, weekendPct, holidayPct)} GEL`
+            ? ` · ${formatMoney(dayPrice(dayStart, asset.dailyRate!, weekendPct, holidayPct))}`
             : "";
         const statusText = rented
           ? t(locale, "status_rented")
@@ -245,11 +247,15 @@ export default async function EditAssetPage({
           {/* Cars and other rented-out property get the service desk:
               payment schedule, GPS red lines, WhatsApp notifications. */}
           {!isIncome && (
-            <Link href={`/assets/${asset.id}/rental`} className="btn-chip btn-chip--active">
-              {t(locale, "rental_open_service")}
+            // A real button, not a "selected" chip: it is the way into the
+            // payment schedule, GPS red lines and messages.
+            <Link href={`/assets/${asset.id}/rental`} className="btn-primary btn-compact icon-text">
+              {t(locale, "rental_open_service")} <IconArrowRight size={15} />
             </Link>
           )}
-          <Link href="/assets" className="btn-chip">← {t(locale, "assets_title")}</Link>
+          <Link href="/assets" className="btn-chip btn-chip--icon-text">
+            <IconArrowLeft size={14} /> {t(locale, "assets_title")}
+          </Link>
         </div>
       </div>
 
@@ -258,10 +264,9 @@ export default async function EditAssetPage({
         <div className="flex flex-wrap items-center gap-1.5">
           {isIncome ? (
             <>
-              <span className="badge badge--rented">{t(locale, "income_recurring")}</span>
+              <span className="badge badge--tag">{t(locale, "income_recurring")}</span>
               <span style={{ fontWeight: 600 }}>
-                {Math.round(asset.monthlyIncome ?? 0).toLocaleString("en-US")} GEL /{" "}
-                {t(locale, "per_month_word")}
+                {formatMoney(asset.monthlyIncome ?? 0)} / {t(locale, "per_month_word")}
               </span>
             </>
           ) : (
@@ -314,13 +319,13 @@ export default async function EditAssetPage({
           <h2>{t(locale, "nav_calendar")}</h2>
           {hasDailyPricing && (
             <p style={{ color: "var(--color-text-muted)", fontSize: 13, margin: "0 0 10px" }}>
-              {t(locale, "price_base")}: <b>{Math.round(asset.dailyRate!)} GEL</b>
+              {t(locale, "price_base")}: <b>{formatMoney(asset.dailyRate!)}</b>
               {" · "}
               {t(locale, "price_weekend")} (+{Math.round(weekendPct)}%):{" "}
-              <b>{Math.round(asset.dailyRate! * (1 + weekendPct / 100))} GEL</b>
+              <b>{formatMoney(asset.dailyRate! * (1 + weekendPct / 100))}</b>
               {" · "}
               {t(locale, "price_holiday")} (+{Math.round(holidayPct)}%):{" "}
-              <b>{Math.round(asset.dailyRate! * (1 + holidayPct / 100))} GEL</b>
+              <b>{formatMoney(asset.dailyRate! * (1 + holidayPct / 100))}</b>
             </p>
           )}
           <div className="legend">
@@ -335,6 +340,11 @@ export default async function EditAssetPage({
             <span>
               <i style={{ background: "var(--cal-vacant)", border: "1px solid var(--color-border)" }} />
               {t(locale, "calendar_vacant")}
+            </span>
+            <span className="legend__overlap">
+              <i className="cal-swatch--overlap" />
+              <IconAlert size={14} />
+              {t(locale, "calendar_overlap")}
             </span>
           </div>
           <OccupancyCalendar
@@ -408,8 +418,13 @@ export default async function EditAssetPage({
                   <form action={deleteContract}>
                     <input type="hidden" name="contractId" value={contract.id} />
                     <input type="hidden" name="assetId" value={asset.id} />
-                    <button type="submit" className="btn-chip" aria-label={t(locale, "aria_delete_contract")}>
-                      ✕
+                    <button
+                      type="submit"
+                      className="btn-chip btn-chip--icon btn-chip--danger"
+                      aria-label={t(locale, "aria_delete_contract")}
+                      title={t(locale, "aria_delete_contract")}
+                    >
+                      <IconClose size={15} />
                     </button>
                   </form>
                 </li>

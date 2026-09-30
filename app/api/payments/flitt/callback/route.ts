@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { callbackOutcome, flittConfig, verifyFlittCallback } from "@/lib/billing/flitt";
-import { renewedUntil } from "@/lib/billing/plans";
+import { paidUntilAfterPayment } from "@/lib/billing/plans";
 
 // Server-to-server payment callback from Flitt. Flitt POSTs the final order
 // status here (form-urlencoded or JSON). We verify the signature, then — and
@@ -70,29 +70,51 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  // Success: claim the payment (two identical callbacks must not both add
-  // a month), then activate the plan. The paid month is added after the
-  // current paid-through date while it is still ahead — renewing early
-  // loses no days.
+  // Success: claim the payment and extend the plan in ONE transaction, so a
+  // claimed payment always adds its month. Two identical callbacks must not
+  // both add a month (the claim), and two approved orders of the same owner
+  // arriving together must not both read the same paid-through date: the
+  // operator row is written only if plan and paidUntil are still what was
+  // read; otherwise the whole transaction is rolled back and tried again.
   const now = new Date();
-  const claimed = await prisma.payment.updateMany({
-    where: { orderId: payment.orderId, status: { not: "approved" } },
-    data: { status: "approved", paidAt: now, providerRef: result.providerRef },
-  });
-  if (claimed.count === 0) return NextResponse.json({ ok: true });
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    const outcome = await prisma.$transaction(async (tx) => {
+      const claimed = await tx.payment.updateMany({
+        where: { orderId: payment.orderId, status: { not: "approved" } },
+        data: { status: "approved", paidAt: now, providerRef: result.providerRef },
+      });
+      if (claimed.count === 0) return "done" as const; // another callback got it
 
-  const operator = await prisma.operator.findUnique({
-    where: { id: payment.operatorId },
-    select: { paidUntil: true },
-  });
-  await prisma.operator.update({
-    where: { id: payment.operatorId },
-    data: {
-      plan: payment.plan,
-      planSetAt: now,
-      paidUntil: renewedUntil(operator?.paidUntil ?? null, now),
-    },
-  });
+      const operator = await tx.operator.findUnique({
+        where: { id: payment.operatorId },
+        select: { plan: true, paidUntil: true },
+      });
+      if (!operator) return "done" as const;
 
-  return NextResponse.json({ ok: true });
+      const written = await tx.operator.updateMany({
+        where: { id: payment.operatorId, plan: operator.plan, paidUntil: operator.paidUntil },
+        data: {
+          plan: payment.plan,
+          planSetAt: now,
+          paidUntil: paidUntilAfterPayment(operator, payment.plan, now),
+        },
+      });
+      // Changed in between: throw to roll the claim back, then retry.
+      if (written.count === 0) throw new ConcurrentRenewal();
+      return "done" as const;
+    }).catch((err: unknown) => {
+      if (err instanceof ConcurrentRenewal) return "retry" as const;
+      throw err;
+    });
+    if (outcome === "done") return NextResponse.json({ ok: true });
+  }
+
+  // Still contended: answer with an error so Flitt delivers the callback
+  // again (the payment is not claimed, so the retry does the work).
+  console.error(`[flitt] renewal for order ${payment.orderId} kept colliding; asking Flitt to retry`);
+  return NextResponse.json({ error: "busy, retry" }, { status: 503 });
 }
+
+const MAX_ATTEMPTS = 3;
+
+class ConcurrentRenewal extends Error {}

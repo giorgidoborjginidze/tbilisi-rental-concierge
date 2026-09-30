@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { saveSchedule, recordPayment } from "@/lib/rentals/actions";
 import type { FormState } from "@/lib/units/actions";
+import { currencySign } from "@/lib/format";
 import { todayKey } from "@/lib/time";
 
 export interface ScheduleDefaults {
@@ -64,7 +65,7 @@ export default function ScheduleForm({
         </label>
 
         <label className="field">
-          {labels.pay_amount} ({currency})
+          {labels.pay_amount} ({currencySign(currency)})
           <input
             name="paymentAmount"
             type="number"
@@ -140,7 +141,7 @@ export default function ScheduleForm({
         </h3>
 
         <label className="field">
-          {labels.pay_received} ({currency})
+          {labels.pay_received} ({currencySign(currency)})
           <input name="amount" type="number" min={0.01} step="0.01" required />
         </label>
 

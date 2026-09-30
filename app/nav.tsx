@@ -9,6 +9,7 @@ import ThemeToggle from "./theme-toggle";
 import ActivoLogo from "./activo-logo";
 import AccountMenu from "./account-menu";
 import NavMenu from "./nav-menu";
+import NavLinks from "./nav-links";
 import DemoRibbon from "./demo-ribbon";
 import { effectivePlan, planById, planStanding, trialDaysLeft, type AccountType } from "@/lib/billing/plans";
 
@@ -68,13 +69,10 @@ export default async function Nav() {
         <ActivoLogo height={24} />
       </Link>
       <div className="nav__spacer" aria-hidden />
-      <div className="nav__links nav__links--desktop nav__links--app">
-        {[...links, ...infoLinks].map((link) => (
-          <Link key={link.href} href={link.href}>
-            {link.label}
-          </Link>
-        ))}
-      </div>
+      <NavLinks
+        className="nav__links nav__links--desktop nav__links--app"
+        links={[...links, ...infoLinks]}
+      />
       <div className="nav__meta">
         <ThemeToggle label={t(locale, "aria_theme")} />
         <form action={toggleLocale}>

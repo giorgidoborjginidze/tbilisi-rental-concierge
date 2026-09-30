@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { saveNotifySetup } from "@/lib/rentals/actions";
 import type { FormState } from "@/lib/units/actions";
+import { IconEdit } from "@/app/icons";
 import { MAX_TEMPLATE_CHARS } from "@/lib/notify/limits";
 
 export interface TemplateField {
@@ -57,7 +58,11 @@ export default function TemplatesForm({
           <label key={field.key} className="field">
             <span className="tpl-grid__label">
               {field.label}
-              {!field.isDefault && <span className="tpl-grid__edited">✎</span>}
+              {!field.isDefault && (
+                <span className="tpl-grid__edited" title={labels.tpl_edited} aria-label={labels.tpl_edited}>
+                  <IconEdit size={14} />
+                </span>
+              )}
             </span>
             <textarea
               name={`tpl_${field.key}`}

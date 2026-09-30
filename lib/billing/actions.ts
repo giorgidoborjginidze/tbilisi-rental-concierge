@@ -8,6 +8,7 @@ import { requireWriter } from "@/lib/auth/session";
 import { siteUrl } from "@/lib/site";
 import { createFlittCheckout, flittConfig } from "./flitt";
 import { planById, type AccountType } from "./plans";
+import { openInviteWhere } from "@/lib/auth/invite";
 import type { FormState } from "@/lib/units/actions";
 
 const str = (formData: FormData, key: string) =>
@@ -44,6 +45,9 @@ export async function startCheckout(
       operatorId: operator.id,
       plan: plan.id,
       amountMinor,
+      // What Flitt will actually charge (the sandbox charges USD; a
+      // deployment may set FLITT_CURRENCY) — the history shows it.
+      currency: cfg.currency,
       status: "pending",
       orderId,
     },
@@ -87,10 +91,11 @@ export async function createInvite(
   if (!email || !email.includes("@")) return { error: "error_required" };
 
   // Seat check: owner + members + open invites must stay within the plan.
+  // An expired invite can no longer be used, so it holds no seat.
   const { getBillingContext } = await import("./context");
   const context = await getBillingContext(operator);
   const openInvites = await prisma.invite.count({
-    where: { companyId: operator.id, usedAt: null },
+    where: openInviteWhere(operator.id, new Date()),
   });
   if (context.memberCount + openInvites >= context.plan.maxMembers) {
     return { error: "error_limit_members" };

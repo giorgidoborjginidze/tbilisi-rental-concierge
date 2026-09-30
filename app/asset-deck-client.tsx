@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { CategoryIcon, IconArrowRight } from "./icons";
 
 export interface DeckSlide {
   /** "metric" shows a figure; "advice" is the tinted closing card. */
@@ -20,6 +21,7 @@ export interface DeckAsset {
   name: string;
   place: string;
   category: string;
+  /** The category whose line icon marks the card. */
   badge: string;
   slides: DeckSlide[];
 }
@@ -169,7 +171,7 @@ function Card({
     >
       <div className="adeck__art">
         <Art category={asset.category} />
-        <span className="adeck__badge">{asset.badge}</span>
+        <span className="adeck__badge"><CategoryIcon category={asset.badge} size={20} /></span>
       </div>
 
       <div className="adeck__body">
@@ -239,6 +241,7 @@ function Card({
           </span>
           <span className="adeck__hint">
             {step === last ? labels.restart : labels.tap}
+            {step !== last && <IconArrowRight size={13} />}
           </span>
         </div>
       </div>

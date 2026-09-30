@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { IconExternal, IconKey } from "../icons";
 import { generateDoorCode } from "@/lib/assets/actions";
 
 // Digital door key for an asset: shows the current code, generates a
@@ -42,7 +43,9 @@ export default function DoorKey({
       style={{ fontSize: 12 }}
       title={labels.key}
     >
-      <span style={{ color: "var(--color-text-muted)" }}>🔑</span>
+      <span style={{ color: "var(--color-text-muted)", display: "inline-flex" }} aria-label={labels.key}>
+        <IconKey size={16} />
+      </span>
       {code ? (
         <span
           className="font-mono"
@@ -68,9 +71,9 @@ export default function DoorKey({
           href={waHref}
           target="_blank"
           rel="noopener noreferrer"
-          className="btn-chip btn-chip--wa"
+          className="btn-chip btn-chip--wa btn-chip--icon-text"
         >
-          WhatsApp ↗
+          WhatsApp <IconExternal size={13} />
         </a>
       )}
     </div>

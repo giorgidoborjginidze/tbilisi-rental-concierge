@@ -68,7 +68,7 @@ export default async function EditBookingPage({
         </p>
         {cancelled && (
           <p style={{ margin: "8px 0 0" }}>
-            <span className="badge badge--danger">{t(locale, "booking_status_cancelled")}</span>
+            <span className="badge badge--muted">{t(locale, "booking_status_cancelled")}</span>
             {booking.cancelReason && (
               <span style={{ marginLeft: 6, fontSize: 13, color: "var(--color-text-muted)" }}>
                 {t(locale, `booking_cancel_reason_${booking.cancelReason}` as StringKey)}

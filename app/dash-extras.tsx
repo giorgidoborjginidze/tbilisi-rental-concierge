@@ -7,7 +7,10 @@ import {
   SETTLEMENT_WINDOW_DAYS,
   statusFor,
 } from "@/lib/rentals/terms";
-import { formatDue } from "@/lib/rentals/money";
+import { currencySign, formatDueMoney, formatMoney, formatNumber } from "@/lib/format";
+import { alertSeverity } from "@/lib/ui/tone";
+import { alertGlyph } from "./alert-icon";
+import { IconArrowRight } from "./icons";
 import { alertCategories } from "@/lib/alerts/category";
 import { rankAlerts } from "@/lib/alerts/rank";
 import {
@@ -17,7 +20,7 @@ import {
   contractPhase,
   recentlyEndedWhere,
 } from "@/lib/rentals/phase";
-import { formatAmount, periodWordKey } from "@/lib/rentals/display";
+import { periodWordKey } from "@/lib/rentals/display";
 import { templateFamily } from "@/lib/notify/templates";
 import { dayKey, monthKeyTbilisi, monthStartTbilisi, startOfTodayTbilisi, tbilisiFormat } from "@/lib/time";
 import { estimateMarketRent, getRentBenchmark } from "@/lib/market/rent";
@@ -31,8 +34,6 @@ import { districtLabel } from "@/lib/places";
 
 // The Ice dashboard pieces shared by every profile: the one hero number,
 // the composition ring, and the closing "market advice" feed.
-
-const money = (value: number) => Math.round(value).toLocaleString("en-US");
 
 export function WealthHero({
   label,
@@ -161,30 +162,8 @@ export function CompositionRing({
 // ── Market advice: the open alerts, spoken as advice. Nothing renders
 // below this section — it closes the dashboard. ──
 
-const TIP_TINTS: Record<string, string> = {
-  underpriced: "linear-gradient(140deg,#bdf0e0,#6ed3b8)",
-  vacancy_gap: "linear-gradient(140deg,#f9e5b8,#ecc06a)",
-  lease_expiry: "linear-gradient(140deg,#d3cbf8,#988ae6)",
-  contract_expiry: "linear-gradient(140deg,#d3cbf8,#988ae6)",
-  contract_ended: "linear-gradient(140deg,#d3cbf8,#988ae6)",
-  rent_overdue: "linear-gradient(140deg,#f5cdd9,#e08ba4)",
-  repossession_right: "linear-gradient(140deg,#f5cdd9,#e08ba4)",
-  geofence_breach: "linear-gradient(140deg,#f5cdd9,#e08ba4)",
-  tracker_silent: "linear-gradient(140deg,#dfe6ee,#9fb0c4)",
-  overlap: "linear-gradient(140deg,#f5cdd9,#e08ba4)",
-};
-const TIP_GLYPHS: Record<string, string> = {
-  underpriced: "↑",
-  vacancy_gap: "◔",
-  lease_expiry: "◷",
-  contract_expiry: "◷",
-  contract_ended: "◷",
-  rent_overdue: "!",
-  repossession_right: "!",
-  geofence_breach: "⚑",
-  tracker_silent: "◌",
-  overlap: "!",
-};
+// Each tile carries its alert type's line icon on its severity tint —
+// the same icon and colour as the card on /alerts (lib/ui/tone.ts).
 
 /** Where each kind of advice actually comes from — stated, not implied. */
 const TIP_SOURCE: Record<string, StringKey> = {
@@ -268,11 +247,8 @@ export async function MarketTips({
               : (payload.assetId && assetNames.get(payload.assetId)) || payload.assetName;
             return (
               <div key={alert.id} className="card tip-card">
-                <span
-                  className="tip-card__ico"
-                  style={{ background: TIP_TINTS[alert.type] ?? TIP_TINTS.lease_expiry }}
-                >
-                  {TIP_GLYPHS[alert.type] ?? "•"}
+                <span className="tip-card__ico" data-sev={alertSeverity(alert.type)}>
+                  {alertGlyph(alert.type, 19)}
                 </span>
                 <div style={{ minWidth: 0 }}>
                   <b className="t">
@@ -295,8 +271,8 @@ export async function MarketTips({
                           ? "action_overlap_contract"
                           : (`action_${alert.type}` as StringKey),
                     )}{" "}
-                    <Link href="/alerts" className="link">
-                      {t(locale, "tips_open")} →
+                    <Link href="/alerts" className="link icon-text" style={{ gap: 4 }}>
+                      {t(locale, "tips_open")} <IconArrowRight size={14} />
                     </Link>
                     <span className="tip-card__src">
                       {t(locale, "tips_source")}:{" "}
@@ -496,7 +472,7 @@ export async function AssetDeck({
     ),
   );
 
-  const fmtMoney = (value: number) => Math.round(value).toLocaleString("en-US");
+  const fmtMoney = (value: number) => formatNumber(value);
   const fmtDate = tbilisiFormat(locale, {
     day: "numeric", month: "short", year: "numeric",
   });
@@ -537,12 +513,12 @@ export async function AssetDeck({
       kind: "metric",
       label: t(locale, "deck_rent"),
       value: contract
-        ? formatAmount(Math.round(periodAmount(contract)))
+        ? formatNumber(periodAmount(contract), 2)
         : dayRate
           ? fmtMoney(dayRate)
           : "—",
       unit: contract
-        ? `₾ / ${t(locale, periodWordKey(contract.paymentPeriod))}`
+        ? `${currencySign(contract.currency)} / ${t(locale, periodWordKey(contract.paymentPeriod))}`
         : dayRate
           ? `₾ / ${t(locale, "per_day_word")}`
           : undefined,
@@ -564,7 +540,7 @@ export async function AssetDeck({
         unit: `/ ${schedule.graceDays}`,
         meter: (schedule.daysOverdue / Math.max(1, schedule.graceDays)) * 100,
         tone: schedule.state === "repossess" ? "bad" : undefined,
-        note: `${t(locale, "pay_amount_due")}: ${formatDue(schedule.amountDue)} ${owing.currency}${
+        note: `${t(locale, "pay_amount_due")}: ${formatDueMoney(schedule.amountDue, owing.currency)}${
           owing !== contract ? ` · ${t(locale, "cstatus_ended")}` : ""
         }`,
       });
@@ -588,7 +564,7 @@ export async function AssetDeck({
         label: t(locale, "deck_attention"),
         note: t(locale, "deck_adv_ended_owed").replace(
           "{amount}",
-          `${formatDue(schedule.amountDue)} ${owing.currency}`,
+          formatDueMoney(schedule.amountDue, owing.currency),
         ),
         tone: "warn",
       };
@@ -614,7 +590,8 @@ export async function AssetDeck({
         kind: "advice",
         label: t(locale, "deck_advice"),
         note: t(locale, "deck_adv_underpriced").replace("{pct}", String(pct)),
-        tone: "good",
+        // Below market is something to look at (amber), not a success.
+        tone: "warn",
       };
     } else if (status === "vacant" || status === "listed") {
       const days = Math.max(
@@ -654,7 +631,7 @@ export async function AssetDeck({
         .filter(Boolean)
         .join(" · "),
       category: asset.category,
-      badge: asset.category === "vehicle" ? "🚗" : asset.category === "real_estate" ? "🏠" : "📦",
+      badge: asset.category,
       slides,
     };
   });
@@ -666,8 +643,8 @@ export async function AssetDeck({
           <h2>{t(locale, "deck_title")}</h2>
           <p>{t(locale, "deck_sub")}</p>
         </div>
-        <Link href="/assets" className="btn-chip">
-          {t(locale, "deck_all")}
+        <Link href="/assets" className="btn-chip btn-chip--icon-text">
+          {t(locale, "deck_all")} <IconArrowRight size={14} />
         </Link>
       </div>
       <AssetDeckClient
@@ -682,14 +659,6 @@ export async function AssetDeck({
 // month from lib/analytics/income.ts — the same total as the hero and
 // /assets, each night of each place counted once. ──
 
-const BAR_TINTS: [string, string][] = [
-  ["#a8daf5", "#5ab0e0"],
-  ["#bdf0e0", "#6ed3b8"],
-  ["#d3cbf8", "#988ae6"],
-  ["#a8daf5", "#5ab0e0"],
-  ["#bdf0e0", "#6ed3b8"],
-  ["#f9e5b8", "#ecc06a"],
-];
 
 export async function IncomeBars({
   locale,
@@ -722,8 +691,13 @@ export async function IncomeBars({
         </p>
       ) : (
         <div className="bars">
+          {/* One neutral ice tint for every month (category colours belong to
+              categories, not months); the current month in the primary. */}
           {months.map((month, i) => (
-            <div className="bar" key={month.start.toISOString()}>
+            <div
+              className={i === months.length - 1 ? "bar bar--current" : "bar"}
+              key={month.start.toISOString()}
+            >
               <span
                 className="bar__val"
                 title={
@@ -739,8 +713,6 @@ export async function IncomeBars({
                 className="bar__slab"
                 style={{
                   height: `${Math.max(6, Math.round((month.total / max) * 116))}px`,
-                  background: `linear-gradient(rgba(255,255,255,.6), rgba(255,255,255,0) 32%),
-                    linear-gradient(160deg, ${BAR_TINTS[i][0]}cc 0%, ${BAR_TINTS[i][1]}d9 90%)`,
                   animationDelay: `${i * 0.08}s`,
                 }}
               />
@@ -825,7 +797,7 @@ export async function DailyCheck({
         </div>
         {earned > 0 && (
           <span className="daily-total">
-            {t(locale, "day_earned")}: <b>{money(earned)} {currency}</b>
+            {t(locale, "day_earned")}: <b>{formatMoney(earned, currency)}</b>
           </span>
         )}
       </div>
@@ -834,4 +806,3 @@ export async function DailyCheck({
   );
 }
 
-export { money };

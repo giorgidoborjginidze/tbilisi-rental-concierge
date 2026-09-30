@@ -16,6 +16,7 @@ import RevenuePartial, { monthKeyOf } from "../revenue-partial";
 import { LIVE_STAY } from "@/lib/bookings/live";
 import { cityLabel, districtLabel } from "@/lib/places";
 import { titled } from "@/lib/i18n/metadata";
+import { currencySign, formatMoney, formatNumber } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -24,8 +25,10 @@ export const generateMetadata = titled("analytics_title");
 const DAY_MS = 86_400_000;
 
 const pct = (rate: number) => `${Math.round(rate * 100)}%`;
+// Table cells carry the number alone (the column names the currency);
+// KPI tiles carry the sign: "192 ₾".
 const money = (value: number | null, currency: string) =>
-  value == null ? "—" : `${Math.round(value).toLocaleString("en-US")} ${currency}`;
+  currency ? formatMoney(value, currency) : value == null ? "—" : formatNumber(value);
 
 function Kpi({
   label,
@@ -221,7 +224,7 @@ export default async function AnalyticsPage() {
                 <th className="num" title={t(locale, "kpi_adr_hint")}>{t(locale, "kpi_adr_short")}</th>
                 <th className="num" title={t(locale, "kpi_revpar_hint")}>{t(locale, "kpi_revpar_short")}</th>
                 <th className="num">
-                  {t(locale, "kpi_booking_revenue")} ({currency})
+                  {t(locale, "kpi_booking_revenue")} ({currencySign(currency)})
                 </th>
               </tr>
             </thead>
@@ -268,7 +271,7 @@ export default async function AnalyticsPage() {
                 <th className="num" title={t(locale, "kpi_adr_hint")}>{t(locale, "kpi_adr_short")}</th>
                 <th className="num" title={t(locale, "kpi_revpar_hint")}>{t(locale, "kpi_revpar_short")}</th>
                 <th className="num">
-                  {t(locale, "kpi_booking_revenue")} ({currency})
+                  {t(locale, "kpi_booking_revenue")} ({currencySign(currency)})
                 </th>
               </tr>
             </thead>

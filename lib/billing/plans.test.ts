@@ -4,6 +4,7 @@ import {
   effectivePlan,
   fallbackPlan,
   GRACE_DAYS,
+  paidUntilAfterPayment,
   planStanding,
   renewedUntil,
   planById,
@@ -144,5 +145,42 @@ describe("renewal", () => {
   it("extends from now when the plan has lapsed or was never paid", () => {
     expect(renewedUntil(inDays(-2), now).toISOString()).toBe(addMonthsUtc(now, 1).toISOString());
     expect(renewedUntil(null, now).toISOString()).toBe(addMonthsUtc(now, 1).toISOString());
+  });
+});
+
+describe("paidUntilAfterPayment (plan changes)", () => {
+  const iso = (d: Date) => d.toISOString();
+
+  it("renews the same plan after the current paid-through date", () => {
+    const paidUntil = inDays(40);
+    expect(iso(paidUntilAfterPayment({ plan: "pro", paidUntil }, "pro", now))).toBe(iso(addMonthsUtc(paidUntil, 1)));
+  });
+
+  it("upgrade: converts the unused cheaper time at the two prices, then adds the month", () => {
+    // 330 days of Starter left (15 GEL) → 330 × 15 / 49 ≈ 101 days of Pro.
+    const result = paidUntilAfterPayment({ plan: "starter", paidUntil: inDays(330) }, "pro", now);
+    const credit = (330 * 86_400_000 * 15) / 49;
+    expect(iso(result)).toBe(iso(addMonthsUtc(new Date(now.getTime() + Math.floor(credit)), 1)));
+    // Far less than the 11 prepaid months carried over one to one.
+    expect(result < addMonthsUtc(inDays(330), 1)).toBe(true);
+    expect(result < inDays(140)).toBe(true);
+  });
+
+  it("downgrade: the unused dearer time buys more of the cheaper plan, never less", () => {
+    // 30 days of Pro (49) → 98 days of Starter (15), then the paid month.
+    const result = paidUntilAfterPayment({ plan: "pro", paidUntil: inDays(30) }, "starter", now);
+    const credit = Math.floor((30 * 86_400_000 * 49) / 15);
+    expect(iso(result)).toBe(iso(addMonthsUtc(new Date(now.getTime() + credit), 1)));
+    expect(result > addMonthsUtc(inDays(30), 1)).toBe(true);
+  });
+
+  it("counts from now when nothing is paid ahead (lapsed, grace, never paid)", () => {
+    expect(iso(paidUntilAfterPayment({ plan: "starter", paidUntil: inDays(-1) }, "pro", now))).toBe(iso(addMonthsUtc(now, 1)));
+    expect(iso(paidUntilAfterPayment({ plan: "pro", paidUntil: inDays(-1) }, "pro", now))).toBe(iso(addMonthsUtc(now, 1)));
+    expect(iso(paidUntilAfterPayment({ plan: null, paidUntil: null }, "standard", now))).toBe(iso(addMonthsUtc(now, 1)));
+  });
+
+  it("gives no credit for an unknown old plan", () => {
+    expect(iso(paidUntilAfterPayment({ plan: "legacy", paidUntil: inDays(90) }, "pro", now))).toBe(iso(addMonthsUtc(now, 1)));
   });
 });

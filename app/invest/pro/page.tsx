@@ -6,6 +6,8 @@ import { t, type StringKey } from "@/lib/i18n/strings";
 import ProCalculator from "./pro-calculator";
 import InvestSubnav from "../../invest-subnav";
 import { titled } from "@/lib/i18n/metadata";
+import { SeverityIcon } from "../../alert-icon";
+import { IconArrowRight } from "../../icons";
 
 export const dynamic = "force-dynamic";
 
@@ -34,9 +36,10 @@ export default async function ProAnalysisPage() {
       <main>
         <h1>{t(locale, "invest_title")}</h1>
         <InvestSubnav active="pro" />
-        <div className="alert-card alert-card--contract" style={{ display: "block", maxWidth: 640 }}>
-          <p className="alert-card__detail" style={{ marginTop: 0 }}>
-            {t(locale, "wor_register_first")}
+        <div className="alert-card alert-card--info" style={{ display: "block", maxWidth: 640 }}>
+          <p className="alert-card__notice">
+            <SeverityIcon severity="info" />
+            <span>{t(locale, "wor_register_first")}</span>
           </p>
           <div style={{ marginTop: 14, display: "flex", gap: 10 }}>
             <Link href="/register" className="btn-primary">
@@ -58,13 +61,14 @@ export default async function ProAnalysisPage() {
       <main>
         <h1>{t(locale, "invest_title")}</h1>
         <InvestSubnav active="pro" />
-        <div className="alert-card alert-card--contract" style={{ display: "block", maxWidth: 640 }}>
-          <p className="alert-card__detail" style={{ marginTop: 0 }}>
-            {t(locale, "wor_locked")}
+        <div className="alert-card alert-card--info" style={{ display: "block", maxWidth: 640 }}>
+          <p className="alert-card__notice">
+            <SeverityIcon severity="info" />
+            <span>{t(locale, "wor_locked")}</span>
           </p>
           <div style={{ marginTop: 14 }}>
-            <Link href="/billing" className="btn-primary">
-              {t(locale, "nav_billing")} →
+            <Link href="/billing" className="btn-primary icon-text">
+              {t(locale, "nav_billing")} <IconArrowRight size={16} />
             </Link>
           </div>
         </div>
@@ -82,7 +86,7 @@ export default async function ProAnalysisPage() {
       <InvestSubnav active="pro" />
       <div className="flex flex-wrap items-center gap-2">
         <h2 style={{ marginBottom: 0 }}>{t(locale, "wor_title")}</h2>
-        <span className="badge badge--listed">PRO</span>
+        <span className="badge badge--tag">PRO</span>
       </div>
       <p className="mb-5" style={{ color: "var(--color-text-muted)", fontSize: 13, maxWidth: 640, marginTop: 8 }}>
         {t(locale, "wor_intro")}

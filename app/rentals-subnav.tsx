@@ -24,6 +24,7 @@ export default async function RentalsSubnav({
           key={tab.key}
           href={tab.href}
           className={"btn-chip " + (tab.key === active ? "btn-chip--active" : "")}
+          aria-current={tab.key === active ? "page" : undefined}
         >
           {tab.label}
         </Link>

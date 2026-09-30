@@ -124,7 +124,12 @@ export default function OccupancyCalendar({
         {/* Header: day numbers 1–31, one per column. */}
         <span className="cal-name" />
         {Array.from({ length: 31 }, (_, i) => (
-          <span key={`h${i}`} className="cal-daynum">{i + 1}</span>
+          <span
+            key={`h${i}`}
+            className={i === 0 || (i + 1) % 5 === 0 ? "cal-daynum cal-daynum--tick" : "cal-daynum"}
+          >
+            {i + 1}
+          </span>
         ))}
 
         {/* One row per month; every month is padded to 31 columns so the

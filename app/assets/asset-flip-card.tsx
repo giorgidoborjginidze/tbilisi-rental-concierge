@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
+import { CategoryIcon, IconArrowRight } from "../icons";
 
 export interface FlipAsset {
   id: string;
@@ -11,7 +12,7 @@ export interface FlipAsset {
   typeLabel: string;
   statusLabel: string;
   statusClass: string;
-  /** Formatted "2400 GEL · Nino B." or null when vacant. */
+  /** Formatted "2,400 ₾ / თვე · Nino B." or null when vacant. */
   contract: string | null;
   contractUntil: string | null;
   marketRent: string | null;
@@ -120,7 +121,7 @@ export default function AssetFlipCard({
               <path d="M0 74h340v12H0z" fill="rgba(255,255,255,.3)" />
             </svg>
             <span className="aflip__art-badge">
-              {asset.category === "vehicle" ? "🚗" : asset.category === "real_estate" ? "🏠" : "📦"}
+              <CategoryIcon category={asset.category} size={19} />
             </span>
           </div>
           <div className="aflip__top">
@@ -138,7 +139,7 @@ export default function AssetFlipCard({
               {/* Late rent is the one thing worth interrupting a scan for. */}
               {asset.overdue && (
                 <span
-                  className={`badge ${asset.overdue.severe ? "badge--danger" : "badge--listed"}`}
+                  className={`badge ${asset.overdue.severe ? "badge--danger" : "badge--warn"}`}
                 >
                   {asset.overdue.label}
                 </span>
@@ -183,7 +184,7 @@ export default function AssetFlipCard({
                 {asset.belowMarket && (
                   <>
                     {" "}
-                    <span className="badge badge--vacant">{labels.below_market}</span>
+                    <span className="badge badge--warn">{labels.below_market}</span>
                   </>
                 )}
               </b>
@@ -201,8 +202,8 @@ export default function AssetFlipCard({
               <TurnIcon />
             </span>
             {asset.serviceHref && (
-              <Link href={asset.serviceHref} className="btn-chip">
-                {labels.rental_service}
+              <Link href={asset.serviceHref} className="btn-chip btn-chip--icon-text">
+                {labels.rental_service} <IconArrowRight size={14} />
               </Link>
             )}
             <Link href={`/assets/${asset.id}/edit`} className="btn-primary aflip__edit">

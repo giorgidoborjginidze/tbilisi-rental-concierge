@@ -22,6 +22,7 @@ import { monthKeyTbilisi, monthStartTbilisi, startOfTodayTbilisi, tbilisiFormat 
 import RevenuePartial, { monthKeyOf } from "../revenue-partial";
 import { districtLabel } from "@/lib/places";
 import { titled } from "@/lib/i18n/metadata";
+import { formatMoney } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -59,10 +60,9 @@ interface HoldingRow {
 
 // One holding sub-table (crypto / stock / metal) inside Digital Assets.
 function HoldingTable({
-  locale, money, heading, subUsd, subGel, holdingsLabel, qtyDigits, rows,
+  locale, heading, subUsd, subGel, holdingsLabel, qtyDigits, rows,
 }: {
   locale: Locale;
-  money: (v: number) => string;
   heading: string;
   subUsd: number;
   subGel: number;
@@ -71,15 +71,15 @@ function HoldingTable({
   rows: HoldingRow[];
 }) {
   if (rows.length === 0) return null;
-  const d = (n: number | null, dp = 2) =>
-    n == null ? "—" : `$${n.toLocaleString("en-US", { maximumFractionDigits: dp })}`;
+  // Prices are in dollars, written like every other amount: "1,250 $".
+  const d = (n: number | null, dp = 2) => formatMoney(n, "USD", dp);
   return (
     <div style={{ marginTop: 18 }}>
       <h3 style={{ marginBottom: 0 }}>
         {heading}
         {subUsd > 0 && (
           <span style={{ color: "var(--color-text-muted)", fontWeight: 400, fontSize: 13 }}>
-            {" "}· ${Math.round(subUsd).toLocaleString("en-US")} ≈ {money(subGel)}
+            {" "}· {formatMoney(subUsd, "USD")} ≈ {formatMoney(subGel)}
           </span>
         )}
       </h3>
@@ -262,7 +262,6 @@ export default async function AssetsPage() {
   );
 
   const fmtDate = tbilisiFormat(locale, { day: "numeric", month: "short", year: "numeric" });
-  const money = (v: number) => `${Math.round(v).toLocaleString("en-US")} GEL`;
   const displayName = (a: { name: string; nameKa: string | null }) =>
     locale === "ka" && a.nameKa ? a.nameKa : a.name;
 
@@ -310,11 +309,11 @@ export default async function AssetsPage() {
       </div>
 
       <section className="kpi-grid kpi-grid--3d kpi-grid--2">
-        <Kpi label={t(locale, "assets_total_value")} value={money(totalValue)} />
+        <Kpi label={t(locale, "assets_total_value")} value={formatMoney(totalValue)} />
         <Kpi
           label={t(locale, "income_all_month")}
-          value={money(income.total)}
-          sub={incomeParts(locale, income, money) || t(locale, "income_all_hint")}
+          value={formatMoney(income.total)}
+          sub={incomeParts(locale, income, (v) => formatMoney(v)) || t(locale, "income_all_hint")}
         />
       </section>
       <RevenuePartial
@@ -376,11 +375,11 @@ export default async function AssetsPage() {
                     ? `${rentLabel(locale, contract)} · ${contract.tenantName ?? "—"}`
                     : null,
                   contractUntil: contract ? fmtDate.format(contract.endDate) : null,
-                  marketRent: marketRent ? `~${marketRent} GEL` : null,
+                  marketRent: marketRent ? `~${formatMoney(marketRent)}` : null,
                   belowMarket: Boolean(
                     contract && marketRent && contract.monthlyRent < marketRent * 0.85,
                   ),
-                  value: asset.estimatedValue ? money(asset.estimatedValue) : null,
+                  value: asset.estimatedValue ? formatMoney(asset.estimatedValue) : null,
                   daily: asset.rentalMode === "daily",
                   // The running contract when late, else a finished one
                   // that still has rent owed.
@@ -435,7 +434,7 @@ export default async function AssetsPage() {
             {t(locale, "section_digital")}
             {digitalValueUsd > 0 && (
               <span style={{ color: "var(--color-text-muted)", fontWeight: 400, fontSize: 14 }}>
-                {" "}· ${Math.round(digitalValueUsd).toLocaleString("en-US")} ≈ {money(digitalValueGel)}
+                {" "}· {formatMoney(digitalValueUsd, "USD")} ≈ {formatMoney(digitalValueGel)}
               </span>
             )}
           </h2>
@@ -446,17 +445,17 @@ export default async function AssetsPage() {
         )}
 
         <HoldingTable
-          locale={locale} money={money} heading={t(locale, "section_crypto")}
+          locale={locale} heading={t(locale, "section_crypto")}
           subUsd={cryptoValueUsd} subGel={cryptoValueGel}
           holdingsLabel={t(locale, "holding_quantity")} qtyDigits={8} rows={cryptoRows}
         />
         <HoldingTable
-          locale={locale} money={money} heading={t(locale, "section_stock")}
+          locale={locale} heading={t(locale, "section_stock")}
           subUsd={stockValueUsd} subGel={stockValueGel}
           holdingsLabel={t(locale, "holding_quantity")} qtyDigits={4} rows={stockRows}
         />
         <HoldingTable
-          locale={locale} money={money} heading={t(locale, "section_metal")}
+          locale={locale} heading={t(locale, "section_metal")}
           subUsd={metalValueUsd} subGel={metalValueGel}
           holdingsLabel={t(locale, "holding_quantity")} qtyDigits={4} rows={metalRows}
         />
@@ -497,12 +496,12 @@ export default async function AssetsPage() {
                           </Link>
                         </td>
                         <td data-label={t(locale, "unit_type")}>
-                          <span className="badge badge--rented">
+                          <span className="badge badge--tag">
                             {t(locale, `type_${asset.type}` as StringKey)}
                           </span>
                         </td>
                         <td className="num" data-label={t(locale, "income_monthly")} style={{ fontWeight: 600 }}>
-                          {money(asset.monthlyIncome ?? 0)} / {t(locale, "per_month_word")}
+                          {formatMoney(asset.monthlyIncome ?? 0)} / {t(locale, "per_month_word")}
                         </td>
                         <td className="num">
                           <Link href={`/assets/${asset.id}/edit`} className="link">

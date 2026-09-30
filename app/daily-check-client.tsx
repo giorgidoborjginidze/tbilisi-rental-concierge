@@ -1,7 +1,9 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 import { saveDayEntry } from "@/lib/rentals/actions";
+import { IconCheck, IconClose } from "./icons";
+import { formatMoney } from "@/lib/format";
 import type { FormState } from "@/lib/units/actions";
 
 export interface DayAsset {
@@ -59,10 +61,13 @@ function Row({
     String(asset.answered?.rented ? asset.answered.amount : asset.suggested),
   );
 
-  // A saved answer hands control back to the record.
-  useEffect(() => {
+  // A saved answer hands control back to the record (adjusted while
+  // rendering, when a new action result arrives — no effect needed).
+  const [seenState, setSeenState] = useState(state);
+  if (state !== seenState) {
+    setSeenState(state);
     if (state?.ok) setOverride(null);
-  }, [state]);
+  }
 
   const kindLabel =
     asset.kind === "holiday"
@@ -75,7 +80,7 @@ function Row({
     return (
       <div className="daily-row daily-row--done">
         <span className="daily-row__ico" data-on={asset.answered.rented ? "1" : "0"}>
-          {asset.answered.rented ? "✓" : "—"}
+          {asset.answered.rented ? <IconCheck size={17} /> : <IconClose size={15} />}
         </span>
         <span className="daily-row__txt">
           <b>{asset.name}</b>
@@ -83,7 +88,7 @@ function Row({
         </span>
         <span className="daily-row__sum">
           {asset.answered.rented
-            ? `${Math.round(asset.answered.amount).toLocaleString("en-US")} ${asset.currency}`
+            ? formatMoney(asset.answered.amount, asset.currency)
             : labels.day_no}
         </span>
         <button type="button" className="btn-chip" onClick={() => setOverride(true)}>

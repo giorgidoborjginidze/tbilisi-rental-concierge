@@ -3,28 +3,25 @@
 import { useMemo, useState } from "react";
 import {
   analyzeWorthiness,
-  WORTHINESS_DEFAULTS,
+  WORTHINESS_DEFAULTS_GEL,
   type WorthinessInputs,
 } from "@/lib/invest/worthiness";
-
-const VERDICT_BADGE = {
-  good: "badge--rented",
-  ok: "badge--vacant",
-  poor: "badge--danger",
-} as const;
+import { currencySign, formatMoney } from "@/lib/format";
+import { VERDICT_BADGE } from "@/lib/ui/tone";
 
 export default function ProCalculator({
   labels,
 }: {
   labels: Record<string, string>;
 }) {
-  const [inputs, setInputs] = useState<WorthinessInputs>(WORTHINESS_DEFAULTS);
-  const [currency, setCurrency] = useState<"USD" | "GEL">("USD");
+  // Lari first, like the free calculator; dollars stay one click away.
+  const [inputs, setInputs] = useState<WorthinessInputs>(WORTHINESS_DEFAULTS_GEL);
+  const [currency, setCurrency] = useState<"USD" | "GEL">("GEL");
   const [showMore, setShowMore] = useState(false);
 
   const result = useMemo(() => analyzeWorthiness(inputs), [inputs]);
-  const sym = currency === "USD" ? "$" : "₾";
-  const fmt = (v: number) => `${Math.round(v).toLocaleString("en-US")} ${sym}`;
+  const sym = currencySign(currency);
+  const fmt = (v: number) => formatMoney(v, currency);
   const pct = (v: number) => `${v.toFixed(1)}%`;
   const years = (v: number | null) =>
     v == null ? labels.res_never : `${v.toFixed(1)} ${labels.res_years}`;
@@ -59,8 +56,8 @@ export default function ProCalculator({
               value={currency}
               onChange={(e) => setCurrency(e.target.value as "USD" | "GEL")}
             >
-              <option value="USD">USD ($)</option>
               <option value="GEL">GEL (₾)</option>
+              <option value="USD">USD ($)</option>
             </select>
           </label>
           {field("price", `${labels.wor_price} (${sym})`)}
@@ -104,7 +101,7 @@ export default function ProCalculator({
           <h3 className="alert-card__title" style={{ fontSize: 16 }}>
             {labels[`wor_verdict_${result.verdict}`]}
           </h3>
-          <span className={`badge ${VERDICT_BADGE[result.verdict]}`}>
+          <span className={VERDICT_BADGE[result.verdict]}>
             {pct(y1.capRatePct)} {labels.wor_cap_short}
           </span>
         </div>

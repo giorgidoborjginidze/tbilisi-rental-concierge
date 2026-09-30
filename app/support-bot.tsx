@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { t, type Locale, type StringKey } from "@/lib/i18n/strings";
+import { IconChat, IconClose } from "./icons";
 
 // FAQ the bot can answer on its own. Each entry maps to bot_q_<id> / bot_a_<id>
 // strings and carries keywords (both languages) for free-text matching.
@@ -34,13 +35,11 @@ export default function SupportBot({
 
   const tr = (key: StringKey) => t(locale, key);
 
-  // Seed the greeting the first time the panel opens.
-  useEffect(() => {
-    if (open && msgs.length === 0) {
-      setMsgs([{ role: "bot", text: tr("bot_greeting") }]);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  // Opening the panel the first time seeds the greeting.
+  const toggle = () => {
+    if (!open && msgs.length === 0) setMsgs([{ role: "bot", text: tr("bot_greeting") }]);
+    setOpen(!open);
+  };
 
   // Keep the newest message in view.
   useEffect(() => {
@@ -88,10 +87,10 @@ export default function SupportBot({
         className="bot-launcher"
         aria-label={tr("bot_launcher")}
         aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggle}
       >
         {open ? (
-          <span aria-hidden style={{ fontSize: 30, lineHeight: 1 }}>×</span>
+          <IconClose size={30} />
         ) : (
           <svg
             width="34"
@@ -126,7 +125,7 @@ export default function SupportBot({
               aria-label={tr("bot_close")}
               onClick={() => setOpen(false)}
             >
-              ×
+              <IconClose size={20} />
             </button>
           </div>
 
@@ -141,7 +140,7 @@ export default function SupportBot({
                     rel="noopener noreferrer"
                     className="bot-wa"
                   >
-                    💬 {tr("bot_operator_cta")}
+                    <IconChat size={16} /> {tr("bot_operator_cta")}
                   </a>
                 )}
               </div>

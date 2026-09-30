@@ -10,8 +10,10 @@ import {
   evaluateCar,
 } from "@/lib/invest/car";
 import { TAXI_DEFAULTS, evaluateTaxi } from "@/lib/invest/taxi";
+import { formatMoney } from "@/lib/format";
+import { TONE_BADGE } from "@/lib/ui/tone";
 
-const fmt = (v: number) => `${Math.round(v).toLocaleString("en-US")} GEL`;
+const fmt = (v: number) => formatMoney(v);
 
 const CUSTOM = "__custom__";
 
@@ -68,8 +70,8 @@ export default function CarCalculator({
       : diff > 0
         ? labels.taxi_vs_taxi_better
         : labels.taxi_vs_rental_better;
-  const vsBadge =
-    Math.abs(diff) < 50 ? "badge--listed" : diff > 0 ? "badge--rented" : "badge--vacant";
+  // Which earns more is advice, not a warning: blue either way, grey when even.
+  const vsBadge = Math.abs(diff) < 50 ? TONE_BADGE.muted : TONE_BADGE.info;
 
   const taxiNum =
     (setter: (v: number) => void, max = Infinity) =>
@@ -79,12 +81,13 @@ export default function CarCalculator({
   const netColor = (v: number) =>
     v >= 0 ? "var(--status-rented-text)" : "var(--status-danger-text)";
 
+  // Buying below the market is good, above it worth a second look.
   const comparisonBadge =
     comparison?.verdict === "below"
-      ? "badge--rented"
+      ? TONE_BADGE.good
       : comparison?.verdict === "above"
-        ? "badge--danger"
-        : "badge--listed";
+        ? TONE_BADGE.warn
+        : TONE_BADGE.muted;
   const comparisonLabel =
     comparison?.verdict === "below"
       ? labels.car_vs_market_below
@@ -114,6 +117,7 @@ export default function CarCalculator({
               key={m}
               type="button"
               className={"btn-chip " + (mode === m ? "btn-chip--active" : "")}
+              aria-pressed={mode === m}
               onClick={() => setMode(m)}
             >
               {m === "taxi" ? labels.car_mode_taxi : labels.car_mode_rental}

@@ -120,3 +120,14 @@ describe("edge cases", () => {
     expect(analyzeWorthiness(sheet).verdict).toBe("good");
   });
 });
+
+describe("lari defaults", () => {
+  it("are the dollar example at about 2.7 ₾/$ and still a sensible deal", async () => {
+    const { WORTHINESS_DEFAULTS_GEL } = await import("./worthiness");
+    expect(WORTHINESS_DEFAULTS_GEL.price / WORTHINESS_DEFAULTS.price).toBeCloseTo(2.7, 1);
+    expect(WORTHINESS_DEFAULTS_GEL.monthlyRent / WORTHINESS_DEFAULTS.monthlyRent).toBeCloseTo(2.7, 1);
+    const usd = analyzeWorthiness(WORTHINESS_DEFAULTS);
+    const gel = analyzeWorthiness(WORTHINESS_DEFAULTS_GEL);
+    expect(gel.verdict).toBe(usd.verdict);
+  });
+});

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { formatMoney } from "@/lib/format";
+import { IconArrowLeft } from "@/app/icons";
 import { prisma } from "@/lib/db";
 import { tbilisiFormat, todayKey } from "@/lib/time";
 import { t, type Locale, type StringKey } from "@/lib/i18n/strings";
@@ -34,9 +36,9 @@ export default async function StockView({
   );
 
   const usd = (n: number | null, d = 2) =>
-    n == null ? "—" : `$${n.toLocaleString("en-US", { maximumFractionDigits: d })}`;
+    formatMoney(n, "USD", d);
   const gel = (nUsd: number | null) =>
-    nUsd == null ? "—" : `${Math.round(nUsd * usdGel).toLocaleString("en-US")} GEL`;
+    nUsd == null ? "—" : formatMoney(nUsd * usdGel);
   const qty = v.quantity.toLocaleString("en-US", { maximumFractionDigits: 4 });
 
   const fmtDate = tbilisiFormat(locale, { day: "numeric", month: "short", year: "numeric" });
@@ -59,9 +61,11 @@ export default async function StockView({
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
         <h1 style={{ marginBottom: 0 }}>
           {asset.name}{" "}
-          <span className="badge badge--listed" style={{ verticalAlign: "middle" }}>{asset.symbol}</span>
+          <span className="badge badge--tag" style={{ verticalAlign: "middle" }}>{asset.symbol}</span>
         </h1>
-        <Link href="/assets" className="btn-chip">← {t(locale, "assets_title")}</Link>
+        <Link href="/assets" className="btn-chip btn-chip--icon-text">
+          <IconArrowLeft size={14} /> {t(locale, "assets_title")}
+        </Link>
       </div>
 
       <section className="kpi-grid" style={{ marginTop: 8 }}>

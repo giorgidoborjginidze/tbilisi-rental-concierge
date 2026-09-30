@@ -41,6 +41,7 @@ import {
 } from "@/lib/time";
 import { LIVE_STAY } from "@/lib/bookings/live";
 import { districtLabel } from "@/lib/places";
+import { formatMoney } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -53,8 +54,6 @@ export async function generateMetadata(): Promise<Metadata> {
 const DAY_MS = 86_400_000;
 
 const pct = (rate: number) => `${Math.round(rate * 100)}%`;
-const money = (value: number | null, currency = "GEL") =>
-  value == null ? "—" : `${Math.round(value).toLocaleString("en-US")} ${currency}`;
 
 function Kpi({
   label,
@@ -98,7 +97,7 @@ function Landing({ locale }: { locale: Locale }) {
     {
       t: "land_b1_t",
       b: "land_b1",
-      color: "#2679ad",
+      color: "linear-gradient(140deg, #a8daf5, #5ab0e0)",
       // Everything in one place — a dashboard of tiles.
       icon: (
         <svg {...iconProps} aria-hidden>
@@ -112,7 +111,7 @@ function Landing({ locale }: { locale: Locale }) {
     {
       t: "land_b2_t",
       b: "land_b2",
-      color: "#23c185",
+      color: "linear-gradient(140deg, #bdf0e0, #6ed3b8)",
       // Automatic sync — two looping arrows.
       icon: (
         <svg {...iconProps} aria-hidden>
@@ -126,7 +125,7 @@ function Landing({ locale }: { locale: Locale }) {
     {
       t: "land_b3_t",
       b: "land_b3",
-      color: "#f97316",
+      color: "linear-gradient(140deg, #f9e5b8, #ecc06a)",
       // Georgia first, then everywhere — a globe.
       icon: (
         <svg {...iconProps} aria-hidden>
@@ -139,7 +138,7 @@ function Landing({ locale }: { locale: Locale }) {
     {
       t: "land_b4_t",
       b: "land_b4",
-      color: "#3b82f6",
+      color: "linear-gradient(140deg, #d3cbf8, #988ae6)",
       // Invest with numbers — a rising trend line.
       icon: (
         <svg {...iconProps} aria-hidden>
@@ -170,7 +169,7 @@ function Landing({ locale }: { locale: Locale }) {
           {t(locale, "land_pricing")}
         </p>
         <div
-          className="alert-card alert-card--lease"
+          className="alert-card alert-card--info"
           style={{ marginTop: 16, alignItems: "center", maxWidth: 560 }}
         >
           <div className="alert-card__detail" style={{ marginTop: 0 }}>
@@ -498,7 +497,7 @@ async function HotelDashboard({
                 <td className="num" data-label={t(locale, "booking_price")}>
                   {booking.amount != null ? (
                     <Link href={`/bookings/${booking.id}/edit`} className="link">
-                      {money(booking.amount, booking.currency)}
+                      {formatMoney(booking.amount, booking.currency)}
                     </Link>
                   ) : (
                     // Imported stays arrive without a price.
@@ -519,7 +518,7 @@ async function HotelDashboard({
       <DashboardHeader
         locale={locale}
         operator={operator}
-        sub={`🏨 ${t(locale, "profile_hotel")} · ${units.length} ${t(locale, "nav_units").toLowerCase()}`}
+        sub={`${t(locale, "profile_hotel")} · ${units.length} ${t(locale, "nav_units").toLowerCase()}`}
       />
 
       {units.length === 0 && (
@@ -541,11 +540,11 @@ async function HotelDashboard({
             label={t(locale, "income_all_month")}
             total={income.total}
             chips={[
-              `${t(locale, "kpi_booking_revenue")}: ${money(portfolio.revenue, currency)}${
+              `${t(locale, "kpi_booking_revenue")}: ${formatMoney(portfolio.revenue, currency)}${
                 portfolio.unpricedNights > 0 ? ` (${t(locale, "revenue_partial_short")})` : ""
               }`,
               `${t(locale, "kpi_occupancy")}: ${pct(portfolio.occupancyRate)}`,
-              `${t(locale, "kpi_adr_short")}: ${money(portfolio.adr, currency)}`,
+              `${t(locale, "kpi_adr_short")}: ${formatMoney(portfolio.adr, currency)}`,
             ]}
           />
           <PortfolioRing locale={locale} operatorId={operator.id} />
@@ -557,16 +556,16 @@ async function HotelDashboard({
             <h2>{t(locale, "this_month")}</h2>
             <div className="kpi-grid kpi-grid--3d kpi-grid--5">
               <Kpi label={t(locale, "kpi_occupancy")} value={pct(portfolio.occupancyRate)} />
-              <Kpi label={t(locale, "kpi_adr")} hint={t(locale, "kpi_adr_hint")} value={money(portfolio.adr, currency)} />
+              <Kpi label={t(locale, "kpi_adr")} hint={t(locale, "kpi_adr_hint")} value={formatMoney(portfolio.adr, currency)} />
               <Kpi
                 label={t(locale, "kpi_revpar")}
                 hint={t(locale, "kpi_revpar_hint")}
-                value={money(portfolio.revpar, currency)}
+                value={formatMoney(portfolio.revpar, currency)}
                 partial={portfolio.unpricedNights > 0 ? t(locale, "revenue_partial_short") : undefined}
               />
               <Kpi
                 label={t(locale, "kpi_booking_revenue")}
-                value={money(portfolio.revenue, currency)}
+                value={formatMoney(portfolio.revenue, currency)}
                 partial={portfolio.unpricedNights > 0 ? t(locale, "revenue_partial_short") : undefined}
               />
               <Kpi
@@ -678,7 +677,7 @@ async function BrokerageDashboard({
       <DashboardHeader
         locale={locale}
         operator={operator}
-        sub={`🏢 ${t(locale, "profile_brokerage")}`}
+        sub={t(locale, "profile_brokerage")}
       />
 
       <PortfolioRing locale={locale} operatorId={operator.id} />
@@ -691,8 +690,8 @@ async function BrokerageDashboard({
         <Kpi label={t(locale, "dash_managed")} value={String(assets.length)} />
         <Kpi
           label={t(locale, "income_all_month")}
-          value={money(income.total)}
-          sub={incomeParts(locale, income, (v) => money(v))}
+          value={formatMoney(income.total)}
+          sub={incomeParts(locale, income, (v) => formatMoney(v))}
         />
         <Kpi label={t(locale, "dash_open_alerts")} value={String(alertCount)} />
       </section>
@@ -878,7 +877,7 @@ async function CarRentalDashboard({
       <DashboardHeader
         locale={locale}
         operator={operator}
-        sub={`🚗 ${t(locale, "profile_car")}`}
+        sub={t(locale, "profile_car")}
       />
 
       <PortfolioRing locale={locale} operatorId={operator.id} />
@@ -895,8 +894,8 @@ async function CarRentalDashboard({
         />
         <Kpi
           label={t(locale, "income_all_month")}
-          value={money(income.total)}
-          sub={incomeParts(locale, income, (v) => money(v))}
+          value={formatMoney(income.total)}
+          sub={incomeParts(locale, income, (v) => formatMoney(v))}
         />
         <Kpi label={t(locale, "dash_open_alerts")} value={String(alertCount)} />
       </section>
@@ -981,14 +980,14 @@ async function PersonalDashboard({
       <DashboardHeader
         locale={locale}
         operator={operator}
-        sub={`👤 ${t(locale, "account_personal")}`}
+        sub={t(locale, "account_personal")}
       />
 
       <WealthHero
         label={t(locale, "dash_wealth")}
         total={totalValue}
         chips={[
-          `${t(locale, "income_all_month")}: ${money(income.total)}${
+          `${t(locale, "income_all_month")}: ${formatMoney(income.total)}${
             income.unpricedNights > 0 ? ` (${t(locale, "revenue_partial_short")})` : ""
           }`,
           `${t(locale, "nav_assets")}: ${propertyCount}`,
@@ -1007,10 +1006,10 @@ async function PersonalDashboard({
       <section className="kpi-grid kpi-grid--3d kpi-grid--3">
         <Kpi
           label={t(locale, "income_all_month")}
-          value={money(income.total)}
-          sub={incomeParts(locale, income, (v) => money(v))}
+          value={formatMoney(income.total)}
+          sub={incomeParts(locale, income, (v) => formatMoney(v))}
         />
-        <Kpi label={t(locale, "assets_total_value")} value={money(totalValue)} />
+        <Kpi label={t(locale, "assets_total_value")} value={formatMoney(totalValue)} />
         <Kpi
           label={t(locale, "nav_assets")}
           value={String(propertyCount)}

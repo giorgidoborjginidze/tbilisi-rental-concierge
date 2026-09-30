@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { createInvite, removeMember, revokeInvite } from "@/lib/billing/actions";
 import type { FormState } from "@/lib/units/actions";
+import { IconCheck, IconClose, IconCopy } from "../icons";
 
 export interface MemberRow {
   id: string;
@@ -16,6 +17,8 @@ export interface InviteRow {
   id: string;
   email: string;
   token: string;
+  /** Past its 7 days: the link no longer works and holds no seat. */
+  expired?: boolean;
 }
 
 export default function TeamSection({
@@ -81,15 +84,32 @@ export default function TeamSection({
               <tbody>
                 {invites.map((invite) => (
                   <tr key={invite.id}>
-                    <td style={{ fontWeight: 400 }}>{invite.email}</td>
+                    <td style={{ fontWeight: 400 }}>
+                      {invite.email}
+                      {invite.expired && (
+                        <div className="cell-sub">
+                          <span className="badge badge--muted">{labels.team_invite_expired}</span>
+                        </div>
+                      )}
+                    </td>
                     <td className="num">
                       <div className="flex flex-wrap items-center justify-end gap-1.5">
-                        <button type="button" className="btn-chip" onClick={() => copy(invite)}>
-                          {copied === invite.id ? "✓" : labels.copy_link}
-                        </button>
+                        {!invite.expired && (
+                          <button type="button" className="btn-chip btn-chip--icon-text" onClick={() => copy(invite)}>
+                            {copied === invite.id ? <IconCheck size={15} /> : <IconCopy size={15} />}
+                            {copied === invite.id ? labels.copied : labels.copy_link}
+                          </button>
+                        )}
                         <form action={revokeInvite}>
                           <input type="hidden" name="inviteId" value={invite.id} />
-                          <button type="submit" className="btn-chip">✕</button>
+                          <button
+                            type="submit"
+                            className="btn-chip btn-chip--icon"
+                            aria-label={labels.aria_revoke_invite}
+                            title={labels.aria_revoke_invite}
+                          >
+                            <IconClose size={15} />
+                          </button>
                         </form>
                       </div>
                     </td>

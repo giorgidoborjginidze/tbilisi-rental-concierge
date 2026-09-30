@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { receiveRent, undoPayment } from "@/lib/rentals/actions";
-import { formatDue } from "@/lib/rentals/money";
-import { IconArrowRight, IconCheck } from "./icons";
+import { currencySign, formatDueMoney } from "@/lib/format";
+import { IconArrowRight, IconCheck, IconClose } from "./icons";
 
 export interface DecideItem {
   contractId: string;
@@ -48,7 +48,7 @@ type Toast =
 const FIRST = 4;
 
 // Rounded up to the tetri: recording the amount shown settles it exactly.
-const fmt = formatDue;
+const fmt = formatDueMoney;
 
 // The demo's "confirm with a flick", wired to real money: swipe right
 // records the outstanding rent as received (a real RentPayment row),
@@ -148,7 +148,7 @@ export default function DecideCards({
                     <span>
                       {labels.confirm
                         .replace("{n}", String(item.periodsOwed))
-                        .replace("{amount}", `${fmt(item.amount)} ${item.currency}`)}
+                        .replace("{amount}", fmt(item.amount, item.currency))}
                     </span>
                   </span>
                   <span className="decide-confirm__actions">
@@ -201,7 +201,7 @@ export default function DecideCards({
             <span>
               {toast.kind === "recorded"
                 ? labels.recorded
-                    .replace("{amount}", `${fmt(toast.item.amount)} ${toast.item.currency}`)
+                    .replace("{amount}", fmt(toast.item.amount, toast.item.currency))
                     .replace("{name}", toast.item.name)
                 : toast.kind === "undone"
                   ? labels.undone
@@ -225,7 +225,7 @@ export default function DecideCards({
                 title={labels.close}
                 onClick={() => setToast(null)}
               >
-                ×
+                <IconClose size={16} />
               </button>
             )}
           </div>
@@ -350,22 +350,16 @@ function Card({
           reset();
         }}
       >
-        <span
-          className="decide-ico"
-          style={{
-            background: item.severe
-              ? "linear-gradient(140deg,#f5cdd9,#e08ba4)"
-              : "linear-gradient(140deg,#bdf0e0,#6ed3b8)",
-          }}
-        >
-          ₾
+        {/* Rent due or in its grace days is amber; past the grace period red. */}
+        <span className="decide-ico" data-sev={item.severe ? "danger" : "warn"} aria-hidden>
+          {currencySign(item.currency)}
         </span>
         <span className="decide-txt">
           <b>{item.title}</b>
           <span>{item.sub}</span>
         </span>
         <span className="decide-amount">
-          {fmt(item.amount)} {item.currency}
+          {fmt(item.amount, item.currency)}
         </span>
         <span className="decide-acts">
           <button

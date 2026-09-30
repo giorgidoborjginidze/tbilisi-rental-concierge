@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { logout } from "@/lib/auth/actions";
+import { activeHref } from "@/lib/nav/section";
+import { IconChevronDown } from "./icons";
 
 // Unified account menu: avatar + Latin "username · plan". The dropdown
 // carries the app navigation (shown on mobile, where the inline nav is
@@ -21,18 +23,18 @@ export default function AccountMenu({
   links: { href: string; label: string }[];
   labels: { settings: string; billing: string; logout: string };
 }) {
-  const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
-
-  useEffect(() => setOpen(false), [pathname]);
+  // Open for the page it was opened on: following a link closes it.
+  const [openOn, setOpenOn] = useState<string | null>(null);
+  const open = openOn === pathname;
 
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpenOn(null);
     };
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpenOn(null);
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
     return () => {
@@ -41,7 +43,8 @@ export default function AccountMenu({
     };
   }, [open]);
 
-  const close = () => setOpen(false);
+  const close = () => setOpenOn(null);
+  const current = activeHref(pathname, links.map((link) => link.href));
 
   return (
     <div ref={ref} style={{ position: "relative" }}>
@@ -49,7 +52,7 @@ export default function AccountMenu({
         type="button"
         className="account-btn"
         data-tour="account"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => setOpenOn(open ? null : pathname)}
         aria-haspopup="menu"
         aria-expanded={open}
       >
@@ -57,7 +60,7 @@ export default function AccountMenu({
         <span className="account-label hidden sm:inline">
           {name} · {plan}
         </span>
-        <span aria-hidden style={{ fontSize: 10, opacity: 0.7 }}>▾</span>
+        <span className="account-btn__caret"><IconChevronDown size={14} /></span>
       </button>
 
       {open && (
@@ -65,17 +68,33 @@ export default function AccountMenu({
           {/* Navigation — visible on mobile (inline nav is hidden there). */}
           <div className="account-menu__nav">
             {links.map((link) => (
-              <Link key={link.href} href={link.href} className="account-menu__item" onClick={close}>
+              <Link
+                key={link.href}
+                href={link.href}
+                className="account-menu__item"
+                aria-current={link.href === current ? "page" : undefined}
+                onClick={close}
+              >
                 {link.label}
               </Link>
             ))}
             <div className="account-menu__divider" />
           </div>
 
-          <Link href="/settings" className="account-menu__item" onClick={close}>
+          <Link
+            href="/settings"
+            className="account-menu__item"
+            aria-current={pathname.startsWith("/settings") ? "page" : undefined}
+            onClick={close}
+          >
             {labels.settings}
           </Link>
-          <Link href="/billing" className="account-menu__item" onClick={close}>
+          <Link
+            href="/billing"
+            className="account-menu__item"
+            aria-current={pathname.startsWith("/billing") ? "page" : undefined}
+            onClick={close}
+          >
             {labels.billing}
           </Link>
           <form action={logout}>

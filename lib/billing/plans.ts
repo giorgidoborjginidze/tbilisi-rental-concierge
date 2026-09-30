@@ -135,5 +135,41 @@ export function renewedUntil(paidUntil: Date | null, now: Date, months = 1): Dat
   return addMonthsUtc(from, months);
 }
 
+/**
+ * The paid-through date after paying one month of `newPlanId`, given the
+ * plan and date the account holds now.
+ *
+ * - Same plan (a renewal): the month is added after the current date while
+ *   it is still ahead — renewing early loses no days.
+ * - Another plan while the old one is still paid: the unused time is worth
+ *   money, so it is converted at the two prices first (remaining time ×
+ *   old price ÷ new price, counted from now), then the month is added. Ten
+ *   prepaid Starter months (150 GEL) buy about three Pro months, not ten;
+ *   a Pro owner who moves to Starter gets more Starter time for what is
+ *   left, never less.
+ * - Nothing paid ahead (lapsed, grace days, never paid, unknown plan):
+ *   counted from now.
+ */
+export function paidUntilAfterPayment(
+  current: { plan: string | null; paidUntil: Date | null },
+  newPlanId: string,
+  now: Date,
+  months = 1,
+): Date {
+  const { paidUntil } = current;
+  // Same plan, or nothing paid ahead: a plain renewal.
+  if (!paidUntil || paidUntil <= now || current.plan === newPlanId) {
+    return renewedUntil(paidUntil, now, months);
+  }
+
+  const oldPlan = planById(current.plan);
+  const newPlan = planById(newPlanId);
+  if (!oldPlan || !newPlan || newPlan.priceGel <= 0) return addMonthsUtc(now, months);
+
+  const remainingMs = paidUntil.getTime() - now.getTime();
+  const creditMs = Math.floor((remainingMs * oldPlan.priceGel) / newPlan.priceGel);
+  return addMonthsUtc(new Date(now.getTime() + creditMs), months);
+}
+
 /** Adding one more is allowed while strictly under the limit. */
 export const underLimit = (current: number, max: number): boolean => current < max;

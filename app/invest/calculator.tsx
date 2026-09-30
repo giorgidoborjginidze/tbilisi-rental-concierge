@@ -11,15 +11,12 @@ import {
   RENOVATION_PER_SQM,
   type RenovationLevel,
 } from "@/lib/invest/market";
+import { formatMoney } from "@/lib/format";
+import { VERDICT_BADGE } from "@/lib/ui/tone";
 
-const fmt = (v: number) => `${Math.round(v).toLocaleString("en-US")} GEL`;
+const fmt = (v: number) => formatMoney(v);
 const pct = (v: number) => `${v.toFixed(1)}%`;
 
-const VERDICT_BADGE = {
-  good: "badge--rented",
-  ok: "badge--vacant",
-  poor: "badge--danger",
-} as const;
 
 export default function Calculator({
   districts,
@@ -125,7 +122,7 @@ export default function Calculator({
           >
             {RENOVATION_LEVELS.map((level) => (
               <option key={level} value={level}>
-                {labels[`renov_${level}`]} (~{RENOVATION_PER_SQM[level]} GEL/m²)
+                {labels[`renov_${level}`]} (~{formatMoney(RENOVATION_PER_SQM[level])}/m²)
               </option>
             ))}
           </select>
@@ -184,7 +181,7 @@ export default function Calculator({
       <div>
         <div className="alert-card" style={{ alignItems: "center" }}>
           <div className="alert-card__title">{labels.inv_results}</div>
-          <span className={`badge ${VERDICT_BADGE[result.verdict]}`}>
+          <span className={VERDICT_BADGE[result.verdict]}>
             {labels[`res_verdict_${result.verdict}`]}
           </span>
         </div>

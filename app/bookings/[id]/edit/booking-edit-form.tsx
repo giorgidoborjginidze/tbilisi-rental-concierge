@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { cancelBooking, restoreBooking, updateBooking } from "@/lib/bookings/actions";
+import { currencySign } from "@/lib/format";
 import type { FormState } from "@/lib/units/actions";
 
 export interface EditableBooking {
@@ -44,7 +45,7 @@ export default function BookingEditForm({
         <input type="hidden" name="bookingId" value={booking.id} />
         <input type="hidden" name="back" value={backHref} />
         <label className="field">
-          {labels.booking_amount_total} ({booking.currency})
+          {labels.booking_amount_total} ({currencySign(booking.currency)})
           <input
             name="amount"
             type="number"

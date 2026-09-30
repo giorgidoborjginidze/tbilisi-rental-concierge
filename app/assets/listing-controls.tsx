@@ -119,6 +119,7 @@ export default function ListingControls({
         disabled={pending || status === "rented"}
         onClick={() => flip("rented")}
         className={`btn-chip ${status === "rented" ? "btn-chip--active" : ""}`}
+        aria-pressed={status === "rented"}
       >
         {labels.rented}
       </button>
@@ -127,6 +128,7 @@ export default function ListingControls({
         disabled={pending || status === "vacant"}
         onClick={() => flip("vacant")}
         className={`btn-chip ${status === "vacant" ? "btn-chip--active" : ""}`}
+        aria-pressed={status === "vacant"}
       >
         {labels.vacant}
       </button>

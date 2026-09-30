@@ -23,10 +23,11 @@ export default async function InvestSubnav({
           key={tab.key}
           href={tab.href}
           className={"btn-chip " + (tab.key === active ? "btn-chip--active" : "")}
+          aria-current={tab.key === active ? "page" : undefined}
         >
           {tab.label}
           {tab.key === "pro" && (
-            <span className="badge badge--listed" style={{ marginLeft: 6, fontSize: 10 }}>
+            <span className="badge badge--tag badge--sm" style={{ marginLeft: 6 }}>
               PRO
             </span>
           )}

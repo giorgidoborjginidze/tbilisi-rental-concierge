@@ -81,6 +81,7 @@ export default function InvestTabs({
             key={t.id}
             type="button"
             className={"btn-chip " + (tab === t.id ? "btn-chip--active" : "")}
+            aria-pressed={tab === t.id}
             onClick={() => setTab(t.id)}
             style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
           >

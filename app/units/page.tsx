@@ -8,6 +8,7 @@ import RentalsSubnav from "../rentals-subnav";
 import FeedStatus from "./feed-status";
 import SyncButton from "./sync-button";
 import { cityLabel, districtLabel } from "@/lib/places";
+import { formatMoney } from "@/lib/format";
 import { titled } from "@/lib/i18n/metadata";
 
 export const dynamic = "force-dynamic";
@@ -84,7 +85,7 @@ export default async function UnitsPage() {
                     <td data-label={t(locale, "unit_district")}>{districtLabel(locale, unit.district)}</td>
                     <td data-label={t(locale, "unit_type")}>{t(locale, `type_${unit.type}` as StringKey)}</td>
                     <td className="num" data-label={t(locale, "base_rate_short")}>
-                      {unit.baseNightlyRate} {unit.currency}
+                      {formatMoney(unit.baseNightlyRate, unit.currency)}
                     </td>
                     <td className="num" data-label={t(locale, "bookings")}>{unit._count.bookings}</td>
                     <td data-label="iCal" className="ical-cell">

@@ -15,6 +15,9 @@ import RentalsSubnav from "../rentals-subnav";
 import { firstParam, type QueryValue } from "@/lib/params";
 import { LIVE_STAY } from "@/lib/bookings/live";
 import { titled } from "@/lib/i18n/metadata";
+import { AlertTypeIcon } from "../alert-icon";
+import { formatMoney } from "@/lib/format";
+import { IconAlert, IconChevronLeft, IconChevronRight } from "../icons";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +45,10 @@ function parseMonth(value: string | undefined): { year: number; month: number } 
   const today = startOfTodayTbilisi();
   return { year: today.getUTCFullYear(), month: today.getUTCMonth() + 1 };
 }
+
+/** Day numbers on a phone are marked every five days (CSS hides the rest). */
+const dayNumClass = (day: number) =>
+  day === 1 || day % 5 === 0 ? "cal-daynum cal-daynum--tick" : "cal-daynum";
 
 const monthParam = (year: number, month: number) =>
   `${year}-${String(month).padStart(2, "0")}`;
@@ -146,12 +153,12 @@ export default async function CalendarPage({
   const displayName = (unit: { name: string; nameKa: string | null }) =>
     locale === "ka" && unit.nameKa ? unit.nameKa : unit.name;
 
-  const legend = [
+  const legend: { label: string; color: string; bordered?: boolean; overlap?: boolean }[] = [
     { label: "Airbnb", color: "var(--cal-airbnb)" },
     { label: "Booking.com", color: "var(--cal-booking)" },
     { label: t(locale, "calendar_direct_manual"), color: "var(--cal-direct)" },
     { label: t(locale, "calendar_lease"), color: "var(--cal-lease)" },
-    { label: t(locale, "calendar_overlap"), color: "var(--cal-overlap)" },
+    { label: t(locale, "calendar_overlap"), color: "", overlap: true },
     { label: t(locale, "calendar_vacant"), color: "var(--cal-vacant)", bordered: true },
   ];
 
@@ -171,41 +178,55 @@ export default async function CalendarPage({
           <div className="flex items-center gap-2">
             <Link
               href={`/calendar?month=${monthParam(prev.year, prev.month)}${unitSuffix}`}
-              className="btn-chip"
+              className="btn-chip btn-chip--icon"
+              aria-label={t(locale, "calendar_prev_month")}
+              title={t(locale, "calendar_prev_month")}
             >
-              ←
+              <IconChevronLeft size={16} />
             </Link>
             <Link
               href={`/calendar?month=${monthParam(next.year, next.month)}${unitSuffix}`}
-              className="btn-chip"
+              className="btn-chip btn-chip--icon"
+              aria-label={t(locale, "calendar_next_month")}
+              title={t(locale, "calendar_next_month")}
             >
-              →
+              <IconChevronRight size={16} />
             </Link>
           </div>
         </div>
       </div>
 
       <div className="legend">
-        {legend.map((item) => (
-          <span key={item.label}>
-            <i
-              style={{
-                background: item.color,
-                border: item.bordered ? "1px solid var(--color-border)" : undefined,
-              }}
-            />
-            {item.label}
-          </span>
-        ))}
+        {legend.map((item) =>
+          item.overlap ? (
+            // A double booking: hatched red and named with a warning icon,
+            // so it never rests on telling two reds apart.
+            <span key={item.label} className="legend__overlap">
+              <i className="cal-swatch--overlap" />
+              <IconAlert size={14} />
+              {item.label}
+            </span>
+          ) : (
+            <span key={item.label}>
+              <i
+                style={{
+                  background: item.color,
+                  border: item.bordered ? "1px solid var(--color-border)" : undefined,
+                }}
+              />
+              {item.label}
+            </span>
+          ),
+        )}
       </div>
 
       <div
         className="card cal-board"
         style={{ "--days": daysInMonth } as React.CSSProperties}
       >
-        <span className="cal-name" />
+        <span className="cal-name cal-name--head" />
         {Array.from({ length: daysInMonth }, (_, i) => (
-          <span key={`h${i}`} className="cal-daynum">
+          <span key={`h${i}`} className={dayNumClass(i + 1)}>
             {i + 1}
           </span>
         ))}
@@ -214,6 +235,7 @@ export default async function CalendarPage({
             <span className="cal-name">
               <Link
                 href={`/calendar?month=${monthParam(year, month)}&unit=${unit.id}`}
+                title={displayName(unit)}
                 style={{ color: "inherit", textDecoration: "none" }}
               >
                 {displayName(unit)}
@@ -234,9 +256,12 @@ export default async function CalendarPage({
           ) : (
             rows.flatMap(({ unit, gaps }) =>
               gaps.map((gap, i) => (
-                <div key={`${unit.id}-${i}`} className="alert-card alert-card--gap">
+                <div key={`${unit.id}-${i}`} className="alert-card alert-card--info">
                   <div>
-                    <div className="alert-card__title">{displayName(unit)}</div>
+                    <div className="alert-card__title">
+                      <AlertTypeIcon type="vacancy_gap" />
+                      {displayName(unit)}
+                    </div>
                     <div className="alert-card__detail">
                       {fmtDay.format(gap.start)} – {fmtDay.format(gap.end)} ·{" "}
                       {gap.nights} {t(locale, "nights_short")}
@@ -255,9 +280,10 @@ export default async function CalendarPage({
           ) : (
             rows.flatMap(({ unit, overlaps }) =>
               overlaps.map((overlap, i) => (
-                <div key={`${unit.id}-${i}`} className="alert-card alert-card--overlap">
+                <div key={`${unit.id}-${i}`} className="alert-card alert-card--danger">
                   <div>
                     <div className="alert-card__title">
+                      <AlertTypeIcon type="overlap" />
                       {displayName(unit)}{" "}
                       <span style={{ fontWeight: 400, fontSize: 12, color: "var(--color-text-muted)" }}>
                         ({overlap.kinds.join(" + ")})
@@ -305,7 +331,7 @@ export default async function CalendarPage({
                         </td>
                         <td className="num" data-label={t(locale, "booking_price")}>
                           {booking.amount != null ? (
-                            `${Math.round(booking.amount).toLocaleString("en-US")} ${booking.currency}`
+                            formatMoney(booking.amount, booking.currency)
                           ) : (
                             <span className="price-missing">{t(locale, "booking_no_price")}</span>
                           )}

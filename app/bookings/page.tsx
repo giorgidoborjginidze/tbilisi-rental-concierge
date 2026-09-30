@@ -9,6 +9,7 @@ import { firstParam, type QueryValue } from "@/lib/params";
 import { LIVE_STAY } from "@/lib/bookings/live";
 import { BOOKINGS_PAGE_SIZE, monthRange, pageFromQuery, pageSlices } from "@/lib/bookings/list";
 import { titled } from "@/lib/i18n/metadata";
+import { formatMoney } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -21,8 +22,6 @@ const LOOKBACK_DAYS = 60;
 type Show = "all" | "unpriced" | "cancelled";
 const SHOWS: Show[] = ["all", "unpriced", "cancelled"];
 
-const money = (value: number, currency: string) =>
-  `${Math.round(value).toLocaleString("en-US")} ${currency}`;
 
 function sourceName(locale: Locale, source: string): string {
   if (source === "airbnb") return "Airbnb";
@@ -160,6 +159,7 @@ export default async function BookingsPage({
             key={key}
             href={`/bookings?show=${key}${suffix}`}
             className={"btn-chip " + (key === show ? "btn-chip--active" : "")}
+            aria-current={key === show ? "page" : undefined}
           >
             {t(locale, chipLabel[key])}
             {key === "unpriced" && unpricedCount > 0 ? ` (${unpricedCount})` : ""}
@@ -221,7 +221,7 @@ export default async function BookingsPage({
                     </td>
                     <td className="num" data-label={t(locale, "booking_price")}>
                       {booking.amount != null ? (
-                        money(booking.amount, booking.currency)
+                        formatMoney(booking.amount, booking.currency)
                       ) : mirror ? (
                         <span className="cell-sub">{t(locale, "booking_mirror_short")}</span>
                       ) : (

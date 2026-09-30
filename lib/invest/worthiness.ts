@@ -75,6 +75,20 @@ export const WORTHINESS_DEFAULTS: WorthinessInputs = {
   depreciationYears: 27.5,
 };
 
+/**
+ * The same example in lari (the defaults above are the spreadsheet's
+ * dollar figures, converted at about 2.7 ₾/$ and rounded): what the PRO
+ * calculator opens with, so it starts in the same currency as the rest
+ * of the app.
+ */
+export const WORTHINESS_DEFAULTS_GEL: WorthinessInputs = {
+  ...WORTHINESS_DEFAULTS,
+  price: 81_000,
+  otherInitialCosts: 2_700,
+  monthlyRent: 1_350,
+  insurancePerYear: 140,
+};
+
 export interface YearRow {
   year: number;
   monthlyRent: number;

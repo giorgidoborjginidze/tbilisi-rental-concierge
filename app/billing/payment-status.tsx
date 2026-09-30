@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { SeverityIcon } from "../alert-icon";
 
 // After the payment page: while the bank has not confirmed yet, the page
 // re-reads the order every 3 seconds for up to a minute (the verified
@@ -28,9 +29,10 @@ export default function PaymentPending({ waiting, long }: { waiting: string; lon
   }, [router]);
 
   return (
-    <div className="alert-card alert-card--gap" role="status" aria-live="polite">
-      <div className="alert-card__detail" style={{ marginTop: 0 }}>
-        {gaveUp ? long : waiting}
+    <div className="alert-card alert-card--info" role="status" aria-live="polite">
+      <div className="alert-card__notice">
+        <SeverityIcon severity="info" />
+        <div>{gaveUp ? long : waiting}</div>
       </div>
     </div>
   );

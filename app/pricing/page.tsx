@@ -7,6 +7,7 @@ import { computeSuggestionsForUnit } from "@/lib/pricing/run";
 import UnitFilter from "../calendar/unit-filter";
 import RentalsSubnav from "../rentals-subnav";
 import { firstParam, type QueryValue } from "@/lib/params";
+import { formatMoney } from "@/lib/format";
 import { titled } from "@/lib/i18n/metadata";
 
 export const dynamic = "force-dynamic";
@@ -54,7 +55,7 @@ export default async function PricingPage({
       </div>
       <p className="mb-5" style={{ color: "var(--color-text-muted)", fontSize: 13 }}>
         {t(locale, "pricing_intro")} · {t(locale, "base_rate_short")}:{" "}
-        {selected.baseNightlyRate} {selected.currency}
+        {formatMoney(selected.baseNightlyRate, selected.currency)}
       </p>
 
       <div className="card">
@@ -74,7 +75,7 @@ export default async function PricingPage({
                 <tr key={row.date.toISOString()}>
                   <td>{fmtDay.format(row.date)}</td>
                   <td className="num">
-                    {row.result.suggestedRate} {selected.currency}{" "}
+                    {formatMoney(row.result.suggestedRate, selected.currency)}{" "}
                     <span
                       style={{
                         fontSize: 12,
@@ -90,11 +91,11 @@ export default async function PricingPage({
                     </span>
                   </td>
                   <td className="num" style={{ color: "var(--color-text-muted)" }}>
-                    {row.result.factors.benchmarkAdr ?? "—"}
+                    {formatMoney(row.result.factors.benchmarkAdr, selected.currency)}
                     {row.result.underpriced && (
                       <>
                         {" "}
-                        <span className="badge badge--vacant">
+                        <span className="badge badge--warn">
                           {t(locale, "pricing_underpriced")}
                         </span>
                       </>

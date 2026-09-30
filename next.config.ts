@@ -6,9 +6,11 @@ import type { NextConfig } from "next";
 //   frame and trick a signed-in owner into clicking its buttons.
 // - Content-Security-Policy-Report-Only: the policy the app is meant to
 //   live within (own scripts/styles/fonts, Flitt's payment page as a form
-//   target, frame-ancestors 'none'). Report-only for now: violations show
-//   in the browser console without breaking anything; switch the header
-//   name to Content-Security-Policy once it has run clean for a while.
+//   target, frame-ancestors 'none'). Report-only for now: violations
+//   break nothing; browsers send each one to /api/csp-report (report-uri,
+//   and report-to via Reporting-Endpoints), which writes one JSON log line
+//   ("event":"csp_violation"). Switch the header name to
+//   Content-Security-Policy once the logs have run clean for a while.
 // - nosniff, a referrer policy that never sends a full URL (with a reset
 //   or tracker token in it) to another site, and a minimal
 //   Permissions-Policy (no camera/microphone/payment APIs; geolocation only
@@ -32,11 +34,14 @@ const cspReportOnly = [
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self' https://pay.flitt.com https://pay.fondy.eu",
+  "report-uri /api/csp-report",
+  "report-to csp",
 ].join("; ");
 
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Content-Security-Policy-Report-Only", value: cspReportOnly },
+  { key: "Reporting-Endpoints", value: 'csp="/api/csp-report"' },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   {

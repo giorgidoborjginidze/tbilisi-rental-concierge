@@ -1,6 +1,8 @@
 import { t, type Locale, type StringKey } from "@/lib/i18n/strings";
 import { deleteIncome } from "@/lib/assets/actions";
 import IncomeForm from "./income-form";
+import { formatMoney } from "@/lib/format";
+import { IconClose } from "../icons";
 
 export interface IncomeRow {
   id: string;
@@ -52,13 +54,18 @@ export default function IncomeSection({
                       <div className="cell-sub">{income.date}</div>
                     </td>
                     <td className="num" style={{ fontWeight: 500 }}>
-                      {income.amount} {income.currency}
+                      {formatMoney(income.amount, income.currency, "auto")}
                     </td>
                     <td className="num">
                       <form action={deleteIncome}>
                         <input type="hidden" name="incomeId" value={income.id} />
-                        <button type="submit" className="btn-chip" aria-label={t(locale, "delete")}>
-                          ✕
+                        <button
+                          type="submit"
+                          className="btn-chip btn-chip--icon btn-chip--danger"
+                          aria-label={t(locale, "aria_delete_income")}
+                          title={t(locale, "aria_delete_income")}
+                        >
+                          <IconClose size={15} />
                         </button>
                       </form>
                     </td>

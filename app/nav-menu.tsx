@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { activeHref } from "@/lib/nav/section";
+import { IconClose, IconMenu } from "./icons";
 
 // Mobile-only menu: a top-right button that opens a dropdown with the nav
 // links (and Sign In when signed out). Hidden on desktop, where the links
@@ -17,18 +19,19 @@ export default function NavMenu({
   /** The button's name for screen readers, in the visitor's language. */
   menuLabel: string;
 }) {
-  const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
-
-  useEffect(() => setOpen(false), [pathname]);
+  // Open for the page it was opened on: following a link closes it.
+  const [openOn, setOpenOn] = useState<string | null>(null);
+  const open = openOn === pathname;
+  const setOpen = (next: boolean) => setOpenOn(next ? pathname : null);
 
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpenOn(null);
     };
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpenOn(null);
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
     return () => {
@@ -37,6 +40,8 @@ export default function NavMenu({
     };
   }, [open]);
 
+  const current = activeHref(pathname, links.map((link) => link.href));
+
   return (
     <div className="nav__mobile" ref={ref}>
       <button
@@ -44,14 +49,19 @@ export default function NavMenu({
         className="nav__burger"
         aria-label={menuLabel}
         aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => setOpen(!open)}
       >
-        {open ? "✕" : "☰"}
+        {open ? <IconClose size={18} /> : <IconMenu size={18} />}
       </button>
       {open && (
         <div className="nav__drawer" role="menu">
           {links.map((link) => (
-            <Link key={link.href} href={link.href} onClick={() => setOpen(false)}>
+            <Link
+              key={link.href}
+              href={link.href}
+              aria-current={link.href === current ? "page" : undefined}
+              onClick={() => setOpen(false)}
+            >
               {link.label}
             </Link>
           ))}

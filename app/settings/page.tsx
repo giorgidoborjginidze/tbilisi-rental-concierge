@@ -12,6 +12,7 @@ import { planById, type AccountType } from "@/lib/billing/plans";
 import ThemeToggle from "../theme-toggle";
 import TeamSection from "../billing/team-section";
 import { tbilisiFormat } from "@/lib/time";
+import { inviteUsable } from "@/lib/auth/invite";
 import { titled } from "@/lib/i18n/metadata";
 
 export const dynamic = "force-dynamic";
@@ -51,6 +52,7 @@ export default async function SettingsPage() {
     day: "numeric", month: "short", year: "numeric",
   });
 
+  const now = new Date();
   const isMember = operator.companyId != null;
   const accountType = (isMember ? "business" : operator.accountType) as AccountType;
   // The plan in force: a bought plan while paid (or in its grace days),
@@ -78,7 +80,8 @@ export default async function SettingsPage() {
     : [[], []];
 
   const labelKeys: StringKey[] = [
-    "team_invite", "team_invite_hint", "team_remove", "copy_link",
+    "team_invite", "team_invite_hint", "team_remove", "copy_link", "team_invite_expired",
+    "copied", "aria_revoke_invite",
     "operator_email", "error_required", "error_limit_members",
     "error_owner_only", "save",
   ];
@@ -108,7 +111,7 @@ export default async function SettingsPage() {
           <div className="flex items-center justify-between gap-3">
             <span style={row}>{t(locale, "billing_current")}</span>
             <span className="flex flex-wrap items-center justify-end gap-2">
-              <span className="badge badge--listed">{planLatin}</span>
+              <span className="badge badge--tag">{planLatin}</span>
               {!isMember && context.paidUntil && context.standing !== "complimentary" && (
                 <span style={{ fontSize: 12, color: lapsed ? "var(--status-danger-text)" : "var(--color-text-muted)" }}>
                   {lapsed ? t(locale, "billing_expired_short") : t(locale, "billing_paid_until")}:{" "}
@@ -151,7 +154,12 @@ export default async function SettingsPage() {
             id: m.id, name: m.name, email: m.email,
             assets: m._count.assets, units: m._count.units,
           }))}
-          invites={invites.map((invite) => ({ id: invite.id, email: invite.email, token: invite.token }))}
+          invites={invites.map((invite) => ({
+            id: invite.id, email: invite.email, token: invite.token,
+            // An expired link no longer works and holds no seat: listed so the
+            // owner sees what happened, without a link to copy.
+            expired: !inviteUsable(invite, now),
+          }))}
           heading={t(locale, "team_title")}
           membersHeading={t(locale, "team_members")}
           pendingHeading={t(locale, "team_pending")}

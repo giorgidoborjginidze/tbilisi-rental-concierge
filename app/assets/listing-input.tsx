@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { detectPlatform, PLATFORMS } from "@/lib/listings";
+import { IconClose } from "../icons";
 import { Brandmark } from "./listing-controls";
 
 // One smart field for listing links: paste a URL and the platform is
@@ -61,11 +62,12 @@ export default function ListingInput({
               {rows.length > 1 && (
                 <button
                   type="button"
-                  className="btn-chip"
+                  className="btn-chip btn-chip--icon btn-chip--danger"
                   aria-label={labels.aria_remove_link}
+                  title={labels.aria_remove_link}
                   onClick={() => remove(i)}
                 >
-                  ✕
+                  <IconClose size={15} />
                 </button>
               )}
             </div>

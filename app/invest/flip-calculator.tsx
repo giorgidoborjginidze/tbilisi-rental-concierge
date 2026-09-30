@@ -2,16 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { analyzeFlip } from "@/lib/invest/flip";
+import { formatMoney } from "@/lib/format";
+import { VERDICT_BADGE } from "@/lib/ui/tone";
 
-const fmt = (v: number) =>
-  Number.isFinite(v) ? `${Math.round(v).toLocaleString("en-US")} GEL` : "—";
+const fmt = (v: number) => formatMoney(v);
 const pct = (v: number) => `${v >= 0 ? "" : "−"}${Math.abs(v).toFixed(1)}%`;
 
-const VERDICT_BADGE: Record<string, string> = {
-  good: "badge--rented",
-  ok: "badge--listed",
-  poor: "badge--vacant",
-};
+// The same three colours as every other calculator (lib/ui/tone.ts).
 
 // Flip calculator: the profit is made once, so the number that matters is
 // the annualized return — a 10% gain in three months is a different deal
@@ -141,7 +138,7 @@ export default function FlipCalculator({
         <div>
           <div className="alert-card" style={{ alignItems: "center" }}>
             <div className="alert-card__title">{labels.inv_results}</div>
-            <span className={`badge ${VERDICT_BADGE[result.verdict]}`}>
+            <span className={VERDICT_BADGE[result.verdict]}>
               {labels[`res_verdict_${result.verdict}`]}
             </span>
           </div>

@@ -10,6 +10,9 @@ import { tbilisiFormat } from "@/lib/time";
 import PlanCards from "./plan-cards";
 import PaymentPending from "./payment-status";
 import { titled } from "@/lib/i18n/metadata";
+import { badgeClass, PAYMENT_STATUS_TONE, toneOf } from "@/lib/ui/tone";
+import { formatMoney } from "@/lib/format";
+import { Notice, SeverityIcon } from "../alert-icon";
 
 // Plan & subscription lives on its own page ("Upgrade Plan") rather than
 // inside Settings, so upgrading is one click from the account menu.
@@ -92,32 +95,26 @@ export default async function BillingPage({
     if (!orderParam && !legacyReturn) return null;
     if (!returned) {
       return (
-        <div className="alert-card alert-card--gap" role="status">
-          <div className="alert-card__detail" style={{ marginTop: 0 }}>
-            {fill("billing_ret_unknown", { email: CONTACT_EMAIL })}
-          </div>
-        </div>
+        <Notice severity="warn" role="status">
+          {fill("billing_ret_unknown", { email: CONTACT_EMAIL })}
+        </Notice>
       );
     }
     if (returned.status === "approved") {
       return (
-        <div className="alert-card alert-card--underpriced" role="status">
-          <div className="alert-card__detail" style={{ marginTop: 0 }}>
-            {fill("billing_ret_approved", {
-              plan: planName(returned.plan),
-              date: context.paidUntil ? fmtDate.format(context.paidUntil) : "—",
-            })}
-          </div>
-        </div>
+        <Notice severity="good" role="status">
+          {fill("billing_ret_approved", {
+            plan: planName(returned.plan),
+            date: context.paidUntil ? fmtDate.format(context.paidUntil) : "—",
+          })}
+        </Notice>
       );
     }
     if (returned.status === "declined") {
       return (
-        <div className="alert-card alert-card--overdue" role="alert">
-          <div className="alert-card__detail" style={{ marginTop: 0 }}>
-            {t(locale, "billing_ret_declined")}
-          </div>
-        </div>
+        <Notice severity="danger" role="alert">
+          {t(locale, "billing_ret_declined")}
+        </Notice>
       );
     }
     return (
@@ -137,40 +134,38 @@ export default async function BillingPage({
           {t(locale, "billing_paid_until")}: <strong>{fmtDate.format(context.paidUntil)}</strong>
           {" · "}
           {fill("billing_extends", { date: fmtDate.format(context.paidUntil) })}
+          <br />
+          <span className="billing-standing__note">
+            {fill("billing_switch_note", { plan: planName(chosen) })}
+          </span>
         </p>
       );
     }
     if (context.standing === "grace" && context.paidUntil) {
       return (
-        <div className="alert-card alert-card--gap">
-          <div className="alert-card__detail" style={{ marginTop: 0 }}>
-            {fill("billing_grace", {
-              date: fmtDate.format(context.paidUntil),
-              grace: fmtDate.format(graceEndsAt(context.paidUntil)),
-            })}
-          </div>
-        </div>
+        <Notice severity="warn">
+          {fill("billing_grace", {
+            date: fmtDate.format(context.paidUntil),
+            grace: fmtDate.format(graceEndsAt(context.paidUntil)),
+          })}
+        </Notice>
       );
     }
     if (context.standing === "expired" && chosen && context.trialDaysLeft === 0) {
       return (
-        <div className="alert-card alert-card--gap">
-          <div className="alert-card__detail" style={{ marginTop: 0 }}>
-            {fill("billing_expired", {
-              plan: planName(chosen),
-              date: context.paidUntil ? fmtDate.format(context.paidUntil) : "—",
-            })}
-          </div>
-        </div>
+        <Notice severity="warn">
+          {fill("billing_expired", {
+            plan: planName(chosen),
+            date: context.paidUntil ? fmtDate.format(context.paidUntil) : "—",
+          })}
+        </Notice>
       );
     }
     if (context.standing === "none" && context.trialDaysLeft === 0) {
       return (
-        <div className="alert-card alert-card--gap">
-          <div className="alert-card__detail" style={{ marginTop: 0 }}>
-            {t(locale, "billing_trial_over")}
-          </div>
-        </div>
+        <Notice severity="warn">
+          {t(locale, "billing_trial_over")}
+        </Notice>
       );
     }
     return null;
@@ -183,19 +178,18 @@ export default async function BillingPage({
       {returnBlock}
 
       {isMember ? (
-        <div className="alert-card alert-card--lease" style={{ marginTop: 20 }}>
-          <div className="alert-card__detail" style={{ marginTop: 0 }}>
-            {t(locale, "billing_member_account")}
-          </div>
-        </div>
+        <Notice severity="info" style={{ marginTop: 20 }}>
+          {t(locale, "billing_member_account")}
+        </Notice>
       ) : (
         <section>
           {context.trialDaysLeft > 0 && context.standing !== "paid" && (
-            <div className="alert-card alert-card--underpriced" style={{ alignItems: "center" }}>
+            <div className="alert-card alert-card--good" style={{ alignItems: "center" }}>
               <div className="alert-card__title">
+                <SeverityIcon severity="good" />
                 {t(locale, "billing_trial")}: {context.trialDaysLeft} {t(locale, "days_left")}
               </div>
-              <span className="badge badge--rented">
+              <span className={badgeClass("good")}>
                 {t(locale, `plan_${context.plan.id}` as StringKey)}
               </span>
             </div>
@@ -220,16 +214,19 @@ export default async function BillingPage({
           </div>
 
           {checkoutOff ? (
-            <div className="alert-card alert-card--gap" style={{ marginTop: 8 }} role="note">
-              <div className="alert-card__detail" style={{ marginTop: 0 }}>
-                {fill("billing_unavailable", { email: CONTACT_EMAIL })}
-              </div>
-            </div>
+            <Notice severity="warn" role="note" style={{ marginTop: 8 }}>
+              {fill("billing_unavailable", { email: CONTACT_EMAIL })}
+            </Notice>
           ) : sandbox ? (
-            <div className="alert-card alert-card--gap" style={{ marginTop: 8 }}>
-              <div className="alert-card__title">{t(locale, "billing_sandbox")}</div>
+            <div className="alert-card alert-card--warn" style={{ marginTop: 8 }}>
+              <div>
+              <div className="alert-card__title">
+                <SeverityIcon severity="warn" />
+                {t(locale, "billing_sandbox")}
+              </div>
               <div className="alert-card__detail" style={{ marginTop: 4 }}>
                 {t(locale, "billing_sandbox_card")}
+              </div>
               </div>
             </div>
           ) : null}
@@ -256,8 +253,8 @@ export default async function BillingPage({
                   <li key={payment.id}>
                     <span>{fmtDate.format(payment.paidAt ?? payment.createdAt)}</span>
                     <span>{planName(payment.plan)}</span>
-                    <span>{(payment.amountMinor / 100).toFixed(2)} {payment.currency}</span>
-                    <span className={`badge ${payment.status === "approved" ? "badge--rented" : payment.status === "declined" ? "badge--vacant" : "badge--listed"}`}>
+                    <span>{formatMoney(payment.amountMinor / 100, payment.currency, "auto")}</span>
+                    <span className={badgeClass(toneOf(PAYMENT_STATUS_TONE, payment.status === "approved" || payment.status === "declined" ? payment.status : "pending"))}>
                       {t(locale, `pay_status_${payment.status === "approved" || payment.status === "declined" ? payment.status : "pending"}` as StringKey)}
                     </span>
                   </li>

@@ -60,7 +60,7 @@ export default function PlanCards({
               <div className="flex items-center justify-between">
                 <div className="kpi__label">{labels[`plan_${plan.id}`]}</div>
                 {isActive && (
-                  <span className="badge badge--listed">{labels.billing_current}</span>
+                  <span className="badge badge--good">{labels.billing_current}</span>
                 )}
               </div>
               <div className="kpi__value">

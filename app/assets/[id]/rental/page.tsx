@@ -14,7 +14,10 @@ import {
   unsettledContracts,
 } from "@/lib/rentals/terms";
 import { contractPhase } from "@/lib/rentals/phase";
-import { formatDue, formatMoney } from "@/lib/rentals/money";
+import { formatDueMoney, formatMoney } from "@/lib/format";
+import { badgeClass, OUTBOX_TONE, PAYMENT_TONE, toneOf, ZONE_TONE } from "@/lib/ui/tone";
+import { SeverityIcon } from "@/app/alert-icon";
+import { IconArrowLeft, IconClose, IconExternal } from "@/app/icons";
 import { asPeriod } from "@/lib/rentals/amount";
 import { defaultPaidThrough } from "@/lib/rentals/schedule";
 import {
@@ -52,20 +55,15 @@ export const dynamic = "force-dynamic";
 
 export const generateMetadata = titled("rental_service");
 
-const STATE_BADGE: Record<string, string> = {
-  not_started: "badge--listed",
-  ok: "badge--vacant",
-  due: "badge--str",
-  grace: "badge--listed",
-  repossess: "badge--danger",
-  ended: "badge--personal",
-};
-
-const ZONE_BADGE: Record<string, string> = {
-  safe: "badge--vacant",
-  approach: "badge--listed",
-  outside: "badge--danger",
-};
+// Payment states and red-line zones take their colour from the one
+// semantic map (lib/ui/tone.ts): paid/safe green, grace/approaching amber,
+// repossession/outside red, not started/ended grey.
+const STATE_TONE = {
+  ...PAYMENT_TONE,
+  due: "warn",
+  not_started: "muted",
+  ended: "muted",
+} as const;
 
 const LABEL_KEYS: StringKey[] = [
   "aria_lat", "aria_lng",
@@ -89,7 +87,7 @@ const LABEL_KEYS: StringKey[] = [
   "fence_presets", "fence_preset_tbilisi30", "fence_preset_tbilisi50",
   "fence_preset_batumi20", "fence_preset_kutaisi20", "fence_preset_georgia",
   "fence_preset_hint",
-  "tpl_notify_phone", "tpl_notify_phone_hint", "tpl_vars_hint", "tpl_save",
+  "tpl_notify_phone", "tpl_notify_phone_hint", "tpl_vars_hint", "tpl_save", "tpl_edited",
 ];
 
 // The rental service for one asset: what the renter owes and when, every
@@ -230,7 +228,6 @@ export default async function RentalServicePage({
     day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
   });
   const iso = dayKey;
-  const money = formatMoney;
   const roleLabel = (role: string) =>
     t(
       locale,
@@ -245,30 +242,37 @@ export default async function RentalServicePage({
     <main>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
         <h1 style={{ marginBottom: 0 }}>{t(locale, "rental_service")}</h1>
-        <Link href={`/assets/${asset.id}/edit`} className="btn-chip">
-          ← {displayName}
+        <Link href={`/assets/${asset.id}/edit`} className="btn-chip btn-chip--icon-text">
+          <IconArrowLeft size={14} /> {displayName}
         </Link>
       </div>
-      <p style={{ color: "var(--color-text-muted)", maxWidth: 640 }}>
+      {/* The intro keeps its distance from the first section heading. */}
+      <p className="page-lead">
         {t(locale, isVehicle ? "rental_service_intro" : "rental_service_intro_property")}
       </p>
 
       {/* ── 1. Payment schedule ──────────────────────────────────────── */}
       <section>
         <h2>{t(locale, "pay_schedule_title")}</h2>
-        <p className="field-hint" style={{ maxWidth: 640, marginTop: -6 }}>
+        <p className="section-hint" style={{ maxWidth: 640 }}>
           {t(locale, isVehicle ? "pay_schedule_intro" : "pay_schedule_intro_property")}
         </p>
 
         {!contract ? (
-          <p className="alert-card" style={{ display: "block" }}>
-            {t(locale, "pay_no_contract")}
+          <p className="alert-card alert-card--info" style={{ display: "block" }}>
+            <span className="alert-card__notice">
+              <SeverityIcon severity="info" />
+              <span>{t(locale, "pay_no_contract")}</span>
+            </span>
           </p>
         ) : (
           <>
             {!status ? (
-              <p className="alert-card" style={{ display: "block" }}>
-                {t(locale, "pay_untracked")}
+              <p className="alert-card alert-card--info" style={{ display: "block" }}>
+                <span className="alert-card__notice">
+                  <SeverityIcon severity="info" />
+                  <span>{t(locale, "pay_untracked")}</span>
+                </span>
               </p>
             ) : (
             <div className="kpi-grid kpi-grid--3d" style={{ marginBottom: 16 }}>
@@ -276,12 +280,14 @@ export default async function RentalServicePage({
                 <div className="kpi__label">{t(locale, "status_label")}</div>
                 <div className="flex flex-wrap gap-1.5" style={{ marginTop: 10 }}>
                   {contractEnded && (
-                    <span className="badge badge--personal">{t(locale, "cstatus_ended")}</span>
+                    <span className={badgeClass("muted")}>{t(locale, "cstatus_ended")}</span>
                   )}
                   {/* Long states wrap inside the tile on a phone. A finished
                       contract is not "late" any more — its rent is unpaid. */}
                   <span
-                    className={`badge ${contractEnded && status.periodsOwed > 0 ? "badge--danger" : STATE_BADGE[status.state]}`}
+                    className={badgeClass(
+                      contractEnded && status.periodsOwed > 0 ? "danger" : toneOf(STATE_TONE, status.state),
+                    )}
                     style={{ whiteSpace: "normal", height: "auto", minHeight: 26, paddingBlock: 3 }}
                   >
                     {contractEnded && status.periodsOwed > 0
@@ -309,12 +315,11 @@ export default async function RentalServicePage({
               <div className="kpi">
                 <div className="kpi__label">{t(locale, "pay_amount_due")}</div>
                 <div className="kpi__value">
-                  {formatDue(status.amountDue)}
-                  <span className="kpi__unit"> {contract.currency}</span>
+                  {formatDueMoney(status.amountDue, contract.currency)}
                 </div>
                 {status.credit > 0 && (
                   <div className="kpi__sub">
-                    {t(locale, "pay_credit")}: {money(status.credit)} {contract.currency}
+                    {t(locale, "pay_credit")}: {formatMoney(status.credit, contract.currency, "auto")}
                   </div>
                 )}
               </div>
@@ -382,16 +387,14 @@ export default async function RentalServicePage({
                       style={{ padding: "10px 16px", alignItems: "center" }}
                     >
                       <div style={{ fontSize: 13 }}>
-                        <b>
-                          {money(payment.amount)} {payment.currency}
-                        </b>{" "}
+                        <b>{formatMoney(payment.amount, payment.currency, "auto")}</b>{" "}
                         · {fmtDate.format(payment.paidAt)} ·{" "}
                         {t(locale, `method_${payment.method}` as StringKey)}
                         <span style={{ color: "var(--color-text-muted)" }}>
                           {" "}
                           {payment.periodStart.getTime() === payment.periodEnd.getTime()
                             ? `(${t(locale, "pay_kept_credit")})`
-                            : `(${iso(payment.periodStart)} → ${iso(payment.periodEnd)})`}
+                            : `(${fmtDate.format(payment.periodStart)} – ${fmtDate.format(payment.periodEnd)})`}
                         </span>
                         {payment.note ? ` · ${payment.note}` : ""}
                       </div>
@@ -402,11 +405,11 @@ export default async function RentalServicePage({
                           <input type="hidden" name="assetId" value={asset.id} />
                           <input type="hidden" name="paymentId" value={payment.id} />
                           <ConfirmSubmit
-                            className="btn-chip"
-                            ariaLabel={t(locale, "delete")}
+                            className="btn-chip btn-chip--icon btn-chip--danger"
+                            ariaLabel={t(locale, "aria_delete_payment")}
                             message={t(locale, "pay_delete_confirm")}
                           >
-                            ✕
+                            <IconClose size={15} />
                           </ConfirmSubmit>
                         </form>
                       )}
@@ -428,12 +431,10 @@ export default async function RentalServicePage({
               return (
                 <div key={other.id} style={{ marginBottom: 14 }}>
                   <p className="alert-card" style={{ display: "block", fontSize: 13 }}>
-                    <span className="badge badge--personal">{t(locale, "cstatus_ended")}</span>{" "}
-                    <b>{other.tenantName ?? "—"}</b> · {fmtDate.format(other.startDate)} →{" "}
+                    <span className={badgeClass("muted")}>{t(locale, "cstatus_ended")}</span>{" "}
+                    <b>{other.tenantName ?? "—"}</b> · {fmtDate.format(other.startDate)} –{" "}
                     {fmtDate.format(other.endDate)} · {t(locale, "pay_amount_due")}:{" "}
-                    <b>
-                      {formatDue(owed.amountDue)} {other.currency}
-                    </b>
+                    <b>{formatDueMoney(owed.amountDue, other.currency)}</b>
                   </p>
                   <ScheduleForm
                     key={other.id}
@@ -462,7 +463,7 @@ export default async function RentalServicePage({
       {isVehicle && (
       <section>
         <h2>{t(locale, "gps_title")}</h2>
-        <p className="field-hint" style={{ maxWidth: 640, marginTop: -6 }}>
+        <p className="section-hint" style={{ maxWidth: 640 }}>
           {t(locale, "gps_intro")}
         </p>
 
@@ -500,7 +501,7 @@ export default async function RentalServicePage({
               )}
               {silence && (
                 <div style={{ marginTop: 6 }}>
-                  <span className="badge badge--danger">
+                  <span className="badge badge--warn">
                     {t(locale, "gps_silent").replace(
                       "{span}",
                       t(locale, `dur_${silence.unit}` as StringKey).replace(
@@ -538,7 +539,7 @@ export default async function RentalServicePage({
       {isVehicle && (
       <section>
         <h2>{t(locale, "fence_title")}</h2>
-        <p className="field-hint" style={{ maxWidth: 640, marginTop: -6 }}>
+        <p className="section-hint" style={{ maxWidth: 640 }}>
           {t(locale, "fence_intro")}
         </p>
 
@@ -554,7 +555,7 @@ export default async function RentalServicePage({
               >
                 <div style={{ fontSize: 13 }}>
                   <b>{fence.name}</b>{" "}
-                  <span className={`badge ${fence.active ? "badge--vacant" : "badge--personal"}`}>
+                  <span className={badgeClass(fence.active ? "good" : "muted")}>
                     {t(locale, fence.active ? "fence_active" : "fence_paused")}
                   </span>
                   {reading && silent && (
@@ -564,7 +565,7 @@ export default async function RentalServicePage({
                     // quiet is the theft pattern).
                     <>
                       <span
-                        className="badge badge--personal"
+                        className={badgeClass(ZONE_TONE.unknown)}
                         style={{ marginLeft: 6 }}
                         title={t(locale, "gps_silent_hint")}
                       >
@@ -588,7 +589,7 @@ export default async function RentalServicePage({
                     </>
                   )}
                   {reading && !silent && (
-                    <span className={`badge ${ZONE_BADGE[reading.zone]}`} style={{ marginLeft: 6 }}>
+                    <span className={badgeClass(toneOf(ZONE_TONE, reading.zone))} style={{ marginLeft: 6 }}>
                       {t(locale, `fence_status_${reading.zone}` as StringKey)} ·{" "}
                       {reading.distanceKm.toFixed(1)} km
                     </span>
@@ -612,8 +613,13 @@ export default async function RentalServicePage({
                   <form action={deleteGeofence}>
                     <input type="hidden" name="assetId" value={asset.id} />
                     <input type="hidden" name="fenceId" value={fence.id} />
-                    <button type="submit" className="btn-chip" aria-label={t(locale, "aria_delete_fence")}>
-                      ✕
+                    <button
+                      type="submit"
+                      className="btn-chip btn-chip--icon btn-chip--danger"
+                      aria-label={t(locale, "aria_delete_fence")}
+                      title={t(locale, "aria_delete_fence")}
+                    >
+                      <IconClose size={15} />
                     </button>
                   </form>
                 </div>
@@ -648,15 +654,18 @@ export default async function RentalServicePage({
       {/* ── 4. Messages ──────────────────────────────────────────────── */}
       <section>
         <h2>{t(locale, "tpl_title")}</h2>
-        <p className="field-hint" style={{ maxWidth: 640, marginTop: -6 }}>
+        <p className="section-hint" style={{ maxWidth: 640 }}>
           {t(locale, "tpl_intro")}
         </p>
         <p className="field-hint" style={{ maxWidth: 640 }}>
           {t(locale, messageLocale === "ka" ? "tpl_lang_ka" : "tpl_lang_en")}
         </p>
         {isVehicle && (
-          <p className="alert-card" style={{ display: "block", fontSize: 13 }}>
-            {t(locale, "tpl_disclaimer")}
+          <p className="alert-card alert-card--info" style={{ display: "block", fontSize: 13 }}>
+            <span className="alert-card__notice">
+              <SeverityIcon severity="info" />
+              <span>{t(locale, "tpl_disclaimer")}</span>
+            </span>
           </p>
         )}
 
@@ -671,11 +680,14 @@ export default async function RentalServicePage({
       {/* ── 5. Outbox ────────────────────────────────────────────────── */}
       <section>
         <h2>{t(locale, "outbox_title")}</h2>
-        <p className="field-hint" style={{ maxWidth: 640, marginTop: -6 }}>
+        <p className="section-hint" style={{ maxWidth: 640 }}>
           {t(locale, "outbox_intro")}
         </p>
-        <p className="alert-card" style={{ display: "block", fontSize: 13 }}>
-          {t(locale, autoSend ? "outbox_auto_on" : "outbox_auto_off")}
+        <p className="alert-card alert-card--info" style={{ display: "block", fontSize: 13 }}>
+          <span className="alert-card__notice">
+            <SeverityIcon severity="info" />
+            <span>{t(locale, autoSend ? "outbox_auto_on" : "outbox_auto_off")}</span>
+          </span>
         </p>
 
         {messages.length === 0 ? (
@@ -686,23 +698,13 @@ export default async function RentalServicePage({
               <li key={message.id} className="alert-card" style={{ padding: "12px 16px" }}>
                 <div style={{ fontSize: 13, minWidth: 0 }}>
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="badge badge--listed">
+                    <span className={badgeClass("tag")}>
                       {roleLabel(
                         // Older rows addressed a flat's tenant as "driver".
                         message.toRole === "driver" && !isVehicle ? "tenant" : message.toRole,
                       )}
                     </span>
-                    <span
-                      className={`badge ${
-                        message.status === "sent" || message.status === "sending"
-                          ? "badge--vacant"
-                          : message.status === "failed"
-                            ? "badge--danger"
-                            : message.status === "cancelled"
-                              ? "badge--personal"
-                              : "badge--str"
-                      }`}
-                    >
+                    <span className={badgeClass(toneOf(OUTBOX_TONE, message.status))}>
                       {t(locale, `outbox_status_${message.status}` as StringKey)}
                     </span>
                     <span style={{ color: "var(--color-text-muted)" }}>
@@ -756,9 +758,9 @@ export default async function RentalServicePage({
                         href={waLink(message.toPhone, message.body)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="btn-chip btn-chip--wa"
+                        className="btn-chip btn-chip--wa btn-chip--icon-text"
                       >
-                        {t(locale, "outbox_send")} ↗
+                        {t(locale, "outbox_send")} <IconExternal size={14} />
                       </a>
                       <form action={markMessageSent}>
                         <input type="hidden" name="assetId" value={asset.id} />
@@ -772,8 +774,13 @@ export default async function RentalServicePage({
                   <form action={deleteMessage}>
                     <input type="hidden" name="assetId" value={asset.id} />
                     <input type="hidden" name="messageId" value={message.id} />
-                    <button type="submit" className="btn-chip" aria-label={t(locale, "aria_delete_message")}>
-                      ✕
+                    <button
+                      type="submit"
+                      className="btn-chip btn-chip--icon btn-chip--danger"
+                      aria-label={t(locale, "aria_delete_message")}
+                      title={t(locale, "aria_delete_message")}
+                    >
+                      <IconClose size={15} />
                     </button>
                   </form>
                 </div>

@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useActionState } from "react";
 import { addTrade, deleteTrade } from "@/lib/crypto/actions";
 import type { FormState } from "@/lib/units/actions";
+import { IconClose, IconTrendDown, IconTrendUp } from "@/app/icons";
+import { formatMoney } from "@/lib/format";
 
 export interface TradeRow {
   id: string;
@@ -42,17 +44,19 @@ export default function CryptoTrades({
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          className={"btn-chip " + (open === "buy" ? "btn-chip--active" : "")}
+          className={"btn-chip btn-chip--icon-text " + (open === "buy" ? "btn-chip--active" : "")}
+          aria-pressed={open === "buy"}
           onClick={() => setOpen(open === "buy" ? null : "buy")}
         >
-          🟢 {labels.crypto_buy}
+          <IconTrendUp size={15} /> {labels.crypto_buy}
         </button>
         <button
           type="button"
-          className={"btn-chip " + (open === "sell" ? "btn-chip--active" : "")}
+          className={"btn-chip btn-chip--icon-text " + (open === "sell" ? "btn-chip--active" : "")}
+          aria-pressed={open === "sell"}
           onClick={() => setOpen(open === "sell" ? null : "sell")}
         >
-          🔴 {labels.crypto_sell}
+          <IconTrendDown size={15} /> {labels.crypto_sell}
         </button>
       </div>
 
@@ -64,8 +68,9 @@ export default function CryptoTrades({
         >
           <input type="hidden" name="assetId" value={assetId} />
           <input type="hidden" name="side" value={open} />
-          <div style={{ fontSize: 13, fontWeight: 600, alignSelf: "center" }}>
-            {open === "buy" ? `🟢 ${labels.crypto_buy}` : `🔴 ${labels.crypto_sell}`} · {symbol}
+          <div className="icon-text" style={{ fontSize: 13, fontWeight: 600, alignSelf: "center" }}>
+            {open === "buy" ? <IconTrendUp size={16} /> : <IconTrendDown size={16} />}
+            {open === "buy" ? labels.crypto_buy : labels.crypto_sell} · {symbol}
           </div>
           <label className="field" style={{ width: 150 }}>
             {labels.crypto_quantity}
@@ -106,18 +111,28 @@ export default function CryptoTrades({
               {trades.map((t) => (
                 <tr key={t.id}>
                   <td data-label={labels.crypto_side}>
-                    <span className={`badge ${t.side === "buy" ? "badge--rented" : "badge--danger"}`}>
+                    {/* Buying or selling is neither good nor bad: a neutral tag
+                        with a direction, not a traffic-light colour. */}
+                    <span className="badge badge--tag badge--icon">
+                      {t.side === "buy" ? <IconTrendUp size={14} /> : <IconTrendDown size={14} />}
                       {t.side === "buy" ? labels.crypto_buy : labels.crypto_sell}
                     </span>
                   </td>
                   <td className="num" data-label={labels.crypto_quantity}>{fmt(t.quantity)}</td>
-                  <td className="num" data-label={labels.crypto_unit_price}>${fmt(t.unitPrice)}</td>
+                  <td className="num" data-label={labels.crypto_unit_price}>{formatMoney(t.unitPrice, "USD", 8)}</td>
                   <td data-label={labels.contract_start}>{t.date}</td>
                   <td className="num">
                     <form action={deleteTrade}>
                       <input type="hidden" name="tradeId" value={t.id} />
                       <input type="hidden" name="assetId" value={assetId} />
-                      <button type="submit" className="btn-chip" aria-label={labels.aria_delete_trade}>✕</button>
+                      <button
+                        type="submit"
+                        className="btn-chip btn-chip--icon"
+                        aria-label={labels.aria_delete_trade}
+                        title={labels.aria_delete_trade}
+                      >
+                        <IconClose size={15} />
+                      </button>
                     </form>
                   </td>
                 </tr>
