@@ -131,3 +131,20 @@ describe("lari defaults", () => {
     expect(gel.verdict).toBe(usd.verdict);
   });
 });
+
+describe("switchWorthinessCurrency", () => {
+  it("loads the other currency's example while the inputs are untouched", async () => {
+    const { switchWorthinessCurrency, WORTHINESS_DEFAULTS_GEL } = await import("./worthiness");
+    const toUsd = switchWorthinessCurrency({ ...WORTHINESS_DEFAULTS_GEL }, "GEL", "USD");
+    expect(toUsd).toEqual({ inputs: WORTHINESS_DEFAULTS, kept: false });
+    const back = switchWorthinessCurrency(toUsd.inputs, "USD", "GEL");
+    expect(back).toEqual({ inputs: WORTHINESS_DEFAULTS_GEL, kept: false });
+  });
+
+  it("keeps the owner's own figures and says they were not converted", async () => {
+    const { switchWorthinessCurrency, WORTHINESS_DEFAULTS_GEL } = await import("./worthiness");
+    const mine = { ...WORTHINESS_DEFAULTS_GEL, price: 150_000 };
+    expect(switchWorthinessCurrency(mine, "GEL", "USD")).toEqual({ inputs: mine, kept: true });
+    expect(switchWorthinessCurrency(mine, "GEL", "GEL")).toEqual({ inputs: mine, kept: false });
+  });
+});

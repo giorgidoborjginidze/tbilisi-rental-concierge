@@ -11,6 +11,8 @@ import { flushOutbox } from "@/lib/notify/whatsapp";
 import { MAX_TEMPLATE_CHARS } from "@/lib/notify/limits";
 import { parsePolygon } from "@/lib/geo/fence";
 import { startOfTodayTbilisi } from "@/lib/time";
+import { loadAssetSources } from "@/lib/property/places";
+import { MAX_MARKED_NIGHTS, nightsToAnswer } from "@/lib/property/stays";
 import { PAYMENT_PERIODS, snapToBoundary, type PaymentPeriod } from "./schedule";
 import { monthlyEquivalent } from "./amount";
 import { alignPaidThrough, applyPayment, replayLedger, restatesBalance } from "./ledger";
@@ -646,6 +648,14 @@ export async function retryOutbox(formData: FormData) {
  * Record whether a daily-let asset was rented on a given day, and for how
  * much. The tariff only suggests the figure — whatever was actually agreed
  * is what gets stored, and it stays editable afterwards.
+ *
+ * ONE record per day of a daily let: this DayEntry is what the dashboard's
+ * "rented today?" writes AND what nights marked on the asset's calendar
+ * write (saveDayRange below). Every calendar, the analytics and the income
+ * totals read it through lib/property/stays.ts, where it only fills a
+ * night no booking, lease or contract holds — so a night is never counted
+ * twice. (A night a stay already holds is not asked about: DailyCheck
+ * shows that stay instead.)
  */
 export async function saveDayEntry(
   _prev: FormState,
@@ -681,7 +691,74 @@ export async function saveDayEntry(
   });
 
   revalidatePath("/");
+  // The answer is a night on the Rentals calendar and in its analytics too.
+  revalidatePath("/calendar");
+  revalidatePath("/analytics");
   refresh(assetId);
+  return { ok: true };
+}
+
+/**
+ * Mark a stretch of nights on a day-let asset's own calendar (the asset
+ * page). ONE record for a daily let's day: this writes the same DayEntry
+ * rows as the dashboard's "rented today?" — the calendar is that question
+ * answered for several days at once — so the two never disagree, the
+ * dashboard does not ask again about a marked day, and every calendar,
+ * analytics figure and income total reads them the same way
+ * (lib/property/stays.ts). "Rented" skips nights a booking, lease or
+ * contract already holds; the amount is per night, as agreed. A long-term
+ * asset's calendar still records a contract (saveContract).
+ */
+export async function saveDayRange(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const assetId = str(formData, "assetId");
+  const startRaw = str(formData, "startDate");
+  const endRaw = str(formData, "endDate");
+  if (!assetId || !startRaw || !endRaw) return { error: "error_required" };
+
+  const start = new Date(`${startRaw}T00:00:00Z`);
+  const end = new Date(`${endRaw}T00:00:00Z`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return { error: "error_required" };
+  }
+  if (end <= start || (end.getTime() - start.getTime()) / 86_400_000 > MAX_MARKED_NIGHTS) {
+    return { error: "error_dates" };
+  }
+
+  const rented = str(formData, "rented") !== "0";
+  const amountRaw = optionalNumber(formData, "amount");
+  if (Number.isNaN(amountRaw) || (amountRaw != null && amountRaw < 0)) {
+    return { error: "error_invalid_number" };
+  }
+  if (rented && amountRaw == null) return { error: "error_required" };
+
+  const owned = await ownAsset(assetId);
+  if (!owned || owned.asset.rentalMode !== "daily") return { error: "error_required" };
+
+  const sources = (
+    await loadAssetSources(owned.operator.id, [assetId], { start, end })
+  ).get(assetId);
+  if (!sources) return { error: "error_required" };
+  const nights = nightsToAnswer(sources, start, end, rented);
+  if (nights.length === 0) return { error: "error_days_taken" };
+
+  const amount = rented ? amountRaw ?? 0 : 0;
+  const note = str(formData, "tenantName") || str(formData, "note") || null;
+  await prisma.$transaction(
+    nights.map((date) =>
+      prisma.dayEntry.upsert({
+        where: { assetId_date: { assetId, date } },
+        update: { rented, amount, note },
+        create: { assetId, date, rented, amount, currency: owned.asset.currency, note },
+      }),
+    ),
+  );
+
+  refresh(assetId);
+  revalidatePath("/calendar");
+  revalidatePath("/analytics");
   return { ok: true };
 }
 

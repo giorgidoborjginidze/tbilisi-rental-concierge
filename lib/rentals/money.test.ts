@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDue, formatMoney, payableAmount } from "./money";
+import { formatAmountPlain, formatDue, payableAmount } from "./money";
 import { contractTerms, statusFor } from "./terms";
 import { applyPayment } from "./ledger";
 
@@ -16,10 +16,10 @@ describe("payableAmount", () => {
   });
 });
 
-describe("formatMoney / formatDue", () => {
+describe("formatAmountPlain / formatDue", () => {
   it("shows whole amounts plainly and fractions with two decimals", () => {
-    expect(formatMoney(1200)).toBe("1,200");
-    expect(formatMoney(49.4)).toBe("49.40");
+    expect(formatAmountPlain(1200)).toBe("1,200");
+    expect(formatAmountPlain(49.4)).toBe("49.40");
     expect(formatDue(49.4)).toBe("49.40");
     expect(formatDue(49.401)).toBe("49.41");
     expect(formatDue(1826.4)).toBe("1,826.40");

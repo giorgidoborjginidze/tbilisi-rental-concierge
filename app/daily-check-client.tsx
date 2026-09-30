@@ -18,6 +18,12 @@ export interface DayAsset {
   kind: "holiday" | "weekend" | "base";
   /** The answer already on record, if the day has been filled in. */
   answered: { rented: boolean; amount: number } | null;
+  /**
+   * A booking, lease or contract already holds today: that stay is the
+   * record of the night, so the question is not asked (one source per
+   * night — lib/property/stays.ts). `amount` is the night's price if known.
+   */
+  covered: { label: string; amount: number | null } | null;
 }
 
 // One row per daily-let asset, asking the only question that matters each
@@ -75,6 +81,24 @@ function Row({
       : asset.kind === "weekend"
         ? labels.day_weekend
         : labels.day_base;
+
+  if (asset.covered) {
+    return (
+      <div className="daily-row daily-row--done">
+        <span className="daily-row__ico" data-on="1">
+          <IconCheck size={17} />
+        </span>
+        <span className="daily-row__txt">
+          <b>{asset.name}</b>
+          <span>{asset.place}</span>
+        </span>
+        <span className="daily-row__sum">
+          {asset.covered.amount != null ? formatMoney(asset.covered.amount, asset.currency) : labels.day_yes}
+        </span>
+        <span className="daily-row__src">{asset.covered.label}</span>
+      </div>
+    );
+  }
 
   if (!editing && asset.answered) {
     return (

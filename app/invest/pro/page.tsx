@@ -18,7 +18,7 @@ const LABEL_KEYS: StringKey[] = [
   "wor_rate", "wor_years", "wor_rent", "wor_growth", "wor_vacancy",
   "wor_more", "wor_insurance", "wor_maintenance", "wor_management",
   "wor_utilities", "wor_broker", "wor_hoa", "wor_proptax", "wor_points",
-  "wor_tax", "wor_units_n", "wor_currency",
+  "wor_tax", "wor_units_n", "wor_currency", "wor_not_converted",
   "wor_verdict_good", "wor_verdict_ok", "wor_verdict_poor",
   "wor_payment", "wor_invested", "wor_cf_month", "wor_coc", "wor_cap", "wor_cap_short",
   "wor_payback", "wor_equity5", "wor_year", "wor_col_rent", "wor_col_noi",

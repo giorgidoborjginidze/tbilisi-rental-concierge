@@ -38,6 +38,7 @@ import {
   type OverlapSignal,
 } from "./signals";
 import { LIVE_STAY } from "@/lib/bookings/live";
+import { dayFills, emptySources, placeStays, type PlaceSources } from "@/lib/property/stays";
 
 const DAY_MS = 86_400_000;
 /** The window the "underpriced" check looks at for upcoming occupancy. */
@@ -63,7 +64,8 @@ const payloadKey = (payload: unknown) => (payload as { key?: string } | null)?.k
 const overlapStays = (overlap: OverlapSignal, tenants?: Map<string, string | null>) =>
   overlap.stays.map((stay) => ({
     id: stay.id,
-    source: stay.kind,
+    // A contract (of the asset, or of a unit's linked asset) reads as one.
+    source: tenants?.has(stay.id) ? "contract" : stay.kind,
     start: dayStamp(stay.start),
     end: dayStamp(stay.end),
     ...(tenants ? { tenantName: tenants.get(stay.id) ?? null } : {}),
@@ -94,6 +96,29 @@ export async function scanAlerts(
         },
       },
       leases: true,
+      // The same flat under Assets: its contracts and "rented" answers take
+      // nights too (lib/property/stays.ts) — no free-window alert for them.
+      asset: {
+        select: {
+          rentalMode: true,
+          contracts: {
+            where: { endDate: { gt: start } },
+            select: {
+              id: true,
+              startDate: true,
+              endDate: true,
+              tenantName: true,
+              paymentPeriod: true,
+              paymentAmount: true,
+              monthlyRent: true,
+            },
+          },
+          days: {
+            where: { rented: true, date: { gte: start, lt: lookAhead } },
+            select: { date: true, amount: true },
+          },
+        },
+      },
     },
   });
   // The last checkout on or before today bounds each unit's first free
@@ -187,24 +212,22 @@ export async function scanAlerts(
   };
 
   for (const unit of units) {
-    const stays: Stay[] = [
-      ...unit.bookings.map((b) => ({
-        id: b.id,
-        kind: b.source,
-        start: b.checkIn,
-        end: b.checkOut,
-      })),
-      ...unit.leases.map((l) => ({
-        id: l.id,
-        kind: "lease",
-        start: l.startDate,
-        end: l.endDate,
-      })),
-    ];
+    const place: PlaceSources = {
+      ...emptySources(),
+      bookings: unit.bookings,
+      leases: unit.leases,
+      contracts: unit.asset?.contracts ?? [],
+      days: unit.asset?.days ?? [],
+      dailyMode: unit.asset?.rentalMode === "daily",
+    };
+    // Bookings, leases and the linked asset's contracts; daily answers
+    // only on nights none of them holds.
+    const stays: Stay[] = placeStays(place);
+    const taken: Stay[] = [...stays, ...dayFills(place)];
     const previous = lastCheckout.get(unit.id);
     const bounded: Stay[] = previous
-      ? [...stays, { id: "previous", kind: "past", start: previous, end: previous }]
-      : stays;
+      ? [...taken, { id: "previous", kind: "past", start: previous, end: previous }]
+      : taken;
 
     // 1. Free windows starting within two weeks (leases count as
     //    occupancy). One alert per window, figures refreshed daily; closed
@@ -223,19 +246,24 @@ export async function scanAlerts(
       staleVacancyAlerts(
         openOf("vacancy_gap", (alert) => alert.unitId === unit.id),
         new Set(gaps.map((gap) => gap.key)),
-        stays,
+        taken,
         start,
       ),
     );
 
-    // 2. Double bookings in the next 90 days: two stays on the same nights.
-    const overlaps = overlapSignals(stays, start);
+    // 2. Double bookings in the next 90 days: two stays on the same nights
+    //    — a booking or lease against another, or against a contract on the
+    //    linked asset. Two contracts of one asset are section 5's alert.
+    const tenants = new Map((unit.asset?.contracts ?? []).map((c) => [c.id, c.tenantName]));
+    const overlaps = overlapSignals(stays, start).filter(
+      (overlap) => !overlap.stays.every((stay) => tenants.has(stay.id)),
+    );
     for (const overlap of overlaps) {
       await push(unit.operatorId, unit.id, "overlap", overlap.key, {
         start: dayStamp(overlap.start),
         end: dayStamp(overlap.end),
         nights: overlap.nights,
-        stays: overlapStays(overlap),
+        stays: overlapStays(overlap, tenants),
         unitName: unit.name,
       });
     }
@@ -277,12 +305,13 @@ export async function scanAlerts(
         }),
     );
 
-    // 4. Underpriced vs the district benchmark (this month).
+    // 4. Underpriced vs the district benchmark (this month). Demand counts
+    //    every night taken: stays, contracts and daily answers.
     const occupiedNights = new Set<number>();
-    for (const booking of unit.bookings) {
+    for (const stay of taken) {
       for (
-        let t = Math.max(booking.checkIn.getTime(), start.getTime());
-        t < Math.min(booking.checkOut.getTime(), pricingWindowEnd.getTime());
+        let t = Math.max(stay.start.getTime(), start.getTime());
+        t < Math.min(stay.end.getTime(), pricingWindowEnd.getTime());
         t += DAY_MS
       ) {
         occupiedNights.add(t);

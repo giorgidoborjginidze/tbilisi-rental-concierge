@@ -30,6 +30,8 @@ export default function UnitForm({
   types,
   labels,
   feedStatus,
+  assets,
+  linkedAsset,
 }: {
   unit?: UnitFormValues;
   cities: { value: string; label: string }[];
@@ -38,6 +40,10 @@ export default function UnitForm({
   labels: Record<string, string>;
   /** How each saved iCal link last synced (rendered on the server). */
   feedStatus?: React.ReactNode;
+  /** Real-estate assets without a unit, which this unit may be linked to. */
+  assets: { id: string; label: string }[];
+  /** The asset this unit is already linked to (edit). */
+  linkedAsset?: { id: string; label: string } | null;
 }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     saveUnit,
@@ -156,6 +162,32 @@ export default function UnitForm({
       </label>
 
       {feedStatus && <div className="sm:col-span-2">{feedStatus}</div>}
+
+      {/* The same flat under Assets: its value, contracts and daily
+          answers. A new unit gets one unless an existing one is picked. */}
+      {linkedAsset ? (
+        <p className="field sm:col-span-2" style={{ margin: 0 }}>
+          {labels.unit_asset_link}
+          <Link href={`/assets/${linkedAsset.id}/edit`} className="link" style={{ fontWeight: 600 }}>
+            {linkedAsset.label}
+          </Link>
+        </p>
+      ) : (
+        <label className="field sm:col-span-2">
+          {labels.unit_asset_link}
+          <select
+            name="linkAssetId"
+            defaultValue={sent?.linkAssetId ?? (unit?.id ? "" : "__new__")}
+          >
+            {unit?.id && <option value="">{labels.unit_asset_none}</option>}
+            <option value="__new__">{labels.unit_asset_new}</option>
+            {assets.map((asset) => (
+              <option key={asset.id} value={asset.id}>{asset.label}</option>
+            ))}
+          </select>
+          <span className="hint">{labels.unit_asset_hint}</span>
+        </label>
+      )}
 
       {state?.error && (
         <p className="sm:col-span-2" style={{ color: "var(--status-danger-text)", fontSize: 13, overflowWrap: "anywhere" }}>

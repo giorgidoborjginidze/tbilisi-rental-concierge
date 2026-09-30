@@ -5,7 +5,7 @@ import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 import { parseAmenities, parseChannelLinks } from "@/lib/types";
 import UnitForm from "../../unit-form";
-import { unitFormProps } from "../../form-helpers";
+import { linkableAssets, unitFormProps } from "../../form-helpers";
 import FeedStatus from "../../feed-status";
 import { feedUrlsOf } from "@/lib/ical/run-sync";
 import { cityKey, districtLabel } from "@/lib/places";
@@ -25,7 +25,7 @@ export default async function EditUnitPage({
   const { id } = await params;
   const unit = await prisma.unit.findFirst({
     where: { id, operatorId: operator.id },
-    include: { feeds: true },
+    include: { feeds: true, asset: { select: { id: true, name: true, nameKa: true } } },
   });
   if (!unit) notFound();
 
@@ -37,6 +37,15 @@ export default async function EditUnitPage({
       <h1>{t(locale, "unit_edit_title")}</h1>
       <UnitForm
         {...unitFormProps(locale)}
+        assets={unit.asset ? [] : await linkableAssets(operator.id, locale)}
+        linkedAsset={
+          unit.asset
+            ? {
+                id: unit.asset.id,
+                label: locale === "ka" && unit.asset.nameKa ? unit.asset.nameKa : unit.asset.name,
+              }
+            : null
+        }
         feedStatus={
           links.icalUrls.length > 0 ? (
             <>

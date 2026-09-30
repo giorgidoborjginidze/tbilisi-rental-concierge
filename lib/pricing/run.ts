@@ -8,8 +8,9 @@ import { getMarketDataSource } from "@/lib/market/source";
 import { suggestRate, type PricingResult } from "./engine";
 import { generateRationales } from "@/lib/ai/rationale";
 import type { Locale } from "@/lib/i18n/strings";
-import { LIVE_STAY } from "@/lib/bookings/live";
 import { benchmarkMonth, occupancyShare } from "./nightly";
+import { loadRentalPlaces } from "@/lib/property/places";
+import { occupiedIntervals } from "@/lib/property/stays";
 
 const DAY_MS = 86_400_000;
 
@@ -29,21 +30,23 @@ export async function computeSuggestionsForUnit(
 ): Promise<SuggestionRow[] | null> {
   const unit = await prisma.unit.findUnique({ where: { id: unitId } });
   if (!unit) return null;
+  // No base rate yet (a unit made for an asset without a day price): no
+  // price to build on.
+  if (unit.baseNightlyRate <= 0) return [];
 
   const start = startOfTodayTbilisi(today);
   const next30End = new Date(start.getTime() + 30 * DAY_MS);
 
-  // The unit's own occupancy over the next 30 days drives the demand factor.
-  const upcoming = await prisma.booking.findMany({
-    where: {
-      unitId,
-      ...LIVE_STAY,
-      checkIn: { lt: next30End },
-      checkOut: { gt: start },
-    },
-  });
+  // The unit's own occupancy over the next 30 days drives the demand
+  // factor: its bookings and leases, and the contracts and daily answers
+  // of the asset linked to it — one source per night.
+  const [place] = await loadRentalPlaces(
+    unit.operatorId,
+    { start, end: next30End },
+    { unitId },
+  );
   const upcomingOccupancy = occupancyShare(
-    upcoming.map((booking) => ({ start: booking.checkIn, end: booking.checkOut })),
+    place ? occupiedIntervals(place.sources) : [],
     start,
     30,
   );

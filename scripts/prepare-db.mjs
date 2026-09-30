@@ -74,5 +74,13 @@ if (!isPostgres) {
     // tenant and driver messages follow it). Idempotent; never touches a
     // language an owner picked.
     run("npx tsx scripts/backfill-locale.ts");
+    // Units and real-estate assets that are the same flat under the same
+    // name become one place (one-off per database, recorded in SystemRun;
+    // links identical names only). Non-fatal: nothing breaks without it.
+    try {
+      run("npx tsx scripts/link-properties.ts");
+    } catch {
+      console.warn("[prepare-db] unit/asset linking skipped (non-fatal)");
+    }
   }
 }

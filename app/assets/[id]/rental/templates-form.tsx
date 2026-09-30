@@ -59,7 +59,12 @@ export default function TemplatesForm({
             <span className="tpl-grid__label">
               {field.label}
               {!field.isDefault && (
-                <span className="tpl-grid__edited" title={labels.tpl_edited} aria-label={labels.tpl_edited}>
+                <span
+                  className="tpl-grid__edited"
+                  title={labels.tpl_edited}
+                  role="img"
+                  aria-label={labels.tpl_edited}
+                >
                   <IconEdit size={14} />
                 </span>
               )}

@@ -10,6 +10,8 @@ import SyncButton from "./sync-button";
 import { cityLabel, districtLabel } from "@/lib/places";
 import { formatMoney } from "@/lib/format";
 import { titled } from "@/lib/i18n/metadata";
+import { DAY_LET_WITHOUT_UNIT } from "@/lib/property/places";
+import { addAssetToRentals } from "@/lib/assets/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +28,13 @@ export default async function UnitsPage() {
       feeds: true,
     },
     orderBy: [{ city: "asc" }, { district: "asc" }, { name: "asc" }],
+  });
+  // Flats let by the day that were added under Assets before the two were
+  // linked: on the calendar already, one click from a unit of their own.
+  const looseFlats = await prisma.asset.findMany({
+    where: { operatorId: operator.id, ...DAY_LET_WITHOUT_UNIT },
+    select: { id: true, name: true, nameKa: true },
+    orderBy: { name: "asc" },
   });
 
   return (
@@ -53,8 +62,29 @@ export default async function UnitsPage() {
         </div>
       </div>
 
+      {looseFlats.length > 0 && (
+        <div className="alert-card alert-card--info" style={{ display: "block", marginBottom: 16 }}>
+          <div className="alert-card__detail" style={{ marginTop: 0 }}>{t(locale, "units_loose_flats")}</div>
+          <ul className="loose-flats">
+            {looseFlats.map((asset) => (
+              <li key={asset.id}>
+                <Link href={`/assets/${asset.id}/edit`} className="link">
+                  {locale === "ka" && asset.nameKa ? asset.nameKa : asset.name}
+                </Link>
+                <form action={addAssetToRentals}>
+                  <input type="hidden" name="assetId" value={asset.id} />
+                  <button type="submit" className="btn-chip">{t(locale, "units_add_from_asset")}</button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {units.length === 0 ? (
-        <p style={{ color: "var(--color-text-muted)" }}>{t(locale, "units_empty")}</p>
+        looseFlats.length === 0 && (
+          <p style={{ color: "var(--color-text-muted)" }}>{t(locale, "units_empty")}</p>
+        )
       ) : (
         <div className="card card--stack">
           <table>

@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { useActionState } from "react";
 import { saveContract } from "@/lib/assets/actions";
+import { saveDayRange } from "@/lib/rentals/actions";
 import type { FormState } from "@/lib/units/actions";
 
 export interface CalDay {
@@ -17,8 +18,11 @@ export interface CalMonth {
 }
 
 // Per-asset occupancy calendar with drag-to-mark: swipe across days to
-// select a range, then save it as a rental contract (dates + price
-// prefilled). Pointer events cover mouse and touch alike.
+// select a range, then save it. A day-let asset records the nights as
+// daily answers — the same record as the dashboard's "rented today?"
+// (lib/rentals/actions.ts saveDayRange); a long-term asset records a
+// rental contract (dates + price prefilled). Pointer events cover mouse
+// and touch alike.
 export default function OccupancyCalendar({
   assetId,
   months,
@@ -43,7 +47,7 @@ export default function OccupancyCalendar({
   const dragging = useRef(false);
   const submitted = useRef(false);
   const [state, formAction, pending] = useActionState<FormState, FormData>(
-    saveContract,
+    isDaily ? saveDayRange : saveContract,
     null,
   );
 
@@ -160,7 +164,7 @@ export default function OccupancyCalendar({
           </Fragment>
         ))}
       </div>
-      <p className="hint" style={{ marginTop: 8 }}>{labels.drag_hint}</p>
+      <p className="hint" style={{ marginTop: 8 }}>{isDaily ? labels.drag_hint_daily : labels.drag_hint}</p>
 
       {range && (
         <form
@@ -172,8 +176,8 @@ export default function OccupancyCalendar({
           style={{ marginTop: 10, alignItems: "flex-end", flexWrap: "wrap", gap: 12 }}
         >
           <input type="hidden" name="assetId" value={assetId} />
-          {/* A daily let is charged per night; anything else per month. */}
-          <input type="hidden" name="paymentPeriod" value={isDaily ? "daily" : "monthly"} />
+          {/* A long let is a contract charged per month. */}
+          {!isDaily && <input type="hidden" name="paymentPeriod" value="monthly" />}
           <div style={{ fontSize: 13, fontWeight: 600, alignSelf: "center" }}>
             {labels.mark_range_title}: {nights} {labels.nights_short}
           </div>
@@ -186,24 +190,34 @@ export default function OccupancyCalendar({
             <input type="date" name="endDate" defaultValue={dayAfter(range.end)} required />
           </label>
           <label className="field" style={{ width: 130 }}>
-            {isDaily ? labels.contract_amount_daily : labels.contract_amount_monthly}
+            {isDaily ? labels.mark_amount_night : labels.contract_amount_monthly}
             <input
               type="number"
               name="amount"
-              min={0.01}
+              min={isDaily ? 0 : 0.01}
               step="0.01"
               defaultValue={defaultRate ?? undefined}
-              required
+              required={!isDaily}
             />
           </label>
           <label className="field" style={{ width: 170 }}>
-            {labels.contract_tenant}
+            {isDaily ? labels.mark_note : labels.contract_tenant}
             <input name="tenantName" autoComplete="off" />
           </label>
-          <div className="flex items-center gap-2">
-            <button type="submit" disabled={pending} className="btn-primary">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="submit"
+              disabled={pending}
+              className="btn-primary"
+              {...(isDaily ? { name: "rented", value: "1" } : {})}
+            >
               {labels.mark_save}
             </button>
+            {isDaily && (
+              <button type="submit" name="rented" value="0" disabled={pending} className="btn-chip">
+                {labels.mark_not_rented}
+              </button>
+            )}
             <button
               type="button"
               className="btn-chip"

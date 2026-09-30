@@ -10,6 +10,13 @@ import { checkFeedUrl } from "@/lib/ical/fetch";
 import { normalizeFeedUrl } from "@/lib/ical/sync";
 import { cityKey, districtKey } from "@/lib/places";
 import { submittedValues } from "@/lib/forms";
+import {
+  assetHoldsNothing,
+  createAssetForUnit,
+} from "@/lib/property/link";
+
+/** The unit form's asset choice: create one, link one, or (edit only) leave it. */
+const NEW_ASSET = "__new__";
 
 export type FormState =
   | {
@@ -106,23 +113,58 @@ export async function saveUnit(
     },
   };
 
-  if (unitId) {
-    const owned = await prisma.unit.findFirst({
-      where: { id: unitId, operatorId: operator.id },
-    });
-    if (!owned) return { error: "error_required" };
-    await prisma.unit.update({ where: { id: unitId }, data });
-    // Status rows of removed links go now, not at the next sync.
-    await prisma.unitFeed.deleteMany({ where: { unitId, url: { notIn: icalUrls } } });
-  } else {
+  // One flat, one place: a unit is the calendar side of a real-estate
+  // asset. A new unit gets its asset (created, or the one the owner
+  // picked); an old unit without one gets it when the owner asks.
+  const assetChoice = str(formData, "linkAssetId");
+  const existing = unitId
+    ? await prisma.unit.findFirst({
+        where: { id: unitId, operatorId: operator.id },
+        select: { id: true, asset: { select: { id: true } } },
+      })
+    : null;
+  if (unitId && !existing) return { error: "error_required" };
+  const alreadyLinked = existing?.asset != null;
+  const linkTo =
+    alreadyLinked || !assetChoice || assetChoice === NEW_ASSET
+      ? null
+      : await prisma.asset.findFirst({
+          where: { id: assetChoice, operatorId: operator.id, category: "real_estate", unitId: null },
+          select: { id: true },
+        });
+  if (!alreadyLinked && assetChoice && assetChoice !== NEW_ASSET && !linkTo) {
+    return { error: "error_required", values: submittedValues(formData) };
+  }
+  // A new unit without a choice gets a new asset; an edited, unlinked one
+  // only when asked.
+  const createAsset = !alreadyLinked && !linkTo && (unitId ? assetChoice === NEW_ASSET : true);
+
+  if (!unitId) {
+    // A linked pair counts once, as a unit (lib/billing/context.ts).
     const { getBillingContext } = await import("@/lib/billing/context");
     if (!(await getBillingContext(operator)).canAddUnit) {
-      return { error: "error_limit_units" };
+      return { error: "error_limit_units", values: submittedValues(formData) };
     }
-    await prisma.unit.create({ data: { ...data, operatorId: operator.id } });
   }
 
+  await prisma.$transaction(async (tx) => {
+    const unit = unitId
+      ? await tx.unit.update({ where: { id: unitId }, data })
+      : await tx.unit.create({ data: { ...data, operatorId: operator.id } });
+    if (unitId) {
+      // Status rows of removed links go now, not at the next sync.
+      await tx.unitFeed.deleteMany({ where: { unitId, url: { notIn: icalUrls } } });
+    }
+    if (linkTo) {
+      await tx.asset.update({ where: { id: linkTo.id }, data: { unitId: unit.id } });
+    } else if (createAsset) {
+      await createAssetForUnit(tx, unit);
+    }
+  });
+
   revalidatePath("/units");
+  revalidatePath("/assets");
+  revalidatePath("/calendar");
   revalidatePath("/");
   redirect("/units");
 }
@@ -131,10 +173,21 @@ export async function deleteUnit(formData: FormData) {
   const operator = await requireWriter();
   const unitId = str(formData, "unitId");
   if (unitId) {
-    await prisma.unit.deleteMany({
+    const linked = await prisma.asset.findFirst({
+      where: { unitId, operatorId: operator.id },
+      select: { id: true },
+    });
+    // The asset made for this unit goes with it while it holds nothing of
+    // its own; one with a value, contracts or daily answers stays (unlinked).
+    const dropAsset = linked ? await assetHoldsNothing(prisma, linked.id) : false;
+    const { count } = await prisma.unit.deleteMany({
       where: { id: unitId, operatorId: operator.id },
     });
+    if (count > 0 && linked && dropAsset) {
+      await prisma.asset.deleteMany({ where: { id: linked.id, operatorId: operator.id } });
+    }
     revalidatePath("/units");
+    revalidatePath("/assets");
     revalidatePath("/");
   }
   redirect("/units");

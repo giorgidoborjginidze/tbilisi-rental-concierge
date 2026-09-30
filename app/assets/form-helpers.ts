@@ -30,6 +30,8 @@ export async function assetFormProps(
     "crypto_custom_id_hint", "crypto_add_hint", "stock_ticker",
     "stock_custom_ticker", "stock_add_hint", "metal_type", "metal_hint",
     "holding_next_hint", "ph_crypto_symbol", "ph_crypto_id", "ph_stock_symbol",
+    "unit_ical_urls", "asset_ical_hint", "asset_unit_auto", "error_ical_url",
+    "error_limit_units", "error_limit_assets",
   ];
   const labels = Object.fromEntries(labelKeys.map((key) => [key, t(locale, key)]));
 

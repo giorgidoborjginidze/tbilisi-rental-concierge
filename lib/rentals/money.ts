@@ -15,8 +15,12 @@ export function payableAmount(value: number): number {
   return cents / 100;
 }
 
-/** "1,200" for a whole amount, "49.40" otherwise. */
-export function formatMoney(value: number): string {
+/**
+ * "1,200" for a whole amount, "49.40" otherwise — the bare number, WITHOUT
+ * a currency, for WhatsApp bodies whose template adds {currency}. On screen
+ * use lib/format.ts formatMoney / formatDueMoney, which add the sign.
+ */
+export function formatAmountPlain(value: number): string {
   const whole = Math.abs(value - Math.round(value)) < 0.005;
   return whole
     ? Math.round(value).toLocaleString("en-US")
@@ -27,4 +31,4 @@ export function formatMoney(value: number): string {
 }
 
 /** An amount owed, as it is quoted to the owner and to the renter. */
-export const formatDue = (value: number): string => formatMoney(payableAmount(value));
+export const formatDue = (value: number): string => formatAmountPlain(payableAmount(value));

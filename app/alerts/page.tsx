@@ -17,7 +17,7 @@ import { lastRunFor } from "@/lib/automation/run";
 import { rankAlerts } from "@/lib/alerts/rank";
 import { firstParam, type QueryValue } from "@/lib/params";
 import { titled } from "@/lib/i18n/metadata";
-import { alertCardClass, alertSeverity, badgeClass } from "@/lib/ui/tone";
+import { alertCardClass, badgeClass, endedAlertSeverity } from "@/lib/ui/tone";
 import { AlertTypeIcon } from "../alert-icon";
 import { IconArrowRight } from "../icons";
 import OutboxList, { type OutboxItem } from "../outbox-list";
@@ -290,8 +290,8 @@ export default async function AlertsPage({
       case "contract_expiry":
         return `${assetLabel(payload)} · ${payload.tenantName ?? "—"} · ${
           payload.paymentAmount != null && payload.paymentPeriod
-            ? `${formatMoney(payload.paymentAmount, currency, 2)} / ${t(locale, periodWordKey(payload.paymentPeriod))}`
-            : formatMoney(payload.monthlyRent, currency, 2)
+            ? `${formatMoney(payload.paymentAmount, currency, "auto")} / ${t(locale, periodWordKey(payload.paymentPeriod))}`
+            : formatMoney(payload.monthlyRent, currency, "auto")
         } · ${day(payload.endDate)} · ${payload.daysLeft} ${t(locale, "days_left")}`;
       case "contract_ended": {
         const status = payload.contractId ? live.get(payload.contractId) : null;
@@ -500,7 +500,19 @@ export default async function AlertsPage({
               ? "action_overlap_contract"
               : (`action_${alert.type}` as StringKey);
           return (
-            <div key={alert.id} className={alertCardClass(done ? "muted" : alertSeverity(alert.type))}>
+            <div
+              key={alert.id}
+              className={alertCardClass(
+                done
+                  ? "muted"
+                  : endedAlertSeverity(
+                      alert.type,
+                      alert.type === "contract_ended" &&
+                        payload.contractId != null &&
+                        owes(live.get(payload.contractId)),
+                    ),
+              )}
+            >
               <div>
                 <div className="alert-card__title">
                   <AlertTypeIcon type={alert.type} />

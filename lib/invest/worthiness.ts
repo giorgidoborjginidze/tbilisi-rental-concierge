@@ -89,6 +89,34 @@ export const WORTHINESS_DEFAULTS_GEL: WorthinessInputs = {
   insurancePerYear: 140,
 };
 
+export type WorthinessCurrency = "GEL" | "USD";
+
+/** The example a currency opens with. */
+export const worthinessDefaults = (currency: WorthinessCurrency): WorthinessInputs =>
+  currency === "USD" ? WORTHINESS_DEFAULTS : WORTHINESS_DEFAULTS_GEL;
+
+/**
+ * Switching the currency does not convert anything. While the inputs are
+ * still the example of the old currency, the other currency's example is
+ * loaded (so "81,000 ₾" never turns into "81,000 $"); once the owner has
+ * typed their own figures they are kept, and `kept` asks the page to say
+ * that the amounts were not converted.
+ */
+export function switchWorthinessCurrency(
+  inputs: WorthinessInputs,
+  from: WorthinessCurrency,
+  to: WorthinessCurrency,
+): { inputs: WorthinessInputs; kept: boolean } {
+  if (from === to) return { inputs, kept: false };
+  const example = worthinessDefaults(from);
+  const untouched = (Object.keys(example) as (keyof WorthinessInputs)[]).every(
+    (key) => inputs[key] === example[key],
+  );
+  return untouched
+    ? { inputs: { ...worthinessDefaults(to) }, kept: false }
+    : { inputs, kept: true };
+}
+
 export interface YearRow {
   year: number;
   monthlyRent: number;

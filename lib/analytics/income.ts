@@ -23,7 +23,9 @@
 // not counted again from a daily answer. Order of precedence: a priced
 // booking, then a contract or lease (the latest-starting first), then the
 // daily answer. Two bookings on one night (a double booking) both stay in
-// "bookings", as they do on the analytics page.
+// "bookings", as they do on the analytics page. lib/property/stays.ts
+// (nightOwners) applies the same order night by night for the calendars
+// and /analytics — keep the two in step (stays.test.ts cross-checks them).
 
 import { dayPrice } from "../assets/daily-price";
 import { asPeriod, perPeriodAmount } from "../rentals/amount";

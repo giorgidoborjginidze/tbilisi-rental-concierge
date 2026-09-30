@@ -29,6 +29,8 @@ export interface AssetFormValues {
   holidayPct: string;
   status: string;
   unitId: string;
+  /** The linked unit's iCal links, one per line. */
+  icalUrls: string;
   notes: string;
 }
 
@@ -242,6 +244,9 @@ export default function AssetForm({
                     <option key={unit.id} value={unit.id}>{unit.label}</option>
                   ))}
                 </select>
+                {category === "real_estate" && rentalMode === "daily" && !asset?.unitId && (
+                  <span className="hint">{labels.asset_unit_auto}</span>
+                )}
               </label>
             </>
           )}
@@ -277,6 +282,20 @@ export default function AssetForm({
               {rentalModeField}
               {dailyPricingFields}
               <ListingInput initial={initialLinks} labels={labels} />
+              {/* Channel calendars live on the flat's unit (made for it
+                  when needed), so its bookings show in Rentals. */}
+              {(rentalMode === "daily" || Boolean(asset?.icalUrls)) && (
+                <label className="field sm:col-span-2">
+                  {labels.unit_ical_urls}
+                  <textarea
+                    name="icalUrls"
+                    rows={2}
+                    defaultValue={asset?.icalUrls}
+                    className="font-mono text-xs"
+                  />
+                  <span className="hint">{labels.asset_ical_hint}</span>
+                </label>
+              )}
             </>
           )}
 
@@ -311,7 +330,10 @@ export default function AssetForm({
       )}
 
       {state?.error && (
-        <p className="sm:col-span-2" style={{ color: "var(--status-danger-text)", fontSize: 13 }}>{labels[state.error]}</p>
+        <p className="sm:col-span-2" style={{ color: "var(--status-danger-text)", fontSize: 13, overflowWrap: "anywhere" }}>
+          {labels[state.error]}
+          {state.detail ? ` ${state.detail}` : ""}
+        </p>
       )}
 
       <div className="flex items-center gap-3 sm:col-span-2">

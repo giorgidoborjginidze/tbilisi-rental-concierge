@@ -3513,6 +3513,13 @@ main > section > h2:first-child {
   font-size: 14px;
   white-space: nowrap;
 }
+/* Where a night already on record comes from (a booking, a contract). */
+.daily-row__src {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
 .daily-row__ico {
   width: 32px;
   height: 32px;
@@ -4227,3 +4234,20 @@ a.badge--link:hover { text-decoration: underline; }
 .gap-unit__more { font-size: 12.5px; margin-top: auto; }
 /* A card's one action keeps its label on one line. */
 .alert-card > .btn-primary.btn-compact { flex: none; white-space: nowrap; }
+
+/* ── /units: day-let flats that live only under Assets so far (P10). ── */
+.loose-flats {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.loose-flats li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 13.5px;
+}

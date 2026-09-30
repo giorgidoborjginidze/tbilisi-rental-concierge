@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
+import type { PaymentState } from "@/lib/rentals/schedule";
 import {
   alertCardClass,
   alertSeverity,
   badgeClass,
+  endedAlertSeverity,
   OUTBOX_TONE,
   PAYMENT_TONE,
   toneOf,
@@ -44,6 +46,29 @@ describe("one colour meaning", () => {
     expect(alertSeverity("vacancy_gap")).toBe("info");
     expect(alertSeverity("something_new")).toBe("info");
     expect(alertCardClass("danger")).toBe("alert-card alert-card--danger");
+  });
+
+  it("an ended contract is grey, amber while rent is still owed on it", () => {
+    expect(alertSeverity("contract_ended")).toBe("muted");
+    expect(endedAlertSeverity("contract_ended", false)).toBe("muted");
+    expect(endedAlertSeverity("contract_ended", true)).toBe("warn");
+    // Only an ended contract changes with the debt.
+    expect(endedAlertSeverity("rent_overdue", false)).toBe("warn");
+    expect(endedAlertSeverity("overlap", true)).toBe("danger");
+  });
+
+  it("every payment state has its colour", () => {
+    const states: PaymentState[] = ["not_started", "ok", "due", "grace", "repossess", "ended"];
+    expect(states.map((s) => PAYMENT_TONE[s])).toEqual([
+      "muted",
+      "good",
+      "warn",
+      "warn",
+      "danger",
+      "muted",
+    ]);
+    expect(Object.keys(PAYMENT_TONE).sort()).toEqual([...states].sort());
+    expect(badgeClass(toneOf(PAYMENT_TONE, "due"))).toBe("badge badge--warn");
   });
 
   it("unknown keys fall back to grey", () => {

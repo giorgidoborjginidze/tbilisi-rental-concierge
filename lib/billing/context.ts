@@ -72,8 +72,10 @@ export async function getBillingContext(
   };
   const plan = effectivePlan(state, now);
 
+  // A unit and the asset linked to it are one property: the pair counts
+  // once, against the units (lib/property/link.ts).
   const [assetCount, unitCount] = await Promise.all([
-    prisma.asset.count({ where: { operatorId: { in: scopeIds } } }),
+    prisma.asset.count({ where: { operatorId: { in: scopeIds }, unitId: null } }),
     prisma.unit.count({ where: { operatorId: { in: scopeIds } } }),
   ]);
 

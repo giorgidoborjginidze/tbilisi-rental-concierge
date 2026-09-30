@@ -31,6 +31,8 @@ import AssetDeckClient, { type DeckAsset, type DeckSlide } from "./asset-deck-cl
 import DailyCheckClient, { type DayAsset } from "./daily-check-client";
 import { dayKind, dayPrice } from "@/lib/assets/daily-price";
 import { districtLabel } from "@/lib/places";
+import { loadAssetSources } from "@/lib/property/places";
+import { contractNightValue, placeStays } from "@/lib/property/stays";
 
 // The Ice dashboard pieces shared by every profile: the one hero number,
 // the composition ring, and the closing "market advice" feed.
@@ -141,7 +143,7 @@ export function CompositionRing({
         <text x="60" y="57" textAnchor="middle" fontSize="16" fontWeight="800" fill="currentColor">
           {short(total)}
         </text>
-        <text x="60" y="73" textAnchor="middle" fontSize="9" fontWeight="600" fill="var(--color-text-muted)">
+        <text x="60" y="73" textAnchor="middle" fontSize="10" fontWeight="600" fill="var(--color-text-muted)">
           ₾
         </text>
       </svg>
@@ -548,7 +550,7 @@ export async function AssetDeck({
       kind: "metric",
       label: t(locale, "deck_rent"),
       value: contract
-        ? formatNumber(periodAmount(contract), 2)
+        ? formatNumber(periodAmount(contract), "auto")
         : dayRate
           ? fmtMoney(dayRate)
           : "—",
@@ -800,11 +802,50 @@ export async function DailyCheck({
   });
   if (assets.length === 0) return null;
 
+  // Today's stays — a booking on the linked unit, a lease, a contract. A
+  // night one of them holds is not asked about: it is already on record
+  // (the same rule as every calendar and total, lib/property/stays.ts).
+  const tomorrow = new Date(today.getTime() + 86_400_000);
+  const sourcesOf = await loadAssetSources(
+    operatorId,
+    assets.map((asset) => asset.id),
+    { start: today, end: tomorrow },
+  );
+  const coverOf = (assetId: string): DayAsset["covered"] => {
+    const src = sourcesOf.get(assetId);
+    const stay = src
+      ? placeStays(src).find((s) => s.start <= today && s.end > today)
+      : undefined;
+    if (!src || !stay) return null;
+    if (stay.record === "booking") {
+      const booking = src.bookings.find((b) => b.id === stay.id);
+      return {
+        label:
+          stay.kind === "airbnb"
+            ? "Airbnb"
+            : stay.kind === "booking"
+              ? "Booking.com"
+              : t(locale, stay.kind === "direct" ? "source_direct" : "source_manual"),
+        amount:
+          booking?.amount != null && booking.nights > 0 ? booking.amount / booking.nights : null,
+      };
+    }
+    if (stay.record === "contract") {
+      const contract = src.contracts.find((c) => c.id === stay.id);
+      return {
+        label: t(locale, "overlap_src_contract"),
+        amount: contract && src.dailyMode ? contractNightValue(contract, today.getTime(), src) : null,
+      };
+    }
+    return { label: t(locale, "overlap_src_lease"), amount: null };
+  };
+
   const iso = dayKey(today);
   const rows: DayAsset[] = assets.map((asset) => {
     const base = asset.dailyRate ?? 0;
     const entry = asset.days[0];
     return {
+      covered: coverOf(asset.id),
       id: asset.id,
       name: locale === "ka" && asset.nameKa ? asset.nameKa : asset.name,
       place: [districtLabel(locale, asset.district), asset.address].filter(Boolean).join(" · "),
@@ -817,7 +858,13 @@ export async function DailyCheck({
   });
 
   const earned = rows.reduce(
-    (sum, row) => sum + (row.answered?.rented ? row.answered.amount : 0),
+    (sum, row) =>
+      sum +
+      (row.covered
+        ? row.covered.amount ?? 0
+        : row.answered?.rented
+          ? row.answered.amount
+          : 0),
     0,
   );
   const currency = rows[0]?.currency ?? "GEL";

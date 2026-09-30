@@ -12,6 +12,8 @@ export function unitFormProps(locale: Locale) {
     "unit_ical_urls", "unit_ical_hint", "save", "cancel", "delete",
     "delete_confirm", "error_required", "error_invalid_number",
     "error_email_taken", "error_ical_url", "ph_amenities",
+    "unit_asset_link", "unit_asset_new", "unit_asset_none", "unit_asset_hint",
+    "error_limit_units",
   ];
   const labels = Object.fromEntries(labelKeys.map((key) => [key, t(locale, key)]));
 
@@ -26,4 +28,18 @@ export function unitFormProps(locale: Locale) {
       label: t(locale, `type_${value}` as StringKey),
     })),
   };
+}
+
+/** Real-estate assets of the workspace not linked to a unit yet. */
+export async function linkableAssets(operatorId: string, locale: Locale) {
+  const { prisma } = await import("@/lib/db");
+  const assets = await prisma.asset.findMany({
+    where: { operatorId, category: "real_estate", unitId: null },
+    select: { id: true, name: true, nameKa: true },
+    orderBy: { name: "asc" },
+  });
+  return assets.map((asset) => ({
+    id: asset.id,
+    label: locale === "ka" && asset.nameKa ? asset.nameKa : asset.name,
+  }));
 }

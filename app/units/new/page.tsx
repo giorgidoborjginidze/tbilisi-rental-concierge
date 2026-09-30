@@ -1,10 +1,8 @@
-import { redirect } from "next/navigation";
-import { prisma } from "@/lib/db";
 import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 import UnitForm from "../unit-form";
-import { unitFormProps } from "../form-helpers";
+import { linkableAssets, unitFormProps } from "../form-helpers";
 import { titled } from "@/lib/i18n/metadata";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +17,7 @@ export default async function NewUnitPage() {
   return (
     <main>
       <h1>{t(locale, "unit_new_title")}</h1>
-      <UnitForm {...unitFormProps(locale)} />
+      <UnitForm {...unitFormProps(locale)} assets={await linkableAssets(operator.id, locale)} />
     </main>
   );
 }

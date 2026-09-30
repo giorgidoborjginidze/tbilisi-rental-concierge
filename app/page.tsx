@@ -8,7 +8,9 @@ import { getSessionOperator, type SessionOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
 import type { Locale } from "@/lib/i18n/strings";
-import { aggregateMetrics, unitWindowMetrics } from "@/lib/analytics/metrics";
+import { aggregateMetrics } from "@/lib/analytics/metrics";
+import { loadRentalPlaces } from "@/lib/property/places";
+import { placeMetrics, stayOn } from "@/lib/property/stays";
 import { monthlyIncome } from "@/lib/analytics/monthly-income";
 import { incomeParts } from "@/lib/analytics/income-display";
 import SplashIntro from "./splash-intro";
@@ -400,7 +402,7 @@ async function HotelDashboard({
     Math.min(monthStart.getTime(), today.getTime()) - DAY_MS,
   );
 
-  const [units, income] = await Promise.all([
+  const [units, income, places] = await Promise.all([
     prisma.unit.findMany({
       where: { operatorId: operator.id },
       orderBy: [{ city: "asc" }, { district: "asc" }, { name: "asc" }],
@@ -412,27 +414,21 @@ async function HotelDashboard({
             checkOut: { gt: queryStart },
           },
         },
-        leases: {
-          where: { startDate: { lt: monthEnd }, endDate: { gt: monthStart } },
-          select: { startDate: true, endDate: true },
-        },
       },
     }),
     monthlyIncome(operator.id, monthStart),
+    // The same places and nights as /analytics (lib/property/places.ts).
+    loadRentalPlaces(operator.id, {
+      start: new Date(Math.min(monthStart.getTime(), today.getTime())),
+      end: new Date(Math.max(monthEnd.getTime(), today.getTime() + DAY_MS)),
+    }),
   ]);
 
   const currency = units[0]?.currency ?? "GEL";
   const monthWindow = { start: monthStart, end: monthEnd };
-  // Booking metrics; nights let on a long lease are not for sale.
-  const portfolio = aggregateMetrics(
-    units.map((unit) =>
-      unitWindowMetrics(
-        unit.bookings,
-        monthWindow,
-        unit.leases.map((lease) => ({ start: lease.startDate, end: lease.endDate })),
-      ),
-    ),
-  );
+  // Nightly metrics, one source per night; nights let on a long lease or
+  // a long contract are not for sale.
+  const portfolio = aggregateMetrics(places.map((place) => placeMetrics(place.sources, monthWindow)));
 
   const displayName = (unit: { name: string; nameKa: string | null }) =>
     locale === "ka" && unit.nameKa ? unit.nameKa : unit.name;
@@ -449,15 +445,8 @@ async function HotelDashboard({
   const departures = allBookings.filter(({ booking }) =>
     sameDay(startOfDay(booking.checkOut), today),
   );
-  const occupiedNow = new Set(
-    allBookings
-      .filter(
-        ({ booking }) =>
-          startOfDay(booking.checkIn) <= today &&
-          startOfDay(booking.checkOut) > today,
-      )
-      .map(({ unit }) => unit.id),
-  ).size;
+  // Places a stay, a contract or today's answer holds tonight.
+  const occupiedNow = places.filter((place) => stayOn(place.sources, today) != null).length;
 
   const stayList = (
     rows: typeof arrivals,
@@ -570,7 +559,7 @@ async function HotelDashboard({
               />
               <Kpi
                 label={t(locale, "dash_occupied_now")}
-                value={`${occupiedNow} / ${units.length}`}
+                value={`${occupiedNow} / ${places.length}`}
               />
             </div>
             <RevenuePartial locale={locale} nights={portfolio.unpricedNights} month={monthKeyOf(monthStart)} />

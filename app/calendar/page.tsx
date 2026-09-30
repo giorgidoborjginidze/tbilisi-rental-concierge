@@ -5,15 +5,12 @@ import { startOfTodayTbilisi } from "@/lib/time";
 import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
-import {
-  findGaps,
-  findOverlaps,
-  type Stay,
-} from "@/lib/calendar/occupancy";
+import { findGaps, findOverlaps } from "@/lib/calendar/occupancy";
+import { loadRentalPlaces, placeHref } from "@/lib/property/places";
+import { dayFills, occupiedIntervals, placeStays } from "@/lib/property/stays";
 import UnitFilter from "./unit-filter";
 import RentalsSubnav from "../rentals-subnav";
 import { firstParam, type QueryValue } from "@/lib/params";
-import { LIVE_STAY } from "@/lib/bookings/live";
 import { titled } from "@/lib/i18n/metadata";
 import { AlertTypeIcon } from "../alert-icon";
 import { formatMoney } from "@/lib/format";
@@ -34,6 +31,9 @@ const KIND_CLASS: Record<string, string> = {
   direct: "cal-cell--direct",
   manual: "cal-cell--direct",
   lease: "cal-cell--lease",
+  // A day-let contract and a "rented today?" answer are let directly.
+  contract: "cal-cell--direct",
+  day: "cal-cell--direct",
 };
 const OVERLAP_CLASS = "cal-cell--overlap";
 const SOURCE_NAME: Record<string, string> = { airbnb: "Airbnb", booking: "Booking.com" };
@@ -75,25 +75,27 @@ export default async function CalendarPage({
     (windowEnd.getTime() - windowStart.getTime()) / DAY_MS,
   );
 
-  const units = await prisma.unit.findMany({
-    where: {
-      operatorId: operator.id,
-      ...(unitQuery ? { id: unitQuery } : {}),
-    },
-    orderBy: [{ city: "asc" }, { district: "asc" }, { name: "asc" }],
-    include: {
-      bookings: {
-        where: {
-          ...LIVE_STAY,
-          checkIn: { lt: windowEnd },
-          checkOut: { gt: windowStart },
-        },
-      },
-      leases: {
-        where: { startDate: { lt: windowEnd }, endDate: { gt: windowStart } },
-      },
-    },
-  });
+  const today = startOfTodayTbilisi();
+
+  // Free windows worth acting on — from today on, two nights or more
+  // (lib/pricing/nightly.ts freeWindowRange) — are looked up over the next
+  // 30 nights, so the places are loaded over the month and that stretch.
+  const range = freeWindowRange({ start: windowStart, end: windowEnd }, today);
+  const aheadEnd = range
+    ? new Date(Math.max(range.end.getTime(), today.getTime() + 30 * DAY_MS))
+    : today;
+  const loadStart = new Date(Math.min(windowStart.getTime(), today.getTime()));
+  const loadEnd = new Date(Math.max(windowEnd.getTime(), aheadEnd.getTime()));
+
+  // Every place let by the night, however it was entered: units (with the
+  // contracts and daily answers of the asset linked to them) and day-let
+  // flats that only exist under Assets (lib/property/places.ts). One
+  // source per night (lib/property/stays.ts).
+  const places = await loadRentalPlaces(
+    operator.id,
+    { start: loadStart, end: loadEnd },
+    { unitId: unitQuery },
+  );
 
   const allUnits = unitQuery
     ? await prisma.unit.findMany({
@@ -101,88 +103,55 @@ export default async function CalendarPage({
         orderBy: [{ city: "asc" }, { name: "asc" }],
         select: { id: true, name: true, nameKa: true },
       })
-    : units;
+    : places.flatMap((place) => (place.unit ? [place.unit] : []));
 
-  const today = startOfTodayTbilisi();
+  const inMonth = (stay: { start: Date; end: Date }) =>
+    stay.start < windowEnd && stay.end > windowStart;
 
-  const rows = units.map((unit) => {
-    const stays: Stay[] = [
-      ...unit.bookings.map((b) => ({
-        id: b.id,
-        kind: b.source,
-        start: b.checkIn,
-        end: b.checkOut,
-      })),
-      ...unit.leases.map((l) => ({
-        id: l.id,
-        kind: "lease",
-        start: l.startDate,
-        end: l.endDate,
-      })),
-    ];
+  const rows = places.map((place) => {
+    // Bookings, leases and contracts; two of them on a night is a double
+    // booking. A daily answer only fills a night none of them holds.
+    const stays = placeStays(place.sources).filter(inMonth);
+    const fills = dayFills(place.sources).filter(inMonth);
 
     // Day-level occupancy for the grid: which stays cover each night.
     const days = Array.from({ length: daysInMonth }, (_, i) => {
       const dayStart = new Date(windowStart.getTime() + i * DAY_MS);
       const dayEnd = new Date(dayStart.getTime() + DAY_MS);
       const covering = stays.filter((s) => s.start < dayEnd && s.end > dayStart);
+      const answered = fills.some((s) => s.start < dayEnd && s.end > dayStart);
       return {
         className:
           covering.length > 1
             ? OVERLAP_CLASS
             : covering.length === 1
               ? KIND_CLASS[covering[0].kind] ?? KIND_CLASS.direct
-              : "",
+              : answered
+                ? KIND_CLASS.day
+                : "",
       };
     });
 
     return {
-      unit,
+      place,
       days,
       overlaps: findOverlaps(stays),
+      bookings: place.unit?.bookings.filter((b) => b.checkIn < windowEnd && b.checkOut > windowStart) ?? [],
     };
   });
 
-  // ── Free windows worth acting on — from today on, two nights or more
-  // (lib/pricing/nightly.ts freeWindowRange) — each with a suggested price:
-  // the same rule-based engine as the day-by-day price table (/pricing),
-  // without its written explanation: seasonality, the unit's own demand
-  // over the next 30 nights, and the district's average nightly price. ──
-  const range = freeWindowRange({ start: windowStart, end: windowEnd }, today);
-  const aheadEnd = range
-    ? new Date(Math.max(range.end.getTime(), today.getTime() + 30 * DAY_MS))
-    : today;
-  const [aheadBookings, aheadLeases] = range
-    ? await Promise.all([
-        prisma.booking.findMany({
-          where: {
-            unitId: { in: units.map((unit) => unit.id) },
-            ...LIVE_STAY,
-            checkIn: { lt: aheadEnd },
-            checkOut: { gt: today },
-          },
-          select: { unitId: true, checkIn: true, checkOut: true },
-        }),
-        prisma.lease.findMany({
-          where: {
-            unitId: { in: units.map((unit) => unit.id) },
-            startDate: { lt: aheadEnd },
-            endDate: { gt: today },
-          },
-          select: { unitId: true, startDate: true, endDate: true },
-        }),
-      ])
-    : [[], []];
-  const aheadOf = (unitId: string) => [
-    ...aheadBookings
-      .filter((booking) => booking.unitId === unitId)
-      .map((booking) => ({ start: booking.checkIn, end: booking.checkOut })),
-    ...aheadLeases
-      .filter((lease) => lease.unitId === unitId)
-      .map((lease) => ({ start: lease.startDate, end: lease.endDate })),
-  ];
+  // ── Each free window with a suggested price: the same rule-based engine
+  // as the day-by-day price table (/pricing), without its written
+  // explanation: seasonality, the place's own demand over the next 30
+  // nights (every stay and daily answer), and the district's average
+  // nightly price. Priced from a unit's base rate, so a day-let flat
+  // without a unit yet lists no windows. ──
+  const aheadOf = (place: (typeof places)[number]) => occupiedIntervals(place.sources);
   const gapsOf = new Map(
-    rows.map((row) => [row.unit.id, range ? findGaps(aheadOf(row.unit.id), range, 2) : []]),
+    rows.map((row) => [
+      row.place.key,
+      range && row.place.unit ? findGaps(aheadOf(row.place), range, 2) : [],
+    ]),
   );
   const market = getMarketDataSource();
   const benchmarkCache = new Map<string, number | null>();
@@ -199,12 +168,16 @@ export default async function CalendarPage({
   };
   const priced = await Promise.all(
     rows.map(async (row) => {
-      const occupancy = occupancyShare(aheadOf(row.unit.id), today, 30);
+      const unit = row.place.unit;
+      // No base rate yet (a unit made for an asset with no day price and
+      // no district figure): no price to suggest.
+      if (!unit || unit.baseNightlyRate <= 0) return [];
+      const occupancy = occupancyShare(aheadOf(row.place), today, 30);
       return Promise.all(
-        (gapsOf.get(row.unit.id) ?? []).map(async (gap) => {
+        (gapsOf.get(row.place.key) ?? []).map(async (gap) => {
           const nights = Array.from({ length: gap.nights }, (_, i) => new Date(gap.start.getTime() + i * DAY_MS));
-          const benchmarks = await benchmarksFor(row.unit.district, nights);
-          return windowPrice(row.unit, gap, occupancy, benchmarks);
+          const benchmarks = await benchmarksFor(unit.district, nights);
+          return windowPrice(unit, gap, occupancy, benchmarks);
         }),
       );
     }),
@@ -213,7 +186,7 @@ export default async function CalendarPage({
   const nightPrice = new Map<string, number>();
   rows.forEach((row, r) =>
     priced[r].forEach((window) =>
-      window?.nights.forEach((night) => nightPrice.set(`${row.unit.id}|${night.date.getTime()}`, night.rate)),
+      window?.nights.forEach((night) => nightPrice.set(`${row.place.key}|${night.date.getTime()}`, night.rate)),
     ),
   );
 
@@ -230,6 +203,19 @@ export default async function CalendarPage({
 
   const displayName = (unit: { name: string; nameKa: string | null }) =>
     locale === "ka" && unit.nameKa ? unit.nameKa : unit.name;
+  // What each of two clashing stays is.
+  const kindLabel = (kind: string) =>
+    SOURCE_NAME[kind] ??
+    t(
+      locale,
+      kind === "direct"
+        ? "source_direct"
+        : kind === "lease"
+          ? "overlap_src_lease"
+          : kind === "contract"
+            ? "overlap_src_contract"
+            : "source_manual",
+    );
 
   const legend: { label: string; color: string; bordered?: boolean; overlap?: boolean }[] = [
     { label: "Airbnb", color: "var(--cal-airbnb)" },
@@ -257,7 +243,7 @@ export default async function CalendarPage({
           </Link>
         </div>
       </div>
-      {allUnits.length === 0 ? (
+      {allUnits.length === 0 && places.length === 0 ? (
         <div className="alert-card alert-card--info" style={{ alignItems: "center" }}>
           <div className="alert-card__detail" style={{ marginTop: 0 }}>
             {t(locale, "calendar_no_units")}
@@ -331,27 +317,27 @@ export default async function CalendarPage({
             {i + 1}
           </span>
         ))}
-        {rows.map(({ unit, days }) => (
-          <Fragment key={unit.id}>
+        {rows.map(({ place, days }) => (
+          <Fragment key={place.key}>
             <span className="cal-name">
               <Link
-                href={`/calendar?month=${monthParam(year, month)}&unit=${unit.id}`}
-                title={displayName(unit)}
+                href={placeHref(place, monthParam(year, month))}
+                title={displayName(place)}
                 style={{ color: "inherit", textDecoration: "none" }}
               >
-                {displayName(unit)}
+                {displayName(place)}
               </Link>
             </span>
             {days.map((day, i) => {
               const night = windowStart.getTime() + i * DAY_MS;
-              const rate = day.className ? undefined : nightPrice.get(`${unit.id}|${night}`);
+              const rate = day.className ? undefined : nightPrice.get(`${place.key}|${night}`);
               return (
                 <span
                   key={i}
                   className={`cal-cell ${day.className}`}
                   title={
                     rate != null
-                      ? `${fmtDay.format(new Date(night))} — ${t(locale, "calendar_cell_free")} · ${formatMoney(rate, unit.currency)}`
+                      ? `${fmtDay.format(new Date(night))} — ${t(locale, "calendar_cell_free")} · ${formatMoney(rate, place.currency)}`
                       : undefined
                   }
                 />
@@ -367,15 +353,15 @@ export default async function CalendarPage({
         {rows.every((r) => r.overlaps.length === 0) ? (
           <p style={{ color: "var(--color-text-muted)" }}>{t(locale, "calendar_no_overlaps")}</p>
         ) : (
-          rows.flatMap(({ unit, overlaps }) =>
+          rows.flatMap(({ place, overlaps }) =>
             overlaps.map((overlap, i) => (
-              <div key={`${unit.id}-${i}`} className="alert-card alert-card--danger">
+              <div key={`${place.key}-${i}`} className="alert-card alert-card--danger">
                 <div>
                   <div className="alert-card__title">
                     <AlertTypeIcon type="overlap" />
-                    {displayName(unit)}{" "}
+                    {displayName(place)}{" "}
                     <span style={{ fontWeight: 400, fontSize: 12, color: "var(--color-text-muted)" }}>
-                      ({overlap.kinds.join(" + ")})
+                      ({overlap.kinds.map(kindLabel).join(" + ")})
                     </span>
                   </div>
                   <div className="alert-card__detail">
@@ -394,13 +380,14 @@ export default async function CalendarPage({
       <section>
         <h2>{t(locale, "calendar_gaps")}</h2>
         <p className="section-hint">{t(locale, "calendar_gaps_hint")}</p>
-        {rows.every((r) => (gapsOf.get(r.unit.id) ?? []).length === 0) ? (
+        {rows.every((r) => (gapsOf.get(r.place.key) ?? []).length === 0) ? (
           <p style={{ color: "var(--color-text-muted)" }}>{t(locale, "calendar_no_gaps")}</p>
         ) : (
           <div className="gap-grid">
-            {rows.map(({ unit }, r) => {
-              const gaps = gapsOf.get(unit.id) ?? [];
-              if (gaps.length === 0) return null;
+            {rows.map(({ place }, r) => {
+              const gaps = gapsOf.get(place.key) ?? [];
+              const unit = place.unit;
+              if (gaps.length === 0 || !unit) return null;
               return (
                 <div key={unit.id} className="card gap-unit">
                   <div className="gap-unit__head">
@@ -444,7 +431,7 @@ export default async function CalendarPage({
 
       {/* One unit picked: its stays this month, with the price (or "no
           price" for iCal imports) and a way to add it. */}
-      {unitQuery && rows[0] && (
+      {unitQuery && rows[0]?.place.unit && (
         <section>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 style={{ marginBottom: 0 }}>{t(locale, "nav_bookings")}</h2>
@@ -452,13 +439,13 @@ export default async function CalendarPage({
               {t(locale, "bookings_add")}
             </Link>
           </div>
-          {rows[0].unit.bookings.length === 0 ? (
+          {rows[0].bookings.length === 0 ? (
             <p style={{ color: "var(--color-text-muted)" }}>{t(locale, "bookings_empty")}</p>
           ) : (
             <div className="card card--stack" style={{ marginTop: 12 }}>
               <table>
                 <tbody>
-                  {[...rows[0].unit.bookings]
+                  {[...rows[0].bookings]
                     .sort((a, b) => a.checkIn.getTime() - b.checkIn.getTime())
                     .map((booking) => (
                       <tr key={booking.id}>

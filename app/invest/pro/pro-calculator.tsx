@@ -3,7 +3,9 @@
 import { useMemo, useState } from "react";
 import {
   analyzeWorthiness,
+  switchWorthinessCurrency,
   WORTHINESS_DEFAULTS_GEL,
+  type WorthinessCurrency,
   type WorthinessInputs,
 } from "@/lib/invest/worthiness";
 import { currencySign, formatMoney } from "@/lib/format";
@@ -16,7 +18,9 @@ export default function ProCalculator({
 }) {
   // Lari first, like the free calculator; dollars stay one click away.
   const [inputs, setInputs] = useState<WorthinessInputs>(WORTHINESS_DEFAULTS_GEL);
-  const [currency, setCurrency] = useState<"USD" | "GEL">("GEL");
+  const [currency, setCurrency] = useState<WorthinessCurrency>("GEL");
+  // The owner's own figures were kept through a currency switch.
+  const [notConverted, setNotConverted] = useState(false);
   const [showMore, setShowMore] = useState(false);
 
   const result = useMemo(() => analyzeWorthiness(inputs), [inputs]);
@@ -54,12 +58,23 @@ export default function ProCalculator({
             {labels.wor_currency}
             <select
               value={currency}
-              onChange={(e) => setCurrency(e.target.value as "USD" | "GEL")}
+              onChange={(e) => {
+                const next = e.target.value as WorthinessCurrency;
+                const switched = switchWorthinessCurrency(inputs, currency, next);
+                setInputs(switched.inputs);
+                setNotConverted(switched.kept);
+                setCurrency(next);
+              }}
             >
               <option value="GEL">GEL (₾)</option>
               <option value="USD">USD ($)</option>
             </select>
           </label>
+          {notConverted && (
+            <p className="hint" role="status" style={{ gridColumn: "1 / -1", margin: 0 }}>
+              {labels.wor_not_converted}
+            </p>
+          )}
           {field("price", `${labels.wor_price} (${sym})`)}
           {field("equityPct", labels.wor_equity)}
           {field("otherInitialCosts", `${labels.wor_other_costs} (${sym})`)}

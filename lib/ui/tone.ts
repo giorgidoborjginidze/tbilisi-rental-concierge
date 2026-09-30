@@ -11,6 +11,8 @@
 //   listed  violet the asset's "listed" status — nothing else
 //   tag     neutral PRO, symbols, recipients, buy/sell
 
+import type { PaymentState } from "@/lib/rentals/schedule";
+
 export type Tone = "good" | "warn" | "danger" | "muted" | "info" | "listed" | "tag";
 
 /** Badge class per tone. */
@@ -42,11 +44,20 @@ const ALERT_SEVERITY: Record<string, Severity> = {
   contract_expiry: "warn",
   lease_expiry: "warn",
   underpriced: "warn",
-  contract_ended: "info",
+  // Grey: the contract is over. app/alerts/page.tsx raises it to amber
+  // when rent is still owed on it.
+  contract_ended: "muted",
   vacancy_gap: "info",
 };
 
 export const alertSeverity = (type: string): Severity => ALERT_SEVERITY[type] ?? "info";
+
+/**
+ * An ended contract is grey — unless rent is still owed on it: then it
+ * needs a look (amber), not the same weight as one that ended cleanly.
+ */
+export const endedAlertSeverity = (type: string, owesRent: boolean): Severity =>
+  type === "contract_ended" && owesRent ? "warn" : alertSeverity(type);
 
 /** Calculator verdicts — the same three colours in every calculator. */
 export type Verdict = "good" | "ok" | "poor";
@@ -57,12 +68,18 @@ export const VERDICT_BADGE: Record<Verdict, string> = {
   poor: badgeClass("danger"),
 };
 
-/** A rental contract's payment state (lib/rentals/schedule ScheduleStatus.state). */
-export const PAYMENT_TONE: Record<string, Tone> = {
+/**
+ * A rental contract's payment state (lib/rentals/schedule ScheduleStatus.state):
+ * paid green, due/grace amber, repossession red, not started/ended grey.
+ * Typed on PaymentState, so a new state cannot be left without a colour.
+ */
+export const PAYMENT_TONE: Record<PaymentState, Tone> = {
+  not_started: "muted",
   ok: "good",
+  due: "warn",
   grace: "warn",
-  overdue: "danger",
   repossess: "danger",
+  ended: "muted",
 };
 
 /** Where a tracked vehicle is against its red line. */
@@ -90,5 +107,5 @@ export const PAYMENT_STATUS_TONE: Record<string, Tone> = {
 };
 
 /** Look up a tone, falling back to grey for anything unknown. */
-export const toneOf = (map: Record<string, Tone>, key: string | null | undefined): Tone =>
-  (key != null && map[key]) || "muted";
+export const toneOf = <K extends string>(map: Record<K, Tone>, key: string | null | undefined): Tone =>
+  (key != null && (map as Record<string, Tone>)[key]) || "muted";

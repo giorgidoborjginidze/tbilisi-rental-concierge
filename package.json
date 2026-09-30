@@ -11,6 +11,7 @@
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "db:repair": "tsx scripts/repair-ledger.ts",
+    "db:link-properties": "tsx scripts/link-properties.ts",
     "test": "vitest run",
     "scheduler": "tsx scripts/scheduler.ts"
   },

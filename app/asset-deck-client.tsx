@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { CategoryIcon, IconArrowRight } from "./icons";
+import { CategoryIcon, IconArrowRight, IconRestart } from "./icons";
 
 export interface DeckSlide {
   /** "metric" shows a figure; "advice" is the tinted closing card. */
@@ -241,7 +241,7 @@ function Card({
           </span>
           <span className="adeck__hint">
             {step === last ? labels.restart : labels.tap}
-            {step !== last && <IconArrowRight size={13} />}
+            {step === last ? <IconRestart size={13} /> : <IconArrowRight size={13} />}
           </span>
         </div>
       </div>

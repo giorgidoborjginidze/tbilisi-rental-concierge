@@ -4,13 +4,13 @@ import { prisma } from "@/lib/db";
 import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
-import { deleteContract } from "@/lib/assets/actions";
+import { addAssetToRentals, deleteContract } from "@/lib/assets/actions";
 import { dayPrice } from "@/lib/assets/daily-price";
 import OccupancyCalendar from "./occupancy-calendar";
 import CryptoView from "./crypto-view";
 import StockView from "./stock-view";
 import MetalView from "./metal-view";
-import { LISTING_PLATFORMS } from "@/lib/types";
+import { LISTING_PLATFORMS, parseChannelLinks } from "@/lib/types";
 import AssetForm from "../../asset-form";
 import ContractForm from "../../contract-form";
 import ListingControls, { type ListingLink } from "../../listing-controls";
@@ -18,9 +18,9 @@ import DoorKey from "../../door-key";
 import { assetFormProps } from "../../form-helpers";
 import { dayKey, monthStartTbilisi, startOfTodayTbilisi, tbilisiFormat } from "@/lib/time";
 import { activeContract as runningContract, assetStatusNow, contractPhase } from "@/lib/rentals/phase";
-import { perDayAmount } from "@/lib/rentals/amount";
 import { rentLabel } from "@/lib/rentals/display";
-import { LIVE_STAY } from "@/lib/bookings/live";
+import { loadAssetSources } from "@/lib/property/places";
+import { contractNightValue, dayFills, emptySources, placeStays } from "@/lib/property/stays";
 import { cityLabel, districtLabel } from "@/lib/places";
 import { titled } from "@/lib/i18n/metadata";
 import { formatMoney } from "@/lib/format";
@@ -47,6 +47,9 @@ const KIND_CLASS: Record<string, string> = {
   direct: "cal-cell--direct",
   manual: "cal-cell--direct",
   lease: "cal-cell--lease",
+  // A day-let contract and a "rented today?" answer are let directly.
+  contract: "cal-cell--direct",
+  day: "cal-cell--direct",
 };
 
 export default async function EditAssetPage({
@@ -61,7 +64,7 @@ export default async function EditAssetPage({
     where: { id, operatorId: operator.id },
     include: {
       contracts: { orderBy: { endDate: "desc" } },
-      unit: { select: { id: true, name: true, operatorId: true } },
+      unit: { select: { id: true, name: true, nameKa: true, operatorId: true, channelLinks: true } },
     },
   });
   if (!asset) notFound();
@@ -122,42 +125,36 @@ export default async function EditAssetPage({
     locale === "ka" && asset.nameKa ? asset.nameKa : asset.name;
 
   // ── Per-asset occupancy calendar: 2 months back through 3 ahead. ──
-  // Days are colored by rental contracts (lease) and, when the asset is
-  // linked to an STR unit, by that unit's bookings per source.
+  // The same nights as the Rentals calendar (lib/property/stays.ts): the
+  // contracts, the linked unit's bookings and leases, and the daily
+  // answers — which only fill nights no stay holds. Finished contracts are
+  // drawn too: a past stay is part of the record.
   const calStart = monthStartTbilisi(-2);
   const calEnd = monthStartTbilisi(4);
   const showCalendar = !isIncome;
-  const bookings = showCalendar && asset.unitId
-    ? await prisma.booking.findMany({
-        where: {
-          unitId: asset.unitId,
-          // Second safeguard: only this workspace's own unit's stays.
-          unit: { operatorId: operator.id },
-          ...LIVE_STAY,
-          checkIn: { lt: calEnd },
-          checkOut: { gt: calStart },
-        },
-        select: { source: true, checkIn: true, checkOut: true, amount: true, nights: true },
-      })
-    : [];
-  // Every contract is drawn, finished ones too — the calendar looks back
-  // two months, and a past stay is part of the record.
-  const stays = [
-    ...asset.contracts.map((c) => ({
-        kind: "lease",
-        start: c.startDate,
-        end: c.endDate,
-        // Daily lets show each rented day's price.
-        dayAmount: asset.rentalMode === "daily" ? Math.round(perDayAmount(c)) : null,
-      })),
-    ...bookings.map((b) => ({
-      kind: b.source,
-      start: b.checkIn,
-      end: b.checkOut,
-      dayAmount:
-        b.amount != null && b.nights > 0 ? Math.round(b.amount / b.nights) : null,
-    })),
-  ];
+  const isDaily = asset.rentalMode === "daily";
+  const sources = showCalendar
+    ? (await loadAssetSources(operator.id, [asset.id], { start: calStart, end: calEnd })).get(asset.id) ??
+      emptySources()
+    : emptySources();
+  const stays = placeStays(sources);
+  const fills = dayFills(sources);
+  const dayAmounts = new Map(sources.days.map((day) => [day.date.getTime(), day.amount]));
+  const bookingsById = new Map(sources.bookings.map((b) => [b.id, b]));
+  const contractsById = new Map(sources.contracts.map((c) => [c.id, c]));
+  // What one night of a stay was let for, when known.
+  const nightAmount = (stay: (typeof stays)[number], night: Date): number | null => {
+    if (stay.record === "booking") {
+      const booking = bookingsById.get(stay.id);
+      return booking?.amount != null && booking.nights > 0 ? Math.round(booking.amount / booking.nights) : null;
+    }
+    if (stay.record === "contract" && isDaily) {
+      const contract = contractsById.get(stay.id);
+      return contract ? Math.round(contractNightValue(contract, night.getTime(), sources)) : null;
+    }
+    if (stay.record === "day") return dayAmounts.get(night.getTime()) ?? null;
+    return null;
+  };
 
   // Daily pricing: base rate + weekend/holiday premiums → per-day price
   // tooltips (rented days show the actual booked/contracted price).
@@ -186,7 +183,13 @@ export default async function EditAssetPage({
       const days = Array.from({ length: dayCount }, (_, i) => {
         const dayStart = new Date(mStart.getTime() + i * DAY_MS);
         const dayEnd = new Date(dayStart.getTime() + DAY_MS);
-        const covering = stays.filter((s) => s.start < dayEnd && s.end > dayStart);
+        const covering = [
+          ...stays.filter((s) => s.start < dayEnd && s.end > dayStart),
+        ];
+        const answered = covering.length === 0
+          ? fills.find((s) => s.start < dayEnd && s.end > dayStart)
+          : undefined;
+        if (answered) covering.push(answered);
         const cls =
           covering.length > 1
             ? "cal-cell--overlap"
@@ -194,9 +197,10 @@ export default async function EditAssetPage({
               ? KIND_CLASS[covering[0].kind] ?? KIND_CLASS.direct
               : "";
         const rented = covering.length > 0;
+        const amount = rented ? nightAmount(covering[0], dayStart) : null;
         const priceText = rented
-          ? covering[0].dayAmount != null
-            ? ` · ${formatMoney(covering[0].dayAmount)}`
+          ? amount != null
+            ? ` · ${formatMoney(amount)}`
             : ""
           : hasDailyPricing
             ? ` · ${formatMoney(dayPrice(dayStart, asset.dailyRate!, weekendPct, holidayPct))}`
@@ -219,10 +223,11 @@ export default async function EditAssetPage({
   }
 
   const calendarLabelKeys: StringKey[] = [
-    "drag_hint", "mark_range_title", "mark_save", "nights_short",
+    "drag_hint", "drag_hint_daily", "mark_range_title", "mark_save", "mark_not_rented",
+    "mark_amount_night", "mark_note", "nights_short",
     "contract_start", "contract_end", "contract_amount_monthly", "contract_amount_daily",
     "contract_tenant", "cancel", "error_required", "error_invalid_number",
-    "error_dates",
+    "error_dates", "error_days_taken",
   ];
   const calendarLabels = Object.fromEntries(
     calendarLabelKeys.map((key) => [key, t(locale, key)]),
@@ -281,8 +286,16 @@ export default async function EditAssetPage({
               )}
               {asset.unit && asset.unit.operatorId === operator.id && (
                 <Link href={`/calendar?unit=${asset.unit.id}`} className="link" style={{ fontSize: 13 }}>
-                  ({asset.unit.name})
+                  ({locale === "ka" && asset.unit.nameKa ? asset.unit.nameKa : asset.unit.name})
                 </Link>
+              )}
+              {/* A day-let flat from before units and assets were linked:
+                  one click gives it its calendar unit. */}
+              {!asset.unitId && asset.category === "real_estate" && asset.rentalMode === "daily" && (
+                <form action={addAssetToRentals}>
+                  <input type="hidden" name="assetId" value={asset.id} />
+                  <button type="submit" className="btn-chip">{t(locale, "units_add_from_asset")}</button>
+                </form>
               )}
             </>
           )}
@@ -331,13 +344,17 @@ export default async function EditAssetPage({
             </p>
           )}
           <div className="legend">
-            <span><i style={{ background: "var(--cal-lease)" }} />{t(locale, "calendar_lease")}</span>
+            {(!isDaily || stays.some((stay) => stay.kind === "lease")) && (
+              <span><i style={{ background: "var(--cal-lease)" }} />{t(locale, "calendar_lease")}</span>
+            )}
             {asset.unitId && (
               <>
                 <span><i style={{ background: "var(--cal-airbnb)" }} />Airbnb</span>
                 <span><i style={{ background: "var(--cal-booking)" }} />Booking.com</span>
-                <span><i style={{ background: "var(--cal-direct)" }} />{t(locale, "calendar_direct_manual")}</span>
               </>
+            )}
+            {(asset.unitId || isDaily) && (
+              <span><i style={{ background: "var(--cal-direct)" }} />{t(locale, "calendar_direct_manual")}</span>
             )}
             <span>
               <i style={{ background: "var(--cal-vacant)", border: "1px solid var(--color-border)" }} />
@@ -359,7 +376,7 @@ export default async function EditAssetPage({
                   ? Math.round(asset.contracts[0].monthlyRent)
                   : null
             }
-            isDaily={asset.rentalMode === "daily"}
+            isDaily={isDaily}
             labels={calendarLabels}
           />
         </section>
@@ -393,6 +410,7 @@ export default async function EditAssetPage({
           // it never re-confirms a "rented" left over from an ended lease.
           status: ownStatus,
           unitId: asset.unitId ?? "",
+          icalUrls: asset.unit ? parseChannelLinks(asset.unit.channelLinks).icalUrls.join("\n") : "",
           notes: asset.notes ?? "",
         }}
       />

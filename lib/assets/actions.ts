@@ -18,6 +18,11 @@ import { contractPhase } from "@/lib/rentals/phase";
 import { settlePaidRent, withdrawAsset, withdrawContract } from "@/lib/rentals/settle";
 import { defaultPaidThrough, snapToBoundary } from "@/lib/rentals/schedule";
 import { cityKey, districtKey } from "@/lib/places";
+import { checkFeedUrl } from "@/lib/ical/fetch";
+import { normalizeFeedUrl } from "@/lib/ical/sync";
+import { parseChannelLinks } from "@/lib/types";
+import { benchmarkMonth } from "@/lib/pricing/nightly";
+import { createUnitForAsset, unitHoldsNothing, wantsUnit } from "@/lib/property/link";
 
 const str = (formData: FormData, key: string) =>
   String(formData.get(key) ?? "").trim();
@@ -71,6 +76,17 @@ async function createHolding(
   });
   revalidatePath("/assets");
   redirect(`/assets/${asset.id}/edit`);
+}
+
+/** The district's average night — the starting base rate of a unit made for an asset. */
+async function districtNightRate(district: string | null): Promise<number | null> {
+  if (!district) return null;
+  const { getMarketDataSource } = await import("@/lib/market/source");
+  const benchmark = await getMarketDataSource().getBenchmark(
+    district,
+    benchmarkMonth(startOfTodayTbilisi()),
+  );
+  return benchmark?.adr ?? null;
 }
 
 const optionalNumber = (formData: FormData, key: string): number | null => {
@@ -132,13 +148,40 @@ export async function saveAsset(
 
   const unitId = str(formData, "unitId") || null;
   // Only one of this workspace's own units can be linked — otherwise the
-  // asset's calendar would show another account's bookings.
+  // asset's calendar would show another account's bookings — and only one
+  // no other asset holds.
   if (unitId) {
     const unit = await prisma.unit.findFirst({
-      where: { id: unitId, operatorId: operator.id },
+      where: {
+        id: unitId,
+        operatorId: operator.id,
+        OR: [{ asset: null }, ...(assetId ? [{ asset: { id: assetId } }] : [])],
+      },
       select: { id: true },
     });
     if (!unit) return { error: "error_required" };
+  }
+
+  // iCal links typed on the asset live on its unit (the calendar side of
+  // the same flat). Only real estate has them; the field may be absent.
+  const icalField = category === "real_estate" && formData.has("icalUrls");
+  const icalUrls = icalField
+    ? [
+        ...new Set(
+          str(formData, "icalUrls")
+            .split("\n")
+            .map(normalizeFeedUrl)
+            .filter(Boolean),
+        ),
+      ]
+    : [];
+  for (const url of icalUrls) {
+    if ("error" in checkFeedUrl(url)) {
+      return {
+        error: "error_ical_url",
+        detail: url.length > 80 ? `${url.slice(0, 77)}…` : url,
+      };
+    }
   }
   const data = {
     name,
@@ -167,17 +210,39 @@ export async function saveAsset(
     notes: str(formData, "notes") || null,
   };
 
+  const rentalMode = data.rentalMode;
+  // A day-let flat (or one given iCal links) belongs on the calendar: it
+  // gets a unit unless one is picked. Not when the owner has just removed
+  // the link by hand — that choice stands.
+  const needsUnit = (hadUnit: boolean) =>
+    !unitId && !hadUnit && wantsUnit({ category, rentalMode, icalCount: icalUrls.length });
+  const { getBillingContext } = await import("@/lib/billing/context");
+
+  let savedId: string;
   if (assetId) {
     const owned = await prisma.asset.findFirst({
       where: { id: assetId, operatorId: operator.id },
     });
     if (!owned) return { error: "error_required" };
+    let makeUnit = needsUnit(owned.unitId != null);
+    if (makeUnit && !(await getBillingContext(operator)).canAddUnit) {
+      // Over the unit limit: calendar links cannot be kept without a unit;
+      // a plain day-let flat still shows in the calendar as it is.
+      if (icalUrls.length > 0) return { error: "error_limit_units" };
+      makeUnit = false;
+    }
     await prisma.asset.update({
       where: { id: assetId },
       // A status the owner changes by hand is stamped, so it outranks a
       // stale "rented" left behind by a finished contract.
       data: { ...data, ...(owned.status !== status ? { statusSetAt: new Date() } : {}) },
     });
+    savedId = assetId;
+    if (makeUnit) {
+      await createUnitForAsset(prisma, operator.id, { ...owned, ...data, id: assetId }, icalUrls, await districtNightRate(data.district));
+    } else if (unitId && icalField) {
+      await setUnitFeeds(unitId, icalUrls);
+    }
     // Daily contracts are priced day by day with the asset's weekend and
     // holiday premiums. New premiums must not re-price money already
     // received: each tracked daily contract opens a new ledger balance at
@@ -209,14 +274,32 @@ export async function saveAsset(
       }
     }
   } else {
-    const { getBillingContext } = await import("@/lib/billing/context");
-    if (!(await getBillingContext(operator)).canAddAsset) {
+    const billing = await getBillingContext(operator);
+    let makeUnit = needsUnit(false);
+    if (makeUnit && !billing.canAddUnit) {
+      if (icalUrls.length > 0) return { error: "error_limit_units" };
+      makeUnit = false;
+    }
+    // A linked pair counts once, as a unit; anything else is an asset.
+    if (!makeUnit && !unitId && !billing.canAddAsset) {
       return { error: "error_limit_assets" };
     }
     const created = await prisma.asset.create({
       data: { ...data, operatorId: operator.id, statusSetAt: new Date() },
       select: { id: true, category: true },
     });
+    savedId = created.id;
+    if (makeUnit) {
+      await createUnitForAsset(
+        prisma,
+        operator.id,
+        { ...data, id: created.id },
+        icalUrls,
+        await districtNightRate(data.district),
+      );
+    } else if (unitId && icalField) {
+      await setUnitFeeds(unitId, icalUrls);
+    }
     // A new car goes straight to its service desk, where the next step —
     // the contract, then the tracker — is one button away.
     if (created.category === "vehicle") {
@@ -226,7 +309,56 @@ export async function saveAsset(
   }
 
   revalidatePath("/assets");
+  revalidatePath(`/assets/${savedId}/edit`);
+  revalidatePath("/units");
+  revalidatePath("/calendar");
+  revalidatePath("/");
   redirect("/assets");
+}
+
+/** The iCal links of a linked unit, as typed on its asset. */
+async function setUnitFeeds(unitId: string, icalUrls: string[]) {
+  const unit = await prisma.unit.findUnique({
+    where: { id: unitId },
+    select: { channelLinks: true },
+  });
+  if (!unit) return;
+  const links = parseChannelLinks(unit.channelLinks);
+  const same =
+    links.icalUrls.length === icalUrls.length && links.icalUrls.every((url, i) => url === icalUrls[i]);
+  if (same) return;
+  await prisma.unit.update({
+    where: { id: unitId },
+    data: { channelLinks: { ...links, icalUrls } },
+  });
+  // Status rows of removed links go now, not at the next sync.
+  await prisma.unitFeed.deleteMany({ where: { unitId, url: { notIn: icalUrls } } });
+}
+
+/**
+ * Put a real-estate asset that has no unit yet on the Rentals calendar:
+ * create its unit and link it (the button on /units and on the asset
+ * page, for flats added before units and assets were linked).
+ */
+export async function addAssetToRentals(formData: FormData) {
+  const operator = await requireWriter();
+  const assetId = str(formData, "assetId");
+  const asset = assetId
+    ? await prisma.asset.findFirst({
+        where: { id: assetId, operatorId: operator.id, category: "real_estate", unitId: null },
+      })
+    : null;
+  if (!asset) return;
+  const { getBillingContext } = await import("@/lib/billing/context");
+  if (!(await getBillingContext(operator)).canAddUnit) {
+    redirect("/billing?limit=units");
+  }
+  await createUnitForAsset(prisma, operator.id, asset, [], await districtNightRate(asset.district));
+  revalidatePath("/units");
+  revalidatePath("/calendar");
+  revalidatePath("/assets");
+  revalidatePath(`/assets/${asset.id}/edit`);
+  revalidatePath("/");
 }
 
 // Generate a fresh 6-digit door code for an asset (daily rentals /
@@ -267,13 +399,21 @@ export async function deleteAsset(formData: FormData) {
   if (assetId) {
     const owned = await prisma.asset.findFirst({
       where: { id: assetId, operatorId: operator.id },
-      select: { id: true },
+      select: { id: true, unitId: true },
     });
     // Nothing more goes out about it, and its open alerts close.
     if (owned) await withdrawAsset(prisma, operator.id, owned.id);
+    // The calendar unit made for it goes too while it holds nothing of its
+    // own (no stays, leases or channel links); one with history stays.
+    const dropUnit = owned?.unitId ? await unitHoldsNothing(prisma, owned.unitId) : false;
     await prisma.asset.deleteMany({
       where: { id: assetId, operatorId: operator.id },
     });
+    if (dropUnit && owned?.unitId) {
+      await prisma.unit.deleteMany({ where: { id: owned.unitId, operatorId: operator.id } });
+      revalidatePath("/units");
+      revalidatePath("/calendar");
+    }
     revalidatePath("/assets");
   }
   redirect("/assets");

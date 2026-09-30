@@ -43,7 +43,11 @@ export default function DoorKey({
       style={{ fontSize: 12 }}
       title={labels.key}
     >
-      <span style={{ color: "var(--color-text-muted)", display: "inline-flex" }} aria-label={labels.key}>
+      <span
+        style={{ color: "var(--color-text-muted)", display: "inline-flex" }}
+        role="img"
+        aria-label={labels.key}
+      >
         <IconKey size={16} />
       </span>
       {code ? (

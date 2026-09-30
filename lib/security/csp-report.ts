@@ -20,7 +20,72 @@ export interface CspLogEntry {
 }
 
 /** At most this many reports are logged from one request. */
-export const MAX_REPORTS_PER_REQUEST = 20;
+export const MAX_REPORTS_PER_REQUEST = 5;
+
+/** Report bodies larger than this are refused (413) without being read on. */
+export const MAX_REPORT_BYTES = 64 * 1024;
+
+/**
+ * Reads a request body as text, stopping as soon as it passes `maxBytes`
+ * (null then) — so a chunked upload without Content-Length is never held
+ * in memory in full.
+ */
+export async function readCapped(
+  body: ReadableStream<Uint8Array> | null,
+  maxBytes: number,
+): Promise<string | null> {
+  if (!body) return "";
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel().catch(() => {});
+      return null;
+    }
+    chunks.push(value);
+  }
+  const all = new Uint8Array(total);
+  let at = 0;
+  for (const chunk of chunks) {
+    all.set(chunk, at);
+    at += chunk.byteLength;
+  }
+  return new TextDecoder().decode(all);
+}
+
+/**
+ * A small in-memory token bucket per client address. The route is public,
+ * so it must not let one address fill the logs: `capacity` reports at once,
+ * refilled at `perMinute`. Per server instance only (serverless instances
+ * each keep their own) — a light brake, not an accounting system.
+ */
+export function createReportLimiter(capacity = 10, perMinute = 10, maxKeys = 5_000) {
+  const buckets = new Map<string, { tokens: number; at: number }>();
+  const refillPerMs = perMinute / 60_000;
+  return {
+    /** True when this address may log one more report now. */
+    take(key: string, now: number): boolean {
+      const bucket = buckets.get(key) ?? { tokens: capacity, at: now };
+      bucket.tokens = Math.min(capacity, bucket.tokens + (now - bucket.at) * refillPerMs);
+      bucket.at = now;
+      const allowed = bucket.tokens >= 1;
+      if (allowed) bucket.tokens -= 1;
+      buckets.delete(key); // re-insert: the Map keeps the most recent last
+      buckets.set(key, bucket);
+      // Forget the longest-idle addresses so the map cannot grow unbounded.
+      while (buckets.size > maxKeys) {
+        const oldest = buckets.keys().next().value;
+        if (oldest === undefined) break;
+        buckets.delete(oldest);
+      }
+      return allowed;
+    },
+  };
+}
 
 /** A URL without its query string or fragment; keywords like "inline" stay. */
 export function stripUrl(value: unknown): string | null {

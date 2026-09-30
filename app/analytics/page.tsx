@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { prisma } from "@/lib/db";
 import { monthStartTbilisi, startOfTodayTbilisi, tbilisiFormat } from "@/lib/time";
 import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
@@ -7,13 +6,12 @@ import { t, type Locale } from "@/lib/i18n/strings";
 import {
   aggregateMetrics,
   monthWindows,
-  unitWindowMetrics,
-  type BookingLike,
   type WindowMetrics,
 } from "@/lib/analytics/metrics";
+import { loadRentalPlaces, placeHref } from "@/lib/property/places";
+import { placeMetrics } from "@/lib/property/stays";
 import RentalsSubnav from "../rentals-subnav";
 import RevenuePartial, { monthKeyOf } from "../revenue-partial";
-import { LIVE_STAY } from "@/lib/bookings/live";
 import { cityLabel, districtLabel } from "@/lib/places";
 import { titled } from "@/lib/i18n/metadata";
 import { currencySign, formatMoney, formatNumber } from "@/lib/format";
@@ -100,30 +98,14 @@ export default async function AnalyticsPage() {
   const rangeStart = monthStartTbilisi(-5);
   const rangeEnd = monthStartTbilisi(4);
 
-  const units = await prisma.unit.findMany({
-    where: { operatorId: operator.id },
-    orderBy: [{ city: "asc" }, { district: "asc" }, { name: "asc" }],
-    include: {
-      bookings: {
-        where: {
-          ...LIVE_STAY,
-          checkIn: { lt: rangeEnd },
-          checkOut: { gt: rangeStart },
-        },
-      },
-      leases: {
-        where: { startDate: { lt: rangeEnd }, endDate: { gt: rangeStart } },
-        select: { startDate: true, endDate: true },
-      },
-    },
-  });
+  // Every place let by the night — units with their linked asset's
+  // contracts and daily answers, and day-let flats that live only under
+  // Assets — one source per night (lib/property/stays.ts). Nights let on a
+  // long lease or a long contract are not for sale: out of the available
+  // nights.
+  const units = await loadRentalPlaces(operator.id, { start: rangeStart, end: rangeEnd });
 
   const currency = units[0]?.currency ?? "GEL";
-  const bookingsOf = (unit: (typeof units)[number]): BookingLike[] =>
-    unit.bookings;
-  // Nights let on a long lease are not for sale: out of the available nights.
-  const leasesOf = (unit: (typeof units)[number]) =>
-    unit.leases.map((lease) => ({ start: lease.startDate, end: lease.endDate }));
 
   const thisMonth = {
     start: monthStartTbilisi(0),
@@ -133,13 +115,13 @@ export default async function AnalyticsPage() {
 
   const perUnitThisMonth = units.map((unit) => ({
     unit,
-    metrics: unitWindowMetrics(bookingsOf(unit), thisMonth, leasesOf(unit)),
+    metrics: placeMetrics(unit.sources, thisMonth),
   }));
   const portfolioThisMonth = aggregateMetrics(
     perUnitThisMonth.map((row) => row.metrics),
   );
   const portfolioNext30 = aggregateMetrics(
-    units.map((unit) => unitWindowMetrics(bookingsOf(unit), next30, leasesOf(unit))),
+    units.map((unit) => placeMetrics(unit.sources, next30)),
   );
 
   const months = monthWindows(rangeStart, new Date(rangeEnd.getTime() - DAY_MS));
@@ -148,7 +130,7 @@ export default async function AnalyticsPage() {
       key: window.key,
       start: window.start,
       metrics: aggregateMetrics(
-        units.map((unit) => unitWindowMetrics(bookingsOf(unit), window, leasesOf(unit))),
+        units.map((unit) => placeMetrics(unit.sources, window)),
       ),
     }));
 
@@ -277,9 +259,9 @@ export default async function AnalyticsPage() {
             </thead>
             <tbody>
               {perUnitThisMonth.map(({ unit, metrics }) => (
-                <tr key={unit.id}>
+                <tr key={unit.key}>
                   <td>
-                    <Link href={`/calendar?unit=${unit.id}`} className="link">
+                    <Link href={placeHref(unit)} className="link">
                       {displayName(unit)}
                     </Link>
                     <div className="cell-sub">{cityLabel(locale, unit.city)}</div>

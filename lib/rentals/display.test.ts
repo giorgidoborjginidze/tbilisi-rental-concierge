@@ -8,6 +8,6 @@ describe("rentLabel", () => {
     expect(rentLabel("en", { ...base, paymentAmount: 1200, paymentPeriod: "monthly", monthlyRent: 1200 })).toMatch(
       /^1,200 ₾ \/ /,
     );
-    expect(rentLabel("en", { ...base, currency: "USD", paymentAmount: 99.5 })).toMatch(/^99\.5 \$ \//);
+    expect(rentLabel("en", { ...base, currency: "USD", paymentAmount: 99.5 })).toMatch(/^99\.50 \$ \//);
   });
 });

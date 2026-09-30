@@ -15,15 +15,12 @@ export function periodWordKey(period: string): StringKey {
       : "per_month_word";
 }
 
-export const formatAmount = (value: number): string =>
-  value.toLocaleString("en-US", { maximumFractionDigits: 2 });
-
 /** "60 ₾ / დღე" in the owner's language. */
 export function rentLabel(
   locale: Locale,
   contract: ContractAmounts & { currency: string },
 ): string {
-  return `${formatMoney(perPeriodAmount(contract), contract.currency, 2)} / ${t(
+  return `${formatMoney(perPeriodAmount(contract), contract.currency, "auto")} / ${t(
     locale,
     periodWordKey(contract.paymentPeriod),
   )}`;

@@ -106,6 +106,16 @@ export function IconArrowRight({ size = 22, className }: Props) {
   );
 }
 
+/** Circular arrow — start over from the beginning. */
+export function IconRestart({ size = 22, className }: Props) {
+  return (
+    <svg width={size} height={size} className={className} {...base}>
+      <path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3" />
+      <path d="M4.5 4.5v4h4" />
+    </svg>
+  );
+}
+
 /** Two sheets — copy to the clipboard. */
 export function IconCopy({ size = 22, className }: Props) {
   return (
@@ -146,26 +156,6 @@ export const IconHome = glyph(
   </>,
 );
 
-/** Building — a company, a block of flats. */
-export const IconBuilding = glyph(
-  <>
-    <path d="M5 20V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v14" />
-    <path d="M3 20h18" />
-    <path d="M10 20v-4h4v4" />
-    <path d="M9 8h2M13 8h2M9 12h2M13 12h2" />
-  </>,
-);
-
-/** Bed — a hotel or apart-hotel. */
-export const IconBed = glyph(
-  <>
-    <path d="M3 18.5V6.5" />
-    <path d="M3 14.5h18v4" />
-    <path d="M21 14.5v-2.5a3 3 0 0 0-3-3h-7v5.5" />
-    <circle cx="7" cy="11.2" r="1.7" />
-  </>,
-);
-
 /** Car — a vehicle, car rental. */
 export const IconCar = glyph(
   <>
@@ -187,14 +177,6 @@ export const IconBox = glyph(
   </>,
 );
 
-/** Person — a personal account. */
-export const IconUser = glyph(
-  <>
-    <circle cx="12" cy="8" r="4" />
-    <path d="M4.5 20.5a7.5 7.5 0 0 1 15 0" />
-  </>,
-);
-
 /** Sun — light theme. */
 export const IconSun = glyph(
   <>
@@ -205,14 +187,6 @@ export const IconSun = glyph(
 
 /** Moon — dark theme. */
 export const IconMoon = glyph(<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z" />);
-
-/** Half-filled circle — theme follows the device. */
-export const IconContrast = glyph(
-  <>
-    <circle cx="12" cy="12" r="8.5" />
-    <path d="M12 3.5v17a8.5 8.5 0 0 0 0-17Z" fill="currentColor" stroke="none" />
-  </>,
-);
 
 /** Key — a door code, access. */
 export const IconKey = glyph(

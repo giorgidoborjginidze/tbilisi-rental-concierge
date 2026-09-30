@@ -44,6 +44,16 @@ const en = {
   unit_airbnb_url: "Airbnb Listing URL",
   unit_booking_url: "Booking.com Listing URL",
   unit_ical_urls: "iCal Calendar URLs (One per Line)",
+  units_loose_flats:
+    "These flats let by the day were added under Assets. They already show in the calendar and analytics; give each a unit to take bookings, iCal links and price suggestions.",
+  units_add_from_asset: "Add to Rentals",
+  booking_no_units:
+    "A booking belongs to a flat. Add a unit first — or add the flat under Assets as let by the day, and it gets its unit.",
+  unit_asset_link: "Under Assets",
+  unit_asset_new: "Add it to Assets automatically",
+  unit_asset_none: "Not linked",
+  unit_asset_hint:
+    "The same flat under Assets — its value, contracts and daily answers. Pick an existing asset if you already added it there.",
   unit_ical_hint:
     "Paste the iCal export URL (https://) from each channel (Airbnb: Calendar → Availability → Connect another website; Booking.com: Rates & Availability → Sync calendars). Sync runs automatically; the status shows below.",
 
@@ -205,6 +215,9 @@ const en = {
   asset_notes: "Notes",
   asset_link_unit: "Linked Rental Unit (Optional)",
   asset_none: "— None —",
+  asset_unit_auto: "With no unit picked, a day-let flat gets its own calendar unit.",
+  asset_ical_hint:
+    "Airbnb or Booking.com calendar links (https://). The flat then shows in Rentals with its bookings; sync runs automatically.",
   asset_delete_confirm: "Delete this asset and its contracts?",
   rental_mode: "Rental Mode",
   mode_long_term: "Long-term",
@@ -490,6 +503,7 @@ const en = {
   wor_tax: "Income Tax (%)",
   wor_units_n: "Number of Units",
   wor_currency: "Currency",
+  wor_not_converted: "Amounts are not converted — check your figures in the new currency.",
   wor_verdict_good: "Worth It",
   wor_verdict_ok: "Borderline \u2014 Negotiate",
   wor_verdict_poor: "Not Worth It",
@@ -592,7 +606,7 @@ const en = {
   deck_advice: "Advice",
   deck_attention: "Attention",
   deck_tap: "tap",
-  deck_restart: "start over ↺",
+  deck_restart: "start over",
   deck_all: "All assets",
   deck_empty: "No assets yet — add the first one and it appears here.",
   deck_no_rent: "Not rented right now",
@@ -677,6 +691,12 @@ const en = {
     "Drag across the calendar to select days — the selection is saved as a rental for those dates.",
   mark_range_title: "Selected",
   mark_save: "Mark as Rented",
+  mark_not_rented: "Not rented",
+  mark_amount_night: "Amount per night (₾)",
+  mark_note: "Guest (optional)",
+  drag_hint_daily:
+    "Drag across the calendar to select days — they are recorded like the daily question on the dashboard, one answer per night.",
+  error_days_taken: "Those nights are already taken by a booking or contract.",
   daily_rate: "Daily Rate (₾)",
   weekend_pct: "Weekend Premium (%)",
   holiday_pct: "Holiday Premium (%)",
@@ -1227,7 +1247,6 @@ const en = {
   aria_revoke_invite: "Withdraw invite",
   aria_delete_payment: "Delete payment",
   aria_delete_income: "Delete income record",
-  aria_delete_row: "Delete",
   copied: "Copied",
   settings_language_hint: "Also the language of the WhatsApp messages sent to your tenants and drivers.",
   tpl_lang_ka: "Messages to renters go out in Georgian — your account's language.",
@@ -1339,6 +1358,16 @@ const ka: Record<StringKey, string> = {
   unit_airbnb_url: "Airbnb განცხადების ბმული",
   unit_booking_url: "Booking.com განცხადების ბმული",
   unit_ical_urls: "iCal კალენდრის ბმულები (თითო ხაზზე)",
+  units_loose_flats:
+    "ეს დღიურად გასაქირავებელი ბინები აქტივებშია დამატებული. კალენდარსა და ანალიტიკაში უკვე ჩანს; ჯავშნების, iCal ბმულებისა და ფასის რჩევისთვის თითოეულს ერთეული მიეცი.",
+  units_add_from_asset: "გაქირავებაში დამატება",
+  booking_no_units:
+    "ჯავშანი ბინას ეკუთვნის. ჯერ ერთეული დაამატე — ან ბინა აქტივებში დღიური გაქირავებით დაამატე და ერთეული თავისით შეიქმნება.",
+  unit_asset_link: "აქტივებში",
+  unit_asset_new: "აქტივებში ავტომატურად დამატება",
+  unit_asset_none: "არ არის დაკავშირებული",
+  unit_asset_hint:
+    "იგივე ბინა აქტივებში — მისი ღირებულება, ხელშეკრულებები და დღიური პასუხები. თუ იქ უკვე დაამატე, აირჩიე ის.",
   unit_ical_hint:
     "ჩასვი iCal ექსპორტის ბმული (https://) თითოეული არხიდან (Airbnb: Calendar → Availability → Connect another website; Booking.com: Rates & Availability → Sync calendars). სინქრონი ავტომატურია; სტატუსი ქვემოთ ჩანს.",
 
@@ -1500,6 +1529,9 @@ const ka: Record<StringKey, string> = {
   asset_notes: "შენიშვნები",
   asset_link_unit: "მიბმული გასაქირავებელი ერთეული (არასავალდებულო)",
   asset_none: "— არცერთი —",
+  asset_unit_auto: "თუ ერთეულს არ აირჩევ, დღიურად გასაქირავებელ ბინას კალენდრის ერთეული თავისით შეექმნება.",
+  asset_ical_hint:
+    "Airbnb-ის ან Booking.com-ის კალენდრის ბმულები (https://). ბინა გაქირავების გვერდზეც გამოჩნდება თავისი ჯავშნებით; სინქრონი ავტომატურია.",
   asset_delete_confirm: "წაიშალოს აქტივი და მისი ხელშეკრულებები?",
   rental_mode: "გაქირავების რეჟიმი",
   mode_long_term: "გრძელვადიანი",
@@ -1779,6 +1811,7 @@ const ka: Record<StringKey, string> = {
   wor_tax: "საშემოსავლო გადასახადი (%)",
   wor_units_n: "ერთეულების რაოდენობა",
   wor_currency: "ვალუტა",
+  wor_not_converted: "თანხები არ გადაიანგარიშება — გადაამოწმე შენი ციფრები ახალ ვალუტაში.",
   wor_verdict_good: "ღირს",
   wor_verdict_ok: "ზღვარზეა — ივაჭრე ფასზე",
   wor_verdict_poor: "არ ღირს",
@@ -1881,7 +1914,7 @@ const ka: Record<StringKey, string> = {
   deck_advice: "რჩევა",
   deck_attention: "ყურადღება",
   deck_tap: "დააჭირე",
-  deck_restart: "თავიდან ↺",
+  deck_restart: "თავიდან",
   deck_all: "ყველა აქტივი",
   deck_empty: "აქტივები ჯერ არ არის — დაამატე პირველი და აქ გამოჩნდება.",
   deck_no_rent: "ამჟამად არ ქირავდება",
@@ -1966,6 +1999,12 @@ const ka: Record<StringKey, string> = {
     "გადაატარე თითი ან მაუსი კალენდარზე დღეების მოსანიშნად — მონიშნული პერიოდი გაქირავებულად ჩაიწერება.",
   mark_range_title: "მონიშნულია",
   mark_save: "გაქირავებულად ჩაწერა",
+  mark_not_rented: "არ გაქირავებულა",
+  mark_amount_night: "თანხა ღამეში (₾)",
+  mark_note: "სტუმარი (არასავალდებულო)",
+  drag_hint_daily:
+    "გადაატარე თითი ან მაუსი კალენდარზე დღეების მოსანიშნად — ისინი ისევე ჩაიწერება, როგორც მთავარ გვერდზე დღიური კითხვის პასუხი, თითო ღამეზე.",
+  error_days_taken: "ეს ღამეები უკვე დაკავებულია ჯავშნით ან ხელშეკრულებით.",
   daily_rate: "დღიური ტარიფი (₾)",
   weekend_pct: "შაბათ-კვირის დანამატი (%)",
   holiday_pct: "დღესასწაულის დანამატი (%)",
@@ -2514,7 +2553,6 @@ const ka: Record<StringKey, string> = {
   aria_revoke_invite: "მოწვევის გაუქმება",
   aria_delete_payment: "გადახდის წაშლა",
   aria_delete_income: "შემოსავლის ჩანაწერის წაშლა",
-  aria_delete_row: "წაშლა",
   copied: "დაკოპირდა",
   settings_language_hint: "ამ ენაზე იგზავნება WhatsApp შეტყობინებებიც შენს დამქირავებლებთან და მძღოლებთან.",
   tpl_lang_ka: "შეტყობინებები დამქირავებლებს ქართულად ეგზავნებათ — შენი ანგარიშის ენაზე.",

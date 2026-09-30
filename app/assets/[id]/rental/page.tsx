@@ -51,16 +51,6 @@ export const dynamic = "force-dynamic";
 
 export const generateMetadata = titled("rental_service");
 
-// Payment states and red-line zones take their colour from the one
-// semantic map (lib/ui/tone.ts): paid/safe green, grace/approaching amber,
-// repossession/outside red, not started/ended grey.
-const STATE_TONE = {
-  ...PAYMENT_TONE,
-  due: "warn",
-  not_started: "muted",
-  ended: "muted",
-} as const;
-
 const LABEL_KEYS: StringKey[] = [
   "aria_lat", "aria_lng",
   "save", "cancel", "delete",
@@ -268,7 +258,7 @@ export default async function RentalServicePage({
     ? contractEnded && status.periodsOwed > 0
       ? { tone: "danger" as const, label: t(locale, "alert_unpaid") }
       : {
-          tone: toneOf(STATE_TONE, status.state),
+          tone: toneOf(PAYMENT_TONE, status.state),
           label: t(
             locale,
             status.state === "repossess" && !isVehicle

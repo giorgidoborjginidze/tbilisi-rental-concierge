@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
@@ -38,6 +39,17 @@ export default async function NewBookingPage({
     <main>
       <div className="auth-box" style={{ maxWidth: 480 }}>
       <h1>{t(locale, "booking_new_title")}</h1>
+      {units.length === 0 ? (
+        // A stay needs its place first — a unit, or a flat under Assets
+        // let by the day (which gets its unit when saved).
+        <div className="alert-card alert-card--info" style={{ display: "block" }}>
+          <div className="alert-card__detail" style={{ marginTop: 0 }}>{t(locale, "booking_no_units")}</div>
+          <div className="flex flex-wrap gap-2" style={{ marginTop: 10 }}>
+            <Link href="/units/new" className="btn-primary btn-compact">{t(locale, "units_add")}</Link>
+            <Link href="/units" className="btn-chip">{t(locale, "units_title")}</Link>
+          </div>
+        </div>
+      ) : (
       <BookingForm
         labels={labels}
         defaultUnitId={units.some((unit) => unit.id === unitParam) ? unitParam : undefined}
@@ -46,6 +58,7 @@ export default async function NewBookingPage({
           label: `${locale === "ka" && unit.nameKa ? unit.nameKa : unit.name} (${cityLabel(locale, unit.city)})`,
         }))}
       />
+      )}
       </div>
     </main>
   );
