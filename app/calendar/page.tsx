@@ -13,8 +13,12 @@ import {
 import UnitFilter from "./unit-filter";
 import RentalsSubnav from "../rentals-subnav";
 import { firstParam, type QueryValue } from "@/lib/params";
+import { LIVE_STAY } from "@/lib/bookings/live";
+import { titled } from "@/lib/i18n/metadata";
 
 export const dynamic = "force-dynamic";
+
+export const generateMetadata = titled("nav_calendar");
 
 const DAY_MS = 86_400_000;
 
@@ -70,7 +74,7 @@ export default async function CalendarPage({
     include: {
       bookings: {
         where: {
-          status: { not: "cancelled" },
+          ...LIVE_STAY,
           checkIn: { lt: windowEnd },
           checkOut: { gt: windowStart },
         },

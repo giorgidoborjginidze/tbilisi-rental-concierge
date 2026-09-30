@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { Metadata } from "next";
+import { titled } from "@/lib/i18n/metadata";
 import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 import { emailConfigured } from "@/lib/email";
@@ -7,7 +7,7 @@ import { CONTACT_EMAIL } from "@/lib/contact";
 import ForgotForm from "./forgot-form";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { robots: { index: false } };
+export const generateMetadata = titled("forgot_title", { robots: { index: false } });
 
 // "Forgot password": sends a one-hour, single-use link by email. Until the
 // email service is set up (RESEND_API_KEY + EMAIL_FROM), it says so and

@@ -76,20 +76,22 @@ export default async function Nav() {
         ))}
       </div>
       <div className="nav__meta">
-        <ThemeToggle />
+        <ThemeToggle label={t(locale, "aria_theme")} />
         <form action={toggleLocale}>
           <input type="hidden" name="locale" value={other} />
-          <button type="submit" className="btn-chip" aria-label="Language" title="Language">
+          <button
+            type="submit"
+            className="btn-chip"
+            aria-label={t(locale, "aria_language_switch")}
+            title={t(locale, "aria_language_switch")}
+          >
             {locale === "ka" ? "KA" : "EN"}
           </button>
         </form>
         {operator ? (
           (() => {
-            const rawName = operator.name?.trim() || operator.email.split("@")[0];
-            // Always Latin: fall back to the email local-part for non-Latin names.
-            const username = /^[\x00-\x7F]+$/.test(rawName)
-              ? rawName
-              : operator.email.split("@")[0];
+            // The owner's own name, Georgian script included (ნინო → ნ).
+            const username = operator.name?.trim() || operator.email.split("@")[0];
             // The plan in force: a bought plan only while it is paid.
             const now = new Date();
             const state = {
@@ -112,7 +114,13 @@ export default async function Nav() {
               <AccountMenu
                 name={username}
                 plan={plan}
-                initial={username.charAt(0).toUpperCase()}
+                // Georgian letters stay as they are: upper-casing ნ gives the
+                // Mtavruli Ნ, which reads as a different script in a badge.
+                initial={
+                  /[\u10D0-\u10FF]/.test(username.charAt(0))
+                    ? username.charAt(0)
+                    : username.charAt(0).toUpperCase()
+                }
                 links={menuLinks}
                 labels={{
                   settings: t(locale, "nav_settings"),
@@ -134,6 +142,7 @@ export default async function Nav() {
         <NavMenu
           links={menuLinks}
           signIn={{ href: "/login", label: t(locale, "login_title") }}
+          menuLabel={t(locale, "aria_menu")}
         />
       )}
     </nav>

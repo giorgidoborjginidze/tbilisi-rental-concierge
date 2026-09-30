@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
-import { t, type StringKey } from "@/lib/i18n/strings";
+import { asLocale, t, type StringKey } from "@/lib/i18n/strings";
 import { siteUrl } from "@/lib/site";
 import { evaluateFence, shapeFromRow } from "@/lib/geo/fence";
 import { isTrackerSilent, silenceSpan } from "@/lib/geo/silence";
@@ -46,8 +46,11 @@ import GpsForm from "./gps-form";
 import FenceForm from "./fence-form";
 import TemplatesForm, { type TemplateField } from "./templates-form";
 import ConfirmSubmit from "./confirm-submit";
+import { titled } from "@/lib/i18n/metadata";
 
 export const dynamic = "force-dynamic";
+
+export const generateMetadata = titled("rental_service");
 
 const STATE_BADGE: Record<string, string> = {
   not_started: "badge--listed",
@@ -65,6 +68,7 @@ const ZONE_BADGE: Record<string, string> = {
 };
 
 const LABEL_KEYS: StringKey[] = [
+  "aria_lat", "aria_lng",
   "save", "cancel", "delete",
   "error_required", "error_invalid_number", "error_dates",
   "error_device_taken", "error_fence_points", "error_template_too_long",
@@ -173,12 +177,15 @@ export default async function RentalServicePage({
     where: { operatorId: operator.id },
   });
   const overrideBy = new Map(overrides.map((row) => [row.key, row.body]));
+  // Messages are written in the ACCOUNT's language (what the monitors
+  // send), not necessarily the language this page is being read in.
+  const messageLocale = asLocale(operator.locale);
   const templateFields: TemplateField[] = templateKeysFor(asset.category).map((key) => {
     const override = overrideBy.get(key);
     return {
       key,
       label: t(locale, `tplk_${key}` as StringKey),
-      body: override?.trim() || DEFAULT_TEMPLATES[locale][key as TemplateKey],
+      body: override?.trim() || DEFAULT_TEMPLATES[messageLocale][key as TemplateKey],
       isDefault: !override?.trim(),
     };
   });
@@ -605,7 +612,7 @@ export default async function RentalServicePage({
                   <form action={deleteGeofence}>
                     <input type="hidden" name="assetId" value={asset.id} />
                     <input type="hidden" name="fenceId" value={fence.id} />
-                    <button type="submit" className="btn-chip" aria-label="delete fence">
+                    <button type="submit" className="btn-chip" aria-label={t(locale, "aria_delete_fence")}>
                       ✕
                     </button>
                   </form>
@@ -643,6 +650,9 @@ export default async function RentalServicePage({
         <h2>{t(locale, "tpl_title")}</h2>
         <p className="field-hint" style={{ maxWidth: 640, marginTop: -6 }}>
           {t(locale, "tpl_intro")}
+        </p>
+        <p className="field-hint" style={{ maxWidth: 640 }}>
+          {t(locale, messageLocale === "ka" ? "tpl_lang_ka" : "tpl_lang_en")}
         </p>
         {isVehicle && (
           <p className="alert-card" style={{ display: "block", fontSize: 13 }}>
@@ -762,7 +772,7 @@ export default async function RentalServicePage({
                   <form action={deleteMessage}>
                     <input type="hidden" name="assetId" value={asset.id} />
                     <input type="hidden" name="messageId" value={message.id} />
-                    <button type="submit" className="btn-chip" aria-label="delete message">
+                    <button type="submit" className="btn-chip" aria-label={t(locale, "aria_delete_message")}>
                       ✕
                     </button>
                   </form>

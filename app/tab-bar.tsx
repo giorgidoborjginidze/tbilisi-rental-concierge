@@ -13,6 +13,7 @@ export default async function TabBar() {
   const locale = await getLocale();
   return (
     <TabBarClient
+      navLabel={t(locale, "aria_main_nav")}
       items={[
         { href: "/", label: t(locale, "nav_dashboard"), icon: "home" },
         { href: "/units", label: t(locale, "nav_rentals"), icon: "building" },

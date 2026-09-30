@@ -17,6 +17,7 @@
 //
 // Server only (node:https, node:dns).
 
+import { normalizeFeedUrl } from "./sync";
 import { lookup as dnsLookup, type LookupAddress } from "node:dns";
 import https from "node:https";
 import { BlockList, isIP } from "node:net";
@@ -312,7 +313,7 @@ export async function fetchFeed(raw: string, deps: FetchFeedDeps = {}): Promise<
     timeoutMs: deps.timeoutMs ?? FEED_TIMEOUT_MS,
     maxBytes: deps.maxBytes ?? MAX_FEED_BYTES,
   };
-  let current = raw;
+  let current = normalizeFeedUrl(raw);
   for (let hop = 0; hop <= MAX_REDIRECTS; hop += 1) {
     const checked = checkFeedUrl(current);
     if ("error" in checked) throw new FeedFetchError(checked.error);

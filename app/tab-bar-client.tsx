@@ -42,15 +42,18 @@ const ICONS: Record<string, React.ReactNode> = {
 
 export default function TabBarClient({
   items,
+  navLabel,
 }: {
   items: { href: string; label: string; icon: string; center?: boolean }[];
+  /** The bar's name for screen readers, in the owner's language. */
+  navLabel: string;
 }) {
   const pathname = usePathname();
   const active = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
   return (
-    <nav className="tabbar" aria-label="Navigation">
+    <nav className="tabbar" aria-label={navLabel}>
       {items.map((item) => {
         const icon = (
           <svg

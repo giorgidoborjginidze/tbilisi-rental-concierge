@@ -12,8 +12,11 @@ import { planById, type AccountType } from "@/lib/billing/plans";
 import ThemeToggle from "../theme-toggle";
 import TeamSection from "../billing/team-section";
 import { tbilisiFormat } from "@/lib/time";
+import { titled } from "@/lib/i18n/metadata";
 
 export const dynamic = "force-dynamic";
+
+export const generateMetadata = titled("settings_title");
 
 const PLAN_LATIN: Record<string, string> = {
   starter: "Starter", standard: "Standard", pro: "Pro",
@@ -161,7 +164,12 @@ export default async function SettingsPage() {
         <h2>{t(locale, "settings_interface")}</h2>
         <div className="card" style={{ marginTop: 12, padding: 18, display: "grid", gap: 14 }}>
           <div className="flex items-center justify-between gap-3">
-            <span style={row}>{t(locale, "settings_language")}</span>
+            <span style={row}>
+              {t(locale, "settings_language")}
+              <span className="field-hint" style={{ display: "block", margin: "2px 0 0" }}>
+                {t(locale, "settings_language_hint")}
+              </span>
+            </span>
             <form action={toggleLocale}>
               <input type="hidden" name="locale" value={other} />
               <button type="submit" className="btn-chip">{locale === "ka" ? "KA" : "EN"}</button>
@@ -169,7 +177,7 @@ export default async function SettingsPage() {
           </div>
           <div className="flex items-center justify-between gap-3">
             <span style={row}>{t(locale, "settings_theme")}</span>
-            <ThemeToggle />
+            <ThemeToggle label={t(locale, "aria_theme")} />
           </div>
         </div>
       </section>

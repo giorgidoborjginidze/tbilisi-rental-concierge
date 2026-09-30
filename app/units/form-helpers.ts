@@ -1,5 +1,6 @@
 import { t, type Locale } from "@/lib/i18n/strings";
-import { CITIES, KNOWN_DISTRICTS, UNIT_TYPES } from "@/lib/types";
+import { CITIES, UNIT_TYPES } from "@/lib/types";
+import { cityLabel, districtOptions } from "@/lib/places";
 import type { StringKey } from "@/lib/i18n/strings";
 
 // Everything a UnitForm (client component) needs, resolved server-side.
@@ -16,8 +17,10 @@ export function unitFormProps(locale: Locale) {
 
   return {
     labels,
-    cities: CITIES,
-    districts: KNOWN_DISTRICTS,
+    // Stored by key, shown in the owner's language.
+    cities: CITIES.map((value) => ({ value, label: cityLabel(locale, value) })),
+    // Suggestions in the owner's language; saving stores the key.
+    districts: districtOptions(locale),
     types: UNIT_TYPES.map((value) => ({
       value,
       label: t(locale, `type_${value}` as StringKey),

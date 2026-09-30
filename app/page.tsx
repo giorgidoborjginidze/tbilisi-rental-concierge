@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import type { Metadata } from "next";
+import { pageTitle } from "@/lib/i18n/metadata";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { getSessionOperator, type SessionOperator } from "@/lib/auth/session";
@@ -13,7 +15,7 @@ import HeroLogo from "./hero-logo";
 import PortfolioDeck from "./portfolio-deck";
 import CountUp from "./count-up";
 import TourPrompt from "./tour-prompt";
-import RevenuePartial from "./revenue-partial";
+import RevenuePartial, { monthKeyOf } from "./revenue-partial";
 import {
   AssetDeck,
   CompositionRing,
@@ -37,8 +39,16 @@ import {
   startOfTomorrowTbilisi,
   tbilisiFormat,
 } from "@/lib/time";
+import { LIVE_STAY } from "@/lib/bookings/live";
+import { districtLabel } from "@/lib/places";
 
 export const dynamic = "force-dynamic";
+
+// Signed out: the site's own title (layout). Signed in: the dashboard's.
+export async function generateMetadata(): Promise<Metadata> {
+  if (!(await getSessionOperator())) return {};
+  return { title: pageTitle(t(await getLocale(), "nav_dashboard")) };
+}
 
 const DAY_MS = 86_400_000;
 
@@ -46,12 +56,27 @@ const pct = (rate: number) => `${Math.round(rate * 100)}%`;
 const money = (value: number | null, currency = "GEL") =>
   value == null ? "—" : `${Math.round(value).toLocaleString("en-US")} ${currency}`;
 
-function Kpi({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function Kpi({
+  label,
+  value,
+  sub,
+  hint,
+  partial,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  /** What the label means (finance terms), shown on hover and read aloud. */
+  hint?: string;
+  /** Some sold nights have no price: the figure is a floor. */
+  partial?: string;
+}) {
   return (
     <div className="kpi">
-      <div className="kpi__label">{label}</div>
+      <div className="kpi__label" title={hint}>{label}</div>
       <div className="kpi__value">{value}</div>
       {sub && <div className="kpi__sub">{sub}</div>}
+      {partial && <div className="kpi__sub price-missing">{partial}</div>}
     </div>
   );
 }
@@ -382,7 +407,7 @@ async function HotelDashboard({
       include: {
         bookings: {
           where: {
-            status: { not: "cancelled" },
+            ...LIVE_STAY,
             checkIn: { lt: monthEnd },
             checkOut: { gt: queryStart },
           },
@@ -461,7 +486,7 @@ async function HotelDashboard({
                   <Link href={`/calendar?unit=${unit.id}`} className="link">
                     {displayName(unit)}
                   </Link>
-                  <div className="cell-sub">{unit.district}</div>
+                  <div className="cell-sub">{districtLabel(locale, unit.district)}</div>
                 </td>
                 <td data-label={t(locale, "dash_guest")}>
                   {booking.guestName ?? "—"}
@@ -516,9 +541,11 @@ async function HotelDashboard({
             label={t(locale, "income_all_month")}
             total={income.total}
             chips={[
-              `${t(locale, "kpi_booking_revenue")}: ${money(portfolio.revenue, currency)}`,
+              `${t(locale, "kpi_booking_revenue")}: ${money(portfolio.revenue, currency)}${
+                portfolio.unpricedNights > 0 ? ` (${t(locale, "revenue_partial_short")})` : ""
+              }`,
               `${t(locale, "kpi_occupancy")}: ${pct(portfolio.occupancyRate)}`,
-              `ADR: ${money(portfolio.adr, currency)}`,
+              `${t(locale, "kpi_adr_short")}: ${money(portfolio.adr, currency)}`,
             ]}
           />
           <PortfolioRing locale={locale} operatorId={operator.id} />
@@ -530,15 +557,24 @@ async function HotelDashboard({
             <h2>{t(locale, "this_month")}</h2>
             <div className="kpi-grid kpi-grid--3d kpi-grid--5">
               <Kpi label={t(locale, "kpi_occupancy")} value={pct(portfolio.occupancyRate)} />
-              <Kpi label="ADR" value={money(portfolio.adr, currency)} />
-              <Kpi label="RevPAR" value={money(portfolio.revpar, currency)} />
-              <Kpi label={t(locale, "kpi_booking_revenue")} value={money(portfolio.revenue, currency)} />
+              <Kpi label={t(locale, "kpi_adr")} hint={t(locale, "kpi_adr_hint")} value={money(portfolio.adr, currency)} />
+              <Kpi
+                label={t(locale, "kpi_revpar")}
+                hint={t(locale, "kpi_revpar_hint")}
+                value={money(portfolio.revpar, currency)}
+                partial={portfolio.unpricedNights > 0 ? t(locale, "revenue_partial_short") : undefined}
+              />
+              <Kpi
+                label={t(locale, "kpi_booking_revenue")}
+                value={money(portfolio.revenue, currency)}
+                partial={portfolio.unpricedNights > 0 ? t(locale, "revenue_partial_short") : undefined}
+              />
               <Kpi
                 label={t(locale, "dash_occupied_now")}
                 value={`${occupiedNow} / ${units.length}`}
               />
             </div>
-            <RevenuePartial locale={locale} nights={portfolio.unpricedNights} />
+            <RevenuePartial locale={locale} nights={portfolio.unpricedNights} month={monthKeyOf(monthStart)} />
           </section>
 
           <section>
@@ -660,6 +696,12 @@ async function BrokerageDashboard({
         />
         <Kpi label={t(locale, "dash_open_alerts")} value={String(alertCount)} />
       </section>
+      <RevenuePartial
+        locale={locale}
+        nights={income.unpricedNights}
+        month={monthKeyOf(monthStartTbilisi(0))}
+        adr={false}
+      />
 
       {assets.length === 0 && (
         <div className="alert-card" style={{ alignItems: "center" }}>
@@ -712,7 +754,7 @@ async function BrokerageDashboard({
                             {displayName(asset)}
                           </Link>
                           <div className="cell-sub">
-                            {[asset.district, asset.address].filter(Boolean).join(" · ")}
+                            {[districtLabel(locale, asset.district), asset.address].filter(Boolean).join(" · ")}
                           </div>
                         </td>
                         <td data-label={t(locale, "contracts_col")}>
@@ -858,6 +900,12 @@ async function CarRentalDashboard({
         />
         <Kpi label={t(locale, "dash_open_alerts")} value={String(alertCount)} />
       </section>
+      <RevenuePartial
+        locale={locale}
+        nights={income.unpricedNights}
+        month={monthKeyOf(monthStartTbilisi(0))}
+        adr={false}
+      />
 
       {vehicles.length === 0 && (
         <div className="alert-card" style={{ alignItems: "center" }}>
@@ -940,7 +988,9 @@ async function PersonalDashboard({
         label={t(locale, "dash_wealth")}
         total={totalValue}
         chips={[
-          `${t(locale, "income_all_month")}: ${money(income.total)}`,
+          `${t(locale, "income_all_month")}: ${money(income.total)}${
+            income.unpricedNights > 0 ? ` (${t(locale, "revenue_partial_short")})` : ""
+          }`,
           `${t(locale, "nav_assets")}: ${propertyCount}`,
         ]}
       />
@@ -967,6 +1017,12 @@ async function PersonalDashboard({
           sub={`${t(locale, "dash_open_alerts")}: ${alertCount}`}
         />
       </section>
+      <RevenuePartial
+        locale={locale}
+        nights={income.unpricedNights}
+        month={monthKeyOf(monthStartTbilisi(0))}
+        adr={false}
+      />
 
       {assets.length === 0 && (
         <div className="alert-card" style={{ alignItems: "center" }}>

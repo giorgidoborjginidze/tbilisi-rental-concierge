@@ -14,6 +14,7 @@ import {
   type LookupFn,
   type RequestFn,
 } from "./fetch";
+import { normalizeFeedUrl } from "./sync";
 
 const ICAL = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR\r\n";
 
@@ -48,6 +49,17 @@ describe("isPublicAddress", () => {
       expect(isPublicAddress(address)).toBe(true);
     },
   );
+});
+
+describe("normalizeFeedUrl", () => {
+  it("reads webcal:// as https:// and leaves everything else as typed", () => {
+    expect(normalizeFeedUrl(" webcal://calendar.example.com/feed.ics ")).toBe("https://calendar.example.com/feed.ics");
+    expect(normalizeFeedUrl("WEBCALS://p.example.com/x.ics")).toBe("https://p.example.com/x.ics");
+    expect(normalizeFeedUrl("http://www.airbnb.com/calendar/ical/1.ics")).toBe("http://www.airbnb.com/calendar/ical/1.ics");
+    // After normalising, a webcal link passes the https check; http is still refused.
+    expect("url" in checkFeedUrl(normalizeFeedUrl("webcal://www.vrbo.com/icalendar/abc.ics"))).toBe(true);
+    expect(checkFeedUrl(normalizeFeedUrl("http://www.vrbo.com/icalendar/abc.ics"))).toEqual({ error: "invalid_url" });
+  });
 });
 
 describe("checkFeedUrl", () => {

@@ -5,8 +5,10 @@ import {
   TEMPLATE_KEYS,
   TEMPLATE_ROLE,
   defaultTemplate,
+  MISSING,
   render,
 } from "./templates";
+import { baseVars, messageDate } from "./vars";
 
 describe("templates", () => {
   it("defines every key in both languages, with a role", () => {
@@ -21,12 +23,49 @@ describe("templates", () => {
     // Activo cannot contact 112 itself; the driver-facing warning must
     // describe the owner's contractual right, not a completed report.
     expect(DEFAULT_TEMPLATES.ka.geo_approach_driver).toContain("უფლება აქვს");
-    expect(DEFAULT_TEMPLATES.ka.geo_breach_driver).toContain("შესაძლოა");
+    expect(DEFAULT_TEMPLATES.ka.geo_breach_driver).toContain("უფლება აქვს");
+    expect(DEFAULT_TEMPLATES.ka.geo_breach_driver).not.toMatch(/გადასცა\b/);
+    expect(DEFAULT_TEMPLATES.en.geo_breach_driver).toContain("has the right");
   });
 
-  it("addresses the owner's messages with the plate", () => {
-    expect(defaultTemplate("ka", "geo_approach_owner")).toContain("{plate}");
-    expect(defaultTemplate("ka", "geo_breach_owner")).toContain("{plate}");
+  it("names the car in every red-line text, and the plate", () => {
+    for (const key of ["geo_approach_driver", "geo_approach_owner", "geo_breach_driver", "geo_breach_owner"] as const) {
+      for (const locale of ["ka", "en"] as const) {
+        expect(defaultTemplate(locale, key), `${locale} ${key}`).toContain("{asset}");
+        expect(defaultTemplate(locale, key), `${locale} ${key}`).toContain("{plate}");
+      }
+    }
+  });
+
+  it("every text to a renter says who is writing and how to reach them", () => {
+    for (const key of TEMPLATE_KEYS) {
+      if (TEMPLATE_ROLE[key] === "owner") continue;
+      for (const locale of ["ka", "en"] as const) {
+        expect(defaultTemplate(locale, key), `${locale} ${key}`).toContain("{owner}");
+        expect(defaultTemplate(locale, key), `${locale} ${key}`).toContain("{owner_phone}");
+      }
+    }
+    // "Pay by": the late-but-tolerated texts give the last day.
+    for (const key of ["pay_overdue_driver", "lease_overdue_tenant"] as const) {
+      expect(defaultTemplate("ka", key)).toContain("{deadline}");
+      expect(defaultTemplate("en", key)).toContain("{deadline}");
+    }
+  });
+
+  it("is formal to renters and informal to the owner (Georgian)", () => {
+    // Renter texts: the formal plural (დაუკავშირდით, გთხოვთ, დაფაროთ).
+    expect(DEFAULT_TEMPLATES.ka.pay_repossess_driver).toContain("დაუკავშირდით");
+    expect(DEFAULT_TEMPLATES.ka.lease_overdue_tenant).toContain("გთხოვთ");
+    // Owner texts: the informal singular (დაუკავშირდი, გაქვს, შეატყობინე).
+    expect(DEFAULT_TEMPLATES.ka.geo_breach_owner).toContain("დაუკავშირდი ");
+    expect(DEFAULT_TEMPLATES.ka.geo_breach_owner).toContain("შეატყობინე ");
+    expect(DEFAULT_TEMPLATES.ka.pay_repossess_owner).toContain("გაქვს");
+    for (const key of TEMPLATE_KEYS) {
+      if (TEMPLATE_ROLE[key] !== "owner") continue;
+      expect(DEFAULT_TEMPLATES.ka[key], key).not.toMatch(/დაუკავშირდით|შეატყობინეთ|გაქვთ|თქვენ/);
+    }
+    // One word for the contract.
+    for (const key of TEMPLATE_KEYS) expect(DEFAULT_TEMPLATES.ka[key], key).not.toContain("კონტრაქტ");
   });
 });
 
@@ -39,6 +78,51 @@ describe("render", () => {
 
   it("leaves an unknown or empty placeholder visible instead of blanking it", () => {
     expect(render("{plate} / {mystery}", { plate: "" })).toBe("{plate} / {mystery}");
+  });
+
+  it("keeps a [bracketed part] only when its values are known", () => {
+    const body = "{asset}[ ({plate})] — {owner}[, {owner_phone}]";
+    expect(render(body, { asset: "პრიუსი", plate: "AA-001-AA", owner: "ლევანი", owner_phone: "+995599000000" })).toBe(
+      "პრიუსი (AA-001-AA) — ლევანი, +995599000000",
+    );
+    expect(render(body, { asset: "პრიუსი", plate: MISSING, owner: "ლევანი", owner_phone: "" })).toBe("პრიუსი — ლევანი");
+    // Brackets without a placeholder are the owner's own text.
+    expect(render("[შენიშვნა] {asset}", { asset: "x" })).toBe("[შენიშვნა] x");
+  });
+});
+
+describe("messageVars", () => {
+  it("uses the Georgian name, the owner's name and number, and a written-out date", () => {
+    const vars = baseVars(
+      "ka",
+      { name: "Toyota Prius", nameKa: "ტოიოტა პრიუსი", plateNumber: "AA-001-AA" },
+      { name: "ლევანი", notifyPhone: "599 12 34 56" },
+      "დავითი",
+    );
+    expect(vars).toMatchObject({
+      asset: "ტოიოტა პრიუსი",
+      plate: "AA-001-AA",
+      driver: "დავითი",
+      owner: "ლევანი",
+      owner_phone: "+995599123456",
+    });
+    expect(messageDate("ka", new Date("2026-10-05T00:00:00Z"))).toBe("5 ოქტომბერი, 2026");
+    expect(messageDate("en", new Date("2026-10-05T00:00:00Z"))).toBe("5 October 2026");
+  });
+
+  it("falls back to a neutral sender and drops what is unknown", () => {
+    const vars = baseVars("ka", { name: "Honda Fit" }, {}, null);
+    expect(vars.owner).toBe("გამქირავებელი");
+    const text = render(DEFAULT_TEMPLATES.ka.pay_due_driver, {
+      ...vars,
+      amount: "660",
+      currency: "GEL",
+      date: "5 ოქტომბერი, 2026",
+    });
+    expect(text).toBe(
+      "შეხსენება: Honda Fit — გადასახდელია 660 GEL, გადახდის დღე: 5 ოქტომბერი, 2026. გმადლობთ. — გამქირავებელი",
+    );
+    expect(text).not.toMatch(/[{}[\]]/);
   });
 });
 

@@ -4,8 +4,11 @@ import { t } from "@/lib/i18n/strings";
 import AssetForm from "../asset-form";
 import { assetFormProps } from "../form-helpers";
 import { firstParam, type QueryValue } from "@/lib/params";
+import { titled } from "@/lib/i18n/metadata";
 
 export const dynamic = "force-dynamic";
+
+export const generateMetadata = titled("asset_new_title");
 
 export default async function NewAssetPage({
   searchParams,

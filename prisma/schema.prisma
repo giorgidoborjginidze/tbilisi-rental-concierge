@@ -19,7 +19,14 @@ model Operator {
   name         String? // optional — display name only; never required
   email        String   @unique
   passwordHash String? // scrypt "salt:hash"; null only for legacy rows
-  locale       String   @default("en") // "en" | "ka"
+  // The account's language: the UI default and the language of every
+  // WhatsApp message sent to its tenants and drivers. Georgian unless the
+  // owner switched the app to English.
+  locale       String   @default("ka") // "ka" | "en"
+  // When the owner chose the language (registration, the language switch,
+  // sign-in). Null: never chosen — scripts/backfill-locale.ts may move such
+  // rows to Georgian.
+  localeSetAt  DateTime?
   createdAt    DateTime @default(now())
 
   // Billing: 30-day full-access trial from signup, then a paid plan. A plan
@@ -214,6 +221,12 @@ model Booking {
   feedId       String?
   cancelledAt  DateTime?
   cancelReason String? // "owner" | "channel" (STATUS:CANCELLED) | "missing" (gone from the feed)
+  // A Booking.com "CLOSED" event that only repeats nights another stay on
+  // the unit already holds (the Airbnb calendar imported into Booking.com):
+  // the source of that stay ("airbnb" | "direct" | "manual" | "lease").
+  // Kept for the record but left out of revenue, overlaps and the
+  // "no price" counts (lib/ical/mirror.ts). Null: a stay in its own right.
+  mirrorOf     String?
 
   unit Unit      @relation(fields: [unitId], references: [id], onDelete: Cascade)
   feed UnitFeed? @relation(fields: [feedId], references: [id], onDelete: SetNull)

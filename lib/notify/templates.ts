@@ -98,65 +98,80 @@ export interface TemplateVars {
   tenant?: string;
   amount?: string;
   currency?: string;
+  /** The due date, written out in the message's language. */
   date?: string;
   days?: string;
   grace?: string;
+  /** The last day the delay is still tolerated (the grace window's end). */
+  deadline?: string;
   fence?: string;
+  /** Who is writing: the owner's name (or "the owner" when not given). */
+  owner?: string;
+  /** The owner's WhatsApp number, so the renter can answer. */
+  owner_phone?: string;
 }
 
+/** What a placeholder holds when its value is not known. */
+export const MISSING = "—";
+
+// Driver and tenant texts are formal (თქვენ); the owner's own texts are
+// informal (შენ), like the app. Every renter-facing text says who is
+// writing ({owner}, and {owner_phone} when the owner has saved a number),
+// which car or flat it is about, and by when — so it cannot be mistaken
+// for spam. [Bracketed parts] disappear when a value inside them is not
+// known (a car without a plate, an owner without a saved number).
 const ka: Record<TemplateKey, string> = {
   geo_approach_driver:
-    "თქვენ უახლოვდებით შეთანხმებულ წითელ ხაზებს, მისი გადაკვეთის შემთხვევაში გამქირავებელს უფლება აქვს მანქანის ნომერი გადასცეს 112-ს",
+    "{asset}[ ({plate})]: თქვენ უახლოვდებით ხელშეკრულებით შეთანხმებულ წითელ ხაზებს. მათი გადაკვეთის შემთხვევაში გამქირავებელს უფლება აქვს, მანქანის ნომერი 112-ს გადასცეს. — {owner}[, {owner_phone}]",
   geo_approach_owner:
-    "თქვენი მანქანა ნომრით: {plate} უახლოვდება წითელ ხაზებს, დაუკავშირდით მძღოლს",
+    "{asset}[ ({plate})] უახლოვდება წითელ ხაზს[ „{fence}“]. დაუკავშირდი მძღოლს[ ({driver})].",
   geo_breach_driver:
-    "გამქირავებელმა შესაძლოა მანქანის ნომერი გადასცა 112-ს, „შესაძლო ქურდობის ბრალდებით“. დაუყოვნებლივ დაუბრუნდით კონტრაქტით გათვალისწინებულ წითელი ხაზების ფარგლებს",
+    "{asset}[ ({plate})]: მანქანამ გადაკვეთა ხელშეკრულებით შეთანხმებული წითელი ხაზები. ამ შემთხვევაში გამქირავებელს უფლება აქვს, მანქანის ნომერი 112-ს გადასცეს „შესაძლო ქურდობის“ შეტყობინებით. დაუყოვნებლივ დაბრუნდით ხაზების ფარგლებში და დაუკავშირდით გამქირავებელს. — {owner}[, {owner_phone}]",
   geo_breach_owner:
-    "თქვენმა მანქანამ სახელმწიფო ნომრით: {plate}, გადაკვეთა წითელი ხაზები. დაუკავშირდით მძღოლს ან შეატყობინეთ 112-ს",
+    "{asset}[ ({plate})] გადაკვეთა წითელი ხაზი[ „{fence}“]. დაუკავშირდი მძღოლს[ ({driver})] ან შეატყობინე 112-ს.",
   pay_due_driver:
-    "შეხსენება: {asset} — გადასახდელია {amount} {currency}, ვადა {date}. მადლობა თანამშრომლობისთვის.",
+    "შეხსენება: {asset}[ ({plate})] — გადასახდელია {amount} {currency}, გადახდის დღე: {date}. გმადლობთ. — {owner}[, {owner_phone}]",
   pay_overdue_driver:
-    "{asset} — გადახდა დაგვიანებულია {days} დღით. კონტრაქტით დაშვებულია მაქსიმუმ {grace} დღე. გთხოვთ დაფაროთ {amount} {currency} ვადის ამოწურვამდე.",
+    "{asset}[ ({plate})] — გადახდა {days} დღით დაგვიანებულია. ხელშეკრულება {grace} დღით დაგვიანებას უშვებს, ბოლო დღე: {deadline}. გთხოვთ, ამ დრომდე დაფაროთ {amount} {currency}. — {owner}[, {owner_phone}]",
   pay_repossess_driver:
-    "{asset} — გადახდა დაგვიანებულია {days} დღით და კონტრაქტით გათვალისწინებული {grace}-დღიანი ვადა ამოიწურა. გამქირავებელს წარმოეშვა ავტომობილის დაბრუნების მოთხოვნის უფლება. დაუყოვნებლივ დაუკავშირდით გამქირავებელს.",
+    "{asset}[ ({plate})] — გადახდა {days} დღით დაგვიანებულია და ხელშეკრულებით დაშვებული {grace}-დღიანი ვადა ამოიწურა. დავალიანება: {amount} {currency}. გამქირავებელს უფლება აქვს, მოითხოვოს ავტომობილის დაბრუნება. დაუყოვნებლივ დაუკავშირდით გამქირავებელს[: {owner_phone}]. — {owner}",
   pay_repossess_owner:
-    "{asset} ({plate}) — მძღოლს {driver} გადახდა დაგვიანებული აქვს {days} დღით, დავალიანება {amount} {currency}. კონტრაქტით უკვე გაქვთ ავტომობილის დაბრუნების მოთხოვნის უფლება.",
-  // Property: formal to the tenant, informal to the owner.
+    "{asset}[ ({plate})] — მძღოლს[ ({driver})] გადახდა {days} დღით აქვს დაგვიანებული, დავალიანება {amount} {currency}. ხელშეკრულებით უკვე გაქვს ავტომობილის დაბრუნების მოთხოვნის უფლება.",
   lease_due_tenant:
-    "შეხსენება: {asset} — ქირის გადახდის ვადაა {date}, გადასახდელია {amount} {currency}. გმადლობთ.",
+    "შეხსენება: {asset} — ქირის გადახდის დღეა {date}, გადასახდელია {amount} {currency}. გმადლობთ. — {owner}[, {owner_phone}]",
   lease_overdue_tenant:
-    "{asset} — ქირის გადახდა დაგვიანებულია {days} დღით. ხელშეკრულება {grace} დღით დაგვიანებას უშვებს. გთხოვთ, ამ ვადაში დაფაროთ {amount} {currency}.",
+    "{asset} — ქირის გადახდა {days} დღით დაგვიანებულია. ხელშეკრულება {grace} დღით დაგვიანებას უშვებს, ბოლო დღე: {deadline}. გთხოვთ, ამ დრომდე დაფაროთ {amount} {currency}. — {owner}[, {owner_phone}]",
   lease_late_tenant:
-    "{asset} — ქირის გადახდა დაგვიანებულია {days} დღით და ხელშეკრულებით დაშვებული {grace}-დღიანი ვადა ამოიწურა. დავალიანება: {amount} {currency}. გთხოვთ, დაუყოვნებლივ დაუკავშირდეთ გამქირავებელს — ხელშეკრულების პირობებით მას უფლება აქვს, მოითხოვოს დავალიანების დაფარვა ან ხელშეკრულების შეწყვეტა.",
+    "{asset} — ქირის გადახდა {days} დღით დაგვიანებულია და ხელშეკრულებით დაშვებული {grace}-დღიანი ვადა ამოიწურა. დავალიანება: {amount} {currency}. გთხოვთ, დაუყოვნებლივ დაუკავშირდეთ გამქირავებელს[: {owner_phone}] — ხელშეკრულების პირობებით მას უფლება აქვს, მოითხოვოს დავალიანების დაფარვა ან ხელშეკრულების შეწყვეტა. — {owner}",
   lease_late_owner:
-    "{asset} — დამქირავებელს ({tenant}) ქირა {days} დღით აქვს დაგვიანებული, დავალიანება {amount} {currency}. შეღავათიანი ვადა ამოიწურა: ხელშეკრულების პირობებით შეგიძლია მოითხოვო დავალიანების დაფარვა ან ხელშეკრულების შეწყვეტა.",
+    "{asset} — დამქირავებელს[ ({tenant})] ქირა {days} დღით აქვს დაგვიანებული, დავალიანება {amount} {currency}. შეღავათიანი ვადა ამოიწურა: ხელშეკრულების პირობებით შეგიძლია მოითხოვო დავალიანების დაფარვა ან ხელშეკრულების შეწყვეტა.",
 };
 
 const en: Record<TemplateKey, string> = {
   geo_approach_driver:
-    "You are approaching the agreed red lines. If you cross them, the owner has the right to pass the vehicle's plate to 112.",
+    "{asset}[ ({plate})]: you are approaching the red lines agreed in the contract. If you cross them, the owner has the right to pass the vehicle's plate to 112. — {owner}[, {owner_phone}]",
   geo_approach_owner:
-    "Your vehicle, plate {plate}, is approaching the red lines — contact the driver.",
+    "{asset}[ ({plate})] is approaching the red line[ “{fence}”]. Contact the driver[ ({driver})].",
   geo_breach_driver:
-    "The owner may have passed the vehicle's plate to 112 on a suspected-theft report. Return inside the red lines set out in the contract immediately.",
+    "{asset}[ ({plate})]: the vehicle has crossed the red lines agreed in the contract. In that case the owner has the right to pass its plate to 112 as a suspected theft. Return inside the lines immediately and contact the owner. — {owner}[, {owner_phone}]",
   geo_breach_owner:
-    "Your vehicle, state plate {plate}, has crossed the red lines. Contact the driver or report it to 112.",
+    "{asset}[ ({plate})] has crossed the red line[ “{fence}”]. Contact the driver[ ({driver})] or report it to 112.",
   pay_due_driver:
-    "Reminder: {asset} — {amount} {currency} is due on {date}. Thank you.",
+    "Reminder: {asset}[ ({plate})] — {amount} {currency} is due on {date}. Thank you. — {owner}[, {owner_phone}]",
   pay_overdue_driver:
-    "{asset} — your payment is {days} day(s) late. The contract allows {grace} days. Please settle {amount} {currency} before that runs out.",
+    "{asset}[ ({plate})] — your payment is {days} day(s) late. The contract allows {grace} days; the last day is {deadline}. Please pay {amount} {currency} by then. — {owner}[, {owner_phone}]",
   pay_repossess_driver:
-    "{asset} — your payment is {days} day(s) late and the {grace}-day window in the contract has run out. The owner is now entitled to require the vehicle back. Contact the owner immediately.",
+    "{asset}[ ({plate})] — your payment is {days} day(s) late and the {grace}-day window in the contract has run out. Outstanding: {amount} {currency}. The owner is now entitled to require the vehicle back. Contact the owner immediately[: {owner_phone}]. — {owner}",
   pay_repossess_owner:
-    "{asset} ({plate}) — {driver} is {days} day(s) late, {amount} {currency} outstanding. Under the contract you are now entitled to require the vehicle back.",
+    "{asset}[ ({plate})] — the driver[ ({driver})] is {days} day(s) late, {amount} {currency} outstanding. Under the contract you are now entitled to require the vehicle back.",
   lease_due_tenant:
-    "Reminder: {asset} — rent of {amount} {currency} is due on {date}. Thank you.",
+    "Reminder: {asset} — rent of {amount} {currency} is due on {date}. Thank you. — {owner}[, {owner_phone}]",
   lease_overdue_tenant:
-    "{asset} — your rent is {days} day(s) late. The lease allows {grace} days. Please pay {amount} {currency} within that time.",
+    "{asset} — your rent is {days} day(s) late. The lease allows {grace} days; the last day is {deadline}. Please pay {amount} {currency} by then. — {owner}[, {owner_phone}]",
   lease_late_tenant:
-    "{asset} — your rent is {days} day(s) late and the {grace}-day window in the lease has run out. Outstanding: {amount} {currency}. Please contact the landlord immediately — under the lease, the landlord may demand payment or ask to end the tenancy.",
+    "{asset} — your rent is {days} day(s) late and the {grace}-day window in the lease has run out. Outstanding: {amount} {currency}. Please contact the landlord immediately[: {owner_phone}] — under the lease, the landlord may demand payment or ask to end the tenancy. — {owner}",
   lease_late_owner:
-    "{asset} — the tenant ({tenant}) is {days} day(s) late with the rent, {amount} {currency} outstanding. The grace period has run out: under the lease you may demand payment or start ending the tenancy.",
+    "{asset} — the tenant[ ({tenant})] is {days} day(s) late with the rent, {amount} {currency} outstanding. The grace period has run out: under the lease you may demand payment or start ending the tenancy.",
 };
 
 export const DEFAULT_TEMPLATES: Record<Locale, Record<TemplateKey, string>> = {
@@ -168,9 +183,24 @@ export function defaultTemplate(locale: Locale, key: TemplateKey): string {
   return (DEFAULT_TEMPLATES[locale] ?? en)[key];
 }
 
-/** Substitute {placeholders}; unknown ones are left untouched, not blanked. */
+const known = (vars: TemplateVars, name: string) => {
+  const value = vars[name as keyof TemplateVars];
+  return value != null && value !== "" && value !== MISSING;
+};
+
+/**
+ * Substitute {placeholders}. A [bracketed part] holding a placeholder is
+ * kept (without its brackets) only when every value in it is known, and
+ * dropped otherwise — "Prius[ ({plate})]" reads "Prius (AA-001-AA)" or just
+ * "Prius". Brackets with no placeholder inside are left as typed. Outside
+ * brackets, an unknown or empty placeholder stays visible, never blanked.
+ */
 export function render(body: string, vars: TemplateVars): string {
-  return body.replace(/\{(\w+)\}/g, (match, name: string) => {
+  const withOptional = body.replace(/\[([^\[\]]*\{\w+\}[^\[\]]*)\]/g, (_match, inner: string) => {
+    const names = [...inner.matchAll(/\{(\w+)\}/g)].map((m) => m[1]);
+    return names.every((name) => known(vars, name)) ? inner : "";
+  });
+  return withOptional.replace(/\{(\w+)\}/g, (match, name: string) => {
     const value = vars[name as keyof TemplateVars];
     return value == null || value === "" ? match : value;
   });

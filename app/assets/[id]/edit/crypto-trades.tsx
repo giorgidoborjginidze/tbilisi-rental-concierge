@@ -117,7 +117,7 @@ export default function CryptoTrades({
                     <form action={deleteTrade}>
                       <input type="hidden" name="tradeId" value={t.id} />
                       <input type="hidden" name="assetId" value={assetId} />
-                      <button type="submit" className="btn-chip" aria-label="delete trade">✕</button>
+                      <button type="submit" className="btn-chip" aria-label={labels.aria_delete_trade}>✕</button>
                     </form>
                   </td>
                 </tr>

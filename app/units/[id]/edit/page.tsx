@@ -8,8 +8,12 @@ import UnitForm from "../../unit-form";
 import { unitFormProps } from "../../form-helpers";
 import FeedStatus from "../../feed-status";
 import { feedUrlsOf } from "@/lib/ical/run-sync";
+import { cityKey, districtLabel } from "@/lib/places";
+import { titled } from "@/lib/i18n/metadata";
 
 export const dynamic = "force-dynamic";
+
+export const generateMetadata = titled("unit_edit_title");
 
 export default async function EditUnitPage({
   params,
@@ -45,8 +49,8 @@ export default async function EditUnitPage({
           id: unit.id,
           name: unit.name,
           nameKa: unit.nameKa ?? "",
-          city: unit.city,
-          district: unit.district,
+          city: cityKey(unit.city) ?? unit.city,
+          district: districtLabel(locale, unit.district),
           address: unit.address,
           type: unit.type,
           capacity: unit.capacity,

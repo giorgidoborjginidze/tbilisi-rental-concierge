@@ -10,9 +10,12 @@ import { useEffect, useRef, useState } from "react";
 export default function NavMenu({
   links,
   signIn,
+  menuLabel,
 }: {
   links: { href: string; label: string }[];
   signIn?: { href: string; label: string } | null;
+  /** The button's name for screen readers, in the visitor's language. */
+  menuLabel: string;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -39,7 +42,7 @@ export default function NavMenu({
       <button
         type="button"
         className="nav__burger"
-        aria-label="Menu"
+        aria-label={menuLabel}
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
       >

@@ -17,6 +17,7 @@ import { asPeriod, monthlyEquivalent } from "@/lib/rentals/amount";
 import { contractPhase } from "@/lib/rentals/phase";
 import { settlePaidRent, withdrawAsset, withdrawContract } from "@/lib/rentals/settle";
 import { defaultPaidThrough, snapToBoundary } from "@/lib/rentals/schedule";
+import { cityKey, districtKey } from "@/lib/places";
 
 const str = (formData: FormData, key: string) =>
   String(formData.get(key) ?? "").trim();
@@ -144,8 +145,9 @@ export async function saveAsset(
     nameKa: str(formData, "nameKa") || null,
     category,
     type: type || "other",
-    city: str(formData, "city") || null,
-    district: str(formData, "district") || null,
+    // Stored by key ("ვაკე" → "Vake") so the market rent is found.
+    city: cityKey(str(formData, "city")),
+    district: districtKey(str(formData, "district")),
     address: str(formData, "address") || null,
     areaSqm,
     estimatedValue,

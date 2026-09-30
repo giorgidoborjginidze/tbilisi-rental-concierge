@@ -16,8 +16,11 @@ import { dayKey, startOfTodayTbilisi, tbilisiFormat } from "@/lib/time";
 import { lastRunFor } from "@/lib/automation/run";
 import { rankAlerts } from "@/lib/alerts/rank";
 import { firstParam, type QueryValue } from "@/lib/params";
+import { titled } from "@/lib/i18n/metadata";
 
 export const dynamic = "force-dynamic";
+
+export const generateMetadata = titled("alerts_title");
 
 const TYPE_STYLE: Record<string, string> = {
   vacancy_gap: "alert-card--gap",
@@ -111,6 +114,33 @@ export default async function AlertsPage({
   const displayName = (unit: { name: string; nameKa: string | null } | null) =>
     unit ? (locale === "ka" && unit.nameKa ? unit.nameKa : unit.name) : "—";
 
+  // Payloads carry the asset's name as it was when the alert was raised
+  // (the Latin one); show the name the owner reads, as it is now.
+  const assetIds = [
+    ...new Set(alerts.map((alert) => (alert.payload as AlertPayload).assetId).filter(Boolean)),
+  ] as string[];
+  const assetNames = new Map(
+    (assetIds.length
+      ? await prisma.asset.findMany({
+          where: { id: { in: assetIds }, operatorId: operator.id },
+          select: { id: true, name: true, nameKa: true },
+        })
+      : []
+    ).map((asset) => [asset.id, locale === "ka" && asset.nameKa ? asset.nameKa : asset.name]),
+  );
+  const assetLabel = (payload: AlertPayload) =>
+    (payload.assetId && assetNames.get(payload.assetId)) || payload.assetName;
+
+  // Stored days ("2026-10-27") written out like the calendar: "27 ოქტ".
+  const dayFormat = tbilisiFormat(locale, { day: "numeric", month: "short" });
+  const day = (key: string | undefined) =>
+    key && /^\d{4}-\d{2}-\d{2}$/.test(key) ? dayFormat.format(new Date(`${key}T00:00:00Z`)) : (key ?? "—");
+  const span = (start: string | undefined, end: string | undefined) => `${day(start)} – ${day(end)}`;
+  const monthLabel = (key: string | undefined) =>
+    key && /^\d{4}-\d{2}$/.test(key)
+      ? tbilisiFormat(locale, { month: "long", year: "numeric" }).format(new Date(`${key}-01T00:00:00Z`))
+      : (key ?? "");
+
   // Late-rent figures are read from the contract as it stands today — the
   // same statusFor, with the asset's pricing, as the dashboard, the rental
   // page and the WhatsApp text — not from the snapshot taken the day the
@@ -172,34 +202,34 @@ export default async function AlertsPage({
     switch (type) {
       case "vacancy_gap":
         return payload.openEnd
-          ? `${payload.start} → · ${payload.nights}+ ${t(locale, "nights_short")} · ${t(locale, "gap_open_end")}`
-          : `${payload.start} → ${payload.end} · ${payload.nights} ${t(locale, "nights_short")}`;
+          ? `${day(payload.start)} → · ${payload.nights}+ ${t(locale, "nights_short")} · ${t(locale, "gap_open_end")}`
+          : `${span(payload.start, payload.end)} · ${payload.nights} ${t(locale, "nights_short")}`;
       case "overlap":
         return [
-          payload.assetName,
-          `${payload.start} → ${payload.end} · ${payload.nights} ${t(locale, "nights_short")}`,
+          assetLabel(payload),
+          `${span(payload.start, payload.end)} · ${payload.nights} ${t(locale, "nights_short")}`,
           (payload.stays ?? [])
-            .map((stay) => `${sourceLabel(stay)} ${stay.start} → ${stay.end}`)
+            .map((stay) => `${sourceLabel(stay)} ${span(stay.start, stay.end)}`)
             .join(" + "),
         ]
           .filter(Boolean)
           .join(" · ");
       case "lease_expiry":
-        return `${payload.tenantName ?? "—"} · ${payload.endDate} · ${payload.daysLeft} ${t(locale, "days_left")}`;
+        return `${payload.tenantName ?? "—"} · ${day(payload.endDate)} · ${payload.daysLeft} ${t(locale, "days_left")}`;
       case "underpriced":
-        return `${payload.baseNightlyRate} → ${payload.suggestedRate} ${currency} · ADR ${payload.benchmarkAdr} (${payload.month})`;
+        return `${payload.baseNightlyRate} → ${payload.suggestedRate} ${currency} · ${t(locale, "alert_market_adr")} ${payload.benchmarkAdr} ${currency} (${monthLabel(payload.month)})`;
       case "contract_expiry":
-        return `${payload.assetName} · ${payload.tenantName ?? "—"} · ${
+        return `${assetLabel(payload)} · ${payload.tenantName ?? "—"} · ${
           payload.paymentAmount != null && payload.paymentPeriod
             ? `${formatAmount(payload.paymentAmount)} ${currency} / ${t(locale, periodWordKey(payload.paymentPeriod))}`
             : `${payload.monthlyRent} ${currency}`
-        } · ${payload.endDate} · ${payload.daysLeft} ${t(locale, "days_left")}`;
+        } · ${day(payload.endDate)} · ${payload.daysLeft} ${t(locale, "days_left")}`;
       case "contract_ended": {
         const status = payload.contractId ? live.get(payload.contractId) : null;
         return [
-          payload.assetName,
+          assetLabel(payload),
           payload.tenantName ?? "—",
-          `${t(locale, "cstatus_ended")}: ${payload.endDate}`,
+          `${t(locale, "cstatus_ended")}: ${day(payload.endDate)}`,
           // Rent still owed when it ended stays in sight.
           owes(status)
             ? `${t(locale, "alert_unpaid")}: ${money(status!.amountDue)} ${currencyOf.get(payload.contractId!) ?? currency}`
@@ -215,24 +245,24 @@ export default async function AlertsPage({
         const unit = payload.currency ?? currency;
         if (status) {
           return [
-            payload.assetName,
+            assetLabel(payload),
             payload.plate,
             payload.tenantName ?? "—",
             owes(status)
               ? `${money(status.amountDue)} ${unit}`
               : t(locale, `pstate_${status.state}` as StringKey),
-            `${t(locale, "pay_next_due")}: ${dayKey(status.nextDueDate)}`,
+            `${t(locale, "pay_next_due")}: ${day(dayKey(status.nextDueDate))}`,
             `${t(locale, "pay_days_overdue")}: ${status.daysOverdue}/${status.graceDays}`,
           ]
             .filter(Boolean)
             .join(" · ");
         }
         return [
-          payload.assetName,
+          assetLabel(payload),
           payload.plate,
           payload.tenantName ?? "—",
           payload.amountDue != null ? `${money(payload.amountDue)} ${unit}` : null,
-          `${t(locale, "pay_next_due")}: ${payload.dueDate}`,
+          `${t(locale, "pay_next_due")}: ${day(payload.dueDate)}`,
           `${t(locale, "pay_days_overdue")}: ${payload.daysOverdue}/${payload.graceDays}`,
           !done && payload.contractId && !live.has(payload.contractId)
             ? t(locale, "withdraw_contract_deleted")
@@ -245,7 +275,7 @@ export default async function AlertsPage({
         const last = payload.lastPingAt ? new Date(payload.lastPingAt) : null;
         const span = last ? silenceSpan(last, now) : null;
         return [
-          payload.assetName,
+          assetLabel(payload),
           payload.plate,
           last ? `${t(locale, "gps_last_ping")}: ${fmtStamp.format(last)}` : null,
           span
@@ -260,7 +290,7 @@ export default async function AlertsPage({
       }
       case "geofence_breach":
         return [
-          payload.assetName,
+          assetLabel(payload),
           payload.plate,
           payload.fenceName,
           payload.driverName,

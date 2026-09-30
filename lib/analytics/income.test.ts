@@ -136,7 +136,23 @@ describe("monthly income — one definition", () => {
       paymentAmount: 1200,
       monthlyRent: 1200,
     });
-    expect(incomeInWindow(sources, SEPT).total).toBeCloseTo(1200, 6);
+    const income = incomeInWindow(sources, SEPT);
+    expect(income.total).toBeCloseTo(1200, 6);
+    // The contract pays for those nights: the income is not partial.
+    expect(income.unpricedNights).toBe(0);
+  });
+
+  it("counts unpriced booked nights nothing else pays for (the total is partial)", () => {
+    const sources = empty();
+    sources.bookings.push(
+      { unitId: "u1", checkIn: d("2026-09-28"), checkOut: d("2026-10-03"), nights: 5, amount: null },
+      // Double-booked unpriced night: one place-night, counted once.
+      { unitId: "u1", checkIn: d("2026-09-29"), checkOut: d("2026-09-30"), nights: 1, amount: null },
+      { unitId: "u1", checkIn: d("2026-09-10"), checkOut: d("2026-09-12"), nights: 2, amount: 200 },
+    );
+    const income = incomeInWindow(sources, SEPT);
+    expect(income.bookings).toBeCloseTo(200, 6);
+    expect(income.unpricedNights).toBe(3); // 28, 29, 30 September
   });
 
   it("counts unit leases as rent, prorated", () => {

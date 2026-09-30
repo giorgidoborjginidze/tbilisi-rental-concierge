@@ -27,6 +27,7 @@ import DecideCards, { type DecideItem } from "./decide-cards";
 import AssetDeckClient, { type DeckAsset, type DeckSlide } from "./asset-deck-client";
 import DailyCheckClient, { type DayAsset } from "./daily-check-client";
 import { dayKind, dayPrice } from "@/lib/assets/daily-price";
+import { districtLabel } from "@/lib/places";
 
 // The Ice dashboard pieces shared by every profile: the one hero number,
 // the composition ring, and the closing "market advice" feed.
@@ -219,6 +220,20 @@ export async function MarketTips({
   ).slice(0, 3);
   // Older alerts carry no category — it is looked up from the asset.
   const categoryOf = await alertCategories(operatorId, alerts);
+  // Named as the owner reads the asset (its Georgian name), not as the
+  // payload stored it.
+  const assetIds = [
+    ...new Set(alerts.map((alert) => (alert.payload as { assetId?: string }).assetId).filter(Boolean)),
+  ] as string[];
+  const assetNames = new Map(
+    (assetIds.length
+      ? await prisma.asset.findMany({
+          where: { id: { in: assetIds }, operatorId },
+          select: { id: true, name: true, nameKa: true },
+        })
+      : []
+    ).map((asset) => [asset.id, locale === "ka" && asset.nameKa ? asset.nameKa : asset.name]),
+  );
 
   return (
     <section>
@@ -234,6 +249,7 @@ export async function MarketTips({
         <div className="tips-grid">
           {alerts.map((alert) => {
             const payload = alert.payload as {
+              assetId?: string;
               assetName?: string;
               suggestedAction?: string;
               category?: string;
@@ -249,7 +265,7 @@ export async function MarketTips({
               ? locale === "ka" && alert.unit.nameKa
                 ? alert.unit.nameKa
                 : alert.unit.name
-              : payload.assetName;
+              : (payload.assetId && assetNames.get(payload.assetId)) || payload.assetName;
             return (
               <div key={alert.id} className="card tip-card">
                 <span
@@ -634,7 +650,7 @@ export async function AssetDeck({
     return {
       id: asset.id,
       name: displayName,
-      place: [asset.district, asset.address, asset.areaSqm ? `${asset.areaSqm} m²` : null]
+      place: [districtLabel(locale, asset.district), asset.address, asset.areaSqm ? `${asset.areaSqm} m²` : null]
         .filter(Boolean)
         .join(" · "),
       category: asset.category,
@@ -683,7 +699,13 @@ export async function IncomeBars({
   operatorId: string;
 }) {
   const series = await monthlyIncomeSeries(operatorId, monthStartTbilisi(-5), 6);
-  const months = series.map(({ start, income }) => ({ start, total: income.total }));
+  const months = series.map(({ start, income }) => ({
+    start,
+    total: income.total,
+    // Booked nights without a price: the month earned at least this much.
+    unpriced: income.unpricedNights,
+  }));
+  const anyPartial = months.some((month) => month.unpriced > 0);
 
   const max = Math.max(...months.map((m) => m.total));
   const fmtMonth = tbilisiFormat(locale, { month: "short" });
@@ -702,7 +724,17 @@ export async function IncomeBars({
         <div className="bars">
           {months.map((month, i) => (
             <div className="bar" key={month.start.toISOString()}>
-              <span className="bar__val">{(month.total / 1000).toFixed(1)}</span>
+              <span
+                className="bar__val"
+                title={
+                  month.unpriced > 0
+                    ? t(locale, "income_partial_nights").replace("{n}", String(month.unpriced))
+                    : undefined
+                }
+              >
+                {(month.total / 1000).toFixed(1)}
+                {month.unpriced > 0 ? "+" : ""}
+              </span>
               <span
                 className="bar__slab"
                 style={{
@@ -716,6 +748,14 @@ export async function IncomeBars({
             </div>
           ))}
         </div>
+      )}
+      {max > 0 && anyPartial && (
+        <p className="field-hint" style={{ margin: "8px 0 0" }}>
+          {t(locale, "bars_partial_note")}{" "}
+          <Link href="/bookings?show=unpriced" className="link">
+            {t(locale, "revenue_partial_link")}
+          </Link>
+        </p>
       )}
     </section>
   );
@@ -752,7 +792,7 @@ export async function DailyCheck({
     return {
       id: asset.id,
       name: locale === "ka" && asset.nameKa ? asset.nameKa : asset.name,
-      place: [asset.district, asset.address].filter(Boolean).join(" · "),
+      place: [districtLabel(locale, asset.district), asset.address].filter(Boolean).join(" · "),
       date: iso,
       suggested: dayPrice(today, base, asset.weekendPct ?? 0, asset.holidayPct ?? 0),
       currency: asset.currency,

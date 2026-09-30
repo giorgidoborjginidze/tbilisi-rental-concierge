@@ -4,8 +4,11 @@ import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 import AuthForm from "./auth-form";
 import { AUTH_LABEL_KEYS } from "./labels";
+import { titled } from "@/lib/i18n/metadata";
 
 export const dynamic = "force-dynamic";
+
+export const generateMetadata = titled("login_title", { alternates: { canonical: "/login" } });
 
 export default async function LoginPage() {
   if (await getSessionOperator()) redirect("/");

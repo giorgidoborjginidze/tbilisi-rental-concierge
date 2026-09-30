@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 // Light/dark toggle. The choice is written to the html element (instant)
 // and to a cookie, so the server renders the right theme on reload with
 // no flash. No cookie = follow the OS setting.
-export default function ThemeToggle() {
+export default function ThemeToggle({ label }: { label: string }) {
   const [dark, setDark] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -28,7 +28,8 @@ export default function ThemeToggle() {
       type="button"
       className="btn-chip"
       onClick={toggle}
-      aria-label="theme"
+      aria-label={label}
+      title={label}
       suppressHydrationWarning
     >
       {dark == null ? "🌗" : dark ? "☀️" : "🌙"}

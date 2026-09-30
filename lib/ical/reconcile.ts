@@ -3,8 +3,10 @@
 // A channel feed is the channel's current truth about a unit. So after a
 // good fetch:
 //   * a stay in the feed that we do not know yet is created;
-//   * a stay we know is updated (dates, status) — except that a stay the
-//     owner cancelled in Activo stays cancelled;
+//   * a stay we know is updated when the feed changed it (dates, status,
+//     the feed it comes from) — except that a stay the owner cancelled in
+//     Activo stays cancelled. A stay the feed repeats unchanged is left
+//     alone, so a sync reports (and writes) only what changed;
 //   * a stay we imported from this feed that is no longer in it, and has
 //     not ended yet, is cancelled: Airbnb and Booking.com drop a cancelled
 //     reservation from the export instead of marking it CANCELLED. Stays
@@ -21,7 +23,9 @@ export interface KnownStay {
   status: string;
   cancelReason: string | null;
   cancelledAt: Date | null;
+  checkIn: Date;
   checkOut: Date;
+  nights: number;
 }
 
 export interface StayUpdate {
@@ -52,6 +56,19 @@ export interface PlanContext {
    */
   ownsLegacy: boolean;
   now: Date;
+}
+
+const sameTime = (a: Date | null | undefined, b: Date | null | undefined) =>
+  (a?.getTime() ?? null) === (b?.getTime() ?? null);
+
+/** Does applying `data` change anything on the stored stay? */
+function changes(stay: KnownStay, data: StayUpdate["data"]): boolean {
+  if (!sameTime(stay.checkIn, data.checkIn) || !sameTime(stay.checkOut, data.checkOut)) return true;
+  if (stay.nights !== data.nights || stay.feedId !== data.feedId) return true;
+  if (data.status !== undefined && data.status !== stay.status) return true;
+  if (data.cancelReason !== undefined && data.cancelReason !== stay.cancelReason) return true;
+  if (data.cancelledAt !== undefined && !sameTime(data.cancelledAt, stay.cancelledAt)) return true;
+  return false;
 }
 
 /**
@@ -95,7 +112,7 @@ export function planFeedSync(
       data.cancelledAt = null;
       data.cancelReason = null;
     }
-    plan.update.push({ id: stay.id, data });
+    if (changes(stay, data)) plan.update.push({ id: stay.id, data });
   }
 
   for (const stay of known) {

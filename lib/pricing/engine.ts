@@ -8,6 +8,7 @@
 // underpriced (feeds the `underpriced` alert).
 
 import { seasonalityFactor } from "./seasonality";
+import { cityKey } from "@/lib/places";
 
 export interface PricingInput {
   baseNightlyRate: number;
@@ -51,7 +52,8 @@ export function demandFactor(upcomingOccupancy: number): number {
 
 export function suggestRate(input: PricingInput): PricingResult {
   const month = input.date.getUTCMonth() + 1;
-  const seasonality = seasonalityFactor(input.city, month);
+  // Seasonality is keyed by the canonical city ("ბათუმი" → "Batumi").
+  const seasonality = seasonalityFactor(cityKey(input.city) ?? input.city, month);
   const demand = demandFactor(input.upcomingOccupancy);
 
   const floor = input.baseNightlyRate * FLOOR_RATIO;

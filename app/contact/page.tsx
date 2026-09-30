@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { titled } from "@/lib/i18n/metadata";
 import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 import {
@@ -10,10 +10,7 @@ import { IconMail, IconChat } from "../icons";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Contact",
-  alternates: { canonical: "/contact" },
-};
+export const generateMetadata = titled("contact_title", { alternates: { canonical: "/contact" } });
 
 export default async function ContactPage() {
   const locale = await getLocale();

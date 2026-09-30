@@ -46,7 +46,7 @@ export default async function CryptoView({
   const today = todayKey();
 
   const labelKeys: StringKey[] = [
-    "crypto_buy", "crypto_sell", "crypto_quantity", "crypto_unit_price",
+    "aria_delete_trade", "crypto_buy", "crypto_sell", "crypto_quantity", "crypto_unit_price",
     "crypto_add_trade", "crypto_side", "contract_start", "error_required",
     "error_invalid_number",
   ];

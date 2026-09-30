@@ -1,7 +1,10 @@
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
+import { titled } from "@/lib/i18n/metadata";
 
 export const dynamic = "force-dynamic";
+
+export const generateMetadata = titled("privacy_title", { alternates: { canonical: "/privacy" } });
 
 const SECTIONS: { h: StringKey; p: StringKey; icon: string }[] = [
   { h: "privacy_h_minimal", p: "privacy_p_minimal", icon: "✏️" },

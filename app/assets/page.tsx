@@ -19,8 +19,13 @@ import { lateContract, statusFor } from "@/lib/rentals/terms";
 import { activeContract as runningContract, assetStatusNow } from "@/lib/rentals/phase";
 import { rentLabel } from "@/lib/rentals/display";
 import { monthKeyTbilisi, monthStartTbilisi, startOfTodayTbilisi, tbilisiFormat } from "@/lib/time";
+import RevenuePartial, { monthKeyOf } from "../revenue-partial";
+import { districtLabel } from "@/lib/places";
+import { titled } from "@/lib/i18n/metadata";
 
 export const dynamic = "force-dynamic";
+
+export const generateMetadata = titled("assets_title");
 
 const STATUS_BADGE: Record<string, string> = {
   rented: "badge--rented",
@@ -312,6 +317,12 @@ export default async function AssetsPage() {
           sub={incomeParts(locale, income, money) || t(locale, "income_all_hint")}
         />
       </section>
+      <RevenuePartial
+        locale={locale}
+        nights={income.unpricedNights}
+        month={monthKeyOf(monthStartTbilisi(0))}
+        adr={false}
+      />
 
       {assets.length === 0 && (
         <p style={{ color: "var(--color-text-muted)" }}>{t(locale, "assets_empty")}</p>
@@ -356,7 +367,7 @@ export default async function AssetsPage() {
                 const flip: FlipAsset = {
                   id: asset.id,
                   name: displayName(asset),
-                  district: asset.district,
+                  district: districtLabel(locale, asset.district) || null,
                   address: asset.address,
                   typeLabel: t(locale, `type_${asset.type}` as StringKey),
                   statusLabel: t(locale, `status_${status}` as StringKey),

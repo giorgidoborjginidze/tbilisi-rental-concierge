@@ -7,8 +7,11 @@ import { computeSuggestionsForUnit } from "@/lib/pricing/run";
 import UnitFilter from "../calendar/unit-filter";
 import RentalsSubnav from "../rentals-subnav";
 import { firstParam, type QueryValue } from "@/lib/params";
+import { titled } from "@/lib/i18n/metadata";
 
 export const dynamic = "force-dynamic";
+
+export const generateMetadata = titled("pricing_title");
 
 export default async function PricingPage({
   searchParams,

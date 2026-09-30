@@ -7,8 +7,11 @@ import { t, type StringKey } from "@/lib/i18n/strings";
 import { tbilisiFormat } from "@/lib/time";
 import BookingEditForm from "./booking-edit-form";
 import { firstParam, type QueryValue } from "@/lib/params";
+import { titled } from "@/lib/i18n/metadata";
 
 export const dynamic = "force-dynamic";
+
+export const generateMetadata = titled("booking_edit_title");
 
 const SOURCE_NAME: Record<string, string> = { airbnb: "Airbnb", booking: "Booking.com" };
 

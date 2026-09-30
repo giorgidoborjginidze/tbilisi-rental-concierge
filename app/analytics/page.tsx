@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { monthStartTbilisi, startOfTodayTbilisi } from "@/lib/time";
+import { monthStartTbilisi, startOfTodayTbilisi, tbilisiFormat } from "@/lib/time";
 import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type Locale } from "@/lib/i18n/strings";
@@ -12,9 +12,14 @@ import {
   type WindowMetrics,
 } from "@/lib/analytics/metrics";
 import RentalsSubnav from "../rentals-subnav";
-import RevenuePartial from "../revenue-partial";
+import RevenuePartial, { monthKeyOf } from "../revenue-partial";
+import { LIVE_STAY } from "@/lib/bookings/live";
+import { cityLabel, districtLabel } from "@/lib/places";
+import { titled } from "@/lib/i18n/metadata";
 
 export const dynamic = "force-dynamic";
+
+export const generateMetadata = titled("analytics_title");
 
 const DAY_MS = 86_400_000;
 
@@ -22,22 +27,58 @@ const pct = (rate: number) => `${Math.round(rate * 100)}%`;
 const money = (value: number | null, currency: string) =>
   value == null ? "—" : `${Math.round(value).toLocaleString("en-US")} ${currency}`;
 
-function Kpi({ label, value }: { label: string; value: string }) {
+function Kpi({
+  label,
+  value,
+  hint,
+  partial,
+}: {
+  label: string;
+  value: string;
+  /** What a finance term means — on hover, and read aloud. */
+  hint?: string;
+  /** Some sold nights have no price: the figure is a floor. */
+  partial?: string;
+}) {
   return (
     <div className="kpi">
-      <div className="kpi__label">{label}</div>
+      <div className="kpi__label" title={hint}>{label}</div>
       <div className="kpi__value">{value}</div>
+      {partial && <div className="kpi__sub price-missing">{partial}</div>}
     </div>
   );
 }
 
-function Revenue({ locale, metrics }: { locale: Locale; metrics: WindowMetrics }) {
+/**
+ * A money cell that says "partial" when some of its nights have no price
+ * (revenue and RevPAR are both understated then). With `month`, the note
+ * links to that month's stays without a price.
+ */
+function PartialMoney({
+  locale,
+  value,
+  metrics,
+  month,
+}: {
+  locale: Locale;
+  value: number | null;
+  metrics: WindowMetrics;
+  month?: string;
+}) {
+  const partial = metrics.unpricedNights > 0;
+  const note = t(locale, "revenue_partial").replace("{n}", String(metrics.unpricedNights));
   return (
     <>
-      {Math.round(metrics.revenue)}
-      {metrics.unpricedNights > 0 && (
-        <div className="cell-sub price-missing" title={t(locale, "revenue_partial").replace("{n}", String(metrics.unpricedNights))}>
-          {t(locale, "revenue_partial_short")}
+      {money(value, "")}
+      {partial && (
+        <div className="cell-sub price-missing" title={note}>
+          {month ? (
+            <Link href={`/bookings?show=unpriced&month=${month}`} className="link">
+              {t(locale, "revenue_partial_short")}
+            </Link>
+          ) : (
+            t(locale, "revenue_partial_short")
+          )}
         </div>
       )}
     </>
@@ -62,7 +103,7 @@ export default async function AnalyticsPage() {
     include: {
       bookings: {
         where: {
-          status: { not: "cancelled" },
+          ...LIVE_STAY,
           checkIn: { lt: rangeEnd },
           checkOut: { gt: rangeStart },
         },
@@ -108,8 +149,8 @@ export default async function AnalyticsPage() {
       ),
     }));
 
-  const intl = locale === "ka" ? "ka-GE" : "en-GB";
-  const fmtMonth = new Intl.DateTimeFormat(intl, { month: "short", year: "2-digit" });
+  // "სექ. 2026" — a two-digit year read like a day ("სექ. 26").
+  const fmtMonth = tbilisiFormat(locale, { month: "short", year: "numeric" });
   const displayName = (unit: { name: string; nameKa: string | null }) =>
     locale === "ka" && unit.nameKa ? unit.nameKa : unit.name;
 
@@ -140,18 +181,32 @@ export default async function AnalyticsPage() {
             label={t(locale, "kpi_occupancy")}
             value={pct(portfolioThisMonth.occupancyRate)}
           />
-          <Kpi label="ADR" value={money(portfolioThisMonth.adr, currency)} />
-          <Kpi label="RevPAR" value={money(portfolioThisMonth.revpar, currency)} />
+          <Kpi
+            label={t(locale, "kpi_adr")}
+            hint={t(locale, "kpi_adr_hint")}
+            value={money(portfolioThisMonth.adr, currency)}
+          />
+          <Kpi
+            label={t(locale, "kpi_revpar")}
+            hint={t(locale, "kpi_revpar_hint")}
+            value={money(portfolioThisMonth.revpar, currency)}
+            partial={portfolioThisMonth.unpricedNights > 0 ? t(locale, "revenue_partial_short") : undefined}
+          />
           <Kpi
             label={t(locale, "kpi_booking_revenue")}
             value={money(portfolioThisMonth.revenue, currency)}
+            partial={portfolioThisMonth.unpricedNights > 0 ? t(locale, "revenue_partial_short") : undefined}
           />
           <Kpi
             label={t(locale, "next_30_occupancy")}
             value={pct(portfolioNext30.occupancyRate)}
           />
         </div>
-        <RevenuePartial locale={locale} nights={portfolioThisMonth.unpricedNights} />
+        <RevenuePartial
+          locale={locale}
+          nights={portfolioThisMonth.unpricedNights}
+          month={monthKeyOf(thisMonth.start)}
+        />
       </section>
 
       <section>
@@ -163,8 +218,8 @@ export default async function AnalyticsPage() {
                 <th>{t(locale, "month_col")}</th>
                 <th className="num">{t(locale, "kpi_occupancy")}</th>
                 <th className="num">{t(locale, "nights_sold")}</th>
-                <th className="num">ADR</th>
-                <th className="num">RevPAR</th>
+                <th className="num" title={t(locale, "kpi_adr_hint")}>{t(locale, "kpi_adr_short")}</th>
+                <th className="num" title={t(locale, "kpi_revpar_hint")}>{t(locale, "kpi_revpar_short")}</th>
                 <th className="num">
                   {t(locale, "kpi_booking_revenue")} ({currency})
                 </th>
@@ -182,9 +237,16 @@ export default async function AnalyticsPage() {
                     <td className="num">{pct(row.metrics.occupancyRate)}</td>
                     <td className="num">{row.metrics.bookedNights}</td>
                     <td className="num">{money(row.metrics.adr, "")}</td>
-                    <td className="num">{money(row.metrics.revpar, "")}</td>
                     <td className="num">
-                      <Revenue locale={locale} metrics={row.metrics} />
+                      <PartialMoney locale={locale} value={row.metrics.revpar} metrics={row.metrics} />
+                    </td>
+                    <td className="num">
+                      <PartialMoney
+                        locale={locale}
+                        value={row.metrics.revenue}
+                        metrics={row.metrics}
+                        month={row.key}
+                      />
                     </td>
                   </tr>
                 );
@@ -203,8 +265,8 @@ export default async function AnalyticsPage() {
                 <th>{t(locale, "unit_name")}</th>
                 <th>{t(locale, "unit_district")}</th>
                 <th className="num">{t(locale, "kpi_occupancy")}</th>
-                <th className="num">ADR</th>
-                <th className="num">RevPAR</th>
+                <th className="num" title={t(locale, "kpi_adr_hint")}>{t(locale, "kpi_adr_short")}</th>
+                <th className="num" title={t(locale, "kpi_revpar_hint")}>{t(locale, "kpi_revpar_short")}</th>
                 <th className="num">
                   {t(locale, "kpi_booking_revenue")} ({currency})
                 </th>
@@ -217,9 +279,9 @@ export default async function AnalyticsPage() {
                     <Link href={`/calendar?unit=${unit.id}`} className="link">
                       {displayName(unit)}
                     </Link>
-                    <div className="cell-sub">{unit.city}</div>
+                    <div className="cell-sub">{cityLabel(locale, unit.city)}</div>
                   </td>
-                  <td>{unit.district}</td>
+                  <td>{districtLabel(locale, unit.district)}</td>
                   <td className="num">
                     {metrics.availableNights === 0 && metrics.leasedNights > 0 ? (
                       <span className="badge badge--rented" title={t(locale, "analytics_leased_hint")}>
@@ -230,9 +292,16 @@ export default async function AnalyticsPage() {
                     )}
                   </td>
                   <td className="num">{money(metrics.adr, "")}</td>
-                  <td className="num">{money(metrics.revpar, "")}</td>
                   <td className="num">
-                    <Revenue locale={locale} metrics={metrics} />
+                    <PartialMoney locale={locale} value={metrics.revpar} metrics={metrics} />
+                  </td>
+                  <td className="num">
+                    <PartialMoney
+                      locale={locale}
+                      value={metrics.revenue}
+                      metrics={metrics}
+                      month={monthKeyOf(thisMonth.start)}
+                    />
                   </td>
                 </tr>
               ))}

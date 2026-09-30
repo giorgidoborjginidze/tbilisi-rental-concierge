@@ -20,8 +20,13 @@ import { dayKey, monthStartTbilisi, startOfTodayTbilisi, tbilisiFormat } from "@
 import { activeContract as runningContract, assetStatusNow, contractPhase } from "@/lib/rentals/phase";
 import { perDayAmount } from "@/lib/rentals/amount";
 import { rentLabel } from "@/lib/rentals/display";
+import { LIVE_STAY } from "@/lib/bookings/live";
+import { cityLabel, districtLabel } from "@/lib/places";
+import { titled } from "@/lib/i18n/metadata";
 
 export const dynamic = "force-dynamic";
+
+export const generateMetadata = titled("asset_edit_title");
 
 const DAY_MS = 86_400_000;
 
@@ -124,7 +129,7 @@ export default async function EditAssetPage({
           unitId: asset.unitId,
           // Second safeguard: only this workspace's own unit's stays.
           unit: { operatorId: operator.id },
-          status: { not: "cancelled" },
+          ...LIVE_STAY,
           checkIn: { lt: calEnd },
           checkOut: { gt: calStart },
         },
@@ -357,8 +362,8 @@ export default async function EditAssetPage({
           nameKa: asset.nameKa ?? "",
           category: asset.category,
           type: asset.type,
-          city: asset.city ?? "",
-          district: asset.district ?? "",
+          city: cityLabel(locale, asset.city),
+          district: districtLabel(locale, asset.district),
           address: asset.address ?? "",
           areaSqm: asset.areaSqm?.toString() ?? "",
           estimatedValue: asset.estimatedValue?.toString() ?? "",
@@ -403,7 +408,7 @@ export default async function EditAssetPage({
                   <form action={deleteContract}>
                     <input type="hidden" name="contractId" value={contract.id} />
                     <input type="hidden" name="assetId" value={asset.id} />
-                    <button type="submit" className="btn-chip" aria-label="delete contract">
+                    <button type="submit" className="btn-chip" aria-label={t(locale, "aria_delete_contract")}>
                       ✕
                     </button>
                   </form>

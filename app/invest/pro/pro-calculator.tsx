@@ -97,13 +97,15 @@ export default function ProCalculator({
         )}
       </div>
 
-      <div>
+      {/* min-width 0: a grid item may shrink below its table, which then
+          scrolls inside its card instead of widening the phone page. */}
+      <div style={{ minWidth: 0 }}>
         <div className="alert-card" style={{ alignItems: "center" }}>
           <h3 className="alert-card__title" style={{ fontSize: 16 }}>
             {labels[`wor_verdict_${result.verdict}`]}
           </h3>
           <span className={`badge ${VERDICT_BADGE[result.verdict]}`}>
-            {pct(y1.capRatePct)} Cap
+            {pct(y1.capRatePct)} {labels.wor_cap_short}
           </span>
         </div>
 
@@ -140,7 +142,7 @@ export default function ProCalculator({
           </div>
         </div>
 
-        <div className="card">
+        <div className="card" style={{ overflowX: "auto" }}>
           <table>
             <thead>
               <tr>

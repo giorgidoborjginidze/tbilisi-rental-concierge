@@ -7,6 +7,8 @@ import { requireWriter } from "@/lib/auth/session";
 import { UNIT_TYPES } from "@/lib/types";
 import type { StringKey } from "@/lib/i18n/strings";
 import { checkFeedUrl } from "@/lib/ical/fetch";
+import { normalizeFeedUrl } from "@/lib/ical/sync";
+import { cityKey, districtKey } from "@/lib/places";
 import { submittedValues } from "@/lib/forms";
 
 export type FormState =
@@ -36,8 +38,9 @@ export async function saveUnit(
   const unitId = str(formData, "unitId") || null;
   const name = str(formData, "name");
   const nameKa = str(formData, "nameKa") || null;
-  const city = str(formData, "city");
-  const district = str(formData, "district");
+  // Stored by key ("ვაკე" → "Vake") so market benchmarks find it.
+  const city = cityKey(str(formData, "city")) ?? "";
+  const district = districtKey(str(formData, "district")) ?? "";
   const address = str(formData, "address");
   const type = str(formData, "type");
 
@@ -68,7 +71,8 @@ export async function saveUnit(
     ...new Set(
       str(formData, "icalUrls")
         .split("\n")
-        .map((u) => u.trim())
+        // webcal:// is the same calendar over https.
+        .map(normalizeFeedUrl)
         .filter(Boolean),
     ),
   ];

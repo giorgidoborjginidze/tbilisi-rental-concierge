@@ -27,14 +27,15 @@ export default function Calculator({
   pricePerSqm,
   labels,
 }: {
-  districts: string[];
-  /** District → avg long-term rent, GEL per m² (mock benchmark). */
+  /** Benchmark keys with their names in the reader's language. */
+  districts: { value: string; label: string }[];
+  /** District → avg long-term rent, GEL per m² (estimated benchmark). */
   rentPerSqm: Record<string, number>;
-  /** District → avg purchase price, GEL per m² (mock). */
+  /** District → avg purchase price, GEL per m² (estimate). */
   pricePerSqm: Record<string, number>;
   labels: Record<string, string>;
 }) {
-  const [district, setDistrict] = useState(districts[0] ?? "");
+  const [district, setDistrict] = useState(districts[0]?.value ?? "");
   const [area, setArea] = useState(60);
   const [renovation, setRenovation] = useState<RenovationLevel>("cosmetic");
   // Manual overrides; null = follow the district/area prefill.
@@ -93,7 +94,7 @@ export default function Calculator({
           {labels.inv_district}
           <select value={district} onChange={(e) => setDistrict(e.target.value)}>
             {districts.map((d) => (
-              <option key={d} value={d}>{d}</option>
+              <option key={d.value} value={d.value}>{d.label}</option>
             ))}
           </select>
         </label>

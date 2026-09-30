@@ -43,6 +43,7 @@ export default function AssetForm({
   categories,
   statuses,
   districts,
+  cities,
   units,
   labels,
   initialCategory,
@@ -57,6 +58,8 @@ export default function AssetForm({
   categories: { value: string; label: string }[];
   statuses: { value: string; label: string }[];
   districts: readonly string[];
+  /** City names in the owner's language; the first is the default. */
+  cities: readonly string[];
   units: { id: string; label: string }[];
   labels: Record<string, string>;
   coins: Option[];
@@ -247,7 +250,12 @@ export default function AssetForm({
             <>
               <label className="field">
                 {labels.unit_city}
-                <input name="city" defaultValue={asset?.city ?? "Tbilisi"} />
+                <input name="city" list="asset-city-options" defaultValue={asset?.city ?? cities[0]} />
+                <datalist id="asset-city-options">
+                  {cities.map((city) => (
+                    <option key={city} value={city} />
+                  ))}
+                </datalist>
               </label>
               <label className="field">
                 {labels.unit_district}

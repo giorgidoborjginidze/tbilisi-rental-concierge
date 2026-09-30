@@ -5,8 +5,11 @@ import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
 import ProCalculator from "./pro-calculator";
 import InvestSubnav from "../../invest-subnav";
+import { titled } from "@/lib/i18n/metadata";
 
 export const dynamic = "force-dynamic";
+
+export const generateMetadata = titled("invest_nav_pro");
 
 const LABEL_KEYS: StringKey[] = [
   "wor_intro", "wor_deal", "wor_price", "wor_equity", "wor_other_costs",
@@ -15,7 +18,7 @@ const LABEL_KEYS: StringKey[] = [
   "wor_utilities", "wor_broker", "wor_hoa", "wor_proptax", "wor_points",
   "wor_tax", "wor_units_n", "wor_currency",
   "wor_verdict_good", "wor_verdict_ok", "wor_verdict_poor",
-  "wor_payment", "wor_invested", "wor_cf_month", "wor_coc", "wor_cap",
+  "wor_payment", "wor_invested", "wor_cf_month", "wor_coc", "wor_cap", "wor_cap_short",
   "wor_payback", "wor_equity5", "wor_year", "wor_col_rent", "wor_col_noi",
   "wor_col_cf", "wor_col_coc", "wor_col_equity", "wor_note",
   "res_years", "res_never",

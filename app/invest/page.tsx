@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { monthKeyTbilisi } from "@/lib/time";
+import { monthKeyTbilisi, monthStartTbilisi, tbilisiFormat } from "@/lib/time";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
 import { KNOWN_DISTRICTS } from "@/lib/types";
@@ -9,8 +9,12 @@ import CarCalculator from "./car-calculator";
 import FlipCalculator from "./flip-calculator";
 import InvestTabs from "./invest-tabs";
 import InvestSubnav from "../invest-subnav";
+import { districtLabel } from "@/lib/places";
+import { titled } from "@/lib/i18n/metadata";
 
 export const dynamic = "force-dynamic";
+
+export const generateMetadata = titled("invest_title", { alternates: { canonical: "/invest" } });
 
 const LABEL_KEYS: StringKey[] = [
   "invest_title", "invest_intro", "inv_params", "inv_district", "inv_area",
@@ -50,7 +54,7 @@ export default async function InvestPage() {
   const locale = await getLocale();
   const monthKey = monthKeyTbilisi();
 
-  // District rent benchmarks for the current month (mock-seeded table).
+  // District rent benchmarks for the current month (estimated averages).
   const rows = await prisma.rentBenchmark.findMany({
     where: { month: monthKey, district: { in: [...KNOWN_DISTRICTS] } },
   });
@@ -60,6 +64,12 @@ export default async function InvestPage() {
 
   const labels = Object.fromEntries(
     LABEL_KEYS.map((key) => [key, t(locale, key)]),
+  );
+  // The prefilled figures are Activo's estimates for this month — say so,
+  // with the month, instead of passing them off as market data.
+  labels.invest_disclaimer = labels.invest_disclaimer.replace(
+    "{month}",
+    tbilisiFormat(locale, { month: "long", year: "numeric" }).format(monthStartTbilisi(0)),
   );
 
   return (
@@ -76,7 +86,7 @@ export default async function InvestPage() {
         flipLabel={t(locale, "invest_tab_flip")}
         realEstate={
           <Calculator
-            districts={[...KNOWN_DISTRICTS]}
+            districts={KNOWN_DISTRICTS.map((value) => ({ value, label: districtLabel(locale, value) }))}
             rentPerSqm={rentPerSqm}
             pricePerSqm={PRICE_PER_SQM}
             labels={labels}

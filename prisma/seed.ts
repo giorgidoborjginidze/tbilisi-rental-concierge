@@ -285,7 +285,7 @@ async function main() {
       passwordHash: await hashPassword("test1234"),
       // The public demo: read-only, no WhatsApp sending, plan without payment.
       isDemo: true,
-      locale: "en",
+      locale: "ka",
       // Demo account: personal Pro plan (12 units / 11 assets need it).
       accountType: "personal",
       // Hotel workspace profile — shows the operations dashboard.

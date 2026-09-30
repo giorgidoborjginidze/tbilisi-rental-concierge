@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { titled } from "@/lib/i18n/metadata";
 import type { ReactNode } from "react";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
@@ -6,10 +6,7 @@ import { IconTarget, IconLayers, IconGlobe, IconUsers } from "../icons";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "About Us",
-  alternates: { canonical: "/about" },
-};
+export const generateMetadata = titled("about_title", { alternates: { canonical: "/about" } });
 
 const SECTIONS: {
   h: StringKey;

@@ -4,7 +4,9 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireWriter } from "@/lib/auth/session";
-import { summarizeSync, syncAllUnits } from "@/lib/ical/run-sync";
+import { refreshUnitMirrors, summarizeSync, syncAllUnits } from "@/lib/ical/run-sync";
+import { LIVE_STAY } from "./live";
+import { tbilisiFormat } from "@/lib/time";
 import type { FormState } from "@/lib/units/actions";
 import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
@@ -105,7 +107,10 @@ export async function updateBooking(
     checkIn?: Date;
     checkOut?: Date;
     nights?: number;
+    mirrorOf?: null;
   } = { amount: parsed.amount, guestName };
+  // A price or a guest name makes a copied block a stay in its own right.
+  if (booking.mirrorOf && (parsed.amount != null || guestName)) data.mirrorOf = null;
 
   const imported = booking.externalId != null;
   if (!imported) {
@@ -139,6 +144,8 @@ export async function cancelBooking(formData: FormData) {
       where: { id: booking.id },
       data: { status: "cancelled", cancelledAt: new Date(), cancelReason: "owner" },
     });
+    // A Booking.com copy of this stay now stands on its own.
+    await refreshUnitMirrors(booking.unitId);
   }
   refresh();
   redirect("/bookings");
@@ -164,6 +171,7 @@ export async function restoreBooking(
       where: { id: booking.id },
       data: { status: "confirmed", cancelledAt: null, cancelReason: null },
     });
+    await refreshUnitMirrors(booking.unitId);
   }
   refresh();
   redirect("/bookings");
@@ -187,11 +195,13 @@ async function firstClash(
     direct: t(locale, "source_direct"),
     manual: t(locale, "source_manual"),
   };
-  const day = (date: Date) => date.toISOString().slice(0, 10);
+  const dayFormat = tbilisiFormat(locale, { day: "numeric", month: "short", year: "numeric" });
+  const day = (date: Date) => dayFormat.format(date);
   const booking = await prisma.booking.findFirst({
     where: {
       unitId,
-      status: { not: "cancelled" },
+      // A copy of another stay is not a stay of its own: that stay is found.
+      ...LIVE_STAY,
       checkIn: { lt: checkOut },
       checkOut: { gt: checkIn },
       ...(exceptBookingId ? { id: { not: exceptBookingId } } : {}),
@@ -199,7 +209,7 @@ async function firstClash(
     orderBy: { checkIn: "asc" },
   });
   if (booking) {
-    return `${SOURCE_NAMES[booking.source] ?? booking.source} ${day(booking.checkIn)} → ${day(booking.checkOut)}${
+    return `${SOURCE_NAMES[booking.source] ?? booking.source} ${day(booking.checkIn)} – ${day(booking.checkOut)}${
       booking.guestName ? ` (${booking.guestName})` : ""
     }`;
   }
@@ -208,7 +218,7 @@ async function firstClash(
     orderBy: { startDate: "asc" },
   });
   if (lease) {
-    return `${t(locale, "overlap_src_lease")} ${day(lease.startDate)} → ${day(lease.endDate)}${
+    return `${t(locale, "overlap_src_lease")} ${day(lease.startDate)} – ${day(lease.endDate)}${
       lease.tenantName ? ` (${lease.tenantName})` : ""
     }`;
   }
@@ -217,7 +227,7 @@ async function firstClash(
     orderBy: { startDate: "asc" },
   });
   if (contract) {
-    return `${t(locale, "overlap_src_contract")} ${day(contract.startDate)} → ${day(contract.endDate)}${
+    return `${t(locale, "overlap_src_contract")} ${day(contract.startDate)} – ${day(contract.endDate)}${
       contract.tenantName ? ` (${contract.tenantName})` : ""
     }`;
   }

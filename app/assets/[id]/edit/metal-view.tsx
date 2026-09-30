@@ -42,7 +42,7 @@ export default async function MetalView({
   const today = todayKey();
 
   const labelKeys: StringKey[] = [
-    "crypto_buy", "crypto_sell", "metal_holdings", "metal_unit_price",
+    "aria_delete_trade", "crypto_buy", "crypto_sell", "metal_holdings", "metal_unit_price",
     "crypto_add_trade", "crypto_side", "contract_start", "error_required",
     "error_invalid_number",
   ];

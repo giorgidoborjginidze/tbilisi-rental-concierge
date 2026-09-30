@@ -70,5 +70,9 @@ if (!isPostgres) {
     // on failure — deploying the new ledger over unrepaired rows would
     // show owners wrong monthly figures.
     run("npx tsx scripts/repair-ledger.ts");
+    // Accounts whose language was never chosen speak Georgian (their
+    // tenant and driver messages follow it). Idempotent; never touches a
+    // language an owner picked.
+    run("npx tsx scripts/backfill-locale.ts");
   }
 }

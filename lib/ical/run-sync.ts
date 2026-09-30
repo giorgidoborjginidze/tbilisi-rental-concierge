@@ -9,9 +9,10 @@
 import { prisma } from "@/lib/db";
 import { parseChannelLinks } from "@/lib/types";
 import { parseIcal } from "./parse";
-import { eventsToBookings, isDemoFeedUrl, sourceFromUrl } from "./sync";
+import { eventsToBookings, isDemoFeedUrl, normalizeFeedUrl, sourceFromUrl } from "./sync";
 import { feedErrorOf, fetchFeed, type FeedError } from "./fetch";
 import { planFeedSync } from "./reconcile";
+import { planMirrors } from "./mirror";
 
 export type IcalFetcher = (url: string) => Promise<string>;
 
@@ -34,9 +35,9 @@ export interface FeedSyncResult {
 
 const defaultFetcher: IcalFetcher = (url) => fetchFeed(url);
 
-/** The feed URLs of a unit, trimmed and without repeats. */
+/** The feed URLs of a unit, trimmed, webcal:// read as https://, without repeats. */
 export function feedUrlsOf(channelLinks: unknown): string[] {
-  return [...new Set(parseChannelLinks(channelLinks).icalUrls.map((url) => url.trim()).filter(Boolean))];
+  return [...new Set(parseChannelLinks(channelLinks).icalUrls.map(normalizeFeedUrl).filter(Boolean))];
 }
 
 export async function syncAllUnits(
@@ -103,7 +104,9 @@ export async function syncAllUnits(
           status: true,
           cancelReason: true,
           cancelledAt: true,
+          checkIn: true,
           checkOut: true,
+          nights: true,
         },
       });
       const plan = planFeedSync(candidates, existing, {
@@ -167,8 +170,43 @@ export async function syncAllUnits(
       });
       results.push(result);
     }
+    // After ALL of the unit's feeds: a Booking.com block that only repeats
+    // another channel's nights is a copy, not a second guest (whichever
+    // feed was read first).
+    if (urls.length > 0) await refreshUnitMirrors(unit.id);
   }
   return results;
+}
+
+/**
+ * Re-mark which of the unit's stays are copies of another stay
+ * (lib/ical/mirror.ts). Run after a sync, and when the owner cancels or
+ * restores a stay (a copy of a cancelled stay stands on its own again).
+ */
+export async function refreshUnitMirrors(unitId: string): Promise<number> {
+  const [stays, leases] = await Promise.all([
+    prisma.booking.findMany({
+      where: { unitId, status: { not: "cancelled" } },
+      select: {
+        id: true,
+        source: true,
+        checkIn: true,
+        checkOut: true,
+        amount: true,
+        guestName: true,
+        mirrorOf: true,
+      },
+    }),
+    prisma.lease.findMany({ where: { unitId }, select: { startDate: true, endDate: true } }),
+  ]);
+  const changes = planMirrors(
+    stays,
+    leases.map((lease) => ({ start: lease.startDate, end: lease.endDate })),
+  );
+  for (const change of changes) {
+    await prisma.booking.update({ where: { id: change.id }, data: { mirrorOf: change.mirrorOf } });
+  }
+  return changes.length;
 }
 
 /** The totals the sync button reports back. */

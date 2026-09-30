@@ -37,32 +37,38 @@ const notoSerifGeorgian = Noto_Serif_Georgian({
 });
 
 const SITE_NAME = "Activo";
-const SITE_TITLE = "Activo — შენი აქტივები ერთ ადგილას";
-const SITE_DESCRIPTION =
-  "მთელი შენი ქონება ერთ დაფაზე — უძრავი ქონება, გაქირავება, ავტოპარკი, შემოსავალი და ციფრული აქტივები (კრიპტო და აქციები).";
 
-export const metadata: Metadata = {
-  // Absolute base for every relative URL below → canonical points at the
-  // custom domain (or Vercel production URL) rather than any preview host.
-  metadataBase: new URL(siteUrl()),
-  title: { default: SITE_TITLE, template: `%s · ${SITE_NAME}` },
-  description: SITE_DESCRIPTION,
-  applicationName: SITE_NAME,
-  alternates: { canonical: "/" },
-  openGraph: {
-    type: "website",
-    siteName: SITE_NAME,
-    title: SITE_TITLE,
-    description: SITE_DESCRIPTION,
-    url: "/",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: SITE_TITLE,
-    description: SITE_DESCRIPTION,
-  },
-  robots: { index: true, follow: true },
-};
+// Georgian unless the visitor switched to English (crawlers carry no
+// cookie, so search engines index the Georgian site). Every page sets its
+// own title; this is the home page's and the template around the others.
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const title = t(locale, "site_title");
+  const description = t(locale, "site_description");
+  return {
+    // Absolute base for every relative URL below → canonical points at the
+    // custom domain (or Vercel production URL) rather than any preview host.
+    metadataBase: new URL(siteUrl()),
+    title: { default: title, template: `%s · ${SITE_NAME}` },
+    description,
+    applicationName: SITE_NAME,
+    alternates: { canonical: "/" },
+    openGraph: {
+      type: "website",
+      siteName: SITE_NAME,
+      title,
+      description,
+      url: "/",
+      locale: locale === "ka" ? "ka_GE" : "en_US",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
+    robots: { index: true, follow: true },
+  };
+}
 
 export default async function RootLayout({
   children,
@@ -76,7 +82,7 @@ export default async function RootLayout({
     themeCookie === "dark" || themeCookie === "light" ? themeCookie : undefined;
   return (
     <html
-      lang="en"
+      lang={locale}
       data-theme={theme}
       className={`${geistSans.variable} ${geistMono.variable} ${notoGeorgian.variable} ${notoSerifGeorgian.variable} h-full antialiased`}
     >

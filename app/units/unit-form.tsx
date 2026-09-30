@@ -32,7 +32,7 @@ export default function UnitForm({
   feedStatus,
 }: {
   unit?: UnitFormValues;
-  cities: readonly string[];
+  cities: { value: string; label: string }[];
   districts: readonly string[];
   types: { value: string; label: string }[];
   labels: Record<string, string>;
@@ -63,9 +63,9 @@ export default function UnitForm({
 
       <label className="field">
         {labels.unit_city}
-        <select name="city" defaultValue={val("city") ?? cities[0]}>
+        <select name="city" defaultValue={val("city") ?? cities[0]?.value}>
           {cities.map((city) => (
-            <option key={city} value={city}>{city}</option>
+            <option key={city.value} value={city.value}>{city.label}</option>
           ))}
         </select>
       </label>

@@ -6,8 +6,11 @@ import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 import AuthForm from "../login/auth-form";
 import { AUTH_LABEL_KEYS } from "../login/labels";
+import { titled } from "@/lib/i18n/metadata";
 
 export const dynamic = "force-dynamic";
+
+export const generateMetadata = titled("register_title", { alternates: { canonical: "/register" } });
 
 export default async function RegisterPage({
   searchParams,

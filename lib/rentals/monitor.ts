@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import type { Locale } from "@/lib/i18n/strings";
+import { asLocale } from "@/lib/i18n/strings";
 import { queueMessage } from "@/lib/notify/whatsapp";
 import {
   paymentTemplates,
@@ -10,6 +10,7 @@ import { dayKey, sameTbilisiDay, startOfTodayTbilisi } from "@/lib/time";
 import { activeContractWhere } from "./phase";
 import { statusFor } from "./terms";
 import { formatDue } from "./money";
+import { baseVars, messageDate } from "@/lib/notify/vars";
 import { sweepStaleMessages, sweepStaleRentAlerts } from "./settle";
 
 // Re-exported so existing callers keep one import for "the rent status".
@@ -56,7 +57,7 @@ export async function monitorRentPayments(
     include: {
       asset: {
         include: {
-          operator: { select: { id: true, locale: true, notifyPhone: true } },
+          operator: { select: { id: true, locale: true, notifyPhone: true, name: true } },
         },
       },
     },
@@ -93,7 +94,8 @@ export async function monitorRentPayments(
     result.contracts += 1;
 
     const operator = contract.asset.operator;
-    const locale = (operator.locale === "ka" ? "ka" : "en") as Locale;
+    // The account's language (Georgian unless the owner chose English).
+    const locale = asLocale(operator.locale);
     const family = templateFamily(contract.asset.category);
     const keys = paymentTemplates(contract.asset.category);
     // The renter hears from us only when the owner wants reminders, and
@@ -106,15 +108,15 @@ export async function monitorRentPayments(
     // Quoted rounded UP to the tetri: paying exactly what the renter is told
     // must settle exactly the periods it is about.
     const amount = formatDue(status.amountDue);
+    // The same figures the owner's screens show (statusFor with the
+    // asset's pricing), the car or flat by the name the reader knows, who
+    // is writing and how to reach them, and the dates written out.
     const vars = {
-      asset: contract.asset.name,
-      plate: contract.asset.plateNumber ?? "—",
-      // {driver} is the renter's name — a driver for a car, a tenant for a flat.
-      driver: contract.tenantName ?? "—",
-      tenant: contract.tenantName ?? "—",
+      ...baseVars(locale, contract.asset, operator, contract.tenantName),
       amount,
       currency: contract.currency,
-      date: dueKey,
+      date: messageDate(locale, status.nextDueDate),
+      deadline: messageDate(locale, status.graceEndsOn),
       days: String(status.daysOverdue),
       grace: String(status.graceDays),
     };

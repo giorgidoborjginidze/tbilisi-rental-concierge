@@ -9,10 +9,13 @@ import { CONTACT_EMAIL } from "@/lib/contact";
 import { tbilisiFormat } from "@/lib/time";
 import PlanCards from "./plan-cards";
 import PaymentPending from "./payment-status";
+import { titled } from "@/lib/i18n/metadata";
 
 // Plan & subscription lives on its own page ("Upgrade Plan") rather than
 // inside Settings, so upgrading is one click from the account menu.
 export const dynamic = "force-dynamic";
+
+export const generateMetadata = titled("billing_title");
 
 const PLAN_LATIN: Record<string, string> = {
   starter: "Starter", standard: "Standard", pro: "Pro",

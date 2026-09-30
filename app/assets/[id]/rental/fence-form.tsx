@@ -142,7 +142,7 @@ export default function FenceForm({
                 type="number"
                 step="any"
                 inputMode="decimal"
-                aria-label="lat"
+                aria-label={labels.aria_lat}
                 value={center.lat}
                 onChange={(event) => {
                   setPreset(null);
@@ -154,7 +154,7 @@ export default function FenceForm({
                 type="number"
                 step="any"
                 inputMode="decimal"
-                aria-label="lng"
+                aria-label={labels.aria_lng}
                 value={center.lng}
                 onChange={(event) => {
                   setPreset(null);

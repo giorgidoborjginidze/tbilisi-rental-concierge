@@ -7,8 +7,12 @@ import { feedUrlsOf } from "@/lib/ical/run-sync";
 import RentalsSubnav from "../rentals-subnav";
 import FeedStatus from "./feed-status";
 import SyncButton from "./sync-button";
+import { cityLabel, districtLabel } from "@/lib/places";
+import { titled } from "@/lib/i18n/metadata";
 
 export const dynamic = "force-dynamic";
+
+export const generateMetadata = titled("units_title");
 
 export default async function UnitsPage() {
   const operator = await requireOperator();
@@ -74,10 +78,10 @@ export default async function UnitsPage() {
                     <td>
                       <div>{displayName}</div>
                       <div className="cell-sub">
-                        {unit.city} · {unit.address}
+                        {cityLabel(locale, unit.city)} · {unit.address}
                       </div>
                     </td>
-                    <td data-label={t(locale, "unit_district")}>{unit.district}</td>
+                    <td data-label={t(locale, "unit_district")}>{districtLabel(locale, unit.district)}</td>
                     <td data-label={t(locale, "unit_type")}>{t(locale, `type_${unit.type}` as StringKey)}</td>
                     <td className="num" data-label={t(locale, "base_rate_short")}>
                       {unit.baseNightlyRate} {unit.currency}

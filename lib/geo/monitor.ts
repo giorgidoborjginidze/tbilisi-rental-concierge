@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import type { Locale } from "@/lib/i18n/strings";
+import { asLocale } from "@/lib/i18n/strings";
 import { queueMessage } from "@/lib/notify/whatsapp";
 import { activeContractWhere } from "@/lib/rentals/phase";
 import { resolveTrackerSilence, withdrawFence } from "@/lib/rentals/settle";
@@ -13,6 +13,7 @@ import {
   type Transition,
   type Zone,
 } from "./fence";
+import { baseVars } from "@/lib/notify/vars";
 
 // Turns a GPS position into events and WhatsApp messages.
 //
@@ -64,7 +65,7 @@ export async function processPing(
   const asset = await prisma.asset.findUnique({
     where: { id: assetId },
     include: {
-      operator: { select: { id: true, locale: true, notifyPhone: true } },
+      operator: { select: { id: true, locale: true, notifyPhone: true, name: true } },
       geofences: { where: { active: true } },
       // The driver is whoever's contract runs on the day of the ping — by
       // its dates, so a contract booked ahead is covered from its first
@@ -96,13 +97,12 @@ export async function processPing(
   // The tracker is talking again: a "tracker silent" alert no longer holds.
   await resolveTrackerSilence(prisma, asset.operator.id, assetId, new Date());
 
-  const locale = (asset.operator.locale === "ka" ? "ka" : "en") as Locale;
+  // The account's language (Georgian unless the owner chose English).
+  const locale = asLocale(asset.operator.locale);
   const contract = asset.contracts[0] ?? null;
-  const vars = {
-    plate: asset.plateNumber ?? "—",
-    asset: asset.name,
-    driver: contract?.tenantName ?? "—",
-  };
+  // Every red-line text names the car (its Georgian name in a Georgian
+  // message, and the plate) and says who is writing.
+  const vars = baseVars(locale, asset, asset.operator, contract?.tenantName);
 
   const outcomes: PingOutcome[] = [];
 

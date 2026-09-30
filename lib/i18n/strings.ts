@@ -2,6 +2,13 @@ export type Locale = "en" | "ka";
 
 export const LOCALES: Locale[] = ["en", "ka"];
 
+/** Georgian first: English only when someone switched to it. */
+export const DEFAULT_LOCALE: Locale = "ka";
+
+/** A stored or submitted language: "en" stays English, anything else is Georgian. */
+export const asLocale = (value: string | null | undefined): Locale =>
+  value === "en" ? "en" : value === "ka" ? "ka" : DEFAULT_LOCALE;
+
 const en = {
   appName: "Activo",
   greeting: "Hello",
@@ -12,10 +19,9 @@ const en = {
   nav_alerts: "Alerts",
 
   onboarding_title: "Welcome",
-  onboarding_intro:
-    "Set up your operator account to start managing your portfolio.",
+  onboarding_intro: "Set up your account to start managing your portfolio.",
   onboarding_submit: "Create account",
-  operator_name: "Company / Operator Name",
+  operator_name: "Company or your name",
   operator_email: "Email",
 
   units_title: "Units",
@@ -307,8 +313,7 @@ const en = {
     "Send this address and the token to whoever installed the tracker or runs your tracking service. Their system adds each position; the address itself carries none.",
   gps_tech_details: "Technical details",
   gps_example: "Example only — do not give this line to the tracker",
-  gps_tech_note:
-    "POST (JSON or form) is preferred, with the token in the header \"Authorization: Bearer <token>\". GET with the same fields is accepted for trackers that can only call a URL. Fields: lat, lng (or lon), speed in km/h, at or timestamp. Refused: a position given twice, an empty one, 0,0 (no satellite fix), the example position, a time more than 5 minutes ahead or not newer than the last position, and more than one position every 5 seconds. If the token leaks, press \"New Token\".",
+  gps_tech_note: "For the installer: the tracker (or the tracking server) sends every position to the address above together with the token — fields lat, lng, speed in km/h and the time of the fix. Refused: an empty position or 0,0 (no satellite fix), the example position, a time more than 5 minutes ahead or not newer than the last position, and more than one position every 5 seconds. If the token leaks, press “New Token”.",
   gps_silent: "No signal for {span}",
   gps_silent_hint:
     "The tracker has not reported for a while, so where the car is now is unknown. Call the driver and check the tracker's power and SIM.",
@@ -338,7 +343,7 @@ const en = {
   fence_kind: "Shape",
   fence_circle: "Circle (centre + radius)",
   fence_polygon: "Polygon (coordinates)",
-  fence_center: "Centre (lat, lng)",
+  fence_center: "Centre (latitude, longitude)",
   fence_radius: "Radius (km)",
   fence_points: "Points",
   fence_points_hint: "One point per line: latitude, longitude. At least three.",
@@ -367,9 +372,8 @@ const en = {
   tpl_disclaimer:
     "Activo cannot contact 112 itself. The default wording therefore speaks about your contractual right to hand the plate over, not about a report already made — you decide whether to actually call.",
   tpl_notify_phone: "Your WhatsApp Number",
-  tpl_notify_phone_hint: "Where owner-side alerts are sent.",
-  tpl_vars_hint:
-    "Placeholders: {plate} plate, {asset} asset, {driver} renter, {amount} amount, {currency} currency, {days} days late, {grace} grace days, {date} due date.",
+  tpl_notify_phone_hint: "Where your own alerts arrive — and the number your renters are given to reply to.",
+  tpl_vars_hint: "Placeholders: {asset} car, {plate} plate, {driver} driver, {amount} amount, {currency} currency, {date} due date, {deadline} last day of the grace period, {days} days late, {grace} grace days, {fence} red line, {owner} your name, {owner_phone} your WhatsApp number. A part in [square brackets] is left out when a value in it is unknown.",
   tpl_save: "Save Messages",
   tplk_geo_approach_driver: "1 km before the line — to the driver",
   tplk_geo_approach_owner: "1 km before the line — to you",
@@ -395,8 +399,7 @@ const en = {
   outbox_to_owner: "To you",
   outbox_auto_on:
     "Automatic sending is on — messages go out over the WhatsApp Business API.",
-  outbox_auto_off:
-    "Automatic sending is not configured yet: set WHATSAPP_TOKEN and WHATSAPP_PHONE_NUMBER_ID for a Meta WhatsApp Business account. Until then every message waits here with a one-tap send link.",
+  outbox_auto_off: "Automatic sending is not switched on yet. Until it is, every message waits here — send it from your own WhatsApp with one tap.",
 
   error_device_taken: "That device ID is already bound to another vehicle.",
   error_fence_points: "A polygon needs at least three valid points.",
@@ -422,8 +425,7 @@ const en = {
 
   nav_invest: "Investment Calculator",
   invest_title: "Investment Calculator",
-  invest_intro:
-    "Estimate how a property purchase performs as a buy-to-let investment. Prefilled prices, rents and renovation costs are approximate mock market averages — adjust everything to your deal.",
+  invest_intro: "Estimate how a property purchase performs as a buy-to-let investment. Prefilled prices, rents and renovation costs are Activo's estimated market averages — adjust everything to your deal.",
   inv_params: "Property & Deal",
   inv_district: "District",
   inv_area: "Area (m\u00b2)",
@@ -463,11 +465,9 @@ const en = {
   res_verdict_ok: "About Par with a Deposit",
   res_verdict_poor: "A Deposit Earns More",
   wor_title: "Pro Analysis — Is It Worth It?",
-  wor_teaser:
-    "Full 5-year underwriting: loan amortization, taxes, cash flow, cap rate, cash-on-cash and a clear verdict. Included from the Standard plan up.",
+  wor_teaser: "Full 5-year assessment: loan repayments, taxes, cash flow, yearly yield (cap rate), return on the cash you put in (cash-on-cash) and a clear verdict. Included from the Standard plan up.",
   wor_open: "Open Pro Analysis",
-  wor_locked:
-    "Advanced analysis is available from the Standard plan up. Upgrade on the Plan page \u2014 during your free trial it is already unlocked.",
+  wor_locked: "PRO analysis is available from the Standard plan up. Upgrade on the Plan page — during your free trial it is already unlocked.",
   wor_intro:
     "Enter the deal \u2014 the engine runs the full 5-year underwriting and gives a verdict. Every field is editable; the essentials are enough to start.",
   wor_deal: "The Deal",
@@ -496,21 +496,19 @@ const en = {
   wor_verdict_poor: "Not Worth It",
   wor_payment: "Monthly Loan Payment",
   wor_invested: "Total Cash Invested",
-  wor_cf_month: "Cash Flow / Month (After Tax, Y1)",
-  wor_coc: "Cash-on-cash (Y1)",
-  wor_cap: "Cap Rate (Y1)",
+  wor_cf_month: "Cash flow / month (after tax, Y1)",
+  wor_coc: "Return on your cash — cash-on-cash (Y1)",
+  wor_cap: "Yearly yield — cap rate (Y1)",
   wor_payback: "Payback Period",
   wor_equity5: "Equity in Property After 5 Years",
   wor_year: "Year",
-  wor_col_rent: "Rent / Mo",
-  wor_col_noi: "NOI",
-  wor_col_cf: "Cash Flow (AT)",
-  wor_col_coc: "CoC %",
+  wor_col_rent: "Rent / month",
+  wor_col_noi: "Net operating income / year (NOI)",
+  wor_col_cf: "Cash flow / year (after tax)",
+  wor_col_coc: "Return on cash / year, % (CoC)",
   wor_col_equity: "Equity %",
-  wor_note:
-    "The verdict weighs cap rate, cash-on-cash, cash flow, the rent-to-price ratio and payback. Estimates only \u2014 not financial advice.",
-  invest_disclaimer:
-    "Approximate estimate based on mock market averages. Not financial advice \u2014 verify prices, rates and costs before investing.",
+  wor_note: "The verdict weighs the yearly yield (cap rate), the return on your cash (cash-on-cash), cash flow, the rent-to-price ratio and payback. Rent is per month; income and cash flow in the table are per year. Estimates only — not financial advice.",
+  invest_disclaimer: "Approximate estimate based on Activo's estimated market averages for {month} — not real transaction data. Not financial advice: verify prices, rates and costs before investing.",
 
   nav_billing: "Plan",
   nav_settings: "Settings",
@@ -531,8 +529,7 @@ const en = {
   billing_pay: "Subscribe",
   billing_paid_until: "Paid Until",
   billing_sandbox: "Test Mode",
-  billing_sandbox_card:
-    "Payments run in Flitt's sandbox. Use test card 4444 5555 6666 1111, any future expiry, CVV 123 \u2014 no real money moves.",
+  billing_sandbox_card: "Payments are in test mode. Use test card 4444 5555 6666 1111, any future expiry, CVV 123 — no real money moves.",
   billing_member_account:
     "Your account is part of a company team \u2014 the company's plan applies.",
   plan_starter: "Starter",
@@ -544,7 +541,7 @@ const en = {
   billing_assets: "assets",
   billing_units: "rental units",
   billing_members: "team seats",
-  billing_analysis: "Advanced Investment Analysis",
+  billing_analysis: "PRO investment analysis",
   usage_title: "Usage",
   team_title: "Team",
   team_invite: "Invite Employee",
@@ -659,8 +656,7 @@ const en = {
   tplk_lease_overdue_tenant: "Rent late, inside grace — to the tenant",
   tplk_lease_late_tenant: "Grace run out — to the tenant",
   tplk_lease_late_owner: "Grace run out — to you",
-  tpl_vars_hint_property:
-    "Placeholders: {asset} property, {tenant} tenant, {amount} amount, {currency} currency, {days} days late, {grace} grace days, {date} due date.",
+  tpl_vars_hint_property: "Placeholders: {asset} property, {tenant} tenant, {amount} amount, {currency} currency, {date} due date, {deadline} last day of the grace period, {days} days late, {grace} grace days, {owner} your name, {owner_phone} your WhatsApp number. A part in [square brackets] is left out when a value in it is unknown.",
   alert_repossession_right_property: "Rent Late — Grace Over",
   action_repossession_right_property:
     "The grace period in the lease has run out. Under the lease you may demand payment or start ending the tenancy.",
@@ -805,12 +801,9 @@ const en = {
   alert_lease_expiry: "Lease Expiring",
   alert_underpriced: "Underpriced",
   alert_action: "Suggested Action",
-  action_vacancy_gap:
-    "Lower the nightly rate or offer a last-minute discount for these dates.",
-  action_lease_expiry:
-    "Contact the tenant about renewal, or relist the unit for short stays.",
-  action_underpriced:
-    "Raise the nightly rate toward the district benchmark.",
+  action_vacancy_gap: "Lower the nightly rate or offer a late-booking discount for these dates.",
+  action_lease_expiry: "Contact the tenant about renewal, or put the unit back on nightly letting.",
+  action_underpriced: "Raise the nightly rate toward the district average.",
   alert_dismiss: "Dismiss",
   alert_resolve: "Done",
   days_left: "days left",
@@ -821,8 +814,7 @@ const en = {
   alerts_done_tab: "Completed",
   alerts_done_empty: "Nothing completed yet.",
   alert_done_at: "completed",
-  wor_register_first:
-    "Advanced analysis needs a free account first \u2014 register, then pick a plan (the free month unlocks it immediately).",
+  wor_register_first: "PRO analysis needs a free account first — register, then pick a plan (the free month unlocks it immediately).",
   register_free: "Create Free Account",
   land_hero: "All Your Property \u2014 One Dashboard",
   land_sub:
@@ -847,7 +839,7 @@ const en = {
   tour_s4_t: "Filter by segment",
   tour_s4_b: "Switch between real estate, vehicles, income and digital assets — or see everything at once.",
   tour_s5_t: "Cards turn over",
-  tour_s5_b: "Tap a card and it flips: the contract, market rent, listings and the door key are on the back.",
+  tour_s5_b: "Tap a card and it flips: the contract, market rent, listings and the door key are on the back. A car's card also opens its rental service — the payment schedule, reminders to the driver and GPS red lines.",
   tour_s6_t: "Digital assets, live",
   tour_s6_b: "Crypto, stocks and metals are priced live; the average buy price is computed from your trades automatically.",
   tour_s7_t: "Every unit on one grid",
@@ -861,7 +853,7 @@ const en = {
   tour_s11_t: "We are here",
   tour_s11_b: "Questions at any point? The support chat answers instantly, and can hand you to a human on WhatsApp.",
   learn_title: "Learn Activo",
-  learn_sub: "A guided tour inside the product, plus short lessons for every part of the platform.",
+  learn_sub: "A guided tour inside the product, plus short lessons for every part of the platform. Renting out cars? Each car has a rental service: the payment schedule, WhatsApp reminders to the driver and GPS red lines (once an installer connects its tracker).",
   learn_start_tour: "Start the interactive tour",
   learn_tour_signin: "The tour runs inside your account — sign in (or open the demo) first.",
   learn_video_soon: "Video coming soon",
@@ -887,7 +879,7 @@ const en = {
   land_deck_digital: "Digital assets",
   land_deck_total: "Portfolio",
   land_b1_t: "Everything in One Place",
-  land_b1: "Real estate, vehicles and income \u2014 statuses and contracts.",
+  land_b1: "Real estate, vehicles and income — statuses and contracts. For car rentals: a payment schedule, WhatsApp reminders to drivers and GPS red lines (with a tracker).",
   land_b2_t: "Automatic Booking Sync",
   land_b2: "Airbnb & Booking in one calendar \u2014 and a warning when stays overlap.",
   land_b3_t: "Georgia first, then everywhere",
@@ -907,7 +899,7 @@ const en = {
     "Rule-based suggestions for the next 14 days: base rate × seasonality × demand, nudged toward the district benchmark.",
   pricing_date: "Date",
   pricing_suggested: "Suggested Rate",
-  pricing_benchmark: "District ADR",
+  pricing_benchmark: "District avg. nightly rate",
   pricing_underpriced: "Underpriced",
   pricing_rationale: "Rationale",
 
@@ -962,13 +954,12 @@ const en = {
   bookings_filter_unpriced: "No price",
   bookings_filter_cancelled: "Cancelled",
   bookings_empty: "No bookings here.",
-  bookings_unpriced_hint:
-    "{n} stays have no price yet — channels do not send prices over iCal. Add the amounts so revenue and ADR are complete.",
-  bookings_scope_note: "Current and upcoming stays, and the last 60 days.",
+  bookings_unpriced_hint: "{n} stays have no price yet — channels do not send prices over iCal. Add the amounts so revenue and the average nightly rate are complete.",
+  bookings_scope_note: "Current and upcoming stays first, then the last 60 days.",
   revenue_partial: "Partial: {n} booked nights have no price",
   revenue_partial_link: "Add prices",
   revenue_partial_short: "partial",
-  adr_priced_note: "ADR counts priced nights only.",
+  adr_priced_note: "The average nightly rate counts priced nights only.",
   feed_title: "Calendar sync",
   feed_last_sync: "Last sync: {when}",
   feed_never: "Not synced yet — press “Sync Calendars”.",
@@ -1211,6 +1202,42 @@ const en = {
   not_found_title: "Page not found",
   not_found_body: "This page doesn't exist, or it isn't in your account.",
   not_found_home: "Go to the dashboard",
+  bookings_scope_unpriced: "Every stay without a price, however old — upcoming first.",
+  bookings_scope_month: "Stays in {month}.",
+  bookings_all_dates: "All dates",
+  bookings_showing: "Showing {from}–{to} of {total}",
+  bookings_prev: "Previous",
+  bookings_next: "Next",
+  booking_mirror_of: "Copy of: {source}",
+  booking_mirror_short: "copy",
+  booking_mirror_note: "Booking.com repeats the nights it imported from your other calendar. This block is not a second guest: it is left out of revenue, double-booking alerts and the “no price” count. Give it a price or a guest name if it is a real reservation.",
+  income_partial_nights: "partial: {n} nights without a price",
+  bars_partial_note: "+ some booked nights of that month have no price yet, so it earned at least this much.",
+  kpi_adr: "Avg. nightly rate (ADR)",
+  kpi_adr_short: "Avg. nightly rate",
+  kpi_adr_hint: "ADR (average daily rate): booking revenue divided by the nights sold with a known price.",
+  kpi_revpar: "Revenue per available night (RevPAR)",
+  kpi_revpar_hint: "RevPAR: booking revenue divided by every night that was for sale, sold or not.",
+  kpi_revpar_short: "Per available night",
+  aria_main_nav: "Main navigation",
+  aria_menu: "Menu",
+  aria_theme: "Light or dark theme",
+  aria_language_switch: "Switch to Georgian (ქართული)",
+  aria_remove_link: "Remove link",
+  aria_lat: "Latitude",
+  aria_lng: "Longitude",
+  aria_delete_fence: "Delete red line",
+  aria_delete_message: "Delete message",
+  aria_delete_contract: "Delete contract",
+  aria_delete_trade: "Delete trade",
+  settings_language_hint: "Also the language of the WhatsApp messages sent to your tenants and drivers.",
+  tpl_lang_ka: "Messages to renters go out in Georgian — your account's language.",
+  tpl_lang_en: "Messages to renters go out in English — your account's language. Switch the app to Georgian to send them in Georgian.",
+  msg_owner_fallback: "The owner",
+  alert_market_adr: "district average per night",
+  wor_cap_short: "yield (cap rate)",
+  site_title: "Activo — all your assets in one place",
+  site_description: "All your property on one dashboard — real estate, rentals, a car fleet, income and digital assets (crypto and stocks).",
 };
 
 const ka: Record<StringKey, string> = {
@@ -1226,12 +1253,12 @@ const ka: Record<StringKey, string> = {
   onboarding_intro:
     "შექმენი ანგარიში და დაიწყე შენი პორტფელის მართვა.",
   onboarding_submit: "ანგარიშის შექმნა",
-  operator_name: "კომპანიის / ოპერატორის სახელი",
+  operator_name: "კომპანიის ან შენი სახელი",
   operator_email: "ელფოსტა",
 
   units_title: "ერთეულები",
   units_add: "ერთეულის დამატება",
-  units_empty: "ერთეულები ჯერ არ არის. დაამატეთ პირველი ერთეული დასაწყებად.",
+  units_empty: "ერთეულები ჯერ არ არის. დაამატე პირველი ერთეული და დაიწყე.",
   unit_new_title: "ახალი ერთეული",
   unit_edit_title: "ერთეულის რედაქტირება",
 
@@ -1270,7 +1297,7 @@ const ka: Record<StringKey, string> = {
   nav_assets: "აქტივები",
   assets_title: "ჩემი აქტივები",
   assets_add: "აქტივის დამატება",
-  assets_empty: "აქტივები ჯერ არ არის. დაამატეთ პირველი აქტივი დასაწყებად.",
+  assets_empty: "აქტივები ჯერ არ არის. დაამატე პირველი აქტივი და დაიწყე.",
   asset_new_title: "ახალი აქტივი",
   asset_edit_title: "აქტივის რედაქტირება",
   asset_category: "კატეგორია",
@@ -1286,7 +1313,7 @@ const ka: Record<StringKey, string> = {
   type_platinum: "პლატინა",
   type_palladium: "პალადიუმი",
   metal_type: "ლითონი",
-  metal_hint: "აირჩიე ლითონი, შემდეგ ეკრანზე ჩაწერე შესყიდვები. ფასი USD უნცია-ზე (troy oz).",
+  metal_hint: "აირჩიე ლითონი, შემდეგ ეკრანზე ჩაწერე შესყიდვები. ფასი აშშ დოლარშია, ტროის უნციაზე (31,1 გ).",
   holding_next_hint: "ყიდვებსა და გაყიდვებს შემდეგ ეკრანზე ჩაწერ, ცოცხალი ფასით.",
   type_salary: "ხელფასი",
   type_dividend: "დივიდენდი",
@@ -1404,7 +1431,7 @@ const ka: Record<StringKey, string> = {
   status_vacant: "თავისუფალი",
   status_personal_use: "პირადი მოხმარება",
   status_listed: "განთავსებული",
-  status_str: "მოკლევადიან გაქირავებაზე",
+  status_str: "დღიურ გაქირავებაზე",
   asset_area: "ფართობი (მ²)",
   asset_value: "შეფასებული ღირებულება",
   asset_notes: "შენიშვნები",
@@ -1421,8 +1448,7 @@ const ka: Record<StringKey, string> = {
   door_generate: "ახალი კოდი",
   tenant_phone: "დამქირავებლის ტელეფონი (WhatsApp)",
   myhome_url: "myhome.ge განცხადების ბმული",
-  myhome_hint:
-    "ჩასვით ამ აქტივის საკუთარი განცხადებების ბმულები. სტატუსის ღილაკები აქ განაახლებს სტატუსს და გახსნის განცხადებას, რომ იქაც შეცვალოთ.",
+  myhome_hint: "ჩასვი ამ აქტივის საკუთარი განცხადებების ბმულები. სტატუსის ღილაკები აქ განაახლებს სტატუსს და გახსნის განცხადებას, რომ იქაც შეცვალო.",
   myhome_open: "myhome.ge-ზე გახსნა",
   mark_rented: "გაქირავებულია",
   mark_vacant: "თავისუფალია",
@@ -1461,8 +1487,7 @@ const ka: Record<StringKey, string> = {
   asset_plate_hint: "შეტყობინებებში ზუსტად ასე დაიწერება, მაგ. AA-123-BB.",
 
   pay_schedule_title: "გადახდის გრაფიკი",
-  pay_schedule_intro:
-    "რა სიხშირით იხდის მძღოლი და რამდენი დღით დაგვიანებას უშვებს კონტრაქტი, სანამ ავტომობილის დაბრუნების მოთხოვნის უფლება გაგიჩნდება.",
+  pay_schedule_intro: "რა სიხშირით იხდის მძღოლი და რამდენი დღით დაგვიანებას უშვებს ხელშეკრულება, სანამ ავტომობილის დაბრუნების მოთხოვნის უფლება გაგიჩნდება.",
   pay_period: "გადახდის სიხშირე",
   period_daily: "ყოველდღიური",
   period_weekly: "ყოველკვირეული",
@@ -1470,15 +1495,14 @@ const ka: Record<StringKey, string> = {
   pay_amount: "თანხა ერთ პერიოდზე",
   pay_amount_hint: "რამდენს იხდის დამქირავებელი ერთ პერიოდში.",
   pay_grace: "შეღავათიანი დღეები",
-  pay_grace_hint:
-    "რამდენი დღის დაგვიანებას უშვებს კონტრაქტი. ამის შემდეგ ჩამორთმევის უფლება ძალაში შედის.",
+  pay_grace_hint: "რამდენი დღის დაგვიანებას უშვებს ხელშეკრულება. ამის შემდეგ ავტომობილის დაბრუნების მოთხოვნის უფლება გიჩნდება.",
   pay_paid_through: "ქირა გადახდილია თარიღამდე",
   pay_paid_through_hint:
     "შემდეგი გადახდის დღე — მანამდე ყველა პერიოდი გადახდილია; გადახდის დღე ხელშეკრულების დაწყების დღეს ემთხვევა. ამ თარიღის შეცვლა ნაშთს თავიდან ადგენს: აღრიცხული გადახდები ისტორიაში რჩება, ავანსი კი ნულდება.",
   pay_next_due: "შემდეგი გადახდა",
   pay_days_overdue: "დაგვიანება (დღე)",
   pay_amount_due: "დავალიანება",
-  pay_repossess_from: "ჩამორთმევის უფლება თარიღიდან",
+  pay_repossess_from: "დაბრუნების მოთხოვნის უფლება — თარიღიდან",
   pay_record: "გადახდის აღრიცხვა",
   pay_received: "მიღებული თანხა",
   pay_date: "თარიღი",
@@ -1491,18 +1515,16 @@ const ka: Record<StringKey, string> = {
   pay_history: "გადახდები",
   pay_partial_hint:
     "ნაწილობრივი თანხა ავანსად რჩება და შემდეგ პერიოდს აკლდება. გრაფიკი წინ მხოლოდ მაშინ მიიწევს, როცა მთელი პერიოდი დაიფარება — ამიტომ ნაწილობრივი გადახდა დაგვიანებას არ ხსნის.",
-  pay_no_contract:
-    "ჯერ დაამატე მოქმედი ხელშეკრულება ამ აქტივზე — გრაფიკი კონტრაქტს მიჰყვება.",
-  pay_ended_owed:
-    "ეს კონტრაქტი {date}-ს დასრულდა და ქირა ბოლომდე არ არის გადახდილი. დამქირავებელს აღარაფერი ეგზავნება; თანხა აქ ჩაწერე, როცა მიიღებ.",
-  pay_unsettled_title: "დასრულებული კონტრაქტების დავალიანება",
+  pay_no_contract: "ჯერ დაამატე მოქმედი ხელშეკრულება ამ აქტივზე — გრაფიკი მას მიჰყვება.",
+  pay_ended_owed: "ეს ხელშეკრულება დასრულდა ({date}) და ქირა ბოლომდე არ არის გადახდილი. დამქირავებელს აღარაფერი ეგზავნება; თანხა აქ ჩაწერე, როცა მიიღებ.",
+  pay_unsettled_title: "დასრულებული ხელშეკრულებების დავალიანება",
   pay_untracked:
     "ეს ხელშეკრულება ჯერ არ ითვლება. ქვემოთ მიუთითე „ქირა გადახდილია თარიღამდე“ და შეინახე — გრაფიკი ამ თარიღიდან იწყებს ათვლას და შეხსენებებიც აქედან ამოქმედდება. მანამდელ პერიოდზე არაფერი იგზავნება.",
   pstate_not_started: "ჯერ არ დაწყებულა",
   pstate_ok: "დაფარულია",
   pstate_due: "დღეს იხდის",
   pstate_grace: "დაგვიანებულია — შეღავათის ფარგლებში",
-  pstate_repossess: "ჩამორთმევის უფლება ძალაშია",
+  pstate_repossess: "დაბრუნების მოთხოვნის უფლება ძალაშია",
   pstate_ended: "დასრულებულია",
 
   gps_title: "GPS მოწყობილობა",
@@ -1518,8 +1540,7 @@ const ka: Record<StringKey, string> = {
     "ეს მისამართი და ტოკენი გაუგზავნე მას, ვინც ტრეკერი დაგიმონტაჟა ან თვალთვალის სერვისს გიწევს. კოორდინატს ყოველ ჯერზე მათი სისტემა ამატებს — თავად მისამართში კოორდინატი არ არის.",
   gps_tech_details: "ტექნიკური დეტალები",
   gps_example: "მხოლოდ მაგალითი — ეს ხაზი ტრეკერს არ მისცე",
-  gps_tech_note:
-    "სასურველია POST (JSON ან ფორმა), ტოკენით სათაურში „Authorization: Bearer <token>“. GET იგივე ველებით მიიღება იმ ტრეკერებისთვის, რომლებსაც მხოლოდ ბმულის გამოძახება შეუძლიათ. ველები: lat, lng (ან lon), speed კმ/სთ-ში, at ან timestamp. არ მიიღება: ორჯერ მოცემული კოორდინატი, ცარიელი, 0,0 (სატელიტური სიგნალი არ არის), მაგალითის კოორდინატი, დრო, რომელიც 5 წუთზე მეტით მომავალშია ან ბოლო კოორდინატზე ახალი არ არის, და 5 წამში ერთზე მეტი კოორდინატი. თუ ტოკენი გაჟონა, დააჭირე „ახალი ტოკენი“.",
+  gps_tech_note: "ინსტალატორისთვის: ტრეკერი (ან თვალთვალის სერვერი) ყოველ კოორდინატს ზემოთ მოცემულ მისამართზე ტოკენთან ერთად აგზავნის — ველები lat, lng, speed (კმ/სთ) და სიგნალის დრო. არ მიიღება: ცარიელი კოორდინატი ან 0,0 (სატელიტური სიგნალი არ არის), მაგალითის კოორდინატი, დრო, რომელიც 5 წუთზე მეტით მომავალშია ან ბოლოზე ახალი არ არის, და 5 წამში ერთზე მეტი კოორდინატი. თუ ტოკენი გაჟონა, დააჭირე „ახალი ტოკენი“.",
   gps_silent: "სიგნალი არ არის {span}",
   gps_silent_hint:
     "ტრეკერს დიდი ხანია არაფერი გამოუგზავნია, ამიტომ მანქანა ახლა სად არის — უცნობია. დაურეკე მძღოლს და შეამოწმე ტრეკერის კვება და SIM ბარათი.",
@@ -1549,7 +1570,7 @@ const ka: Record<StringKey, string> = {
   fence_kind: "ფორმა",
   fence_circle: "წრე (ცენტრი + რადიუსი)",
   fence_polygon: "მრავალკუთხედი (კოორდინატები)",
-  fence_center: "ცენტრი (lat, lng)",
+  fence_center: "ცენტრი (განედი, გრძედი)",
   fence_radius: "რადიუსი (კმ)",
   fence_points: "წერტილები",
   fence_points_hint: "თითო ხაზზე თითო წერტილი: განედი, გრძედი. მინიმუმ სამი.",
@@ -1575,12 +1596,10 @@ const ka: Record<StringKey, string> = {
   tpl_title: "შეტყობინებები",
   tpl_intro:
     "Activo ამ ტექსტებს მოვლენისას ამზადებს — ქირას ყოველ დილით ამოწმებს, წითელ ხაზებს GPS-ის ყოველ სიგნალზე — და WhatsApp-ით აგზავნის, ავტომატურად, როცა WhatsApp Business მიერთებულია. შენი ანგარიშიდან ერთ ნომერზე — შენსაზეც — დღეში მაქსიმუმ 3 შეტყობინება მიდის, წითელი ხაზის თითო მოვლენა დღეში ერთხელ ცხადდება, ტექსტი კი 500 სიმბოლომდე შეიძლება იყოს. ნებისმიერი მათგანი შეგიძლია შეცვალო — ველის გასუფთავება ნაგულისხმევ ტექსტს აბრუნებს.",
-  tpl_disclaimer:
-    "Activo თავად 112-ს ვერ დაუკავშირდება. ამიტომ ნაგულისხმევი ტექსტი ლაპარაკობს შენს კონტრაქტისეულ უფლებაზე, გადასცე ნომერი — და არა უკვე გაკეთებულ განცხადებაზე. დარეკვა შენი გადასაწყვეტია.",
+  tpl_disclaimer: "Activo თავად 112-ს ვერ დაუკავშირდება. ამიტომ ნაგულისხმევი ტექსტი ლაპარაკობს ხელშეკრულებით მონიჭებულ შენს უფლებაზე, გადასცე ნომერი — და არა უკვე გაკეთებულ განცხადებაზე. დარეკვა შენი გადასაწყვეტია.",
   tpl_notify_phone: "შენი WhatsApp ნომერი",
-  tpl_notify_phone_hint: "აქ მოვა გამქირავებლისთვის განკუთვნილი შეტყობინებები.",
-  tpl_vars_hint:
-    "ჩანაცვლებადი ველები: {plate} ნომერი, {asset} აქტივი, {driver} დამქირავებელი, {amount} თანხა, {currency} ვალუტა, {days} დაგვიანება, {grace} შეღავათი, {date} ვადა.",
+  tpl_notify_phone_hint: "აქ მოვა შენთვის განკუთვნილი შეტყობინებები — და ამ ნომერს ვუთითებთ დამქირავებლებს პასუხისთვის.",
+  tpl_vars_hint: "ჩანაცვლებადი ველები: {asset} მანქანა, {plate} ნომერი, {driver} მძღოლი, {amount} თანხა, {currency} ვალუტა, {date} გადახდის დღე, {deadline} შეღავათის ბოლო დღე, {days} დაგვიანება, {grace} შეღავათის დღეები, {fence} წითელი ხაზი, {owner} შენი სახელი, {owner_phone} შენი WhatsApp ნომერი. [კვადრატულ ფრჩხილებში] ჩასმული ნაწილი გამოტოვდება, თუ მასში რომელიმე მნიშვნელობა უცნობია.",
   tpl_save: "ტექსტების შენახვა",
   tplk_geo_approach_driver: "1 კმ ხაზამდე — მძღოლს",
   tplk_geo_approach_owner: "1 კმ ხაზამდე — შენ",
@@ -1606,8 +1625,7 @@ const ka: Record<StringKey, string> = {
   outbox_to_owner: "შენ",
   outbox_auto_on:
     "ავტომატური გაგზავნა ჩართულია — შეტყობინებები WhatsApp Business API-ით მიდის.",
-  outbox_auto_off:
-    "ავტომატური გაგზავნა ჯერ არ არის დაყენებული: საჭიროა Meta-ს WhatsApp Business ანგარიში და WHATSAPP_TOKEN / WHATSAPP_PHONE_NUMBER_ID. მანამდე ყველა შეტყობინება აქ ელოდება ერთი შეხებით გასაგზავნ ბმულთან ერთად.",
+  outbox_auto_off: "ავტომატური გაგზავნა ჯერ ჩართული არ არის. მანამდე ყველა შეტყობინება აქ გელოდება — გაგზავნე შენი WhatsApp-იდან ერთი შეხებით.",
 
   error_device_taken: "ეს მოწყობილობის ID უკვე მიბმულია სხვა ავტომობილზე.",
   error_fence_points: "მრავალკუთხედს მინიმუმ სამი სწორი წერტილი სჭირდება.",
@@ -1620,9 +1638,8 @@ const ka: Record<StringKey, string> = {
   alert_rent_overdue: "ქირა დაგვიანებულია",
   action_rent_overdue:
     "დაუკავშირდი დამქირავებელს — გადახდა დაგვიანებულია, მაგრამ ჯერ შეღავათის ფარგლებშია.",
-  alert_repossession_right: "ჩამორთმევის უფლება ძალაშია",
-  action_repossession_right:
-    "კონტრაქტით გათვალისწინებული შეღავათიანი ვადა ამოიწურა. ავტომობილის დაბრუნების მოთხოვნის უფლება გაქვს.",
+  alert_repossession_right: "დაბრუნების მოთხოვნის უფლება ძალაშია",
+  action_repossession_right: "ხელშეკრულებით გათვალისწინებული შეღავათიანი ვადა ამოიწურა. ავტომობილის დაბრუნების მოთხოვნის უფლება გაქვს.",
   alert_geofence_breach: "წითელი ხაზი გადაკვეთილია",
   action_geofence_breach:
     "ავტომობილი შეთანხმებული ტერიტორიის გარეთაა. დაუკავშირდი მძღოლს ან შეატყობინე 112-ს.",
@@ -1647,7 +1664,7 @@ const ka: Record<StringKey, string> = {
   renov_full: "სრული (თეთრი კარკასი)",
   inv_renov_cost: "რემონტის ბიუჯეტი (GEL)",
   inv_rent: "მოსალოდნელი თვიური ქირა (GEL)",
-  inv_rent_hint: "შევსებულია უბნის ქირის ბენჩმარკით",
+  inv_rent_hint: "შევსებულია უბნის სავარაუდო საშუალო ქირით",
   inv_vacancy: "ვაკანტურობა (%)",
   inv_tax: "ქირის საშემოსავლო გადასახადი (%)",
   inv_financing: "დაფინანსება",
@@ -1662,7 +1679,7 @@ const ka: Record<StringKey, string> = {
   res_monthly_payment: "სესხის თვიური შენატანი",
   res_total_loan_cost: "ბანკს ჯამში გადაუხდი",
   res_net_income: "წმინდა თვიური შემოსავალი",
-  res_cash_flow: "თვიური ქეშ-ფლოუ",
+  res_cash_flow: "თვიური ფულადი ნაკადი",
   res_gross_yield: "მთლიანი შემოსავლიანობა",
   res_net_yield: "წმინდა შემოსავლიანობა",
   res_payback: "ამოგების ვადა",
@@ -1674,11 +1691,9 @@ const ka: Record<StringKey, string> = {
   res_verdict_ok: "დაახლოებით დეპოზიტის ტოლია",
   res_verdict_poor: "დეპოზიტი მეტს გამოიმუშავებს",
   wor_title: "პრო ანალიზი — ღირს თუ არა?",
-  wor_teaser:
-    "სრული 5-წლიანი შეფასება: სესხის ამორტიზაცია, გადასახადები, ქეშ-ფლოუ, Cap Rate, Cash-on-Cash და მკაფიო ვერდიქტი. შედის სტანდარტი პაკეტიდან ზემოთ.",
+  wor_teaser: "სრული 5-წლიანი შეფასება: სესხის დაფარვის გრაფიკი, გადასახადები, ფულადი ნაკადი, წლიური შემოსავლიანობა (Cap Rate), უკუგება ჩადებულ ფულზე (Cash-on-Cash) და მკაფიო ვერდიქტი. შედის სტანდარტი პაკეტიდან ზემოთ.",
   wor_open: "პრო ანალიზის გახსნა",
-  wor_locked:
-    "Advanced ანალიზი ხელმისაწვდომია სტანდარტი პაკეტიდან ზემოთ. გაზარდე პაკეტი გვერდზე «პაკეტი» — უფასო პერიოდში უკვე ჩართულია.",
+  wor_locked: "პრო ანალიზი ხელმისაწვდომია სტანდარტი პაკეტიდან ზემოთ. გაზარდე პაკეტი გვერდზე «პაკეტი» — უფასო პერიოდში უკვე ჩართულია.",
   wor_intro:
     "შეიყვანე გარიგება — ძრავი სრულ 5-წლიან შეფასებას გააკეთებს და ვერდიქტს გამოიტანს. ყველა ველი შეცვლადია; დასაწყისისთვის ძირითადებიც საკმარისია.",
   wor_deal: "გარიგება",
@@ -1707,21 +1722,19 @@ const ka: Record<StringKey, string> = {
   wor_verdict_poor: "არ ღირს",
   wor_payment: "სესხის თვიური შენატანი",
   wor_invested: "ჯამური ჩადებული თანხა",
-  wor_cf_month: "ქეშ-ფლოუ / თვე (გადასახადის შემდეგ, წ1)",
-  wor_coc: "Cash-on-Cash (წ1)",
-  wor_cap: "Cap Rate (წ1)",
+  wor_cf_month: "ფულადი ნაკადი / თვე (გადასახადის შემდეგ, წ1)",
+  wor_coc: "უკუგება ჩადებულ ფულზე — Cash-on-Cash (წ1)",
+  wor_cap: "წლიური შემოსავლიანობა — Cap Rate (წ1)",
   wor_payback: "ამოგების ვადა",
   wor_equity5: "კაპიტალი ქონებაში 5 წლის შემდეგ",
   wor_year: "წელი",
   wor_col_rent: "ქირა / თვე",
-  wor_col_noi: "NOI",
-  wor_col_cf: "ქეშ-ფლოუ (AT)",
-  wor_col_coc: "CoC %",
+  wor_col_noi: "წმინდა შემოსავალი / წელი (NOI)",
+  wor_col_cf: "ფულადი ნაკადი / წელი (გადასახადის შემდეგ)",
+  wor_col_coc: "უკუგება ფულზე / წელი, % (CoC)",
   wor_col_equity: "კაპიტალი %",
-  wor_note:
-    "ვერდიქტი წონის Cap Rate-ს, Cash-on-Cash-ს, ქეშ-ფლოუს, ქირა/ფასის თანაფარდობასა და ამოგების ვადას. მხოლოდ შეფასებაა — არა ფინანსური რჩევა.",
-  invest_disclaimer:
-    "მიახლოებითი შეფასება mock საბაზრო საშუალოებით. ეს არ არის ფინანსური რჩევა — ინვესტიციამდე გადაამოწმე ფასები, განაკვეთები და ხარჯები.",
+  wor_note: "ვერდიქტი ითვალისწინებს წლიურ შემოსავლიანობას (Cap Rate), უკუგებას ჩადებულ ფულზე (Cash-on-Cash), ფულად ნაკადს, ქირა/ფასის თანაფარდობასა და ამოგების ვადას. ცხრილში ქირა თვიურია, შემოსავალი და ფულადი ნაკადი — წლიური. მხოლოდ შეფასებაა — არა ფინანსური რჩევა.",
+  invest_disclaimer: "მიახლოებითი შეფასება Activo-ს სავარაუდო საბაზრო საშუალოებით ({month}) — ეს არ არის რეალური გარიგებების მონაცემები. არც ფინანსური რჩევაა: ინვესტიციამდე გადაამოწმე ფასები, განაკვეთები და ხარჯები.",
 
   nav_billing: "პაკეტი",
   nav_settings: "პარამეტრები",
@@ -1742,8 +1755,7 @@ const ka: Record<StringKey, string> = {
   billing_pay: "გამოწერა",
   billing_paid_until: "გადახდილია",
   billing_sandbox: "სატესტო რეჟიმი",
-  billing_sandbox_card:
-    "გადახდები მუშაობს Flitt-ის sandbox-ში. გამოიყენე სატესტო ბარათი 4444 5555 6666 1111, ნებისმიერი მომავალი ვადა, CVV 123 — ნამდვილი ფული არ იხარჯება.",
+  billing_sandbox_card: "გადახდები სატესტო რეჟიმშია. გამოიყენე სატესტო ბარათი 4444 5555 6666 1111, ნებისმიერი მომავალი ვადა, CVV 123 — ნამდვილი ფული არ იხარჯება.",
   billing_member_account:
     "შენი ანგარიში კომპანიის გუნდშია — მოქმედებს კომპანიის პაკეტი.",
   plan_starter: "სტარტი",
@@ -1755,7 +1767,7 @@ const ka: Record<StringKey, string> = {
   billing_assets: "აქტივი",
   billing_units: "გასაქირავებელი ერთეული",
   billing_members: "გუნდის წევრი",
-  billing_analysis: "Advanced საინვესტიციო ანალიზი",
+  billing_analysis: "პრო საინვესტიციო ანალიზი",
   usage_title: "მოხმარება",
   team_title: "გუნდი",
   team_invite: "თანამშრომლის მოწვევა",
@@ -1815,9 +1827,9 @@ const ka: Record<StringKey, string> = {
   deck_no_rent: "ამჟამად არ ქირავდება",
   deck_adv_underpriced: "ქირა უბნის საშუალოზე დაახლოებით {pct}%-ით დაბალია. განახლებისას აწევა ღირს.",
   deck_adv_vacant: "თავისუფალია {days} დღეა. გამოაქვეყნე — ყოველი კვირა დაახლოებით {loss} გიჯდება.",
-  deck_adv_overdue: "გადახდა {days} დღით არის დაგვიანებული. კონტრაქტი {grace} დღეს უშვებს.",
+  deck_adv_overdue: "გადახდა {days} დღით არის დაგვიანებული. ხელშეკრულება {grace} დღეს უშვებს.",
   deck_adv_repossess: "შეღავათიანი ვადა ამოიწურა — ავტომობილის დაბრუნების მოთხოვნის უფლება გაქვს.",
-  deck_adv_ended_owed: "კონტრაქტი დასრულდა, გადაუხდელი დარჩა {amount}. ჩაწერე, როცა გადაგიხდის.",
+  deck_adv_ended_owed: "ხელშეკრულება დასრულდა, გადაუხდელი დარჩა {amount}. ჩაწერე, როცა გადაგიხდის.",
   deck_adv_ok: "ყველაფერი წესრიგშია. ამ წუთას მოქმედება არ სჭირდება.",
   deck_adv_no_value: "შეფასებული ღირებულება ჯერ არ მიგითითებია — დაამატე და პორტფელის ჯამში ჩაჯდება.",
   bars_title: "ყველა შემოსავალი · 6 თვე",
@@ -1826,7 +1838,7 @@ const ka: Record<StringKey, string> = {
   tips_source: "წყარო",
   tips_src_bench: "უბნის ორიენტირები",
   tips_src_calendar: "შენი კალენდარი",
-  tips_src_contract: "შენი კონტრაქტები",
+  tips_src_contract: "შენი ხელშეკრულებები",
   day_title: "დღიური გაქირავება — დღეს",
   day_sub: "დღეს გაქირავდა? შემოთავაზებული ციფრი დღის ტარიფია — თუ სხვა თანხაზე შეთანხმდი, ჩაწერე.",
   day_question: "დღეს გაქირავებულია?",
@@ -1870,8 +1882,7 @@ const ka: Record<StringKey, string> = {
   tplk_lease_overdue_tenant: "დაგვიანება შეღავათის ფარგლებში — დამქირავებელს",
   tplk_lease_late_tenant: "შეღავათი ამოიწურა — დამქირავებელს",
   tplk_lease_late_owner: "შეღავათი ამოიწურა — შენ",
-  tpl_vars_hint_property:
-    "ჩანაცვლებადი ველები: {asset} ქონება, {tenant} დამქირავებელი, {amount} თანხა, {currency} ვალუტა, {days} დაგვიანება, {grace} შეღავათი, {date} ვადა.",
+  tpl_vars_hint_property: "ჩანაცვლებადი ველები: {asset} ქონება, {tenant} დამქირავებელი, {amount} თანხა, {currency} ვალუტა, {date} გადახდის დღე, {deadline} შეღავათის ბოლო დღე, {days} დაგვიანება, {grace} შეღავათის დღეები, {owner} შენი სახელი, {owner_phone} შენი WhatsApp ნომერი. [კვადრატულ ფრჩხილებში] ჩასმული ნაწილი გამოტოვდება, თუ მასში რომელიმე მნიშვნელობა უცნობია.",
   alert_repossession_right_property: "ქირა დაგვიანებულია — შეღავათი ამოიწურა",
   action_repossession_right_property:
     "ხელშეკრულებით გათვალისწინებული შეღავათიანი ვადა ამოიწურა. ხელშეკრულების პირობებით შეგიძლია მოითხოვო დავალიანების დაფარვა ან ხელშეკრულების შეწყვეტა.",
@@ -1936,7 +1947,7 @@ const ka: Record<StringKey, string> = {
   taxi_c_running: "სერვისი და დაზღვევა",
   taxi_c_driver: "მძღოლი",
   invest_nav_calc: "უფასო კალკულატორი",
-  invest_nav_pro: "სიღრმისეული ანალიზი",
+  invest_nav_pro: "პრო ანალიზი",
   invest_tab_flip: "ფლიპი",
   flip_title: "ყიდვა, რემონტი, გაყიდვა",
   flip_intro:
@@ -2006,8 +2017,7 @@ const ka: Record<StringKey, string> = {
   source_other: "სხვა",
 
   alert_contract_expiry: "ხელშეკრულება იწურება",
-  action_contract_expiry:
-    "დაუკავშირდით დამქირავებელს განახლებაზე, ან დაგეგმეთ აქტივის ხელახლა განთავსება.",
+  action_contract_expiry: "დაუკავშირდი დამქირავებელს განახლებაზე, ან დაგეგმე აქტივის ხელახლა გაქირავება.",
 
   alerts_title: "გაფრთხილებები",
   alerts_scan: "სკანირება ახლა",
@@ -2016,11 +2026,9 @@ const ka: Record<StringKey, string> = {
   alert_lease_expiry: "იჯარა იწურება",
   alert_underpriced: "დაბალი ფასი",
   alert_action: "რეკომენდებული ქმედება",
-  action_vacancy_gap:
-    "დაწიეთ ღამის ტარიფი ან შესთავაზეთ last-minute ფასდაკლება ამ თარიღებისთვის.",
-  action_lease_expiry:
-    "დაუკავშირდით დამქირავებელს განახლებაზე, ან დააბრუნეთ ერთეული მოკლევადიან გაქირავებაში.",
-  action_underpriced: "აწიეთ ღამის ტარიფი უბნის ბენჩმარკისკენ.",
+  action_vacancy_gap: "დაწიე ღამის ტარიფი ან შესთავაზე ბოლო წუთის ფასდაკლება ამ თარიღებისთვის.",
+  action_lease_expiry: "დაუკავშირდი დამქირავებელს განახლებაზე, ან დააბრუნე ერთეული დღიურ გაქირავებაში.",
+  action_underpriced: "აწიე ღამის ტარიფი უბნის საშუალოსკენ.",
   alert_dismiss: "დახურვა",
   alert_resolve: "შესრულებულია",
   days_left: "დღე დარჩა",
@@ -2031,8 +2039,7 @@ const ka: Record<StringKey, string> = {
   alerts_done_tab: "შესრულებული",
   alerts_done_empty: "შესრულებული ჯერ არ არის.",
   alert_done_at: "შესრულდა",
-  wor_register_first:
-    "Advanced ანალიზს ჯერ უფასო ანგარიში სჭირდება — დარეგისტრირდი და შემდეგ აირჩიე პაკეტი (უფასო თვე მაშინვე ხსნის).",
+  wor_register_first: "პრო ანალიზს ჯერ უფასო ანგარიში სჭირდება — დარეგისტრირდი და შემდეგ აირჩიე პაკეტი (უფასო თვე მაშინვე ხსნის).",
   register_free: "უფასო ანგარიშის შექმნა",
   land_hero: "მთელი შენი ქონება — ერთ დაფაზე",
   land_sub:
@@ -2057,7 +2064,7 @@ const ka: Record<StringKey, string> = {
   tour_s4_t: "სეგმენტების ფილტრი",
   tour_s4_b: "გადაერთვი უძრავ ქონებაზე, ავტომობილებზე, შემოსავალსა და ციფრულ აქტივებზე — ან ნახე ყველაფერი ერთად.",
   tour_s5_t: "ბარათები ტრიალებს",
-  tour_s5_b: "დააჭირე ბარათს და გადატრიალდება: უკანა მხარეს ხელშეკრულება, საბაზრო ქირა, განცხადებები და კარის კოდია.",
+  tour_s5_b: "დააჭირე ბარათს და გადატრიალდება: უკანა მხარეს ხელშეკრულება, საბაზრო ქირა, განცხადებები და კარის კოდია. მანქანის ბარათიდან „გაქირავების სერვისიც“ იხსნება — გადახდის გრაფიკი, შეხსენებები მძღოლს და GPS წითელი ხაზები.",
   tour_s6_t: "ციფრული აქტივები ცოცხლად",
   tour_s6_b: "კრიპტო, აქციები და ლითონები ცოცხალი ფასებით ფასდება; საშუალო შესყიდვის ფასი შენი გარიგებებიდან ავტომატურად ითვლება.",
   tour_s7_t: "ყველა ერთეული ერთ ბადეზე",
@@ -2065,13 +2072,13 @@ const ka: Record<StringKey, string> = {
   tour_s8_t: "კალენდრის სინქრონი",
   tour_s8_b: "გახსენი ერთეული და ჩასვი Airbnb / Booking.com-ის iCal ბმულები — ჯავშნები შემდეგ თავისით შემოვა.",
   tour_s9_t: "გადაწყვიტე ციფრებით",
-  tour_s9_b: "სამი უფასო კალკულატორი — გასაქირავებელი ბინა, მანქანა/ტაქსი და ფლიპი — პლუს სიღრმისეული PRO ანალიზი.",
+  tour_s9_b: "სამი უფასო კალკულატორი — გასაქირავებელი ბინა, მანქანა/ტაქსი და ფლიპი — პლუს პრო ანალიზი.",
   tour_s10_t: "პაკეტები",
   tour_s10_b: "პირველი თვე უფასოა სრული წვდომით. ლიმიტებს რომ გადააჭარბებ, აქედან განაახლებ.",
   tour_s11_t: "ჩვენ აქ ვართ",
   tour_s11_b: "კითხვა გაგიჩნდა? მხარდაჭერის ჩატი მყისვე პასუხობს და საჭიროებისას WhatsApp-ით ადამიანთან გაკავშირებს.",
   learn_title: "ისწავლე Activo",
-  learn_sub: "გზამკვლევი ტური თავად პროდუქტში, პლუს მოკლე გაკვეთილები პლატფორმის ყველა ნაწილზე.",
+  learn_sub: "გზამკვლევი ტური თავად პროდუქტში, პლუს მოკლე გაკვეთილები პლატფორმის ყველა ნაწილზე. მანქანებს აქირავებ? თითოეულს აქვს „გაქირავების სერვისი“: გადახდის გრაფიკი, WhatsApp შეხსენებები მძღოლს და GPS წითელი ხაზები (როცა ინსტალატორი ტრეკერს დააკავშირებს).",
   learn_start_tour: "დაიწყე ინტერაქციული ტური",
   learn_tour_signin: "ტური შენს ანგარიშში მუშაობს — ჯერ შედი (ან გახსენი დემო).",
   learn_video_soon: "ვიდეო მალე დაემატება",
@@ -2097,7 +2104,7 @@ const ka: Record<StringKey, string> = {
   land_deck_digital: "ციფრული აქტივები",
   land_deck_total: "პორტფელი",
   land_b1_t: "ყველაფერი ერთ ადგილას",
-  land_b1: "უძრავი ქონება, ავტომობილები და შემოსავალი — სტატუსებით.",
+  land_b1: "უძრავი ქონება, ავტომობილები და შემოსავალი — სტატუსებით. მანქანების გაქირავებისთვის: გადახდის გრაფიკი, WhatsApp შეხსენებები მძღოლებს და GPS წითელი ხაზები (ტრეკერით).",
   land_b2_t: "ჯავშნების ავტო-სინქრონი",
   land_b2: "Airbnb და Booking ერთ კალენდარში — ხედავ და გაფრთხილებს დაკავების გადაფარვაზე.",
   land_b3_t: "ჯერ საქართველო, შემდეგ ყველგან",
@@ -2113,11 +2120,10 @@ const ka: Record<StringKey, string> = {
   land_demo_cta: "დემოს გახსნა",
 
   pricing_title: "ფასების რეკომენდაციები",
-  pricing_intro:
-    "წესებზე დაფუძნებული რეკომენდაციები მომდევნო 14 დღისთვის: საბაზო ტარიფი × სეზონურობა × მოთხოვნა, უბნის ბენჩმარკისკენ მიზიდვით.",
+  pricing_intro: "წესებზე დაფუძნებული რეკომენდაციები მომდევნო 14 დღისთვის: საბაზო ტარიფი × სეზონურობა × მოთხოვნა, უბნის საშუალო ფასისკენ მიზიდვით.",
   pricing_date: "თარიღი",
   pricing_suggested: "რეკომენდებული ტარიფი",
-  pricing_benchmark: "უბნის ADR",
+  pricing_benchmark: "უბნის საშ. ღამის ფასი",
   pricing_underpriced: "დაბალი ფასი",
   pricing_rationale: "დასაბუთება",
 
@@ -2148,7 +2154,7 @@ const ka: Record<StringKey, string> = {
   source_manual: "ხელით",
   source_direct: "პირდაპირი",
   booking_guest: "სტუმრის სახელი (არასავალდებულო)",
-  booking_check_in: "შესვლა",
+  booking_check_in: "ჩასახლება",
   booking_check_out: "გასვლა",
   booking_amount: "სრული თანხა (არასავალდებულო)",
   nav_bookings: "ჯავშნები",
@@ -2172,13 +2178,12 @@ const ka: Record<StringKey, string> = {
   bookings_filter_unpriced: "ფასის გარეშე",
   bookings_filter_cancelled: "გაუქმებული",
   bookings_empty: "აქ ჯავშანი არ არის.",
-  bookings_unpriced_hint:
-    "{n} ჯავშანს ჯერ ფასი არ აქვს — არხები iCal-ით ფასს არ აგზავნიან. ჩაწერე თანხები, რომ შემოსავალი და ADR სრული იყოს.",
-  bookings_scope_note: "მიმდინარე და მომავალი ჯავშნები და ბოლო 60 დღე.",
+  bookings_unpriced_hint: "{n} ჯავშანს ჯერ ფასი არ აქვს — არხები iCal-ით ფასს არ აგზავნიან. ჩაწერე თანხები, რომ შემოსავალი და საშ. ღამის ფასი სრული იყოს.",
+  bookings_scope_note: "მიმდინარე და მომავალი ჯავშნები (ჯერ ეს), შემდეგ ბოლო 60 დღე.",
   revenue_partial: "ნაწილობრივი: {n} დაჯავშნილ ღამეს ფასი არ აქვს",
   revenue_partial_link: "ფასების დამატება",
   revenue_partial_short: "ნაწილობრივი",
-  adr_priced_note: "ADR მხოლოდ ფასიან ღამეებს ითვლის.",
+  adr_priced_note: "საშ. ღამის ფასი მხოლოდ ფასიან ღამეებს ითვლის.",
   feed_title: "კალენდრის სინქრონი",
   feed_last_sync: "ბოლო სინქრონი: {when}",
   feed_never: "ჯერ არ დასინქრონებულა — დააჭირე „კალენდრების სინქრონიზაცია“.",
@@ -2235,12 +2240,12 @@ const ka: Record<StringKey, string> = {
   seg_digital: "ციფრული აქტივები",
   add_cta: "დაამატე ახალი აქტივი 1 წუთში",
   crypto_new_title: "კრიპტო აქტივის დამატება",
-  crypto_new_intro: "აირჩიეთ მონეტა, შემდეგ ჩაწერეთ ყიდვები და გაყიდვები. ცოცხალ ფასს და თქვენს მოგება-ზარალს ავტომატურად გაჩვენებთ.",
+  crypto_new_intro: "აირჩიე მონეტა, შემდეგ ჩაწერე ყიდვები და გაყიდვები. ცოცხალ ფასს და შენს მოგება-ზარალს ავტომატურად გაჩვენებთ.",
   crypto_coin: "მონეტა",
   crypto_custom: "სხვა (ხელით შეყვანა)",
   crypto_custom_symbol: "სიმბოლო",
   crypto_custom_id: "CoinGecko ID (არასავალდებულო)",
-  crypto_custom_id_hint: "საჭიროა ცოცხალი ფასის წამოსაღებად. იხილეთ coingecko.com-ზე — ეს არის მონეტის გვერდის URL-ის ბოლო ნაწილი.",
+  crypto_custom_id_hint: "საჭიროა ცოცხალი ფასის წამოსაღებად. ნახე coingecko.com-ზე — ეს მონეტის გვერდის მისამართის ბოლო ნაწილია.",
   crypto_add: "აქტივის დამატება",
   crypto_add_hint: "ყიდვებსა და გაყიდვებს შემდეგ ეკრანზე ჩაწერთ.",
   crypto_buy: "ყიდვა",
@@ -2256,33 +2261,33 @@ const ka: Record<StringKey, string> = {
   crypto_live: "ცოცხალი",
   crypto_value: "ღირებულება",
   crypto_pnl: "მოგება / ზარალი",
-  crypto_hint: "საშუალო ყიდვის ფასი ავტომატურად გამოითვლება ყველა თქვენი შესყიდვის მიხედვით. გაყიდვა ამცირებს მარაგს საშუალო ფასის შეცვლის გარეშე.",
+  crypto_hint: "საშუალო ყიდვის ფასი ავტომატურად გამოითვლება ყველა შენი შესყიდვის მიხედვით. გაყიდვა ამცირებს მარაგს საშუალო ფასის შეცვლის გარეშე.",
   crypto_trades: "ყიდვები და გაყიდვები",
   crypto_footnote: "კრიპტოს ღირებულება იყენებს ცოცხალ ფასს CoinGecko-დან, გადაყვანილს ლარში მიმდინარე კურსით.",
 
   // Digital assets segment (crypto + stocks together)
   section_digital: "ციფრული აქტივები",
-  digital_empty: "ჯერ არ გაქვთ კრიპტო ან აქცია. დაამატეთ თქვენი აქტივები ცოცხალი ღირებულების სანახავად.",
+  digital_empty: "ჯერ არ გაქვს კრიპტო ან აქცია. დაამატე შენი აქტივები და მათ ცოცხალ ღირებულებას ნახავ.",
   digital_footnote: "ცოცხალი ფასები: კრიპტო — CoinGecko-დან, US აქციები — Stooq-დან, გადაყვანილი ლარში მიმდინარე კურსით.",
 
   // Stock holdings
   section_stock: "აქციები",
   stock_new_title: "აქციის დამატება",
-  stock_new_intro: "აირჩიეთ აქცია, შემდეგ ჩაწერეთ ყიდვები და გაყიდვები. ცოცხალ ფასს და თქვენს მოგება-ზარალს ავტომატურად გაჩვენებთ. მხოლოდ US ბირჟის ტიკერები.",
+  stock_new_intro: "აირჩიე აქცია, შემდეგ ჩაწერე ყიდვები და გაყიდვები. ცოცხალ ფასს და შენს მოგება-ზარალს ავტომატურად გაჩვენებთ. მხოლოდ აშშ-ის ბირჟის ტიკერები.",
   stock_ticker: "აქცია",
   stock_custom_ticker: "ტიკერი",
   stock_add: "აქციის დამატება",
   stock_add_hint: "ყიდვებსა და გაყიდვებს შემდეგ ეკრანზე ჩაწერთ.",
   stock_holdings: "აქციები",
   stock_unit_price: "ფასი აქციაზე (USD)",
-  stock_hint: "საშუალო ყიდვის ფასი ავტომატურად გამოითვლება ყველა თქვენი შესყიდვის მიხედვით. გაყიდვა ამცირებს აქციების რაოდენობას საშუალო ფასის შეცვლის გარეშე.",
+  stock_hint: "საშუალო ყიდვის ფასი ავტომატურად გამოითვლება ყველა შენი შესყიდვის მიხედვით. გაყიდვა ამცირებს აქციების რაოდენობას საშუალო ფასის შეცვლის გარეშე.",
   stock_footnote: "აქციების ღირებულება იყენებს ბოლო US-ბირჟის ფასს Stooq-დან, გადაყვანილს ლარში მიმდინარე კურსით.",
 
   // Precious metals
   section_metal: "ძვირფასი ლითონები",
   metal_holdings: "რაოდენობა (უნც.)",
   metal_unit_price: "ფასი უნცია-ზე (USD)",
-  metal_footnote: "ლითონის ფასი — ცოცხალი USD spot ფასი troy უნცია-ზე, გადაყვანილი ლარში მიმდინარე კურსით.",
+  metal_footnote: "ლითონის ფასი — მიმდინარე საბირჟო ფასი აშშ დოლარში ტროის უნციაზე (31,1 გ), გადაყვანილი ლარში მიმდინარე კურსით.",
 
   // One income definition (lib/analytics/income.ts) and its two scopes.
   income_all_month: "ყველა შემოსავალი · ამ თვეში",
@@ -2301,12 +2306,12 @@ const ka: Record<StringKey, string> = {
   outbox_stale: "აღარ არის აქტუალური — შემდეგი შემოწმება გააუქმებს.",
   withdraw_paid: "ქირა მიღებულია",
   withdraw_changed: "თანხა ან პირობები შეიცვალა",
-  withdraw_contract_ended: "კონტრაქტი დასრულდა",
-  withdraw_contract_deleted: "კონტრაქტი წაიშალა",
+  withdraw_contract_ended: "ხელშეკრულება დასრულდა",
+  withdraw_contract_deleted: "ხელშეკრულება წაიშალა",
   withdraw_returned: "მანქანა წითელი ხაზის შიგნით დაბრუნდა",
   withdraw_moved_away: "მანქანა ხაზს დაშორდა",
   withdraw_signal_back: "ტრეკერი ისევ აგზავნის სიგნალს",
-  withdraw_superseded: "მის ადგილას უფრო ახალი კონტრაქტია",
+  withdraw_superseded: "მის ადგილას უფრო ახალი ხელშეკრულებაა",
   withdraw_not_monitored: "მანქანა აღარ მოწმდება (ტრეკერი მოხსნილია, წითელი ხაზები გამორთულია ან ქირა დასრულდა)",
   withdraw_newer_reminder: "ჩაანაცვლა დღევანდელმა შეხსენებამ, დღევანდელი თანხით",
   withdraw_fence_removed: "წითელი ხაზი წაიშალა",
@@ -2328,11 +2333,10 @@ const ka: Record<StringKey, string> = {
   alert_overlap: "ორმაგი ჯავშანი",
   action_overlap:
     "ორი ჯავშანი ერთსა და იმავე ღამეებს იკავებს. გააუქმე ან გადაიტანე ერთ-ერთი და ეს თარიღები მეორე არხზეც დახურე.",
-  alert_overlap_contract: "კონტრაქტები ერთმანეთს ფარავს",
-  action_overlap_contract:
-    "ორი კონტრაქტი ერთსა და იმავე დღეებს მოიცავს. თუ პირველი ადრე დასრულდა, მიუთითე მისი რეალური დასრულების თარიღი — თორემ მის დამქირავებელს შეხსენებები კვლავ მიუვა.",
+  alert_overlap_contract: "ხელშეკრულებები ერთმანეთს ფარავს",
+  action_overlap_contract: "ორი ხელშეკრულება ერთსა და იმავე დღეებს მოიცავს. თუ პირველი ადრე დასრულდა, მიუთითე მისი რეალური დასრულების თარიღი — თორემ მის დამქირავებელს შეხსენებები კვლავ მიუვა.",
   overlap_src_lease: "იჯარა",
-  overlap_src_contract: "კონტრაქტი",
+  overlap_src_contract: "ხელშეკრულება",
   gap_open_end: "შემდეგი ჯავშანი ჯერ არაა",
   error_booking_overlap: "ეს თარიღები ამ ობიექტზე სხვა ჯავშანს ემთხვევა:",
   outbox_status_sending: "იგზავნება",
@@ -2422,6 +2426,42 @@ const ka: Record<StringKey, string> = {
   not_found_title: "გვერდი ვერ მოიძებნა",
   not_found_body: "ეს გვერდი არ არსებობს, ან შენს ანგარიშს არ ეკუთვნის.",
   not_found_home: "მთავარ გვერდზე დაბრუნება",
+  bookings_scope_unpriced: "ყველა ჯავშანი ფასის გარეშე, ძველიც — ჯერ მომავალი.",
+  bookings_scope_month: "ჯავშნები · {month}.",
+  bookings_all_dates: "ყველა თარიღი",
+  bookings_showing: "ნაჩვენებია {from}–{to}, სულ {total}",
+  bookings_prev: "წინა",
+  bookings_next: "შემდეგი",
+  booking_mirror_of: "ასლი: {source}",
+  booking_mirror_short: "ასლი",
+  booking_mirror_note: "Booking.com იმეორებს ღამეებს, რომლებიც შენი სხვა კალენდრიდან შემოიტანა. ეს მეორე სტუმარი არ არის: შემოსავალში, ორმაგი ჯავშნის შეტყობინებებსა და „ფასის გარეშე“ რაოდენობაში არ ითვლება. თუ ნამდვილი ჯავშანია, მიუთითე ფასი ან სტუმრის სახელი.",
+  income_partial_nights: "ნაწილობრივი: {n} ღამე ფასის გარეშე",
+  bars_partial_note: "+ იმ თვის ზოგ დაჯავშნილ ღამეს ჯერ ფასი არ აქვს — შემოსავალი სულ მცირე ამდენია.",
+  kpi_adr: "საშ. ღამის ფასი (ADR)",
+  kpi_adr_short: "საშ. ღამის ფასი",
+  kpi_adr_hint: "ADR — საშუალო ღამის ფასი: ჯავშნების შემოსავალი გაყოფილი გაყიდულ ღამეებზე, რომელთა ფასიც ცნობილია.",
+  kpi_revpar: "შემოსავალი ხელმისაწვდომ ღამეზე (RevPAR)",
+  kpi_revpar_hint: "RevPAR — ჯავშნების შემოსავალი გაყოფილი გასაყიდად ხელმისაწვდომ ყველა ღამეზე, გაყიდულზეც და თავისუფალზეც.",
+  kpi_revpar_short: "ხელმისაწვდომ ღამეზე",
+  aria_main_nav: "მთავარი ნავიგაცია",
+  aria_menu: "მენიუ",
+  aria_theme: "ღია ან მუქი თემა",
+  aria_language_switch: "ინგლისურზე გადართვა (English)",
+  aria_remove_link: "ბმულის წაშლა",
+  aria_lat: "განედი",
+  aria_lng: "გრძედი",
+  aria_delete_fence: "წითელი ხაზის წაშლა",
+  aria_delete_message: "შეტყობინების წაშლა",
+  aria_delete_contract: "ხელშეკრულების წაშლა",
+  aria_delete_trade: "ოპერაციის წაშლა",
+  settings_language_hint: "ამ ენაზე იგზავნება WhatsApp შეტყობინებებიც შენს დამქირავებლებთან და მძღოლებთან.",
+  tpl_lang_ka: "შეტყობინებები დამქირავებლებს ქართულად ეგზავნებათ — შენი ანგარიშის ენაზე.",
+  tpl_lang_en: "შეტყობინებები დამქირავებლებს ინგლისურად ეგზავნებათ — შენი ანგარიშის ენაზე. ქართულად რომ გაიგზავნოს, აპი ქართულზე გადართე.",
+  msg_owner_fallback: "გამქირავებელი",
+  alert_market_adr: "უბნის საშ. ღამის ფასი",
+  wor_cap_short: "შემოსავლიანობა",
+  site_title: "Activo — შენი აქტივები ერთ ადგილას",
+  site_description: "მთელი შენი ქონება ერთ დაფაზე — უძრავი ქონება, გაქირავება, ავტოპარკი, შემოსავალი და ციფრული აქტივები (კრიპტო და აქციები).",
 };
 
 export type StringKey = keyof typeof en;

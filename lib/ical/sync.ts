@@ -12,6 +12,16 @@ export interface BookingCandidate {
   externalId: string;
 }
 
+/**
+ * Calendar links are often given as webcal:// (VRBO, Google and Apple
+ * calendars, several PMSs): the same address over https. Plain http is left
+ * as it is — the fetch guard refuses it.
+ */
+export function normalizeFeedUrl(raw: string): string {
+  const trimmed = raw.trim();
+  return /^webcals?:\/\//i.test(trimmed) ? trimmed.replace(/^webcals?:\/\//i, "https://") : trimmed;
+}
+
 export function sourceFromUrl(url: string): BookingSource {
   const lower = url.toLowerCase();
   if (lower.includes("airbnb.")) return "airbnb";

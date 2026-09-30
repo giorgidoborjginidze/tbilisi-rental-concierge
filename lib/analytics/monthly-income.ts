@@ -11,6 +11,7 @@ import {
   type IncomeSources,
   type IncomeWindow,
 } from "./income";
+import { LIVE_STAY } from "@/lib/bookings/live";
 
 export type { IncomeBreakdown } from "./income";
 
@@ -51,7 +52,7 @@ export async function loadIncomeSources(
     }),
     prisma.booking.findMany({
       where: {
-        status: { not: "cancelled" },
+        ...LIVE_STAY,
         checkIn: { lt: to },
         checkOut: { gt: from },
         unit: { operatorId },

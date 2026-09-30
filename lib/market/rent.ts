@@ -1,8 +1,10 @@
-// Long-term rent benchmark access (mock-seeded RentBenchmark table).
+// Long-term rent benchmark access (estimated averages seeded into the
+// RentBenchmark table).
 // Same pluggable stance as MarketDataSource: swap for a real, compliant
 // source later without touching consumers.
 
 import { prisma } from "@/lib/db";
+import { districtKey } from "@/lib/places";
 
 export interface RentBenchmarkRow {
   district: string;
@@ -16,8 +18,10 @@ export async function getRentBenchmark(
   district: string,
   month: string,
 ): Promise<RentBenchmarkRow | null> {
+  // Keyed by the canonical district: "ვაკე" finds "Vake".
+  const key = districtKey(district) ?? district;
   const row = await prisma.rentBenchmark.findUnique({
-    where: { district_month: { district, month } },
+    where: { district_month: { district: key, month } },
   });
   return row
     ? {

@@ -4,8 +4,12 @@ import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
 import BookingForm from "./booking-form";
 import { firstParam, type QueryValue } from "@/lib/params";
+import { cityLabel } from "@/lib/places";
+import { titled } from "@/lib/i18n/metadata";
 
 export const dynamic = "force-dynamic";
+
+export const generateMetadata = titled("booking_new_title");
 
 export default async function NewBookingPage({
   searchParams,
@@ -39,7 +43,7 @@ export default async function NewBookingPage({
         defaultUnitId={units.some((unit) => unit.id === unitParam) ? unitParam : undefined}
         units={units.map((unit) => ({
           id: unit.id,
-          label: `${locale === "ka" && unit.nameKa ? unit.nameKa : unit.name} (${unit.city})`,
+          label: `${locale === "ka" && unit.nameKa ? unit.nameKa : unit.name} (${cityLabel(locale, unit.city)})`,
         }))}
       />
       </div>

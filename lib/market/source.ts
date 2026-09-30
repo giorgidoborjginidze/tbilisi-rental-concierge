@@ -5,6 +5,7 @@
 // third-party listings.
 
 import { prisma } from "@/lib/db";
+import { districtKey } from "@/lib/places";
 
 export interface BenchmarkRow {
   district: string;
@@ -25,8 +26,11 @@ export class DbMarketDataSource implements MarketDataSource {
     district: string,
     month: string,
   ): Promise<BenchmarkRow | null> {
+    // Benchmarks are keyed by the canonical district ("Vake"), whatever
+    // language the owner typed it in ("ვაკე").
+    const key = districtKey(district) ?? district;
     const row = await prisma.marketBenchmark.findUnique({
-      where: { district_month: { district, month } },
+      where: { district_month: { district: key, month } },
     });
     return row
       ? {
@@ -50,7 +54,7 @@ export class MockMarketDataSource implements MarketDataSource {
     month: string,
   ): Promise<BenchmarkRow | null> {
     return (
-      this.rows.find((r) => r.district === district && r.month === month) ??
+      this.rows.find((r) => r.district === (districtKey(district) ?? district) && r.month === month) ??
       null
     );
   }

@@ -8,6 +8,7 @@ import { getMarketDataSource } from "@/lib/market/source";
 import { suggestRate, type PricingResult } from "./engine";
 import { generateRationales } from "@/lib/ai/rationale";
 import type { Locale } from "@/lib/i18n/strings";
+import { LIVE_STAY } from "@/lib/bookings/live";
 
 const DAY_MS = 86_400_000;
 
@@ -36,7 +37,7 @@ export async function computeSuggestionsForUnit(
   const upcoming = await prisma.booking.findMany({
     where: {
       unitId,
-      status: { not: "cancelled" },
+      ...LIVE_STAY,
       checkIn: { lt: next30End },
       checkOut: { gt: start },
     },

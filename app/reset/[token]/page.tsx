@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { Metadata } from "next";
+import { titled } from "@/lib/i18n/metadata";
 import { prisma } from "@/lib/db";
 import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
@@ -8,7 +8,7 @@ import ResetForm from "./reset-form";
 
 export const dynamic = "force-dynamic";
 // The URL carries the token: never indexed, never sent on as a Referer.
-export const metadata: Metadata = { robots: { index: false }, referrer: "no-referrer" };
+export const generateMetadata = titled("reset_title", { robots: { index: false }, referrer: "no-referrer" });
 
 export default async function ResetPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;

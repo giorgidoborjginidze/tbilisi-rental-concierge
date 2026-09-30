@@ -3,12 +3,12 @@ import {
   ASSET_CATEGORIES,
   ASSET_STATUSES,
   ASSET_TYPES,
-  KNOWN_DISTRICTS,
 } from "@/lib/types";
 import { COINS } from "@/lib/crypto/prices";
 import { POPULAR_STOCKS } from "@/lib/stocks/prices";
 import { METALS } from "@/lib/metals/prices";
 import { prisma } from "@/lib/db";
+import { cityOptions, districtOptions } from "@/lib/places";
 
 // Everything an AssetForm (client component) needs, resolved server-side.
 export async function assetFormProps(
@@ -20,7 +20,7 @@ export async function assetFormProps(
     "unit_name", "unit_name_ka", "unit_city", "unit_district", "unit_address",
     "unit_type", "asset_category", "status_label", "asset_area", "asset_value",
     "asset_notes", "asset_link_unit", "asset_none", "asset_delete_confirm",
-    "listing_links", "listing_add", "listing_unknown", "listing_hint",
+    "listing_links", "listing_add", "listing_unknown", "listing_hint", "aria_remove_link",
     "rental_mode", "mode_long_term", "mode_daily",
     "daily_rate", "weekend_pct", "holiday_pct", "daily_pricing_hint",
     "income_monthly", "income_source_hint",
@@ -68,7 +68,10 @@ export async function assetFormProps(
       value,
       label: t(locale, `status_${value}` as StringKey),
     })),
-    districts: KNOWN_DISTRICTS,
+    // Suggestions in the owner's language; saving stores the key
+    // ("ვაკე" → "Vake"), which the market benchmarks are keyed by.
+    districts: districtOptions(locale),
+    cities: cityOptions(locale),
     units: units.map((unit) => ({ id: unit.id, label: unit.name })),
     // Holding pickers (crypto coins, US stocks, precious metals).
     coins: Object.entries(COINS).map(([symbol, c]) => ({ symbol, name: c.name })),

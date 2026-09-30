@@ -22,7 +22,9 @@ const known = (id: string, externalId: string, checkOut: string, extra: Partial<
   status: "confirmed",
   cancelReason: null,
   cancelledAt: null,
+  checkIn: new Date(d(checkOut).getTime() - 3 * 86_400_000),
   checkOut: d(checkOut),
+  nights: 3,
   ...extra,
 });
 
@@ -118,5 +120,37 @@ describe("planFeedSync", () => {
       cancelledAt: NOW,
     });
     expect(plan.cancel).toEqual([]);
+  });
+
+  it("leaves a stay the feed repeats unchanged alone (no write, not counted)", () => {
+    const plan = planFeedSync(
+      [candidate("a", "2026-10-02", "2026-10-05"), candidate("b", "2026-10-06", "2026-10-09")],
+      [
+        known("s1", "a", "2026-10-05"),
+        // Same dates, but imported by another feed before: re-homed.
+        known("s2", "b", "2026-10-09", { feedId: "feed-old" }),
+      ],
+      context,
+    );
+    expect(plan.update.map((u) => u.id)).toEqual(["s2"]);
+    expect(plan.create).toEqual([]);
+  });
+
+  it("an owner-cancelled stay with unchanged dates is not rewritten", () => {
+    const plan = planFeedSync(
+      [candidate("a", "2026-10-02", "2026-10-05")],
+      [known("s1", "a", "2026-10-05", { status: "cancelled", cancelReason: "owner", cancelledAt: d("2026-09-29") })],
+      context,
+    );
+    expect(plan.update).toEqual([]);
+  });
+
+  it("a channel cancellation already recorded is not rewritten", () => {
+    const plan = planFeedSync(
+      [candidate("a", "2026-10-02", "2026-10-05", "cancelled")],
+      [known("s1", "a", "2026-10-05", { status: "cancelled", cancelReason: "channel", cancelledAt: d("2026-09-29") })],
+      context,
+    );
+    expect(plan.update).toEqual([]);
   });
 });

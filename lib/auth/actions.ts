@@ -1,11 +1,11 @@
 "use server";
 
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { prisma } from "@/lib/db";
 import { emailConfigured, escapeHtml, sendEmail } from "@/lib/email";
-import { getLocale } from "@/lib/i18n/locale";
+import { chosenLocale, getLocale, LOCALE_COOKIE } from "@/lib/i18n/locale";
 import { t, type Locale } from "@/lib/i18n/strings";
 import { siteUrl } from "@/lib/site";
 import { inviteProblem } from "./invite";
@@ -99,6 +99,10 @@ export async function register(
       })
     : null;
 
+  // The language the owner signed up in is the account's language: the
+  // app's and the one their tenants' and drivers' messages are written in.
+  const locale = await getLocale();
+
   let operatorId: string;
   try {
     const operator = await prisma.operator.create({
@@ -107,6 +111,8 @@ export async function register(
             name,
             email,
             passwordHash,
+            locale,
+            localeSetAt: now,
             accountType: "business",
             profile: company?.profile ?? "hotel",
             role: "member",
@@ -116,6 +122,8 @@ export async function register(
             name,
             email,
             passwordHash,
+            locale,
+            localeSetAt: now,
             accountType,
             profile,
             trialEndsAt: new Date(now.getTime() + TRIAL_MS),
@@ -147,7 +155,7 @@ export async function login(
   const ip = await clientIp();
   const operator = await prisma.operator.findUnique({
     where: { email },
-    select: { id: true, passwordHash: true, isDemo: true },
+    select: { id: true, passwordHash: true, isDemo: true, locale: true },
   });
 
   // 5 failures per email and per address in 15 minutes, then a pause. The
@@ -168,7 +176,36 @@ export async function login(
 
   await clearAttempts(prisma, "login", email);
   await createSession(operator.id);
+  await syncLocaleAtSignIn(operator, now);
   redirect("/");
+}
+
+/**
+ * One language per owner across devices: a language picked on this device
+ * becomes the account's (and so its messages'); a device with no choice
+ * yet opens in the account's language. The shared demo keeps its own.
+ */
+async function syncLocaleAtSignIn(
+  operator: { id: string; isDemo: boolean; locale: string },
+  now: Date,
+): Promise<void> {
+  const chosen = await chosenLocale();
+  if (chosen) {
+    // Written even when unchanged: it marks the language as chosen
+    // (scripts/backfill-locale.ts never touches a chosen one).
+    if (!operator.isDemo) {
+      await prisma.operator.update({
+        where: { id: operator.id },
+        data: { locale: chosen, localeSetAt: now },
+      });
+    }
+    return;
+  }
+  const store = await cookies();
+  store.set(LOCALE_COOKIE, operator.locale === "en" ? "en" : "ka", {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+  });
 }
 
 /** Sign out; the demo ribbon's "register free" continues to /register. */

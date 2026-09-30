@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { titled } from "@/lib/i18n/metadata";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { getSessionOperator } from "@/lib/auth/session";
@@ -9,10 +9,7 @@ import StartTourButton from "./start-tour-button";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Learn",
-  alternates: { canonical: "/learn" },
-};
+export const generateMetadata = titled("learn_title", { alternates: { canonical: "/learn" } });
 
 // The learning hub: the interactive tour up top, then one lesson per part
 // of the platform — a short silent recording with Georgian captions,

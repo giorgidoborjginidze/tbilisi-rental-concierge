@@ -57,7 +57,7 @@ export default function IncomeSection({
                     <td className="num">
                       <form action={deleteIncome}>
                         <input type="hidden" name="incomeId" value={income.id} />
-                        <button type="submit" className="btn-chip" aria-label="delete">
+                        <button type="submit" className="btn-chip" aria-label={t(locale, "delete")}>
                           ✕
                         </button>
                       </form>

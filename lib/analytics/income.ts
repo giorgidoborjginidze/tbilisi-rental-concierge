@@ -101,6 +101,12 @@ export interface IncomeBreakdown {
   bookings: number;
   other: number;
   total: number;
+  /**
+   * Booked nights with no price (iCal imports until the owner adds one)
+   * that nothing else in the window pays for: the total is partial by
+   * those nights, and the screens say so.
+   */
+  unpricedNights: number;
 }
 
 const dayStart = (date: Date) =>
@@ -154,7 +160,7 @@ export function incomeInWindow(
     return true;
   };
 
-  const result: IncomeBreakdown = { rent: 0, daily: 0, bookings: 0, other: 0, total: 0 };
+  const result: IncomeBreakdown = { rent: 0, daily: 0, bookings: 0, other: 0, total: 0, unpricedNights: 0 };
 
   // 1 · Priced bookings: their prorated revenue, and their nights are taken.
   for (const booking of sources.bookings) {
@@ -209,6 +215,15 @@ export function incomeInWindow(
     if (night < dayStart(window.start) || night >= dayStart(window.end)) continue;
     if (!claim(placeOfAsset(day.assetId), night)) continue;
     result.daily += day.amount;
+  }
+
+  // 3b · Booked nights without a price that no contract, lease or daily
+  //      answer paid for: the income is partial by these nights.
+  for (const booking of sources.bookings) {
+    if (booking.amount != null) continue;
+    for (const night of nightsIn(booking.checkIn, booking.checkOut, window)) {
+      if (claim(`u:${booking.unitId}`, night)) result.unpricedNights += 1;
+    }
   }
 
   // 4 · Dated income records and recurring income sources.

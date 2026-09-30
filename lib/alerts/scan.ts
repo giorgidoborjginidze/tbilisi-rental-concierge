@@ -37,6 +37,7 @@ import {
   VACANCY_HORIZON_DAYS,
   type OverlapSignal,
 } from "./signals";
+import { LIVE_STAY } from "@/lib/bookings/live";
 
 const DAY_MS = 86_400_000;
 /** The window the "underpriced" check looks at for upcoming occupancy. */
@@ -87,7 +88,7 @@ export async function scanAlerts(
     include: {
       bookings: {
         where: {
-          status: { not: "cancelled" },
+          ...LIVE_STAY,
           checkIn: { lt: lookAhead },
           checkOut: { gt: start },
         },
@@ -102,7 +103,7 @@ export async function scanAlerts(
       await prisma.booking.groupBy({
         by: ["unitId"],
         where: {
-          status: { not: "cancelled" },
+          ...LIVE_STAY,
           checkOut: { lte: start },
           ...(operatorId ? { unit: { operatorId } } : {}),
         },

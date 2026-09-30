@@ -62,7 +62,7 @@ export default function ListingInput({
                 <button
                   type="button"
                   className="btn-chip"
-                  aria-label="remove link"
+                  aria-label={labels.aria_remove_link}
                   onClick={() => remove(i)}
                 >
                   ✕
