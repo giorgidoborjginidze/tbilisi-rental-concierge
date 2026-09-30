@@ -40,7 +40,7 @@ export const TERMS: LegalText = {
         heading: "გეგმები და გადახდა",
         list: [
           "ახალ ანგარიშს პირველი {trial} დღე ყველაზე მაღალი გეგმის შესაძლებლობები უფასოდ აქვს.",
-          "ფასები ლარშია და მოცემულია [გეგმების გვერდზე](/billing). გადახდა ხდება Flitt-ის მეშვეობით, ერთი თვით წინასწარ. ბარათიდან თანხა ავტომატურად არ ჩამოიჭრება — ყოველი გადახდა გეგმას ერთი თვით აგრძელებს.",
+          "თვიური ფასები ლარში: {plans}. რეგისტრაციის შემდეგ ისინი აპშიც ჩანს, გვერდზე [„პაკეტი და გადახდა“](/billing). გადახდა ხდება Flitt-ის მეშვეობით, ერთი თვით წინასწარ. ბარათიდან თანხა ავტომატურად არ ჩამოიჭრება — ყოველი გადახდა გეგმას ერთი თვით აგრძელებს.",
           "გადახდილი პერიოდის განმავლობაში გეგმის შეცვლისას დარჩენილი დრო ახალ ფასზე გადაითვლება.",
           "გადახდილი პერიოდის დასრულებიდან {grace} დღის შემდეგ ანგარიში ქვედა ლიმიტებზე გადადის. მონაცემები არ იშლება — მხოლოდ ლიმიტს ზემოთ ახლის დამატება ჩერდება.",
           "გადახდილი თვის თანხა არ ბრუნდება, გარდა კანონით, მათ შორის მომხმარებლის უფლებების დაცვის კანონმდებლობით, გათვალისწინებული შემთხვევებისა და იმ შემთხვევისა, როცა სერვისი ჩვენი მიზეზით ვერ მიიღე.",
@@ -154,7 +154,7 @@ export const TERMS: LegalText = {
         heading: "Plans and payment",
         list: [
           "A new account gets the highest plan's features free for its first {trial} days.",
-          "Prices are in GEL and shown on the [plans page](/billing). Payment is made through Flitt, one month in advance. Nothing is charged to your card automatically — each payment extends the plan by one month.",
+          "Monthly prices, in GEL: {plans}. After sign-up they are also shown in the app, on the [Plan & billing](/billing) page. Payment is made through Flitt, one month in advance. Nothing is charged to your card automatically — each payment extends the plan by one month.",
           "If you change plans during a paid period, the remaining time is converted at the new price.",
           "{grace} days after the paid period ends, the account moves to the lower limits. No data is deleted — only adding beyond the limits stops.",
           "A paid month is not refunded, except where the law, including consumer-protection law, requires it or where you could not use the service because of us.",

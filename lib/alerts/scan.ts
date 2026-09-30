@@ -16,6 +16,7 @@ import {
   activeContractWhere,
   contractPhase,
   endedContractToFollowUp,
+  overlapsWhere,
   recentlyEndedWhere,
 } from "@/lib/rentals/phase";
 import { hasBalance } from "@/lib/rentals/terms";
@@ -355,8 +356,7 @@ export async function scanAlerts(
   //    when the next one started (its renter would keep being chased).
   const liveContracts = await prisma.rentalContract.findMany({
     where: {
-      endDate: { gt: start },
-      startDate: { lt: new Date(start.getTime() + OVERLAP_HORIZON_DAYS * DAY_MS) },
+      ...overlapsWhere(start, new Date(start.getTime() + OVERLAP_HORIZON_DAYS * DAY_MS)),
       ...LIVE_CONTRACT,
       ...(operatorId ? { asset: { operatorId } } : {}),
     },

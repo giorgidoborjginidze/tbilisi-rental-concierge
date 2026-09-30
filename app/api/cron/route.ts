@@ -4,9 +4,11 @@ import { runAutomation } from "@/lib/automation/run";
 
 // The platform's own clock. Vercel Cron calls it every morning (vercel.json:
 // 04:00 UTC = 08:00 in Tbilisi) with `Authorization: Bearer $CRON_SECRET`:
-// iCal sync, the alert scan and WhatsApp delivery for every workspace.
+// iCal sync, the alert scan and WhatsApp delivery for every workspace, then
+// the deletion of expired sessions, old sign-in attempts and dead reset
+// links (lib/auth/prune.ts — what the Privacy Policy's retention promises).
 //
-//   GET /api/cron             the daily run (sync + scan + send)
+//   GET /api/cron             the daily run (sync + scan + send + prune)
 //   GET /api/cron?only=sync   calendars only — safe to call hourly from an
 //                             external scheduler with the same header
 //

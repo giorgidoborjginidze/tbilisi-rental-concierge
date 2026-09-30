@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { t, type Locale, type StringKey } from "@/lib/i18n/strings";
+import { showSplash, SPLASH_COOKIE } from "@/lib/ui/splash";
+import SplashIntro from "./splash-intro";
 import HeroLogo from "./hero-logo";
 import MotionPause from "./motion-pause";
 import PortfolioDeck from "./portfolio-deck";
@@ -281,5 +284,21 @@ export default function Landing({ locale }: { locale: Locale }) {
         </div>
       </section>
     </main>
+  );
+}
+
+/**
+ * "/" for a signed-out visitor: the splash on the first look this browser
+ * session, then the landing. No loading skeleton may paint before it —
+ * there is no app/loading.tsx; the signed-in dashboard has its own
+ * (app/dashboard/loading.tsx).
+ */
+export async function SignedOutHome({ locale }: { locale: Locale }) {
+  const splash = showSplash(false, (await cookies()).get(SPLASH_COOKIE)?.value);
+  return (
+    <>
+      {splash && <SplashIntro tapHint={t(locale, "splash_hint")} />}
+      <Landing locale={locale} />
+    </>
   );
 }

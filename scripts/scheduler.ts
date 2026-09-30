@@ -4,7 +4,8 @@
 //
 // Every SYNC_INTERVAL_MINUTES it pulls the iCal calendars; once a day, from
 // 08:00 Tbilisi time, it runs the full daily job instead (sync, alert scan,
-// WhatsApp delivery), exactly like the production cron.
+// WhatsApp delivery, pruning of old sign-in records), exactly like the
+// production cron.
 
 import "dotenv/config";
 import { prisma } from "../lib/db";
@@ -29,9 +30,11 @@ async function tick() {
     console.log(
       `[${now.toISOString()}] ${kind}: ${summary.feeds} feeds (+${summary.bookingsCreated} ~${summary.bookingsUpdated}, ${summary.feedErrors} errors)` +
         (kind === "daily"
-          ? `, alerts +${summary.alertsCreated} / closed ${summary.alertsResolved}, WhatsApp sent ${summary.sent}, failed ${summary.failed}, waiting ${summary.pending}`
+          ? `, alerts +${summary.alertsCreated} / closed ${summary.alertsResolved}, WhatsApp sent ${summary.sent}, failed ${summary.failed}, waiting ${summary.pending}, sign-in rows pruned ${summary.authRowsPruned}`
           : "") +
-        (ok ? "" : ` — ${summary.failedOperators.length} workspace(s) failed`),
+        (ok
+          ? ""
+          : ` — ${summary.failedOperators.length} workspace(s) failed` + (summary.pruneFailed ? ", pruning failed" : "")),
     );
   } catch (error) {
     console.error(`[${now.toISOString()}] ${kind} run failed:`, error);

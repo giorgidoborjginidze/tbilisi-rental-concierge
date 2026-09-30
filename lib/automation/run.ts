@@ -1,7 +1,9 @@
 // The automatic jobs, for every workspace: pull the Airbnb / Booking
 // calendars (iCal), run the alert scan (vacancies, double bookings, late
 // rent, expiring contracts, silent trackers — it also queues the WhatsApp
-// reminders) and deliver each workspace's own outbox.
+// reminders) and deliver each workspace's own outbox. The daily run also
+// deletes the sign-in records the Privacy Policy says are not kept (expired
+// sessions, day-old rate-limit attempts, used or expired reset links).
 //
 // Called by Vercel Cron through /api/cron (once a day on the Hobby plan)
 // and by the local `npm run scheduler`. Every run is recorded as a
@@ -15,6 +17,7 @@ import { prisma } from "@/lib/db";
 import { scanAlerts } from "@/lib/alerts/scan";
 import { syncAllUnits } from "@/lib/ical/run-sync";
 import { flushOutbox } from "@/lib/notify/whatsapp";
+import { pruneAuthRecords } from "@/lib/auth/prune";
 
 export type RunKind = "daily" | "sync";
 
@@ -31,6 +34,10 @@ export interface RunSummary {
   sent: number;
   failed: number;
   pending: number;
+  /** Sign-in rows deleted by the daily pruning (sessions + attempts + reset links). */
+  authRowsPruned: number;
+  /** The daily pruning threw (the workspaces' part may still be fine). */
+  pruneFailed: boolean;
   /** Workspaces whose part of the run threw. */
   failedOperators: string[];
   /** Short error texts, for the logs. */
@@ -41,9 +48,15 @@ export interface RunDeps {
   sync: typeof syncAllUnits;
   scan: typeof scanAlerts;
   flush: typeof flushOutbox;
+  prune: (now: Date) => ReturnType<typeof pruneAuthRecords>;
 }
 
-const DEFAULT_DEPS: RunDeps = { sync: syncAllUnits, scan: scanAlerts, flush: flushOutbox };
+const DEFAULT_DEPS: RunDeps = {
+  sync: syncAllUnits,
+  scan: scanAlerts,
+  flush: flushOutbox,
+  prune: (now) => pruneAuthRecords(prisma, now),
+};
 
 const message = (error: unknown) =>
   (error instanceof Error ? error.message : String(error)).slice(0, 200);
@@ -66,6 +79,8 @@ export async function runAutomation(
     sent: 0,
     failed: 0,
     pending: 0,
+    authRowsPruned: 0,
+    pruneFailed: false,
     failedOperators: [],
     errors: [],
   };
@@ -101,7 +116,20 @@ export async function runAutomation(
     }
   }
 
-  const ok = summary.failedOperators.length === 0;
+  if (kind === "daily") {
+    try {
+      const pruned = await deps.prune(now);
+      summary.authRowsPruned = pruned.sessions + pruned.attempts + pruned.resets;
+    } catch (error) {
+      summary.pruneFailed = true;
+      summary.errors.push(`prune: ${message(error)}`);
+      console.error(`[automation] pruning sign-in records failed:`, error);
+    }
+  }
+
+  // A failed prune fails the run (the cron answers 500, so it is noticed),
+  // but no workspace is marked: owners' /alerts only reflect their own part.
+  const ok = summary.failedOperators.length === 0 && !summary.pruneFailed;
   await prisma.systemRun.update({
     where: { id: run.id },
     data: { finishedAt: new Date(), ok, summary: summary as never },

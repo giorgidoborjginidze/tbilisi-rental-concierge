@@ -53,10 +53,31 @@ const securityHeaders = [
     : []),
 ];
 
+// Home for a signed-in owner lives in its own segment, app/dashboard, so its
+// loading.tsx (the dashboard skeleton) is prefetched with the Home link and
+// paints the moment Home is tapped — while the signed-out landing at "/"
+// keeps having no skeleton in front of its splash. A request for "/" that
+// carries a session token (lib/auth/session.ts: cookie "session", 32 random
+// bytes in hex) is served from /dashboard; the address bar keeps "/". An
+// unrecognised or stale cookie still ends well: app/page.tsx renders the
+// dashboard itself, and app/dashboard/page.tsx renders the landing when the
+// session is gone. /dashboard typed in directly goes back to "/".
+const SIGNED_IN = [{ type: "cookie" as const, key: "session", value: "[0-9a-f]{64}" }];
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
+  },
+  async redirects() {
+    return [{ source: "/dashboard", destination: "/", permanent: false }];
+  },
+  async rewrites() {
+    return {
+      beforeFiles: [{ source: "/", has: SIGNED_IN, destination: "/dashboard" }],
+      afterFiles: [],
+      fallback: [],
+    };
   },
 };
 

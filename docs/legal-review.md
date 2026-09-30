@@ -24,9 +24,12 @@
 | კონტაქტი და იურიდიული პირი | `lib/contact.ts` |
 | ბმულები | ქვედა ზოლი (ყველა გვერდი), რეგისტრაცია, გეგმები და გადახდა |
 
-ტექსტში `{email}`, `{entity}`, `{trial}`, `{grace}` ავტომატურად ივსება
-`lib/contact.ts`-დან და ბილინგის მუდმივებიდან (`TRIAL_DAYS` = 30,
-`GRACE_DAYS` = 3). ტესტი (`lib/legal/legal.test.ts`) ამოწმებს, რომ ქართულსა
+ტექსტში `{email}`, `{entity}`, `{trial}`, `{grace}`, `{plans}` ავტომატურად
+ივსება `lib/contact.ts`-დან და ბილინგის მუდმივებიდან (`TRIAL_DAYS` = 30,
+`GRACE_DAYS` = 3; `{plans}` — ყველა გეგმა თავისი თვიური ფასით, `PLANS`-იდან,
+`lib/billing/plans.ts`). ასე პირობებში ფასები ჩანს რეგისტრაციამდეც
+(`/billing` მხოლოდ შესულ მომხმარებელს უჩანს) და ფასის შეცვლისას ტექსტი თავისით
+განახლდება. ტესტი (`lib/legal/legal.test.ts`) ამოწმებს, რომ ქართულსა
 და ინგლისურს ერთი და იგივე სექციები, ბმულები და ველები აქვს.
 
 ## 2. რა უნდა შეივსოს რეალური მონაცემებით (placeholder-ები)
@@ -41,8 +44,10 @@
 
 ## 3. რას ეყრდნობა ტექსტი (ფაქტები კოდიდან)
 
-- **პაროლი** ინახება მხოლოდ scrypt-ჰეშად; **სესია** — SHA-256 ჰეშად, 30 დღე.
-- **შესვლის მცდელობები** (ელფოსტა + IP) — 24 საათი (`lib/auth/limit.ts`).
+- **პაროლი** ინახება მხოლოდ scrypt-ჰეშად; **სესია** — SHA-256 ჰეშად, 30 დღე; გამოსვლისას მაშინვე იშლება, ვადაგასულს ყოველდღიური გაშვება შლის (`lib/auth/prune.ts`).
+- **შესვლის მცდელობები და აღდგენის მოთხოვნები** (ელფოსტა + IP) — 24 საათის შემდეგ იშლება ახალი მცდელობისას (`lib/auth/limit.ts`) ან ყოველდღიური გაშვებით — ანუ არაუგვიანეს ~48 საათისა.
+- **პაროლის აღდგენის ბმული** — ერთჯერადი, 1 საათი (`RESET_TTL_MS`); გამოყენებულს ან ვადაგასულს ყოველდღიური გაშვება შლის.
+- **ყოველდღიური გაშვება** — `/api/cron` (Vercel Cron, `vercel.json`) ან `npm run scheduler`. მუშაობს მხოლოდ მაშინ, როცა `CRON_SECRET` დაყენებულია — მის გარეშე ზემოთ მოცემული წაშლაც არ ხდება.
 - **GPS**: ინახება მხოლოდ ბოლო წერტილი (`GpsDevice.lastLat/lastLng/lastSpeed/lastPingAt` — ყოველ სიგნალზე იცვლება) და წითელი ხაზის მოვლენები (`GeoEvent`: მიახლოება / გადაკვეთა / დაბრუნება). მარშრუტის ისტორია არ ინახება. მოვლენები იშლება ხაზთან, აქტივთან ან ანგარიშთან ერთად.
 - **WhatsApp**: Meta Cloud API — იგზავნება მიმღების ნომერი და ტექსტი; ერთი საერთო პლატფორმის ნომრიდან (მომხმარებლის საკუთარი ნომერი ჯერ არ არის).
 - **AI**: `ANTHROPIC_API_KEY`-ით Anthropic-ს ეგზავნება ერთეულის სახელი, უბანი, ქალაქი და ფასები (ფასის შეთავაზების ახსნა). დამქირავებლის/სტუმრის მონაცემი არ ეგზავნება. გასაღების გარეშე ტექსტი ადგილზე იწერება.
@@ -65,6 +70,7 @@
 9. **დავა** — თბილისის საქალაქო სასამართლო. საჭიროა თუ არა არბიტრაჟი ბიზნეს-მომხმარებლებისთვის?
 10. **ინციდენტის შეტყობინება** — ვადა და ფორმა სამსახურისა და სუბიექტისთვის.
 11. **არასრულწლოვნები** — 18 წელი ზღვრად.
+12. **ფასის ინფორმაცია ხელშეკრულებამდე.** პირობებში ახლა ყველა გეგმის თვიური ფასი წერია (`{plans}`), ლარში. საკმარისია თუ არა ეს მომხმარებლის უფლებების დაცვის კანონით ხელშეკრულების დადებამდე მისაწოდებელი ინფორმაციისთვის (ფასი გადასახადების ჩათვლით, გადახდის წესი, ხანგრძლივობა, უარის უფლება), თუ საჭიროა ცალკე საჯარო ფასების გვერდი ან დამატებითი ტექსტი გადახდის ღილაკთან?
 
 ## 5. პროდუქტში გასაკეთებელი, რაც ტექსტს სრულად ჭეშმარიტს გახდის
 
@@ -100,8 +106,16 @@ prevails (stated in both documents).
 
 ## Facts the texts rely on
 
-Passwords: scrypt hashes; sessions: SHA-256 hashes, 30 days; sign-in attempts
-(email + IP): 24 h. GPS: only the last position (overwritten on every ping)
+Passwords: scrypt hashes; sessions: SHA-256 hashes, 30 days, deleted at
+sign-out, and expired ones deleted by the daily run (`lib/auth/prune.ts`);
+sign-in attempts and reset requests (email + IP): deleted once 24 h old, on
+the next attempt or by the daily run, so at most ~48 h; password-reset links:
+single use, 1 hour (`RESET_TTL_MS`), deleted by the daily run once used or
+expired. The daily run is `/api/cron` (Vercel Cron) or `npm run scheduler`
+and only runs when `CRON_SECRET` is set — without it none of this pruning
+happens. The Terms quote every plan's monthly price through `{plans}`
+(built from `PLANS` in `lib/billing/plans.ts`), so prices are visible
+before sign-up (`/billing` needs an account) and follow any price change. GPS: only the last position (overwritten on every ping)
 and red-line events (approach/breach/return); no route history. WhatsApp via
 Meta Cloud API from one platform number. Anthropic receives unit name,
 district, city and prices only when `ANTHROPIC_API_KEY` is set. Flitt:
@@ -120,4 +134,7 @@ contract clause; the 10-working-day response time; cross-border transfer
 safeguards; retention of payment records; refund wording under consumer law
 (distance contracts, digital services); the 12-month liability cap for
 consumers; forum (Tbilisi City Court vs arbitration for businesses); breach
-notification; age limit 18.
+notification; age limit 18; pre-contract price information under consumer
+law (the Terms now list every plan's monthly GEL price — is that enough, or
+is a public price page or more text at the pay button needed: price incl.
+taxes, payment terms, duration, withdrawal right?).

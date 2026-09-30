@@ -2,21 +2,22 @@
 // id is the token's SHA-256, so a leaked database never exposes usable
 // session tokens.
 
-import { createHash, randomBytes } from "node:crypto";
+import { createHash } from "node:crypto";
 import { cache } from "react";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { demoRefusalPath } from "./demo";
+import { newSessionToken, SESSION_COOKIE } from "./session-token";
 
-export const SESSION_COOKIE = "session";
+export { SESSION_COOKIE };
 const SESSION_DAYS = 30;
 
 export const sha256 = (value: string) =>
   createHash("sha256").update(value).digest("hex");
 
 export async function createSession(operatorId: string): Promise<void> {
-  const token = randomBytes(32).toString("hex");
+  const token = newSessionToken();
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 86_400_000);
   await prisma.session.create({
     data: { id: sha256(token), operatorId, expiresAt },

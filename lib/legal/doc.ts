@@ -1,9 +1,9 @@
 // The shape of a legal page (Terms of Service, Privacy policy) and the
 // helpers that fill and split its text. Pure and client-safe.
 //
-// Text may hold placeholders — {email}, {entity}, {trial}, {grace}, {updated}
-// — filled from lib/contact.ts and the billing constants at render time, and
-// links written as [label](href).
+// Text may hold placeholders — {email}, {entity}, {trial}, {grace}, {plans},
+// {updated} — filled from lib/contact.ts and lib/billing/plans.ts at render
+// time (lib/legal/values.ts), and links written as [label](href).
 
 import type { Locale } from "@/lib/i18n/strings";
 
@@ -30,6 +30,8 @@ export interface LegalValues {
   entity: string;
   trial: number;
   grace: number;
+  /** Every plan with its monthly price ("personal account — Starter 15 ₾, …"). */
+  plans: string;
   updated: string;
 }
 

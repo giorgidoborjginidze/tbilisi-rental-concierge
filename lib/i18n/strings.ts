@@ -176,7 +176,7 @@ const en = {
     "You can pay by card through our secure checkout, including Apple Pay and Google Pay.",
   bot_q_security: "Is my data safe?",
   bot_a_security:
-    "Yes. Every account is fully isolated, passwords are hashed, and we never sell or share your data. See the Privacy page for details.",
+    "Yes. Each account's data is kept apart from every other account, passwords are stored only as hashes, and we never sell your data. Only the providers the service runs on (hosting, WhatsApp messages, card payments, email, price-suggestion texts) receive what their part needs — the Privacy Policy names each of them.",
   bot_q_calc: "Is the calculator free?",
   bot_a_calc:
     "Yes \u2014 the investment calculator is free to try and needs no account.",
@@ -1576,7 +1576,7 @@ const ka: Record<StringKey, string> = {
     "გადახდა ბარათით შეგიძლია ჩვენი დაცული გვერდიდან, მათ შორის Apple Pay-ითა და Google Pay-ით.",
   bot_q_security: "ჩემი მონაცემები დაცულია?",
   bot_a_security:
-    "დიახ. თითოეული ანგარიში იზოლირებულია, პაროლები დაჰეშილია და მონაცემებს არასდროს ვყიდით ან ვუზიარებთ. დეტალები იხილე კონფიდენციალურობის გვერდზე.",
+    "დიახ. თითოეული ანგარიშის მონაცემები სხვა ანგარიშებისგან გამიჯნულია, პაროლები მხოლოდ ჰეშის სახით ინახება და მონაცემებს არასდროს ვყიდით. მხოლოდ ის მომწოდებლები, რომლებზეც სერვისი მუშაობს (ჰოსტინგი, WhatsApp შეტყობინებები, ბარათით გადახდა, ელფოსტა, ფასის შეთავაზების ტექსტები), იღებენ იმას, რაც მათ ნაწილს სჭირდება — ყველა მათგანი კონფიდენციალურობის პოლიტიკაშია ჩამოთვლილი.",
   bot_q_calc: "კალკულატორი უფასოა?",
   bot_a_calc:
     "დიახ — საინვესტიციო კალკულატორის ცდა უფასოა და ანგარიში არ სჭირდება.",
@@ -2802,6 +2802,9 @@ const ka: Record<StringKey, string> = {
 };
 
 export type StringKey = keyof typeof en;
+
+/** Every key, for checks that read the whole dictionary (tests). */
+export const STRING_KEYS = Object.keys(en) as StringKey[];
 
 const dictionaries: Record<Locale, Record<StringKey, string>> = { en, ka };
 

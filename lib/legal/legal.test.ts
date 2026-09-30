@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 import { allText, fill, placeholders, runs, type LegalDoc } from "./doc";
 import { PRIVACY } from "./privacy";
 import { TERMS } from "./terms";
-import { legalLocale, legalValues, LEGAL_UPDATED } from "./values";
+import { legalLocale, legalValues, LEGAL_UPDATED, planPrices } from "./values";
 import { CONTACT_EMAIL } from "@/lib/contact";
-import { GRACE_DAYS, TRIAL_DAYS } from "@/lib/billing/plans";
+import { GRACE_DAYS, PLANS, TRIAL_DAYS } from "@/lib/billing/plans";
+import { STRING_KEYS, t, type StringKey } from "@/lib/i18n/strings";
+import { ATTEMPT_RETENTION_MS } from "@/lib/auth/limit";
+import { RESET_TTL_MS } from "@/lib/auth/reset";
 
-const KNOWN = new Set(["email", "entity", "trial", "grace", "updated"]);
+const KNOWN = new Set(["email", "entity", "trial", "grace", "plans", "updated"]);
 const DOCS: [string, { ka: LegalDoc; en: LegalDoc }][] = [
   ["terms", TERMS],
   ["privacy", PRIVACY],
@@ -58,6 +61,47 @@ describe("legal documents", () => {
     // Third parties that really receive data are named (no "never shared").
     for (const name of ["Meta", "Anthropic", "Flitt", "Vercel", "Neon", "Resend"]) expect(privacy).toContain(name);
     expect(LEGAL_UPDATED).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it("the Terms quote every plan's price, so a reader needs no account to see them", () => {
+    for (const locale of ["ka", "en"] as const) {
+      const text = allText(TERMS[locale]).map((line) => fill(line, legalValues(locale))).join("\n");
+      for (const plan of PLANS) {
+        expect(text).toContain(`${t(locale, `plan_${plan.id}` as StringKey)} ${plan.priceGel} ₾`);
+      }
+    }
+    expect(planPrices("en")).toBe(
+      "personal account — Starter 15 ₾, Standard 29 ₾, Pro 49 ₾; company account — Business S 99 ₾, Business M 199 ₾",
+    );
+    expect(planPrices("ka")).not.toMatch(/plan_/);
+  });
+
+  it("no interface text says the data is never shared (the Privacy Policy names who receives it)", () => {
+    const enClaim = /\bnever\b[^.]*\bshar(e|ed|ing)\b|\b(do|does|will) not share\b|\bnot shared\b/i;
+    const kaClaim = /(არასდროს|არავის|არ)[^.]*(ვუზიარებთ|გავუზიარებთ|გადავცემთ)/;
+    const offenders = STRING_KEYS.filter((key) => enClaim.test(t("en", key)) || kaClaim.test(t("ka", key)));
+    expect(offenders).toEqual([]);
+    for (const doc of [TERMS, PRIVACY]) {
+      expect(allText(doc.en).filter((text) => enClaim.test(text))).toEqual([]);
+      expect(allText(doc.ka).filter((text) => kaClaim.test(text))).toEqual([]);
+    }
+    // The support bot's answer still says what is true: never sold.
+    expect(t("en", "bot_a_security")).toMatch(/never sell/);
+    expect(t("ka", "bot_a_security")).toMatch(/არასდროს ვყიდით/);
+  });
+
+  it("the retention periods the Privacy Policy states are the code's", () => {
+    const en = allText(PRIVACY.en).join("\n");
+    const ka = allText(PRIVACY.ka).join("\n");
+    // "A password-reset link works once and for one hour".
+    expect(RESET_TTL_MS).toBe(3_600_000);
+    expect(en).toMatch(/works once and for one hour/);
+    expect(ka).toMatch(/ერთხელ და ერთი საათით/);
+    // "deleted after a day" — the daily run (lib/auth/prune.ts) removes what recordAttempt left.
+    expect(ATTEMPT_RETENTION_MS).toBe(24 * 3_600_000);
+    expect(en).toMatch(/deleted after a day, at the latest within two days/);
+    // No bare "24 hours" promise the daily job cannot keep to the hour.
+    expect(en).not.toMatch(/24 hours/);
   });
 
   it("the Terms never say the platform itself calls 112 or the police", () => {
