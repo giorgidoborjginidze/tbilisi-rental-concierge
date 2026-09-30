@@ -1,96 +1,289 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { recordPayment } from "@/lib/rentals/actions";
+import { receiveRent, undoPayment } from "@/lib/rentals/actions";
+import { IconArrowRight, IconCheck } from "./icons";
 
 export interface DecideItem {
   contractId: string;
   assetId: string;
+  /** The asset's display name. */
+  name: string;
   title: string;
   sub: string;
   /** Outstanding amount; recording it advances the schedule fully. */
   amount: number;
   currency: string;
+  /** Unpaid periods already due — more than one asks before recording. */
+  periodsOwed: number;
   severe: boolean;
 }
 
+export interface DecideLabels {
+  paid: string;
+  open: string;
+  empty: string;
+  confirm: string;
+  confirmYes: string;
+  confirmNo: string;
+  recorded: string;
+  undo: string;
+  undone: string;
+  error: string;
+  showAll: string;
+  showLess: string;
+  close: string;
+  /** Server error keys (error_*) in the owner's language. */
+  errors: Record<string, string>;
+}
+
+type Toast =
+  | { kind: "recorded"; item: DecideItem; paymentId: string }
+  | { kind: "undone" }
+  | { kind: "error"; message: string };
+
+/** Cards shown before "show all" — the rest are one tap away, never cut. */
+const FIRST = 4;
+
+const fmt = (value: number) => Math.round(value).toLocaleString("en-US");
+
 // The demo's "confirm with a flick", wired to real money: swipe right
 // records the outstanding rent as received (a real RentPayment row),
-// swipe left opens the asset's rental service page. Buttons do the same
-// for keyboards and anyone who does not want to drag.
+// swipe left opens the asset's rental service page. The buttons do the
+// same with a mouse, a keyboard or a tap. When more than one period is
+// owed the card asks first; every recording can be undone straight away,
+// and a refusal from the server is shown, never swallowed.
 export default function DecideCards({
   items,
   labels,
 }: {
   items: DecideItem[];
-  labels: { paid: string; open: string; empty: string };
+  labels: DecideLabels;
 }) {
   const router = useRouter();
   const [gone, setGone] = useState<string[]>([]);
-  const [, startTransition] = useTransition();
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const [toast, setToast] = useState<Toast | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [pending, startTransition] = useTransition();
   const left = items.filter((item) => !gone.includes(item.contractId));
+  const shown = expanded ? left : left.slice(0, FIRST);
 
-  const settle = (item: DecideItem, dir: "yes" | "no") => {
+  // The undo offer stays long enough to read and reach; the rest fade sooner.
+  useEffect(() => {
+    if (!toast || toast.kind === "error") return;
+    const timer = setTimeout(() => setToast(null), toast.kind === "recorded" ? 12_000 : 4_000);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
+  const errorText = (key: string) => labels.errors[key] ?? labels.errors.error_required;
+
+  const record = (item: DecideItem) => {
+    setConfirming(null);
     setGone((prev) => [...prev, item.contractId]);
-    if (dir === "yes") {
-      startTransition(async () => {
-        const fd = new FormData();
-        fd.set("contractId", item.contractId);
-        fd.set("assetId", item.assetId);
-        fd.set("amount", String(item.amount));
-        fd.set("method", "cash");
-        await recordPayment(null, fd);
-        router.refresh();
-      });
-    } else {
-      router.push(`/assets/${item.assetId}/rental`);
-    }
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.set("contractId", item.contractId);
+      fd.set("assetId", item.assetId);
+      fd.set("amount", String(item.amount));
+      fd.set("method", "cash");
+      let result: Awaited<ReturnType<typeof receiveRent>>;
+      try {
+        result = await receiveRent(fd);
+      } catch {
+        result = { error: "error_required" };
+      }
+      if ("error" in result) {
+        // Nothing was recorded: the card comes back with the reason.
+        setGone((prev) => prev.filter((id) => id !== item.contractId));
+        setToast({ kind: "error", message: `${labels.error}: ${item.name} — ${errorText(result.error)}` });
+        return;
+      }
+      setToast({ kind: "recorded", item, paymentId: result.paymentId });
+      router.refresh();
+    });
   };
 
-  if (left.length === 0) {
-    return <p style={{ color: "var(--color-text-muted)", fontSize: 13 }}>{labels.empty}</p>;
-  }
+  const paid = (item: DecideItem) => {
+    if (item.periodsOwed > 1) setConfirming(item.contractId);
+    else record(item);
+  };
+
+  const undo = (item: DecideItem, paymentId: string) => {
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.set("assetId", item.assetId);
+      fd.set("paymentId", paymentId);
+      let result: Awaited<ReturnType<typeof undoPayment>>;
+      try {
+        result = await undoPayment(fd);
+      } catch {
+        result = { error: "error_required" };
+      }
+      if ("error" in result) {
+        setToast({ kind: "error", message: `${item.name} — ${errorText(result.error)}` });
+        return;
+      }
+      setGone((prev) => prev.filter((id) => id !== item.contractId));
+      setToast({ kind: "undone" });
+      router.refresh();
+    });
+  };
 
   return (
-    <div className="decide-zone">
-      {left.map((item) => (
-        <Card key={item.contractId} item={item} labels={labels} onSettle={settle} />
-      ))}
-    </div>
+    <>
+      {left.length === 0 ? (
+        <p style={{ color: "var(--color-text-muted)", fontSize: 13 }}>{labels.empty}</p>
+      ) : (
+        <div className="decide-zone">
+          {shown.map((item) =>
+            confirming === item.contractId ? (
+              <div key={item.contractId} className="decide-card">
+                <div className="decide-top decide-confirm" role="group" aria-label={item.title}>
+                  <span className="decide-txt">
+                    <b>{item.title}</b>
+                    <span>
+                      {labels.confirm
+                        .replace("{n}", String(item.periodsOwed))
+                        .replace("{amount}", `${fmt(item.amount)} ${item.currency}`)}
+                    </span>
+                  </span>
+                  <span className="decide-confirm__actions">
+                    <button
+                      type="button"
+                      className="btn-primary decide-confirm__yes"
+                      onClick={() => record(item)}
+                      disabled={pending}
+                      autoFocus
+                    >
+                      {labels.confirmYes}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-chip decide-act"
+                      onClick={() => setConfirming(null)}
+                    >
+                      {labels.confirmNo}
+                    </button>
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <Card
+                key={item.contractId}
+                item={item}
+                labels={labels}
+                onPaid={() => paid(item)}
+                onOpen={() => router.push(`/assets/${item.assetId}/rental`)}
+              />
+            ),
+          )}
+        </div>
+      )}
+
+      {left.length > FIRST && (
+        <button
+          type="button"
+          className="btn-chip decide-more"
+          aria-expanded={expanded}
+          onClick={() => setExpanded((open) => !open)}
+        >
+          {expanded ? labels.showLess : labels.showAll.replace("{n}", String(left.length))}
+        </button>
+      )}
+
+      <div className="decide-toast-slot" aria-live="polite">
+        {toast && (
+          <div className={`decide-toast${toast.kind === "error" ? " decide-toast--error" : ""}`} role="status">
+            <span>
+              {toast.kind === "recorded"
+                ? labels.recorded
+                    .replace("{amount}", `${fmt(toast.item.amount)} ${toast.item.currency}`)
+                    .replace("{name}", toast.item.name)
+                : toast.kind === "undone"
+                  ? labels.undone
+                  : toast.message}
+            </span>
+            {toast.kind === "recorded" && (
+              <button
+                type="button"
+                className="btn-chip decide-act"
+                disabled={pending}
+                onClick={() => undo(toast.item, toast.paymentId)}
+              >
+                {labels.undo}
+              </button>
+            )}
+            {toast.kind === "error" && (
+              <button
+                type="button"
+                className="btn-chip decide-act"
+                aria-label={labels.close}
+                title={labels.close}
+                onClick={() => setToast(null)}
+              >
+                ×
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 
 function Card({
   item,
   labels,
-  onSettle,
+  onPaid,
+  onOpen,
 }: {
   item: DecideItem;
   labels: { paid: string; open: string };
-  onSettle: (item: DecideItem, dir: "yes" | "no") => void;
+  onPaid: () => void;
+  onOpen: () => void;
 }) {
   const topRef = useRef<HTMLDivElement>(null);
-  const drag = useRef<{ x0: number; dx: number } | null>(null);
+  const drag = useRef<{ x0: number; dx: number; captured: boolean } | null>(null);
 
-  const finish = (commit: boolean) => {
+  const reset = () => {
     const top = topRef.current;
+    if (!top) return;
+    top.style.transition = "transform .22s ease";
+    top.style.transform = "";
+    setTimeout(() => {
+      if (topRef.current) topRef.current.style.transition = "";
+    }, 240);
+  };
+
+  const flyOut = (dir: "yes" | "no", then: () => void) => {
+    const top = topRef.current;
+    if (!top) return then();
+    top.style.transition = "transform .28s ease, opacity .28s ease";
+    top.style.transform = `translateX(${dir === "yes" ? 480 : -480}px) rotate(${dir === "yes" ? 7 : -7}deg)`;
+    top.style.opacity = "0";
+    setTimeout(then, 240);
+  };
+
+  // Right: received — straight away for one period; with more owed the
+  // card comes back and asks first. Left: open the details.
+  const decide = (dir: "yes" | "no") => {
+    if (dir === "no") return flyOut("no", onOpen);
+    if (item.periodsOwed > 1) {
+      reset();
+      onPaid();
+      return;
+    }
+    flyOut("yes", onPaid);
+  };
+
+  const finish = () => {
     const state = drag.current;
     drag.current = null;
-    if (!top || !state) return;
-    if (commit) {
-      const dir = state.dx > 0 ? "yes" : "no";
-      top.style.transition = "transform .28s ease, opacity .28s ease";
-      top.style.transform = `translateX(${state.dx > 0 ? 480 : -480}px) rotate(${state.dx > 0 ? 7 : -7}deg)`;
-      top.style.opacity = "0";
-      setTimeout(() => onSettle(item, dir), 240);
-    } else {
-      top.style.transition = "transform .22s ease";
-      top.style.transform = "";
-      setTimeout(() => {
-        if (topRef.current) topRef.current.style.transition = "";
-      }, 240);
-    }
+    if (!state?.captured) return;
+    if (Math.abs(state.dx) > 90) decide(state.dx > 0 ? "yes" : "no");
+    else reset();
   };
 
   return (
@@ -105,17 +298,29 @@ function Card({
         role="group"
         aria-label={item.title}
         onPointerDown={(e) => {
-          drag.current = { x0: e.clientX, dx: 0 };
-          e.currentTarget.setPointerCapture(e.pointerId);
+          // A press on a button is a click, not the start of a swipe:
+          // capturing the pointer here would steal the button's click.
+          if ((e.target as HTMLElement).closest("button, a")) return;
+          drag.current = { x0: e.clientX, dx: 0, captured: false };
           e.currentTarget.style.transition = "";
         }}
         onPointerMove={(e) => {
-          if (!drag.current || !topRef.current) return;
-          drag.current.dx = e.clientX - drag.current.x0;
-          topRef.current.style.transform = `translateX(${drag.current.dx}px) rotate(${drag.current.dx / 40}deg)`;
+          const state = drag.current;
+          if (!state || !topRef.current) return;
+          state.dx = e.clientX - state.x0;
+          // Only a real sideways drag takes the pointer.
+          if (!state.captured) {
+            if (Math.abs(state.dx) < 8) return;
+            state.captured = true;
+            e.currentTarget.setPointerCapture(e.pointerId);
+          }
+          topRef.current.style.transform = `translateX(${state.dx}px) rotate(${state.dx / 40}deg)`;
         }}
-        onPointerUp={() => finish(Math.abs(drag.current?.dx ?? 0) > 90)}
-        onPointerCancel={() => finish(false)}
+        onPointerUp={finish}
+        onPointerCancel={() => {
+          drag.current = null;
+          reset();
+        }}
       >
         <span
           className="decide-ico"
@@ -132,29 +337,26 @@ function Card({
           <span>{item.sub}</span>
         </span>
         <span className="decide-amount">
-          {Math.round(item.amount).toLocaleString("en-US")} {item.currency}
+          {fmt(item.amount)} {item.currency}
         </span>
-        <span style={{ display: "flex", gap: 6, marginLeft: 8, flex: "0 0 auto" }}>
+        <span className="decide-acts">
           <button
             type="button"
-            className="btn-chip"
+            className="btn-chip decide-act"
             aria-label={labels.paid}
-            onClick={() => {
-              if (topRef.current) {
-                drag.current = { x0: 0, dx: 120 };
-                finish(true);
-              }
-            }}
+            title={labels.paid}
+            onClick={() => decide("yes")}
           >
-            ✓
+            <IconCheck size={16} />
           </button>
           <button
             type="button"
-            className="btn-chip"
+            className="btn-chip decide-act"
             aria-label={labels.open}
-            onClick={() => onSettle(item, "no")}
+            title={labels.open}
+            onClick={() => decide("no")}
           >
-            →
+            <IconArrowRight size={16} />
           </button>
         </span>
       </div>

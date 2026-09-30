@@ -3,12 +3,11 @@ import { prisma } from "@/lib/db";
 import { t, type Locale, type StringKey } from "@/lib/i18n/strings";
 import { statusFor, periodAmount } from "@/lib/rentals/terms";
 import { activeContract as runningContract, activeContractWhere, assetStatusNow } from "@/lib/rentals/phase";
-import { contractIncomeInWindow } from "@/lib/rentals/amount";
 import { formatAmount, periodWordKey } from "@/lib/rentals/display";
 import { templateFamily } from "@/lib/notify/templates";
 import { dayKey, monthKeyTbilisi, monthStartTbilisi, startOfTodayTbilisi, tbilisiFormat } from "@/lib/time";
 import { estimateMarketRent, getRentBenchmark } from "@/lib/market/rent";
-import { proratedRevenue } from "@/lib/analytics/metrics";
+import { monthlyIncomeSeries } from "@/lib/analytics/monthly-income";
 import CountUp from "./count-up";
 import DecideCards, { type DecideItem } from "./decide-cards";
 import AssetDeckClient, { type DeckAsset, type DeckSlide } from "./asset-deck-client";
@@ -75,13 +74,19 @@ export function CompositionRing({
 
   const total = shown.reduce((sum, part) => sum + part.value, 0);
   const C = 2 * Math.PI * 49.2;
-  let offset = 0;
-  const segments = shown.map((part) => {
-    const length = (part.value / total) * C;
-    const seg = { ...part, length, offset };
-    offset += length;
-    return seg;
-  });
+  // Each segment starts where the one before it ends.
+  const segments = shown.reduce<(RingPart & { length: number; offset: number })[]>(
+    (acc, part) => {
+      const prev = acc[acc.length - 1];
+      acc.push({
+        ...part,
+        length: (part.value / total) * C,
+        offset: prev ? prev.offset + prev.length : 0,
+      });
+      return acc;
+    },
+    [],
+  );
   const short = (value: number) =>
     value >= 1_000_000
       ? `${(value / 1_000_000).toFixed(2)}M`
@@ -328,6 +333,7 @@ export async function DecideToday({
     items.push({
       contractId: contract.id,
       assetId: contract.asset.id,
+      name,
       title: `${name} — ${t(locale, "decide_rent")}`,
       sub: `${contract.tenantName ?? "—"}${
         status.daysOverdue > 0
@@ -336,21 +342,44 @@ export async function DecideToday({
       }`,
       amount: status.amountDue || periodAmount(contract),
       currency: contract.currency,
+      periodsOwed: status.periodsOwed,
       severe: status.state === "repossess",
     });
   }
-  items.sort((a, b) => Number(b.severe) - Number(a.severe));
+  // Most urgent first: past the grace period, then the longest late.
+  items.sort(
+    (a, b) =>
+      Number(b.severe) - Number(a.severe) || b.periodsOwed - a.periodsOwed,
+  );
 
+  const errorKeys: StringKey[] = [
+    "error_required",
+    "error_invalid_number",
+    "error_untracked",
+    "error_payment_locked",
+  ];
   return (
     <section>
       <h2>{t(locale, "decide_title")}</h2>
       <p className="decide-hint">{t(locale, "decide_sub")}</p>
+      {/* Every late rent is listed — the first few, then "show all". */}
       <DecideCards
-        items={items.slice(0, 4)}
+        items={items}
         labels={{
           paid: t(locale, "decide_paid"),
           open: t(locale, "decide_open"),
           empty: t(locale, "decide_empty"),
+          confirm: t(locale, "decide_confirm"),
+          confirmYes: t(locale, "decide_confirm_yes"),
+          confirmNo: t(locale, "decide_confirm_no"),
+          recorded: t(locale, "decide_recorded"),
+          undo: t(locale, "decide_undo"),
+          undone: t(locale, "decide_undone"),
+          error: t(locale, "decide_error"),
+          showAll: t(locale, "decide_show_all"),
+          showLess: t(locale, "decide_show_less"),
+          close: t(locale, "bot_close"),
+          errors: Object.fromEntries(errorKeys.map((key) => [key, t(locale, key)])),
         }}
       />
     </section>
@@ -570,9 +599,9 @@ export async function AssetDeck({
   );
 }
 
-// ── Income, six months back, as tinted ice slabs. Combines what the
-// platform actually knows: nightly bookings, contracted rent for months
-// the contract covered, and manually recorded income. ──
+// ── Income, six months back, as tinted ice slabs: "all income" per
+// month from lib/analytics/income.ts — the same total as the hero and
+// /assets, each night of each place counted once. ──
 
 const BAR_TINTS: [string, string][] = [
   ["#a8daf5", "#5ab0e0"],
@@ -590,71 +619,8 @@ export async function IncomeBars({
   locale: Locale;
   operatorId: string;
 }) {
-  const from = monthStartTbilisi(-5);
-  const to = monthStartTbilisi(1);
-
-  const [bookings, contracts, incomes, days] = await Promise.all([
-    prisma.booking.findMany({
-      where: {
-        status: { not: "cancelled" },
-        checkIn: { lt: to },
-        checkOut: { gt: from },
-        unit: { operatorId },
-      },
-    }),
-    prisma.rentalContract.findMany({
-      where: { asset: { operatorId }, startDate: { lt: to }, endDate: { gt: from } },
-      select: {
-        assetId: true,
-        startDate: true,
-        endDate: true,
-        monthlyRent: true,
-        paymentPeriod: true,
-        paymentAmount: true,
-      },
-    }),
-    prisma.incomeRecord.findMany({
-      where: { operatorId, date: { gte: from, lt: to } },
-      select: { date: true, amount: true },
-    }),
-    prisma.dayEntry.findMany({
-      where: { asset: { operatorId }, rented: true, date: { gte: from, lt: to } },
-      select: { assetId: true, date: true, amount: true },
-    }),
-  ]);
-
-  // A night answered in the daily check that a contract already covers is
-  // the same night: count it once, at the contract's price.
-  const coveredByContract = (assetId: string, date: Date) =>
-    contracts.some(
-      (contract) =>
-        contract.assetId === assetId &&
-        contract.startDate <= date &&
-        contract.endDate > date,
-    );
-
-  const months = Array.from({ length: 6 }, (_, i) => {
-    const start = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth() + i, 1));
-    const end = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1));
-    let total = 0;
-    for (const booking of bookings) {
-      total += proratedRevenue(booking, { start, end });
-    }
-    for (const contract of contracts) {
-      // The rent for the days the contract covered in this month: one
-      // night counts one night, a lease from the 16th half a month.
-      total += contractIncomeInWindow(contract, { start, end });
-    }
-    for (const income of incomes) {
-      if (income.date >= start && income.date < end) total += income.amount;
-    }
-    for (const day of days) {
-      if (day.date >= start && day.date < end && !coveredByContract(day.assetId, day.date)) {
-        total += day.amount;
-      }
-    }
-    return { start, total };
-  });
+  const series = await monthlyIncomeSeries(operatorId, monthStartTbilisi(-5), 6);
+  const months = series.map(({ start, income }) => ({ start, total: income.total }));
 
   const max = Math.max(...months.map((m) => m.total));
   const fmtMonth = tbilisiFormat(locale, { month: "short" });

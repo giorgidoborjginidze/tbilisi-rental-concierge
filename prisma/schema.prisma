@@ -437,13 +437,20 @@ model NotifyMessage {
   toRole     String // "driver" | "tenant" | "owner"
   kind       String // template key this was rendered from
   body       String
-  status     String  @default("queued") // "queued" | "sent" | "failed"
+  // "cancelled": withdrawn before it went out because what it said no longer
+  // holds — the rent was paid, the contract changed or ended, the vehicle
+  // came back inside the red line. It is kept (not deleted) so the owner
+  // sees why, and so the dedupe key still stops a repeat.
+  status     String  @default("queued") // "queued" | "sent" | "failed" | "cancelled"
   // Stable key so a repeated scan or ping never queues the same message twice.
   dedupeKey   String   @unique
   providerRef String?
   error       String?
   createdAt   DateTime @default(now())
   sentAt      DateTime?
+  cancelledAt  DateTime?
+  // "paid" | "changed" | "contract_ended" | "contract_deleted" | "returned"
+  cancelReason String?
 
   operator Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
 

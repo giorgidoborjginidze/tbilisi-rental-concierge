@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/db";
 import type { Locale } from "@/lib/i18n/strings";
+import { sweepStaleMessages } from "@/lib/rentals/settle";
+import { startOfTodayTbilisi } from "@/lib/time";
 import { normalizePhone } from "./phone";
 import {
   defaultTemplate,
@@ -74,6 +76,11 @@ export interface QueueInput {
 /**
  * Put one message in the outbox. Returns null when it was already there
  * (deduped) or when there is no usable phone number for the recipient.
+ *
+ * A message that was withdrawn (status "cancelled" — the rent was paid,
+ * the terms changed) and is now called for again because the situation is
+ * back comes back to the queue with a freshly rendered body, so it quotes
+ * today's amount rather than the one it was first written with.
  */
 export async function queueMessage(input: QueueInput) {
   const phone = normalizePhone(input.phone);
@@ -82,12 +89,27 @@ export async function queueMessage(input: QueueInput) {
   const existing = await prisma.notifyMessage.findUnique({
     where: { dedupeKey: input.dedupeKey },
   });
-  if (existing) return null;
+  if (existing && existing.status !== "cancelled") return null;
 
   const body = render(
     await resolveTemplate(input.operatorId, input.locale, input.key),
     input.vars,
   );
+
+  if (existing) {
+    return prisma.notifyMessage.update({
+      where: { id: existing.id },
+      data: {
+        toPhone: phone,
+        body,
+        status: "queued",
+        cancelReason: null,
+        cancelledAt: null,
+        error: null,
+        createdAt: new Date(),
+      },
+    });
+  }
 
   return prisma.notifyMessage.create({
     data: {
@@ -158,6 +180,9 @@ export interface FlushResult {
  */
 export async function flushOutbox(operatorId?: string): Promise<FlushResult> {
   const config = whatsappConfig();
+  // Last check before anything leaves: a reminder about rent that has been
+  // paid, or a red-line text for a car that is back inside, is withdrawn.
+  await sweepStaleMessages(prisma, startOfTodayTbilisi(), operatorId);
   const queued = await prisma.notifyMessage.findMany({
     where: { status: "queued", ...(operatorId ? { operatorId } : {}) },
     orderBy: { createdAt: "asc" },

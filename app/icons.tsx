@@ -86,3 +86,22 @@ export function IconShield({ size = 22 }: Props) {
     </svg>
   );
 }
+
+/** Check mark — received, done. */
+export function IconCheck({ size = 22 }: Props) {
+  return (
+    <svg width={size} height={size} {...base}>
+      <path d="m5 12.5 4.5 4.5L19 7.5" />
+    </svg>
+  );
+}
+
+/** Arrow right — open the details. */
+export function IconArrowRight({ size = 22 }: Props) {
+  return (
+    <svg width={size} height={size} {...base}>
+      <path d="M5 12h14" />
+      <path d="m13 6 6 6-6 6" />
+    </svg>
+  );
+}

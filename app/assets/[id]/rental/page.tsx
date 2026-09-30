@@ -10,6 +10,11 @@ import { periodAmount, statusFor } from "@/lib/rentals/terms";
 import { scheduleContract } from "@/lib/rentals/phase";
 import { asPeriod } from "@/lib/rentals/amount";
 import { defaultPaidThrough } from "@/lib/rentals/schedule";
+import {
+  stalePaymentMessage,
+  WITHDRAW_REASONS,
+  type WithdrawReason,
+} from "@/lib/rentals/settle";
 import { dayKey, startOfTodayTbilisi, tbilisiFormat } from "@/lib/time";
 import {
   deleteGeofence,
@@ -164,6 +169,21 @@ export default async function RentalServicePage({
     take: 20,
   });
   const autoSend = whatsappConfig() != null;
+  // A reminder whose rent has been paid (or whose contract ended) since it
+  // was queued must not be offered for sending, even before the next check
+  // withdraws it.
+  const contractById = new Map(asset.contracts.map((c) => [c.id, c]));
+  const staleReason = (message: (typeof messages)[number]): WithdrawReason | null =>
+    message.status === "queued" || message.status === "failed"
+      ? message.contractId
+        ? stalePaymentMessage(message, contractById.get(message.contractId) ?? null, today)
+        : null
+      : null;
+  const withdrawnReason = (message: (typeof messages)[number]) =>
+    message.status === "cancelled" &&
+    WITHDRAW_REASONS.includes(message.cancelReason as WithdrawReason)
+      ? (message.cancelReason as WithdrawReason)
+      : null;
 
   // Every date and time in Tbilisi time: a ping at 06:38 UTC is 10:38.
   const fmtDate = tbilisiFormat(locale, {
@@ -540,7 +560,9 @@ export default async function RentalServicePage({
                           ? "badge--vacant"
                           : message.status === "failed"
                             ? "badge--danger"
-                            : "badge--str"
+                            : message.status === "cancelled"
+                              ? "badge--personal"
+                              : "badge--str"
                       }`}
                     >
                       {t(locale, `outbox_status_${message.status}` as StringKey)}
@@ -549,15 +571,40 @@ export default async function RentalServicePage({
                       +{message.toPhone} · {fmtStamp.format(message.createdAt)}
                     </span>
                   </div>
-                  <p style={{ margin: "6px 0 0", whiteSpace: "pre-wrap" }}>{message.body}</p>
-                  {message.error && (
+                  <p
+                    style={{
+                      margin: "6px 0 0",
+                      whiteSpace: "pre-wrap",
+                      ...(message.status === "cancelled"
+                        ? { color: "var(--color-text-muted)", textDecoration: "line-through" }
+                        : {}),
+                    }}
+                  >
+                    {message.body}
+                  </p>
+                  {withdrawnReason(message) && (
+                    <p style={{ margin: "4px 0 0", color: "var(--color-text-muted)" }}>
+                      {t(locale, `withdraw_${withdrawnReason(message)}` as StringKey)} —{" "}
+                      {t(locale, "outbox_not_sent")}
+                      {withdrawnReason(message) === "changed" &&
+                        ` ${t(locale, "outbox_changed_hint")}`}
+                    </p>
+                  )}
+                  {staleReason(message) && (
+                    <p style={{ margin: "4px 0 0", color: "var(--color-text-muted)" }}>
+                      {t(locale, `withdraw_${staleReason(message)}` as StringKey)} —{" "}
+                      {t(locale, "outbox_stale")}
+                    </p>
+                  )}
+                  {message.error && message.status !== "cancelled" && (
                     <p style={{ margin: "4px 0 0", color: "var(--status-danger-text)" }}>
                       {message.error}
                     </p>
                   )}
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  {message.status !== "sent" && (
+                  {(message.status === "queued" || message.status === "failed") &&
+                    !staleReason(message) && (
                     <>
                       <a
                         href={waLink(message.toPhone, message.body)}

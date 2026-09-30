@@ -9,6 +9,7 @@ import {
 import { dayKey, sameTbilisiDay, startOfTodayTbilisi } from "@/lib/time";
 import { activeContractWhere } from "./phase";
 import { statusFor } from "./terms";
+import { sweepStaleMessages, sweepStaleRentAlerts } from "./settle";
 
 // Re-exported so existing callers keep one import for "the rent status".
 export {
@@ -62,18 +63,24 @@ export async function monitorRentPayments(
 
   const result: RentalMonitorResult = { contracts: 0, alerts: 0, messages: 0 };
 
+  // First withdraw what no longer holds: reminders and alerts about rent
+  // that has been paid, about contracts that have ended or were deleted,
+  // red-line texts for a vehicle that is back inside.
+  await sweepStaleMessages(prisma, today, operatorId, now);
+  await sweepStaleRentAlerts(prisma, today, operatorId, now);
+
   // Dedupe alerts the same way the main scan does: on type + payload key.
   const existing = await prisma.alert.findMany({
     where: {
       type: { in: ["rent_overdue", "repossession_right"] },
       ...(operatorId ? { operatorId } : {}),
     },
-    select: { type: true, payload: true },
+    select: { id: true, type: true, status: true, payload: true },
   });
-  const seen = new Set(
+  const known = new Map(
     existing.map((alert) => {
       const payload = alert.payload as { key?: string };
-      return `${alert.type}|${payload.key ?? ""}`;
+      return [`${alert.type}|${payload.key ?? ""}`, alert] as const;
     }),
   );
 
@@ -114,12 +121,38 @@ export async function monitorRentPayments(
       key: string,
       payload: Record<string, unknown>,
     ) => {
-      if (seen.has(`${type}|${key}`)) return;
-      await prisma.alert.create({
-        data: { operatorId: operator.id, unitId: null, type, payload: { key, ...payload } },
-      });
-      seen.add(`${type}|${key}`);
-      result.alerts += 1;
+      const found = known.get(`${type}|${key}`);
+      if (!found) {
+        const created = await prisma.alert.create({
+          data: { operatorId: operator.id, unitId: null, type, payload: { key, ...payload } },
+        });
+        known.set(`${type}|${key}`, {
+          id: created.id,
+          type,
+          status: "open",
+          payload: created.payload,
+        });
+        result.alerts += 1;
+        return;
+      }
+      const previous = found.payload as { autoResolved?: string };
+      if (found.status === "open") {
+        // Keep the figures current: the debt and the days late grow.
+        await prisma.alert.update({
+          where: { id: found.id },
+          data: { payload: { key, ...payload } },
+        });
+      } else if (found.status === "resolved" && previous.autoResolved) {
+        // Closed by the system (a payment later undone, a date restated)
+        // and late again for the same due date: it comes back. An alert
+        // the owner closed by hand stays closed.
+        await prisma.alert.update({
+          where: { id: found.id },
+          data: { status: "open", resolvedAt: null, payload: { key, ...payload } },
+        });
+        found.status = "open";
+        result.alerts += 1;
+      }
     };
 
     const queue = async (

@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireOperator } from "@/lib/auth/session";
@@ -7,7 +6,10 @@ import { t, type StringKey } from "@/lib/i18n/strings";
 import { runAlertScan, setAlertStatus } from "@/lib/alerts/actions";
 import { templateFamily } from "@/lib/notify/templates";
 import { formatAmount, periodWordKey } from "@/lib/rentals/display";
-import { tbilisiFormat } from "@/lib/time";
+import { statusFor } from "@/lib/rentals/terms";
+import { WITHDRAW_REASONS } from "@/lib/rentals/settle";
+import type { ScheduleStatus } from "@/lib/rentals/schedule";
+import { dayKey, startOfTodayTbilisi, tbilisiFormat } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
 
@@ -53,7 +55,13 @@ interface AlertPayload {
   lng?: number;
   distanceKm?: number;
   driverName?: string | null;
+  contractId?: string;
+  /** Set when the system (not the owner) closed the alert. */
+  autoResolved?: string;
 }
+
+/** Alert types whose figures are read live from their contract. */
+const CONTRACT_ALERTS = ["rent_overdue", "repossession_right", "contract_ended"];
 
 export default async function AlertsPage({
   searchParams,
@@ -75,6 +83,38 @@ export default async function AlertsPage({
   const displayName = (unit: { name: string; nameKa: string | null } | null) =>
     unit ? (locale === "ka" && unit.nameKa ? unit.nameKa : unit.name) : "—";
 
+  // Late-rent figures are read from the contract as it stands today — the
+  // same statusFor, with the asset's pricing, as the dashboard, the rental
+  // page and the WhatsApp text — not from the snapshot taken the day the
+  // alert was raised, which would freeze at "1/3 days, 90 GEL".
+  const today = startOfTodayTbilisi();
+  const contractIds = [
+    ...new Set(
+      alerts
+        .filter((alert) => CONTRACT_ALERTS.includes(alert.type))
+        .map((alert) => (alert.payload as AlertPayload).contractId)
+        .filter(Boolean),
+    ),
+  ] as string[];
+  const contracts = contractIds.length
+    ? await prisma.rentalContract.findMany({
+        where: { id: { in: contractIds }, asset: { operatorId: operator.id } },
+        include: {
+          asset: { select: { dailyRate: true, weekendPct: true, holidayPct: true } },
+        },
+      })
+    : [];
+  const live = new Map<string, ScheduleStatus | null>(
+    contracts.map((contract) => [
+      contract.id,
+      contract.paidThrough ? statusFor(contract, today, contract.asset) : null,
+    ]),
+  );
+  const currencyOf = new Map(contracts.map((contract) => [contract.id, contract.currency]));
+  const money = (value: number) => Math.round(value).toLocaleString("en-US");
+  const owes = (status: ScheduleStatus | null | undefined) =>
+    status != null && status.periodsOwed > 0 && status.amountDue > 0;
+
   const detail = (type: string, payload: AlertPayload, currency: string) => {
     switch (type) {
       case "vacancy_gap":
@@ -89,20 +129,53 @@ export default async function AlertsPage({
             ? `${formatAmount(payload.paymentAmount)} ${currency} / ${t(locale, periodWordKey(payload.paymentPeriod))}`
             : `${payload.monthlyRent} ${currency}`
         } · ${payload.endDate} · ${payload.daysLeft} ${t(locale, "days_left")}`;
-      case "contract_ended":
-        return `${payload.assetName} · ${payload.tenantName ?? "—"} · ${t(locale, "cstatus_ended")}: ${payload.endDate}`;
+      case "contract_ended": {
+        const status = payload.contractId ? live.get(payload.contractId) : null;
+        return [
+          payload.assetName,
+          payload.tenantName ?? "—",
+          `${t(locale, "cstatus_ended")}: ${payload.endDate}`,
+          // Rent still owed when it ended stays in sight.
+          owes(status)
+            ? `${t(locale, "alert_unpaid")}: ${money(status!.amountDue)} ${currencyOf.get(payload.contractId!) ?? currency}`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" · ");
+      }
       case "rent_overdue":
-      case "repossession_right":
+      case "repossession_right": {
+        const status =
+          !done && payload.contractId ? live.get(payload.contractId) : undefined;
+        const unit = payload.currency ?? currency;
+        if (status) {
+          return [
+            payload.assetName,
+            payload.plate,
+            payload.tenantName ?? "—",
+            owes(status)
+              ? `${money(status.amountDue)} ${unit}`
+              : t(locale, `pstate_${status.state}` as StringKey),
+            `${t(locale, "pay_next_due")}: ${dayKey(status.nextDueDate)}`,
+            `${t(locale, "pay_days_overdue")}: ${status.daysOverdue}/${status.graceDays}`,
+          ]
+            .filter(Boolean)
+            .join(" · ");
+        }
         return [
           payload.assetName,
           payload.plate,
           payload.tenantName ?? "—",
-          `${payload.amountDue} ${payload.currency ?? currency}`,
+          `${payload.amountDue} ${unit}`,
           `${t(locale, "pay_next_due")}: ${payload.dueDate}`,
           `${t(locale, "pay_days_overdue")}: ${payload.daysOverdue}/${payload.graceDays}`,
+          !done && payload.contractId && !live.has(payload.contractId)
+            ? t(locale, "withdraw_contract_deleted")
+            : null,
         ]
           .filter(Boolean)
           .join(" · ");
+      }
       case "geofence_breach":
         return [
           payload.assetName,
@@ -189,12 +262,20 @@ export default async function AlertsPage({
                 </div>
               </div>
               {done ? (
-                <span className="badge badge--rented">
-                  {t(locale, "alert_done_at")}
-                  {alert.resolvedAt
-                    ? ` · ${tbilisiFormat(locale, { day: "numeric", month: "short" }).format(alert.resolvedAt)}`
-                    : ""}
-                </span>
+                <div className="flex flex-col items-end gap-1">
+                  <span className="badge badge--rented">
+                    {t(locale, "alert_done_at")}
+                    {alert.resolvedAt
+                      ? ` · ${tbilisiFormat(locale, { day: "numeric", month: "short" }).format(alert.resolvedAt)}`
+                      : ""}
+                  </span>
+                  {payload.autoResolved &&
+                    WITHDRAW_REASONS.includes(payload.autoResolved as never) && (
+                      <span className="cell-sub">
+                        {t(locale, "alert_auto")}: {t(locale, `withdraw_${payload.autoResolved}` as StringKey)}
+                      </span>
+                    )}
+                </div>
               ) : (
                 <div className="flex gap-2">
                   <form action={setAlertStatus}>

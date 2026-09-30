@@ -99,13 +99,13 @@ async function main() {
   for (const contract of tracked) {
     const settled = await settlePaidRent(prisma, contract.id, contract.paidThrough, now);
     resolved += settled.resolved;
-    removed += settled.removed;
+    removed += settled.cancelled;
   }
 
   console.log(
     `[repair-ledger] ${updated} contract(s) brought onto the ledger, ` +
       `${cleared.length} false debt(s) cleared, ${resolved} alert(s) resolved, ` +
-      `${removed} unsent message(s) removed.`,
+      `${removed} unsent message(s) removed or withdrawn.`,
   );
 }
 

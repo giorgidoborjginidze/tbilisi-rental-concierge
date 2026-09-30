@@ -4,7 +4,6 @@
 // deploy-time repair all share it.
 
 import { dayPrice } from "../assets/daily-price";
-import { startOfTodayTbilisi } from "../time";
 import { asPeriod, perPeriodAmount } from "./amount";
 import type { LedgerTerms } from "./ledger";
 import { evaluateSchedule, type ScheduleStatus } from "./schedule";
@@ -53,10 +52,15 @@ export interface ContractTermsInput {
   monthlyRent: number;
 }
 
-/** The ledger's view of a contract — the same rates the schedule shows. */
+/**
+ * The ledger's view of a contract — the same rates the schedule shows.
+ * `pricing` is the asset's (weekend / holiday premiums). It is required, so
+ * no screen can forget it and show a different amount than the WhatsApp
+ * message; pass null only where the contract has no asset.
+ */
 export function contractTerms(
   contract: ContractTermsInput,
-  pricing?: DailyPricing | null,
+  pricing: DailyPricing | null,
 ): LedgerTerms {
   const period = asPeriod(contract.paymentPeriod);
   const amount = periodAmount(contract);
@@ -69,15 +73,23 @@ export function contractTerms(
   };
 }
 
+/**
+ * Where a contract's rent stands on `today` (a Tbilisi day, stored form —
+ * lib/time.ts startOfTodayTbilisi). This is the one call every screen, the
+ * alert scan and the WhatsApp reminders use, and the asset's pricing is a
+ * required argument: a daily contract is charged the weekend / holiday
+ * price on those days, so a caller that left it out would show a smaller
+ * debt than the message the renter receives.
+ */
 export function statusFor(
   contract: ContractTermsInput & {
     graceDays: number;
     paidThrough: Date | null;
     creditBalance?: number | null;
   },
-  today: Date = startOfTodayTbilisi(),
-  /** Daily-mode assets price each day individually. */
-  pricing?: DailyPricing | null,
+  today: Date,
+  /** The asset's daily pricing (weekend / holiday premiums), or null. */
+  pricing: DailyPricing | null,
 ): ScheduleStatus {
   const terms = contractTerms(contract, pricing);
   return evaluateSchedule({

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireOperator } from "@/lib/auth/session";
 import type { FormState } from "@/lib/units/actions";
+import type { StringKey } from "@/lib/i18n/strings";
 import { TEMPLATE_KEYS, type TemplateKey } from "@/lib/notify/templates";
 import { flushOutbox } from "@/lib/notify/whatsapp";
 import { parsePolygon } from "@/lib/geo/fence";
@@ -13,7 +14,7 @@ import { PAYMENT_PERIODS, snapToBoundary, type PaymentPeriod } from "./schedule"
 import { monthlyEquivalent } from "./amount";
 import { alignPaidThrough, applyPayment, replayLedger } from "./ledger";
 import { contractTerms, periodAmount } from "./terms";
-import { settlePaidRent } from "./settle";
+import { restoreAfterUndo, settlePaidRent } from "./settle";
 
 const str = (formData: FormData, key: string) =>
   String(formData.get(key) ?? "").trim();
@@ -143,7 +144,23 @@ export async function saveSchedule(
       ...(ledger ?? {}),
     },
   });
-  if (ledger) await settlePaidRent(prisma, contractId, ledger.paidThrough);
+  // New terms, a new balance, other grace days or reminders switched off:
+  // whatever is still waiting to go out was written under the old ones.
+  // Alerts for due dates now paid close; the next scan queues fresh
+  // reminders for what is still owed.
+  const changed =
+    ledger != null ||
+    Math.round(graceRaw) !== contract.graceDays ||
+    remindersEnabled !== contract.remindersEnabled;
+  if (changed) {
+    await settlePaidRent(
+      prisma,
+      contractId,
+      ledger ? ledger.paidThrough : contract.paidThrough,
+      new Date(),
+      { cause: "changed", withdrawOwed: true },
+    );
+  }
 
   refresh(assetId);
   return null;
@@ -159,6 +176,21 @@ export async function recordPayment(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  const result = await receivePayment(formData);
+  return "error" in result ? { error: result.error } : null;
+}
+
+export type ReceiveResult = { paymentId: string } | { error: StringKey };
+
+/**
+ * The same as recordPayment, for callers that need the new payment's id —
+ * the dashboard's "received" card offers to undo it straight away.
+ */
+export async function receiveRent(formData: FormData): Promise<ReceiveResult> {
+  return receivePayment(formData);
+}
+
+async function receivePayment(formData: FormData): Promise<ReceiveResult> {
   const contractId = str(formData, "contractId");
   const assetId = str(formData, "assetId");
   const amount = Number(str(formData, "amount"));
@@ -185,7 +217,7 @@ export async function recordPayment(
   const paidAt = paidAtRaw ? new Date(`${paidAtRaw}T00:00:00Z`) : startOfTodayTbilisi();
   if (Number.isNaN(paidAt.getTime())) return { error: "error_required" };
 
-  await prisma.$transaction([
+  const [payment] = await prisma.$transaction([
     prisma.rentPayment.create({
       data: {
         contractId,
@@ -203,10 +235,14 @@ export async function recordPayment(
       data: { paidThrough: step.state.paidThrough, creditBalance: step.state.credit },
     }),
   ]);
-  await settlePaidRent(prisma, contractId, step.state.paidThrough);
+  // The reminders and late alerts about this rent are now history (or
+  // quote an amount that is no longer right): withdraw them.
+  await settlePaidRent(prisma, contractId, step.state.paidThrough, payment.createdAt, {
+    withdrawOwed: true,
+  });
 
   refresh(assetId);
-  return null;
+  return { paymentId: payment.id };
 }
 
 /**
@@ -216,18 +252,31 @@ export async function recordPayment(
  * restated are part of that statement and are not deleted here.
  */
 export async function deletePayment(formData: FormData) {
-  const assetId = str(formData, "assetId");
-  const paymentId = str(formData, "paymentId");
+  await removePayment(str(formData, "assetId"), str(formData, "paymentId"));
+}
+
+/**
+ * Undo, straight after "received": the payment goes, and so does what it
+ * withdrew — the late alert reopens and the reminder is back in the queue.
+ */
+export async function undoPayment(
+  formData: FormData,
+): Promise<{ ok: true } | { error: StringKey }> {
+  const error = await removePayment(str(formData, "assetId"), str(formData, "paymentId"));
+  return error ? { error } : { ok: true };
+}
+
+async function removePayment(assetId: string, paymentId: string): Promise<StringKey | null> {
   const owned = assetId ? await ownAsset(assetId) : null;
-  if (!owned || !paymentId) return;
+  if (!owned || !paymentId) return "error_required";
 
   const payment = await prisma.rentPayment.findFirst({
     where: { id: paymentId, contract: { assetId } },
     include: { contract: true },
   });
-  if (!payment) return;
+  if (!payment) return "error_required";
   const contract = payment.contract;
-  if (contract.openingAt && payment.createdAt <= contract.openingAt) return;
+  if (contract.openingAt && payment.createdAt <= contract.openingAt) return "error_payment_locked";
 
   const all = await prisma.rentPayment.findMany({
     where: {
@@ -274,7 +323,10 @@ export async function deletePayment(formData: FormData) {
       }),
     ),
   ]);
+  // What this payment withdrew comes back if its due date is unpaid again.
+  await restoreAfterUndo(prisma, contract.id, replay.state.paidThrough, payment.createdAt);
   refresh(assetId);
+  return null;
 }
 
 // ── GPS device ──────────────────────────────────────────────────────────

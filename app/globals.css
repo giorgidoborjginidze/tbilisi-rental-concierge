@@ -460,6 +460,9 @@ a:hover {
 .kpi-grid--3 {
   grid-template-columns: repeat(3, 1fr);
 }
+.kpi-grid--2 {
+  grid-template-columns: repeat(2, 1fr);
+}
 .kpi-grid--5 {
   grid-template-columns: repeat(5, 1fr);
 }
@@ -3018,6 +3021,97 @@ details.faq,
   font-size: 11.5px;
   color: var(--color-text-muted);
   margin: 2px 0 12px;
+}
+/* The two answers as line-icon buttons, big enough for a thumb. */
+.decide-acts {
+  display: flex;
+  gap: 6px;
+  margin-left: 8px;
+  flex: 0 0 auto;
+}
+.btn-chip.decide-act {
+  height: 36px;
+  min-width: 36px;
+  padding: 0 12px;
+  justify-content: center;
+  color: var(--color-text);
+}
+.decide-acts .btn-chip.decide-act {
+  width: 36px;
+  padding: 0;
+}
+/* More than one period owed: the card asks before recording. */
+.decide-top.decide-confirm {
+  flex-wrap: wrap;
+  cursor: default;
+  row-gap: 10px;
+}
+.decide-confirm .decide-txt span {
+  font-size: 12.5px;
+  color: var(--color-text);
+}
+.decide-confirm__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.btn-chip.decide-more {
+  margin-top: 12px;
+  height: 34px;
+  padding: 0 14px;
+  color: var(--color-text);
+}
+/* "Recorded — undo", or why it was not recorded. */
+.decide-toast {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px 10px 16px;
+  border-radius: var(--radius-lg);
+  background: var(--glass-fill);
+  box-shadow: var(--glass-edge);
+  font-size: 13px;
+  animation: decide-toast-in 0.22s ease;
+}
+.decide-toast--error {
+  color: var(--status-danger-text);
+  border: 1px solid color-mix(in srgb, var(--status-danger-text) 35%, transparent);
+}
+@keyframes decide-toast-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .decide-toast { animation: none; }
+}
+/* Phones: the amount drops under the name so the text keeps its room. */
+@media (max-width: 520px) {
+  .decide-top:not(.decide-confirm) {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "ico txt acts" "ico amount acts";
+    column-gap: 12px;
+    row-gap: 2px;
+  }
+  .decide-top:not(.decide-confirm) .decide-ico { grid-area: ico; }
+  .decide-top:not(.decide-confirm) .decide-txt { grid-area: txt; }
+  .decide-top:not(.decide-confirm) .decide-amount {
+    grid-area: amount;
+    margin-left: 0;
+    font-size: 13px;
+  }
+  .decide-top:not(.decide-confirm) .decide-acts { grid-area: acts; margin-left: 0; }
+  /* Undo sits under the text, on the left — clear of the floating help
+     button at the right edge. */
+  .decide-toast {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
 }
 
 /* ── Centre tab: assets, raised in the brand blue. ── */

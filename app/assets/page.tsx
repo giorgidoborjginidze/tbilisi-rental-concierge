@@ -3,7 +3,8 @@ import { prisma } from "@/lib/db";
 import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey, type Locale } from "@/lib/i18n/strings";
-import { proratedRevenue } from "@/lib/analytics/metrics";
+import { monthlyIncome } from "@/lib/analytics/monthly-income";
+import { incomeParts } from "@/lib/analytics/income-display";
 import { estimateMarketRent, getRentBenchmark } from "@/lib/market/rent";
 import { fetchUsdGel, fetchUsdPrices, FALLBACK_USD_GEL } from "@/lib/crypto/prices";
 import { fetchStockPrices } from "@/lib/stocks/prices";
@@ -131,11 +132,9 @@ export default async function AssetsPage() {
 
   const locale = await getLocale();
   const today = startOfTodayTbilisi();
-  const monthStart = monthStartTbilisi(0);
-  const monthEnd = monthStartTbilisi(1);
   const monthKey = monthKeyTbilisi();
 
-  const [assets, monthBookings, monthIncomes] = await Promise.all([
+  const [assets, income] = await Promise.all([
     prisma.asset.findMany({
       where: { operatorId: operator.id },
       include: {
@@ -144,19 +143,8 @@ export default async function AssetsPage() {
       },
       orderBy: [{ category: "asc" }, { name: "asc" }],
     }),
-    prisma.booking.findMany({
-      where: {
-        status: { not: "cancelled" },
-        checkIn: { lt: monthEnd },
-        checkOut: { gt: monthStart },
-        unit: { operatorId: operator.id },
-      },
-    }),
-    prisma.incomeRecord.findMany({
-      where: { operatorId: operator.id },
-      orderBy: { date: "desc" },
-      take: 10,
-    }),
+    // The one income definition — the same total as the dashboard.
+    monthlyIncome(operator.id, monthStartTbilisi(0)),
   ]);
 
   const activeContract = (asset: (typeof assets)[number]) =>
@@ -184,28 +172,6 @@ export default async function AssetsPage() {
         url: record[platform.field]!,
       }));
   };
-
-  // Income consolidation for the current month. monthlyRent is the
-  // normalised monthly equivalent, whatever the payment period.
-  const rentIncome = assets.reduce((sum, asset) => {
-    const contract = activeContract(asset);
-    return sum + (contract?.monthlyRent ?? 0);
-  }, 0);
-  // Recurring income streams registered as assets (salary, dividend, …).
-  const otherIncomeSources = assets.reduce(
-    (sum, asset) =>
-      asset.category === "income_source" ? sum + (asset.monthlyIncome ?? 0) : sum,
-    0,
-  );
-  const strIncome = monthBookings.reduce(
-    (sum, b) => sum + proratedRevenue(b, { start: monthStart, end: monthEnd }),
-    0,
-  );
-  const manualIncomeThisMonth = monthIncomes
-    .filter((r) => r.date >= monthStart && r.date < monthEnd)
-    .reduce((sum, r) => sum + r.amount, 0);
-  const totalMonthly =
-    rentIncome + strIncome + manualIncomeThisMonth + otherIncomeSources;
 
   // ── Crypto, stock & metal holdings: live valuation in USD → GEL. ──
   const [cryptoAssets, stockAssets, metalAssets] = await Promise.all([
@@ -338,14 +304,13 @@ export default async function AssetsPage() {
         </Link>
       </div>
 
-      <section className="kpi-grid kpi-grid--3d kpi-grid--3">
+      <section className="kpi-grid kpi-grid--3d kpi-grid--2">
         <Kpi label={t(locale, "assets_total_value")} value={money(totalValue)} />
         <Kpi
-          label={t(locale, "assets_monthly_income")}
-          value={money(totalMonthly)}
-          sub={`${t(locale, "income_rent_short")}: ${money(rentIncome)} · ${t(locale, "income_str_short")}: ${money(strIncome)} · ${t(locale, "income_other_short")}: ${money(manualIncomeThisMonth + otherIncomeSources)}`}
+          label={t(locale, "income_all_month")}
+          value={money(income.total)}
+          sub={incomeParts(locale, income, money) || t(locale, "income_all_hint")}
         />
-        <Kpi label={t(locale, "income_str_derived")} value={money(strIncome)} />
       </section>
 
       {assets.length === 0 && (

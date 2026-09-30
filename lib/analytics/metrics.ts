@@ -6,8 +6,10 @@
 //   ADR        = room revenue / booked nights (nights actually sold)
 //   RevPAR     = room revenue / available nights
 // Revenue is prorated by night when a stay straddles the window edge.
-// Cancelled bookings are excluded by the caller; leases are tracked
-// separately and are not part of STR metrics.
+// Cancelled bookings are excluded by the caller. Nights a unit is let on a
+// long lease are not for sale, so they are taken out of the available
+// nights (and reported as leasedNights) instead of counting as empty; the
+// lease rent itself is counted in lib/analytics/income.ts, not here.
 
 import { mergeIntervals, type Interval } from "@/lib/calendar/occupancy";
 
@@ -20,6 +22,8 @@ export interface BookingLike {
 
 export interface WindowMetrics {
   availableNights: number;
+  /** Nights let on a long lease — not for sale, not in availableNights. */
+  leasedNights: number;
   occupiedNights: number; // merged — no double counting
   bookedNights: number; // sum over bookings — basis for ADR
   revenue: number;
@@ -54,20 +58,47 @@ export function proratedRevenue(
   return (booking.amount * clippedNights(booking, window)) / booking.nights;
 }
 
-// Metrics for ONE unit over a window.
+const clipInterval = (interval: Interval, window: Interval): Interval | null => {
+  const start = interval.start > window.start ? interval.start : window.start;
+  const end = interval.end < window.end ? interval.end : window.end;
+  return end > start ? { start, end } : null;
+};
+
+const totalNights = (intervals: Interval[]) =>
+  intervals.reduce((sum, interval) => sum + nightsBetween(interval.start, interval.end), 0);
+
+/** Nights two merged (non-overlapping) interval lists have in common. */
+const sharedNights = (a: Interval[], b: Interval[]) => {
+  let shared = 0;
+  for (const x of a) {
+    for (const y of b) {
+      const both = clipInterval(x, y);
+      if (both) shared += nightsBetween(both.start, both.end);
+    }
+  }
+  return shared;
+};
+
+// Metrics for ONE unit over a window. `leases` are its long lets.
 export function unitWindowMetrics(
   bookings: BookingLike[],
   window: Interval,
+  leases: Interval[] = [],
 ): WindowMetrics {
-  const availableNights = nightsBetween(window.start, window.end);
+  const leased = mergeIntervals(
+    leases
+      .map((lease) => clipInterval(lease, window))
+      .filter((i): i is Interval => i !== null),
+  );
+  const leasedNights = totalNights(leased);
+  const availableNights = nightsBetween(window.start, window.end) - leasedNights;
 
   const clippedStays = bookings
     .map((b) => clip(b, window))
     .filter((i): i is Interval => i !== null);
-  const occupiedNights = mergeIntervals(clippedStays).reduce(
-    (sum, interval) => sum + nightsBetween(interval.start, interval.end),
-    0,
-  );
+  const stays = mergeIntervals(clippedStays);
+  // A stay on a leased night does not make a leased night "occupied".
+  const occupiedNights = totalNights(stays) - sharedNights(stays, leased);
 
   const bookedNights = bookings.reduce(
     (sum, b) => sum + clippedNights(b, window),
@@ -80,6 +111,7 @@ export function unitWindowMetrics(
 
   return {
     availableNights,
+    leasedNights,
     occupiedNights,
     bookedNights,
     revenue,
@@ -92,11 +124,13 @@ export function unitWindowMetrics(
 // Portfolio metrics: sum the per-unit absolutes, recompute the rates.
 export function aggregateMetrics(units: WindowMetrics[]): WindowMetrics {
   const availableNights = units.reduce((s, m) => s + m.availableNights, 0);
+  const leasedNights = units.reduce((s, m) => s + m.leasedNights, 0);
   const occupiedNights = units.reduce((s, m) => s + m.occupiedNights, 0);
   const bookedNights = units.reduce((s, m) => s + m.bookedNights, 0);
   const revenue = units.reduce((s, m) => s + m.revenue, 0);
   return {
     availableNights,
+    leasedNights,
     occupiedNights,
     bookedNights,
     revenue,

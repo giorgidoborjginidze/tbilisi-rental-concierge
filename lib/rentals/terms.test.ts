@@ -59,7 +59,7 @@ describe("per-period rates", () => {
       graceDays: 3,
       paidThrough: d("2026-09-01"),
     };
-    const status = statusFor(flat, d("2026-09-02"));
+    const status = statusFor(flat, d("2026-09-02"), null);
     expect(status.periodsOwed).toBe(1);
     expect(status.amountDue).toBe(1200);
   });

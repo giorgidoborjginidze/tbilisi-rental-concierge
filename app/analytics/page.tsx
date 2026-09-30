@@ -53,12 +53,19 @@ export default async function AnalyticsPage() {
           checkOut: { gt: rangeStart },
         },
       },
+      leases: {
+        where: { startDate: { lt: rangeEnd }, endDate: { gt: rangeStart } },
+        select: { startDate: true, endDate: true },
+      },
     },
   });
 
   const currency = units[0]?.currency ?? "GEL";
   const bookingsOf = (unit: (typeof units)[number]): BookingLike[] =>
     unit.bookings;
+  // Nights let on a long lease are not for sale: out of the available nights.
+  const leasesOf = (unit: (typeof units)[number]) =>
+    unit.leases.map((lease) => ({ start: lease.startDate, end: lease.endDate }));
 
   const thisMonth = {
     start: monthStartTbilisi(0),
@@ -68,13 +75,13 @@ export default async function AnalyticsPage() {
 
   const perUnitThisMonth = units.map((unit) => ({
     unit,
-    metrics: unitWindowMetrics(bookingsOf(unit), thisMonth),
+    metrics: unitWindowMetrics(bookingsOf(unit), thisMonth, leasesOf(unit)),
   }));
   const portfolioThisMonth = aggregateMetrics(
     perUnitThisMonth.map((row) => row.metrics),
   );
   const portfolioNext30 = aggregateMetrics(
-    units.map((unit) => unitWindowMetrics(bookingsOf(unit), next30)),
+    units.map((unit) => unitWindowMetrics(bookingsOf(unit), next30, leasesOf(unit))),
   );
 
   const months = monthWindows(rangeStart, new Date(rangeEnd.getTime() - DAY_MS));
@@ -83,7 +90,7 @@ export default async function AnalyticsPage() {
       key: window.key,
       start: window.start,
       metrics: aggregateMetrics(
-        units.map((unit) => unitWindowMetrics(bookingsOf(unit), window)),
+        units.map((unit) => unitWindowMetrics(bookingsOf(unit), window, leasesOf(unit))),
       ),
     }));
 
@@ -122,7 +129,7 @@ export default async function AnalyticsPage() {
           <Kpi label="ADR" value={money(portfolioThisMonth.adr, currency)} />
           <Kpi label="RevPAR" value={money(portfolioThisMonth.revpar, currency)} />
           <Kpi
-            label={t(locale, "kpi_revenue")}
+            label={t(locale, "kpi_booking_revenue")}
             value={money(portfolioThisMonth.revenue, currency)}
           />
           <Kpi
@@ -144,7 +151,7 @@ export default async function AnalyticsPage() {
                 <th className="num">ADR</th>
                 <th className="num">RevPAR</th>
                 <th className="num">
-                  {t(locale, "kpi_revenue")} ({currency})
+                  {t(locale, "kpi_booking_revenue")} ({currency})
                 </th>
               </tr>
             </thead>
@@ -182,7 +189,7 @@ export default async function AnalyticsPage() {
                 <th className="num">ADR</th>
                 <th className="num">RevPAR</th>
                 <th className="num">
-                  {t(locale, "kpi_revenue")} ({currency})
+                  {t(locale, "kpi_booking_revenue")} ({currency})
                 </th>
               </tr>
             </thead>
@@ -196,7 +203,15 @@ export default async function AnalyticsPage() {
                     <div className="cell-sub">{unit.city}</div>
                   </td>
                   <td>{unit.district}</td>
-                  <td className="num">{pct(metrics.occupancyRate)}</td>
+                  <td className="num">
+                    {metrics.availableNights === 0 && metrics.leasedNights > 0 ? (
+                      <span className="badge badge--rented" title={t(locale, "analytics_leased_hint")}>
+                        {t(locale, "analytics_leased")}
+                      </span>
+                    ) : (
+                      pct(metrics.occupancyRate)
+                    )}
+                  </td>
                   <td className="num">{money(metrics.adr, "")}</td>
                   <td className="num">{money(metrics.revpar, "")}</td>
                   <td className="num">{Math.round(metrics.revenue)}</td>

@@ -15,6 +15,7 @@ import type { SessionOperator } from "@/lib/auth/session";
 import { startOfTodayTbilisi } from "@/lib/time";
 import { asPeriod, monthlyEquivalent } from "@/lib/rentals/amount";
 import { contractPhase } from "@/lib/rentals/phase";
+import { withdrawContract } from "@/lib/rentals/settle";
 import { defaultPaidThrough, snapToBoundary } from "@/lib/rentals/schedule";
 
 const str = (formData: FormData, key: string) =>
@@ -341,11 +342,19 @@ export async function deleteContract(formData: FormData) {
   const contractId = str(formData, "contractId");
   const assetId = str(formData, "assetId");
   if (contractId) {
-    await prisma.rentalContract.deleteMany({
+    const { count } = await prisma.rentalContract.deleteMany({
       where: { id: contractId, asset: { operatorId: operator.id } },
     });
+    // Nothing more may go out about a contract that no longer exists, and
+    // its alerts (late rent, repossession right, expiry) are closed.
+    if (count > 0) await withdrawContract(prisma, contractId, "contract_deleted");
     revalidatePath("/assets");
-    if (assetId) revalidatePath(`/assets/${assetId}/edit`);
+    revalidatePath("/alerts");
+    revalidatePath("/");
+    if (assetId) {
+      revalidatePath(`/assets/${assetId}/edit`);
+      revalidatePath(`/assets/${assetId}/rental`);
+    }
   }
 }
 

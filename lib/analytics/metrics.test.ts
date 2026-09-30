@@ -100,3 +100,33 @@ describe("monthWindows", () => {
     expect(windows[1].end.toISOString()).toBe("2027-01-01T00:00:00.000Z");
   });
 });
+
+describe("leased nights", () => {
+  it("are not for sale: a fully leased unit has no available nights, not 0%", () => {
+    const lease = { start: d("2026-07-15"), end: d("2027-01-01") };
+    const m = unitWindowMetrics([], AUG, [lease]);
+    expect(m.leasedNights).toBe(31);
+    expect(m.availableNights).toBe(0);
+    expect(m.occupancyRate).toBe(0);
+    expect(m.revpar).toBeNull();
+  });
+
+  it("no longer drag the portfolio occupancy down", () => {
+    const busy = unitWindowMetrics([booking("2026-08-01", "2026-08-11", 1000)], AUG);
+    const leased = unitWindowMetrics([], AUG, [{ start: d("2026-08-01"), end: d("2026-09-01") }]);
+    const portfolio = aggregateMetrics([busy, leased]);
+    expect(portfolio.availableNights).toBe(31);
+    expect(portfolio.leasedNights).toBe(31);
+    expect(portfolio.occupancyRate).toBeCloseTo(10 / 31);
+  });
+
+  it("a stay on a leased night does not count as an occupied night", () => {
+    const m = unitWindowMetrics(
+      [booking("2026-08-10", "2026-08-20", 1000)],
+      AUG,
+      [{ start: d("2026-08-15"), end: d("2026-09-01") }],
+    );
+    expect(m.availableNights).toBe(14);
+    expect(m.occupiedNights).toBe(5);
+  });
+});

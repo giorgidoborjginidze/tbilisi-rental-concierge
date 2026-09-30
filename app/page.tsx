@@ -5,11 +5,9 @@ import { getSessionOperator, type SessionOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
 import type { Locale } from "@/lib/i18n/strings";
-import {
-  aggregateMetrics,
-  proratedRevenue,
-  unitWindowMetrics,
-} from "@/lib/analytics/metrics";
+import { aggregateMetrics, unitWindowMetrics } from "@/lib/analytics/metrics";
+import { monthlyIncome } from "@/lib/analytics/monthly-income";
+import { incomeParts } from "@/lib/analytics/income-display";
 import SplashIntro from "./splash-intro";
 import HeroLogo from "./hero-logo";
 import PortfolioDeck from "./portfolio-deck";
@@ -368,7 +366,6 @@ async function HotelDashboard({
 }) {
   // Tbilisi's today: arrivals after midnight belong to the new day.
   const today = startOfTodayTbilisi();
-  const tomorrow = startOfTomorrowTbilisi();
   const monthStart = monthStartTbilisi(0);
   const monthEnd = monthStartTbilisi(1);
   // Fetch a hair wider than the month so a stay ending exactly on the 1st
@@ -377,7 +374,7 @@ async function HotelDashboard({
     Math.min(monthStart.getTime(), today.getTime()) - DAY_MS,
   );
 
-  const [units, alertCount] = await Promise.all([
+  const [units, alertCount, income] = await Promise.all([
     prisma.unit.findMany({
       where: { operatorId: operator.id },
       orderBy: [{ city: "asc" }, { district: "asc" }, { name: "asc" }],
@@ -389,15 +386,27 @@ async function HotelDashboard({
             checkOut: { gt: queryStart },
           },
         },
+        leases: {
+          where: { startDate: { lt: monthEnd }, endDate: { gt: monthStart } },
+          select: { startDate: true, endDate: true },
+        },
       },
     }),
     openAlertCount(operator.id),
+    monthlyIncome(operator.id, monthStart),
   ]);
 
   const currency = units[0]?.currency ?? "GEL";
   const monthWindow = { start: monthStart, end: monthEnd };
+  // Booking metrics; nights let on a long lease are not for sale.
   const portfolio = aggregateMetrics(
-    units.map((unit) => unitWindowMetrics(unit.bookings, monthWindow)),
+    units.map((unit) =>
+      unitWindowMetrics(
+        unit.bookings,
+        monthWindow,
+        unit.leases.map((lease) => ({ start: lease.startDate, end: lease.endDate })),
+      ),
+    ),
   );
 
   const displayName = (unit: { name: string; nameKa: string | null }) =>
@@ -487,10 +496,13 @@ async function HotelDashboard({
 
       {units.length > 0 && (
         <>
+          {/* The same "all income" as the income bars and /assets; the
+              booking revenue (the analytics figure) is named as such. */}
           <WealthHero
-            label={`${t(locale, "this_month")} · ${t(locale, "kpi_revenue")}`}
-            total={portfolio.revenue}
+            label={t(locale, "income_all_month")}
+            total={income.total}
             chips={[
+              `${t(locale, "kpi_booking_revenue")}: ${money(portfolio.revenue, currency)}`,
               `${t(locale, "kpi_occupancy")}: ${pct(portfolio.occupancyRate)}`,
               `ADR: ${money(portfolio.adr, currency)}`,
             ]}
@@ -506,7 +518,7 @@ async function HotelDashboard({
               <Kpi label={t(locale, "kpi_occupancy")} value={pct(portfolio.occupancyRate)} />
               <Kpi label="ADR" value={money(portfolio.adr, currency)} />
               <Kpi label="RevPAR" value={money(portfolio.revpar, currency)} />
-              <Kpi label={t(locale, "kpi_revenue")} value={money(portfolio.revenue, currency)} />
+              <Kpi label={t(locale, "kpi_booking_revenue")} value={money(portfolio.revenue, currency)} />
               <Kpi
                 label={t(locale, "dash_occupied_now")}
                 value={`${occupiedNow} / ${units.length}`}
@@ -560,13 +572,14 @@ async function BrokerageDashboard({
   const today = startOfTodayTbilisi();
   const in30 = new Date(today.getTime() + 30 * DAY_MS);
 
-  const [assets, alertCount] = await Promise.all([
+  const [assets, alertCount, income] = await Promise.all([
     prisma.asset.findMany({
       where: { operatorId: operator.id, category: { not: "income_source" } },
       include: { contracts: { orderBy: { endDate: "desc" } } },
       orderBy: [{ category: "asc" }, { name: "asc" }],
     }),
     openAlertCount(operator.id),
+    monthlyIncome(operator.id),
   ]);
 
   const activeContract = (asset: (typeof assets)[number]) =>
@@ -586,11 +599,6 @@ async function BrokerageDashboard({
     statusCounts[status as keyof typeof statusCounts] =
       (statusCounts[status as keyof typeof statusCounts] ?? 0) + 1;
   }
-
-  const rentIncome = assets.reduce(
-    (sum, asset) => sum + (activeContract(asset)?.monthlyRent ?? 0),
-    0,
-  );
 
   const expiring = assets
     .flatMap((asset) =>
@@ -627,7 +635,11 @@ async function BrokerageDashboard({
 
       <section className="kpi-grid kpi-grid--3d kpi-grid--3">
         <Kpi label={t(locale, "dash_managed")} value={String(assets.length)} />
-        <Kpi label={t(locale, "dash_rent_month")} value={money(rentIncome)} />
+        <Kpi
+          label={t(locale, "income_all_month")}
+          value={money(income.total)}
+          sub={incomeParts(locale, income, (v) => money(v))}
+        />
         <Kpi label={t(locale, "dash_open_alerts")} value={String(alertCount)} />
       </section>
 
@@ -735,22 +747,19 @@ async function CarRentalDashboard({
   const today = startOfTodayTbilisi();
   const tomorrow = startOfTomorrowTbilisi();
 
-  const [vehicles, alertCount] = await Promise.all([
+  const [vehicles, alertCount, income] = await Promise.all([
     prisma.asset.findMany({
       where: { operatorId: operator.id, category: "vehicle" },
       include: { contracts: { orderBy: { endDate: "desc" } } },
       orderBy: { name: "asc" },
     }),
     openAlertCount(operator.id),
+    monthlyIncome(operator.id),
   ]);
 
   const activeContract = (asset: (typeof vehicles)[number]) =>
     runningContract(asset.contracts, today);
   const rentedNow = vehicles.filter((v) => activeContract(v)).length;
-  const rentIncome = vehicles.reduce(
-    (sum, v) => sum + (activeContract(v)?.monthlyRent ?? 0),
-    0,
-  );
 
   const inDay = (d: Date) => d >= today && d < tomorrow;
   const withContracts = (pick: (c: { startDate: Date; endDate: Date }) => boolean) =>
@@ -824,7 +833,11 @@ async function CarRentalDashboard({
           label={t(locale, "dash_rented_now")}
           value={`${rentedNow} / ${vehicles.length}`}
         />
-        <Kpi label={t(locale, "dash_rent_month")} value={money(rentIncome)} />
+        <Kpi
+          label={t(locale, "income_all_month")}
+          value={money(income.total)}
+          sub={incomeParts(locale, income, (v) => money(v))}
+        />
         <Kpi label={t(locale, "dash_open_alerts")} value={String(alertCount)} />
       </section>
 
@@ -884,46 +897,16 @@ async function PersonalDashboard({
   locale: Locale;
   operator: SessionOperator;
 }) {
-  const today = startOfTodayTbilisi();
-  const monthStart = monthStartTbilisi(0);
-  const monthEnd = monthStartTbilisi(1);
-
-  const [assets, monthBookings, unitCount, alertCount] = await Promise.all([
+  const [assets, income, unitCount, alertCount] = await Promise.all([
     prisma.asset.findMany({
       where: { operatorId: operator.id },
-      include: { contracts: { orderBy: { endDate: "desc" } } },
+      select: { category: true, estimatedValue: true },
     }),
-    prisma.booking.findMany({
-      where: {
-        status: { not: "cancelled" },
-        checkIn: { lt: monthEnd },
-        checkOut: { gt: monthStart },
-        unit: { operatorId: operator.id },
-      },
-    }),
+    // The one income definition: the same total as the bars and /assets.
+    monthlyIncome(operator.id),
     prisma.unit.count({ where: { operatorId: operator.id } }),
     openAlertCount(operator.id),
   ]);
-
-  const activeContract = (asset: (typeof assets)[number]) =>
-    runningContract(asset.contracts, today);
-
-  // monthlyRent is the normalised monthly equivalent, so a daily car adds
-  // a month of its day rate, not one day.
-  const rentIncome = assets.reduce(
-    (sum, asset) => sum + (activeContract(asset)?.monthlyRent ?? 0),
-    0,
-  );
-  const recurringIncome = assets.reduce(
-    (sum, asset) =>
-      asset.category === "income_source" ? sum + (asset.monthlyIncome ?? 0) : sum,
-    0,
-  );
-  const strIncome = monthBookings.reduce(
-    (sum, b) => sum + proratedRevenue(b, { start: monthStart, end: monthEnd }),
-    0,
-  );
-  const totalMonthly = rentIncome + recurringIncome + strIncome;
   const totalValue = assets.reduce((sum, a) => sum + (a.estimatedValue ?? 0), 0);
   const propertyCount = assets.filter((a) => a.category !== "income_source").length;
 
@@ -939,7 +922,7 @@ async function PersonalDashboard({
         label={t(locale, "dash_wealth")}
         total={totalValue}
         chips={[
-          `${t(locale, "assets_monthly_income")}: ${money(totalMonthly)}`,
+          `${t(locale, "income_all_month")}: ${money(income.total)}`,
           `${t(locale, "nav_assets")}: ${propertyCount}`,
         ]}
       />
@@ -955,9 +938,9 @@ async function PersonalDashboard({
 
       <section className="kpi-grid kpi-grid--3d kpi-grid--3">
         <Kpi
-          label={t(locale, "assets_monthly_income")}
-          value={money(totalMonthly)}
-          sub={`${t(locale, "income_rent_short")}: ${money(rentIncome + strIncome)} · ${t(locale, "income_other_short")}: ${money(recurringIncome)}`}
+          label={t(locale, "income_all_month")}
+          value={money(income.total)}
+          sub={incomeParts(locale, income, (v) => money(v))}
         />
         <Kpi label={t(locale, "assets_total_value")} value={money(totalValue)} />
         <Kpi

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import type { Locale } from "@/lib/i18n/strings";
 import { queueMessage } from "@/lib/notify/whatsapp";
 import { activeContractWhere } from "@/lib/rentals/phase";
+import { withdrawFence } from "@/lib/rentals/settle";
 import { startOfTodayTbilisi } from "@/lib/time";
 import type { TemplateKey } from "@/lib/notify/templates";
 import {
@@ -126,8 +127,12 @@ export async function processPing(
       });
 
       // Coming back inside is recorded but not announced — nobody needs a
-      // WhatsApp message telling them the problem went away.
-      if (event !== "return") {
+      // WhatsApp message telling them the problem went away. What is still
+      // waiting to go out about this fence (the "approaching" warning, the
+      // "suspected theft" text) is withdrawn, and its breach alert closed.
+      if (event === "return") {
+        await withdrawFence(prisma, fence.id, row.createdAt);
+      } else {
         const eventVars = { ...vars, fence: fence.name };
         const queuedDriver = await queueMessage({
           operatorId: asset.operator.id,

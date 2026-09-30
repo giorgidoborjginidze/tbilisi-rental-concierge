@@ -43,7 +43,10 @@ async function handle(body: PingBody) {
     return NextResponse.json({ error: "invalid_position" }, { status: 400 });
   }
 
-  const device = await prisma.gpsDevice.findUnique({ where: { deviceId } });
+  const device = await prisma.gpsDevice.findUnique({
+    where: { deviceId },
+    include: { asset: { select: { operatorId: true } } },
+  });
   if (!device || device.token !== token) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
@@ -57,9 +60,10 @@ async function handle(body: PingBody) {
   });
 
   // Deliver straight away when the Cloud API is configured; otherwise the
-  // messages wait in the outbox for click-to-send.
+  // messages wait in the outbox for click-to-send. Only this vehicle's
+  // owner's outbox: a ping never sends another customer's messages.
   const queued = outcomes.some((outcome) => outcome.queued > 0);
-  if (queued) await flushOutbox().catch(() => undefined);
+  if (queued) await flushOutbox(device.asset.operatorId).catch(() => undefined);
 
   return NextResponse.json({
     ok: true,
