@@ -7,6 +7,7 @@ import { dayPrice } from "../assets/daily-price";
 import { asPeriod, perPeriodAmount } from "./amount";
 import type { LedgerTerms } from "./ledger";
 import { evaluateSchedule, type ScheduleStatus } from "./schedule";
+import { activeContract, contractPhase, scheduleContract } from "./phase";
 
 /** Per-period amount, as the renter pays it. */
 export function periodAmount(contract: {
@@ -103,4 +104,84 @@ export function statusFor(
     credit: contract.creditBalance ?? 0,
     today,
   });
+}
+
+// ── Settling what a finished contract still owes ───────────────────────
+//
+// The monitor stops chasing a contract once it has ended — no reminders,
+// no alerts. But rent left unpaid at the end is still money the renter
+// owes, and when they pay it the owner must be able to record it. So the
+// screens that take money (the rental page, the decide cards, the late
+// badge on the asset list) still reach a finished contract while it has a
+// balance.
+
+/** How long after its end a finished contract's debt is still offered for settling on the dashboards. */
+export const SETTLEMENT_WINDOW_DAYS = 90;
+
+type SettlementInput = ContractTermsInput & {
+  graceDays: number;
+  paidThrough: Date | null;
+  creditBalance?: number | null;
+};
+
+/** Does this contract still have rent owed on `today`? Untracked contracts never do. */
+export function hasBalance(
+  contract: SettlementInput,
+  today: Date,
+  pricing: DailyPricing | null,
+): boolean {
+  if (contract.paidThrough == null) return false;
+  return statusFor(contract, today, pricing).periodsOwed > 0;
+}
+
+/**
+ * Finished contracts that still have rent owed, the most recently ended
+ * first. `withinDays` limits how far back to look.
+ */
+export function unsettledContracts<T extends SettlementInput>(
+  contracts: T[],
+  today: Date,
+  pricing: DailyPricing | null,
+  withinDays: number = Number.POSITIVE_INFINITY,
+): T[] {
+  const cutoff = today.getTime() - withinDays * 86_400_000;
+  return contracts
+    .filter(
+      (contract) =>
+        contractPhase(contract, today) === "ended" &&
+        contract.endDate.getTime() > cutoff &&
+        hasBalance(contract, today, pricing),
+    )
+    .sort((a, b) => b.endDate.getTime() - a.endDate.getTime());
+}
+
+/**
+ * The contract whose money the owner deals with: the one running today or
+ * next to start (scheduleContract), else the most recently finished one
+ * that still has rent owed.
+ */
+export function settlementContract<T extends SettlementInput>(
+  contracts: T[],
+  today: Date,
+  pricing: DailyPricing | null,
+): T | undefined {
+  return scheduleContract(contracts, today) ?? unsettledContracts(contracts, today, pricing)[0];
+}
+
+/**
+ * The contract a "late" marker is about: the running one when it is late,
+ * else the most recently finished one with rent still owed.
+ */
+export function lateContract<T extends SettlementInput>(
+  contracts: T[],
+  today: Date,
+  pricing: DailyPricing | null,
+  withinDays: number = SETTLEMENT_WINDOW_DAYS,
+): T | undefined {
+  const running = activeContract(contracts, today);
+  if (running && running.paidThrough != null) {
+    const state = statusFor(running, today, pricing).state;
+    if (state === "due" || state === "grace" || state === "repossess") return running;
+  }
+  return unsettledContracts(contracts, today, pricing, withinDays)[0];
 }

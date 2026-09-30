@@ -15,7 +15,7 @@ import type { SessionOperator } from "@/lib/auth/session";
 import { startOfTodayTbilisi } from "@/lib/time";
 import { asPeriod, monthlyEquivalent } from "@/lib/rentals/amount";
 import { contractPhase } from "@/lib/rentals/phase";
-import { withdrawContract } from "@/lib/rentals/settle";
+import { settlePaidRent, withdrawContract } from "@/lib/rentals/settle";
 import { defaultPaidThrough, snapToBoundary } from "@/lib/rentals/schedule";
 
 const str = (formData: FormData, key: string) =>
@@ -167,6 +167,36 @@ export async function saveAsset(
       // stale "rented" left behind by a finished contract.
       data: { ...data, ...(owned.status !== status ? { statusSetAt: new Date() } : {}) },
     });
+    // Daily contracts are priced day by day with the asset's weekend and
+    // holiday premiums. New premiums must not re-price money already
+    // received: each tracked daily contract opens a new ledger balance at
+    // its current position, so a later delete replays only payments made
+    // under the new prices (as a change of terms does in saveSchedule).
+    const premiumsChanged =
+      (owned.weekendPct ?? 0) !== (weekendPct ?? 0) ||
+      (owned.holidayPct ?? 0) !== (holidayPct ?? 0);
+    if (premiumsChanged) {
+      const daily = await prisma.rentalContract.findMany({
+        where: { assetId, paymentPeriod: "daily", paidThrough: { not: null } },
+        select: { id: true, paidThrough: true, creditBalance: true },
+      });
+      const openedAt = new Date();
+      for (const contract of daily) {
+        await prisma.rentalContract.update({
+          where: { id: contract.id },
+          data: {
+            openingPaidThrough: contract.paidThrough,
+            openingCredit: contract.creditBalance,
+            openingAt: openedAt,
+          },
+        });
+        // Reminders still waiting quote the old day prices.
+        await settlePaidRent(prisma, contract.id, contract.paidThrough, openedAt, {
+          cause: "changed",
+          withdrawOwed: true,
+        });
+      }
+    }
   } else {
     const { getBillingContext } = await import("@/lib/billing/context");
     if (!(await getBillingContext(operator)).canAddAsset) {

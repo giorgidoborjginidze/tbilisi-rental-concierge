@@ -2546,6 +2546,66 @@ details[open] .faq__plus {
 .gps-copy button {
   flex: 0 0 auto;
 }
+/* Token, example and protocol notes stay folded away: the owner forwards
+   the address; the installer reads the rest. The long one-line codes
+   scroll inside their box instead of widening the card. */
+.gps-copy {
+  grid-template-columns: minmax(0, 1fr);
+}
+.gps-tech {
+  min-width: 0;
+}
+.gps-tech summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+.gps-tech[open] summary {
+  margin-bottom: 10px;
+}
+.gps-tech > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin-bottom: 10px;
+}
+.gps-tech__example {
+  flex-wrap: wrap;
+}
+.gps-tech__example code {
+  flex: 1 1 100%;
+  max-width: 100%;
+}
+.gps-copy .gps-tech__example .field-hint {
+  flex: 1 1 100%;
+}
+.gps-tech__example code {
+  border-style: dashed;
+  color: var(--color-text-muted);
+}
+.gps-tech p {
+  margin: 0;
+}
+.fence-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+/* The chosen preset reads as chosen (the glass chip rule further down
+   would otherwise wash the active fill out). */
+.fence-presets .btn-chip.btn-chip--active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-primary-contrast);
+}
+.fence-presets .btn-chip,
+.gps-copy .btn-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
 
 .tpl-grid {
   display: grid;

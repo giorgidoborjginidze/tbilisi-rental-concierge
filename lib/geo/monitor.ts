@@ -2,13 +2,13 @@ import { prisma } from "@/lib/db";
 import type { Locale } from "@/lib/i18n/strings";
 import { queueMessage } from "@/lib/notify/whatsapp";
 import { activeContractWhere } from "@/lib/rentals/phase";
-import { withdrawFence } from "@/lib/rentals/settle";
+import { resolveTrackerSilence, withdrawFence } from "@/lib/rentals/settle";
 import { startOfTodayTbilisi } from "@/lib/time";
 import type { TemplateKey } from "@/lib/notify/templates";
 import {
   evaluateFence,
   shapeFromRow,
-  transition,
+  stepFence,
   type LatLng,
   type Transition,
   type Zone,
@@ -18,7 +18,12 @@ import {
 //
 // The rule that keeps this quiet: a message is written only when the
 // vehicle *changes* zone. A car parked one street past the line pings every
-// minute; the owner hears about it exactly once.
+// minute; the owner hears about it exactly once. The zone is stored on the
+// fence at every ping (Geofence.lastZone), so drifting back from the edge
+// to the safe zone re-arms the approach warning for the next time.
+//
+// The position must already be a real, fresh fix — /api/gps/ping refuses
+// empty, 0,0, duplicated, future and out-of-order positions (lib/geo/ping).
 
 export interface PingInput {
   lat: number;
@@ -34,14 +39,6 @@ export interface PingOutcome {
   distanceKm: number;
   event: Transition | null;
   queued: number;
-}
-
-/** The zone the last recorded event left the vehicle in. */
-function zoneFromLastEvent(kind: string | undefined): Zone | null {
-  if (kind === "breach") return "outside";
-  if (kind === "approach") return "approach";
-  if (kind === "return") return "safe";
-  return null;
 }
 
 const DRIVER_KEY: Record<Exclude<Transition, "return">, TemplateKey> = {
@@ -81,8 +78,13 @@ export async function processPing(
   });
   if (!asset) return [];
 
-  await prisma.gpsDevice.updateMany({
-    where: { assetId },
+  // Only a newer fix moves the vehicle: a buffered older point never
+  // overwrites a more recent position.
+  const moved = await prisma.gpsDevice.updateMany({
+    where: {
+      assetId,
+      OR: [{ lastPingAt: null }, { lastPingAt: { lt: at } }],
+    },
     data: {
       lastLat: ping.lat,
       lastLng: ping.lng,
@@ -90,6 +92,9 @@ export async function processPing(
       lastPingAt: at,
     },
   });
+  if (moved.count === 0) return [];
+  // The tracker is talking again: a "tracker silent" alert no longer holds.
+  await resolveTrackerSilence(prisma, asset.operator.id, assetId, new Date());
 
   const locale = (asset.operator.locale === "ka" ? "ka" : "en") as Locale;
   const contract = asset.contracts[0] ?? null;
@@ -106,12 +111,28 @@ export async function processPing(
     if (!shape) continue;
 
     const reading = evaluateFence(shape, fence.approachKm, point);
-    const last = await prisma.geoEvent.findFirst({
-      where: { geofenceId: fence.id },
-      orderBy: { createdAt: "desc" },
-      select: { kind: true },
-    });
-    const event = transition(zoneFromLastEvent(last?.kind), reading.zone);
+    // Fences saved before the zone was stored fall back to their last event.
+    const last =
+      fence.lastZone == null
+        ? await prisma.geoEvent.findFirst({
+            where: { geofenceId: fence.id },
+            orderBy: { createdAt: "desc" },
+            select: { kind: true },
+          })
+        : null;
+    const step = stepFence(fence.lastZone, last?.kind, reading.zone);
+    const event = step.event;
+    if (fence.lastZone !== step.lastZone) {
+      await prisma.geofence.update({
+        where: { id: fence.id },
+        data: { lastZone: step.lastZone },
+      });
+    }
+    // Drifting back from the edge needs no message, but an approach
+    // warning still waiting to go out would now be wrong.
+    if (step.relief === "moved_away") {
+      await withdrawFence(prisma, fence.id, new Date(), new Date(), "moved_away");
+    }
 
     let queued = 0;
     if (event) {

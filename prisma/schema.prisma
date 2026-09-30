@@ -365,7 +365,9 @@ model GpsDevice {
   lastLat   Float?
   lastLng   Float?
   lastSpeed Float? // km/h, when the tracker reports it
-  lastPingAt DateTime?
+  lastPingAt DateTime? // the tracker's own time of the last accepted fix
+  // Server time of the last accepted ping — the per-device rate limit.
+  lastReceivedAt DateTime?
   createdAt DateTime  @default(now())
 
   asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
@@ -386,6 +388,10 @@ model Geofence {
   points     Json? // polygon: [[lat, lng], …]
   approachKm Float    @default(1)
   active     Boolean  @default(true)
+  // Where the vehicle stood against this fence at the last accepted ping
+  // ("safe" | "approach" | "outside"). Transitions are computed from it, so
+  // an approach warning re-arms once the car is back in the safe zone.
+  lastZone   String?
   createdAt  DateTime @default(now())
 
   asset  Asset      @relation(fields: [assetId], references: [id], onDelete: Cascade)
@@ -450,6 +456,7 @@ model NotifyMessage {
   sentAt      DateTime?
   cancelledAt  DateTime?
   // "paid" | "changed" | "contract_ended" | "contract_deleted" | "returned"
+  // | "moved_away" (lib/rentals/settle.ts WithdrawReason)
   cancelReason String?
 
   operator Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
@@ -517,7 +524,7 @@ model Alert {
   unitId     String?
   // "vacancy_gap" | "lease_expiry" | "underpriced" | "contract_expiry"
   // | "contract_ended" | "rent_overdue" | "repossession_right"
-  // | "geofence_breach"
+  // | "geofence_breach" | "tracker_silent"
   type       String
   payload    Json // type-specific details + { suggestedAction: string }
   status     String    @default("open") // "open" | "dismissed" | "resolved"

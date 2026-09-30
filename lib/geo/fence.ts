@@ -146,6 +146,55 @@ export function transition(previous: Zone | null, next: Zone): Transition | null
   return null; // back to safe from approach — no message, just relief
 }
 
+/** Good news that needs no message, but withdraws the warnings still waiting. */
+export type Relief =
+  | "returned" // back inside after crossing the line
+  | "moved_away"; // back in the safe zone after nearing the line
+
+export function relief(previous: Zone | null, next: Zone): Relief | null {
+  if (previous === "outside" && next !== "outside") return "returned";
+  if (previous === "approach" && next === "safe") return "moved_away";
+  return null;
+}
+
+const ZONES: Zone[] = ["safe", "approach", "outside"];
+
+/** The zone the last recorded event left the vehicle in (fences from before lastZone). */
+export function zoneFromEvent(kind: string | null | undefined): Zone | null {
+  if (kind === "breach") return "outside";
+  if (kind === "approach") return "approach";
+  if (kind === "return") return "safe";
+  return null;
+}
+
+export interface FenceStep {
+  event: Transition | null;
+  relief: Relief | null;
+  /** Store this as Geofence.lastZone. */
+  lastZone: Zone;
+}
+
+/**
+ * One ping against one fence. The previous zone is the one stored on the
+ * fence at the last ping — every ping, including the quiet move from the
+ * approach band back to safe, so the approach warning re-arms. A fence
+ * saved before the zone was stored falls back to its last event, once.
+ */
+export function stepFence(
+  storedZone: string | null | undefined,
+  lastEventKind: string | null | undefined,
+  next: Zone,
+): FenceStep {
+  const previous = ZONES.includes(storedZone as Zone)
+    ? (storedZone as Zone)
+    : zoneFromEvent(lastEventKind);
+  return {
+    event: transition(previous, next),
+    relief: relief(previous, next),
+    lastZone: next,
+  };
+}
+
 /** Parse Geofence.points (stored as JSON) into a validated ring. */
 export function parsePolygon(value: unknown): PolygonPoints {
   if (!Array.isArray(value)) return [];

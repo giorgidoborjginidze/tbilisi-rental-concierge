@@ -4,6 +4,7 @@ import {
   activeContractWhere,
   assetStatusNow,
   contractPhase,
+  endedContractToFollowUp,
   scheduleContract,
   upcomingContract,
 } from "./phase";
@@ -87,5 +88,36 @@ describe("assetStatusNow", () => {
   it("keeps every other stored status", () => {
     expect(assetStatusNow({ status: "listed" }, [ended], today)).toBe("listed");
     expect(assetStatusNow({ status: "rented" }, [], today)).toBe("rented");
+  });
+});
+
+describe("endedContractToFollowUp", () => {
+  const stay = (id: string, start: string, end: string) => ({
+    id,
+    startDate: d(start),
+    endDate: d(end),
+  });
+  const today = d("2026-09-30");
+  const never = () => false;
+
+  it("raises one alert per asset, for the contract that ended last", () => {
+    const leases = [
+      stay("a", "2025-09-01", "2026-03-01"),
+      stay("b", "2026-03-01", "2026-09-01"),
+    ];
+    expect(endedContractToFollowUp(leases, today, never)?.id).toBe("b");
+  });
+
+  it("stays quiet while a contract runs or is booked after it", () => {
+    const leases = [stay("a", "2026-03-01", "2026-09-01"), stay("b", "2026-10-05", "2027-10-05")];
+    expect(endedContractToFollowUp(leases, today, never)).toBeNull();
+  });
+
+  it("skips a short stay paid in full, but not one that still owes", () => {
+    const stays = [stay("s1", "2026-09-10", "2026-09-12"), stay("s2", "2026-09-20", "2026-09-23")];
+    expect(endedContractToFollowUp(stays, today, never)).toBeNull();
+    expect(
+      endedContractToFollowUp(stays, today, (contract) => contract.id === "s2")?.id,
+    ).toBe("s2");
   });
 });

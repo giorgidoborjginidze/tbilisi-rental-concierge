@@ -1,4 +1,5 @@
-// Alert scan job: vacancy gaps, expiring leases, and underpriced units.
+// Alert scan job: vacancy gaps, expiring leases, underpriced units,
+// finished contracts, silent GPS trackers and late rent.
 // Each alert carries a structured payload plus a stable `key` used to
 // dedupe against already-open alerts, so re-running the scan never spams.
 // Suggested-action text is rendered localized in the UI from `type`.
@@ -8,7 +9,15 @@ import { findGaps, type Stay } from "@/lib/calendar/occupancy";
 import { suggestRate } from "@/lib/pricing/engine";
 import { getMarketDataSource } from "@/lib/market/source";
 import { monitorRentPayments } from "@/lib/rentals/monitor";
-import { activeContractWhere, contractPhase, recentlyEndedWhere } from "@/lib/rentals/phase";
+import {
+  activeContractWhere,
+  contractPhase,
+  endedContractToFollowUp,
+  recentlyEndedWhere,
+} from "@/lib/rentals/phase";
+import { hasBalance } from "@/lib/rentals/terms";
+import { closeSupersededEndings } from "@/lib/rentals/settle";
+import { isTrackerSilent, silenceKey, TRACKER_SILENT_MINUTES } from "@/lib/geo/silence";
 import { dayKey, startOfTodayTbilisi } from "@/lib/time";
 
 const DAY_MS = 86_400_000;
@@ -181,29 +190,100 @@ export async function scanAlerts(
   }
 
   // 4b. Contracts that have ended with nothing after them: the asset is no
-  //     longer rented, so the owner is asked to renew or relist it.
-  const endedContracts = await prisma.rentalContract.findMany({
+  //     longer rented, so the owner is asked to renew or relist it. One
+  //     alert per asset, about the contract that ended last — a daily-let
+  //     asset whose stays are short contracts must not raise one per stay —
+  //     and none for a short stay that was paid in full.
+  const recentlyEnded = await prisma.rentalContract.findMany({
     where: {
       ...recentlyEndedWhere(start, CONTRACT_ENDED_DAYS),
       ...(operatorId ? { asset: { operatorId } } : {}),
     },
-    include: {
-      asset: { include: { contracts: { select: { id: true, endDate: true } } } },
-    },
+    select: { assetId: true },
   });
-  for (const contract of endedContracts) {
-    const followedUp = contract.asset.contracts.some(
-      (other) => other.id !== contract.id && other.endDate > start,
+  const openEnded = await prisma.alert.findMany({
+    where: { type: "contract_ended", status: "open", ...(operatorId ? { operatorId } : {}) },
+    select: { id: true, payload: true },
+  });
+  const endedAssetIds = [
+    ...new Set([
+      ...recentlyEnded.map((row) => row.assetId),
+      ...openEnded
+        .map((alert) => (alert.payload as { assetId?: string } | null)?.assetId)
+        .filter((id): id is string => !!id),
+    ]),
+  ];
+  const endedAssets = endedAssetIds.length
+    ? await prisma.asset.findMany({
+        where: { id: { in: endedAssetIds } },
+        include: { contracts: true },
+      })
+    : [];
+  const endedWindowStart = new Date(start.getTime() - CONTRACT_ENDED_DAYS * DAY_MS);
+  const followUpOf = new Map<string, string | null>();
+  for (const asset of endedAssets) {
+    const contract = endedContractToFollowUp(asset.contracts, start, (c) =>
+      hasBalance(c, start, asset),
     );
-    if (followedUp) continue;
-    await push(contract.asset.operatorId, null, "contract_ended", contract.id, {
+    followUpOf.set(asset.id, contract?.id ?? null);
+    if (!contract || contract.endDate <= endedWindowStart) continue;
+    await push(asset.operatorId, null, "contract_ended", contract.id, {
       contractId: contract.id,
-      assetId: contract.assetId,
-      assetName: contract.asset.name,
-      category: contract.asset.category,
+      assetId: asset.id,
+      assetName: asset.name,
+      category: asset.category,
       endDate: dayStamp(contract.endDate),
       tenantName: contract.tenantName,
     });
+  }
+  // Earlier "contract ended" alerts that no longer stand — a later stay
+  // ended, or a new contract now follows — close themselves.
+  await closeSupersededEndings(
+    prisma,
+    openEnded.filter((alert) => {
+      const payload = alert.payload as { assetId?: string; contractId?: string } | null;
+      if (!payload?.assetId || !followUpOf.has(payload.assetId)) return false;
+      return followUpOf.get(payload.assetId) !== payload.contractId;
+    }),
+    now,
+  );
+
+  // 4c. Trackers gone quiet on a rented vehicle with a live red line. An
+  //     unplugged or jammed tracker is the theft scenario, and its last
+  //     position says nothing about where the car is now. One alert per
+  //     silence episode; it closes itself when the tracker reports again.
+  const silentBefore = new Date(now.getTime() - TRACKER_SILENT_MINUTES * 60_000);
+  const quietDevices = await prisma.gpsDevice.findMany({
+    where: {
+      lastPingAt: { not: null, lt: silentBefore },
+      asset: {
+        ...(operatorId ? { operatorId } : {}),
+        geofences: { some: { active: true } },
+        contracts: { some: activeContractWhere(start) },
+      },
+    },
+    include: {
+      asset: { select: { id: true, operatorId: true, name: true, plateNumber: true } },
+    },
+  });
+  for (const device of quietDevices) {
+    if (!device.lastPingAt || !isTrackerSilent(device.lastPingAt, now)) continue;
+    await push(
+      device.asset.operatorId,
+      null,
+      "tracker_silent",
+      silenceKey(device.deviceId, device.lastPingAt),
+      {
+        assetId: device.asset.id,
+        assetName: device.asset.name,
+        category: "vehicle",
+        plate: device.asset.plateNumber,
+        deviceId: device.deviceId,
+        lastPingAt: device.lastPingAt.toISOString(),
+        lat: device.lastLat,
+        lng: device.lastLng,
+      },
+    );
   }
 
   // 5. Late rent on active contracts — and the day the repossession right

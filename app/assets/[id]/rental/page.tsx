@@ -6,8 +6,15 @@ import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
 import { siteUrl } from "@/lib/site";
 import { evaluateFence, shapeFromRow } from "@/lib/geo/fence";
-import { periodAmount, statusFor } from "@/lib/rentals/terms";
-import { scheduleContract } from "@/lib/rentals/phase";
+import { isTrackerSilent, silenceSpan } from "@/lib/geo/silence";
+import {
+  periodAmount,
+  settlementContract,
+  statusFor,
+  unsettledContracts,
+} from "@/lib/rentals/terms";
+import { contractPhase } from "@/lib/rentals/phase";
+import { formatDue, formatMoney } from "@/lib/rentals/money";
 import { asPeriod } from "@/lib/rentals/amount";
 import { defaultPaidThrough } from "@/lib/rentals/schedule";
 import {
@@ -70,10 +77,13 @@ const LABEL_KEYS: StringKey[] = [
   "method_other", "pay_note", "pay_partial_hint",
   "asset_plate", "asset_plate_hint",
   "gps_device_id", "gps_label", "gps_provider", "gps_connect", "gps_token",
-  "gps_endpoint", "gps_endpoint_hint",
+  "gps_endpoint", "gps_endpoint_hint", "gps_tech_details", "gps_example", "gps_tech_note",
   "fence_name", "fence_kind", "fence_circle", "fence_polygon", "fence_center",
   "fence_radius", "fence_points", "fence_points_hint", "fence_approach",
   "fence_approach_hint", "fence_add", "fence_use_location",
+  "fence_presets", "fence_preset_tbilisi30", "fence_preset_tbilisi50",
+  "fence_preset_batumi20", "fence_preset_kutaisi20", "fence_preset_georgia",
+  "fence_preset_hint",
   "tpl_notify_phone", "tpl_notify_phone_hint", "tpl_vars_hint", "tpl_save",
 ];
 
@@ -110,8 +120,16 @@ export default async function RentalServicePage({
   }
 
   // ── The contract the schedule follows: the one running today, else the
-  // next to start. A finished contract is not followed any more. ──
-  const contract = scheduleContract(asset.contracts, today) ?? null;
+  // next to start. A finished contract is no longer chased — but while it
+  // still has rent owed it stays here, so the money can be recorded when
+  // the renter pays. ──
+  const contract = settlementContract(asset.contracts, today, asset) ?? null;
+  const contractEnded = contract ? contractPhase(contract, today) === "ended" : false;
+  // Other finished contracts that still owe money (the page follows a
+  // running or upcoming one above).
+  const otherUnsettled = unsettledContracts(asset.contracts, today, asset).filter(
+    (other) => other.id !== contract?.id,
+  );
   // Without a paid-up-to date the schedule was never tracked, so the
   // numbers would be fiction — the page asks for the starting point instead.
   const tracked = contract?.paidThrough != null;
@@ -125,11 +143,17 @@ export default async function RentalServicePage({
     : [];
 
   // ── Where the vehicle stands right now, per fence ──
+  // A position the tracker sent long ago says nothing about where the car
+  // is now: once the tracker has gone quiet, every fence reads "unknown".
   const device = asset.gpsDevice;
+  const now = new Date();
   const position =
     device?.lastLat != null && device.lastLng != null
       ? { lat: device.lastLat, lng: device.lastLng }
       : null;
+  const silent = isTrackerSilent(device?.lastPingAt, now);
+  const silence =
+    silent && device?.lastPingAt ? silenceSpan(device.lastPingAt, now) : null;
   const fences = asset.geofences.map((fence) => {
     const shape = shapeFromRow(fence);
     const reading =
@@ -197,7 +221,7 @@ export default async function RentalServicePage({
     day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
   });
   const iso = dayKey;
-  const money = (value: number) => Math.round(value).toLocaleString("en-US");
+  const money = formatMoney;
   const roleLabel = (role: string) =>
     t(
       locale,
@@ -241,14 +265,24 @@ export default async function RentalServicePage({
             <div className="kpi-grid kpi-grid--3d" style={{ marginBottom: 16 }}>
               <div className="kpi">
                 <div className="kpi__label">{t(locale, "status_label")}</div>
-                <div style={{ marginTop: 10 }}>
-                  <span className={`badge ${STATE_BADGE[status.state]}`}>
-                    {t(
-                      locale,
-                      status.state === "repossess" && !isVehicle
-                        ? "pstate_repossess_property"
-                        : (`pstate_${status.state}` as StringKey),
-                    )}
+                <div className="flex flex-wrap gap-1.5" style={{ marginTop: 10 }}>
+                  {contractEnded && (
+                    <span className="badge badge--personal">{t(locale, "cstatus_ended")}</span>
+                  )}
+                  {/* Long states wrap inside the tile on a phone. A finished
+                      contract is not "late" any more — its rent is unpaid. */}
+                  <span
+                    className={`badge ${contractEnded && status.periodsOwed > 0 ? "badge--danger" : STATE_BADGE[status.state]}`}
+                    style={{ whiteSpace: "normal", height: "auto", minHeight: 26, paddingBlock: 3 }}
+                  >
+                    {contractEnded && status.periodsOwed > 0
+                      ? t(locale, "alert_unpaid")
+                      : t(
+                          locale,
+                          status.state === "repossess" && !isVehicle
+                            ? "pstate_repossess_property"
+                            : (`pstate_${status.state}` as StringKey),
+                        )}
                   </span>
                 </div>
               </div>
@@ -266,7 +300,7 @@ export default async function RentalServicePage({
               <div className="kpi">
                 <div className="kpi__label">{t(locale, "pay_amount_due")}</div>
                 <div className="kpi__value">
-                  {money(status.amountDue)}
+                  {formatDue(status.amountDue)}
                   <span className="kpi__unit"> {contract.currency}</span>
                 </div>
                 {status.credit > 0 && (
@@ -278,7 +312,13 @@ export default async function RentalServicePage({
             </div>
             )}
 
-            {status && status.state !== "ok" && status.state !== "ended" && (
+            {status && contractEnded && (
+              <p className="field-hint" style={{ marginTop: -8, marginBottom: 14 }}>
+                {t(locale, "pay_ended_owed").replace("{date}", fmtDate.format(contract.endDate))}
+              </p>
+            )}
+
+            {status && !contractEnded && status.state !== "ok" && status.state !== "ended" && (
               <p className="field-hint" style={{ marginTop: -8, marginBottom: 14 }}>
                 {isVehicle ? (
                   <>
@@ -295,6 +335,7 @@ export default async function RentalServicePage({
             )}
 
             <ScheduleForm
+              key={contract.id}
               assetId={asset.id}
               contractId={contract.id}
               currency={contract.currency}
@@ -367,6 +408,45 @@ export default async function RentalServicePage({
             )}
           </>
         )}
+
+        {/* Finished contracts that still owe money: not chased any more,
+            but the money can still be recorded when it comes in. */}
+        {otherUnsettled.length > 0 && (
+          <>
+            <h3 style={{ fontSize: 15, marginTop: 24 }}>{t(locale, "pay_unsettled_title")}</h3>
+            {otherUnsettled.map((other) => {
+              const owed = statusFor(other, today, asset);
+              return (
+                <div key={other.id} style={{ marginBottom: 14 }}>
+                  <p className="alert-card" style={{ display: "block", fontSize: 13 }}>
+                    <span className="badge badge--personal">{t(locale, "cstatus_ended")}</span>{" "}
+                    <b>{other.tenantName ?? "—"}</b> · {fmtDate.format(other.startDate)} →{" "}
+                    {fmtDate.format(other.endDate)} · {t(locale, "pay_amount_due")}:{" "}
+                    <b>
+                      {formatDue(owed.amountDue)} {other.currency}
+                    </b>
+                  </p>
+                  <ScheduleForm
+                    key={other.id}
+                    assetId={asset.id}
+                    contractId={other.id}
+                    currency={other.currency}
+                    tracked
+                    payOnly
+                    defaults={{
+                      paymentPeriod: other.paymentPeriod,
+                      paymentAmount: String(periodAmount(other)),
+                      graceDays: String(other.graceDays),
+                      paidThrough: other.paidThrough ? iso(other.paidThrough) : "",
+                      remindersEnabled: other.remindersEnabled,
+                    }}
+                    labels={labels}
+                  />
+                </div>
+              );
+            })}
+          </>
+        )}
       </section>
 
       {/* ── 2. GPS (vehicles only) ─────────────────────────────────────── */}
@@ -408,6 +488,22 @@ export default async function RentalServicePage({
                 </>
               ) : (
                 t(locale, "gps_never")
+              )}
+              {silence && (
+                <div style={{ marginTop: 6 }}>
+                  <span className="badge badge--danger">
+                    {t(locale, "gps_silent").replace(
+                      "{span}",
+                      t(locale, `dur_${silence.unit}` as StringKey).replace(
+                        "{n}",
+                        String(silence.n),
+                      ),
+                    )}
+                  </span>
+                  <div style={{ color: "var(--color-text-muted)", marginTop: 4 }}>
+                    {t(locale, "gps_silent_hint")}
+                  </div>
+                </div>
               )}
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -452,7 +548,18 @@ export default async function RentalServicePage({
                   <span className={`badge ${fence.active ? "badge--vacant" : "badge--personal"}`}>
                     {t(locale, fence.active ? "fence_active" : "fence_paused")}
                   </span>
-                  {reading && (
+                  {reading && silent && (
+                    // The last fix is too old to say which side of the line
+                    // the car is on now.
+                    <span
+                      className="badge badge--personal"
+                      style={{ marginLeft: 6 }}
+                      title={t(locale, "gps_silent_hint")}
+                    >
+                      {t(locale, "fence_status_unknown")}
+                    </span>
+                  )}
+                  {reading && !silent && (
                     <span className={`badge ${ZONE_BADGE[reading.zone]}`} style={{ marginLeft: 6 }}>
                       {t(locale, `fence_status_${reading.zone}` as StringKey)} ·{" "}
                       {reading.distanceKm.toFixed(1)} km

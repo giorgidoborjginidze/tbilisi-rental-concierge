@@ -128,3 +128,22 @@ export function replayLedger(
   }
   return { state, applied };
 }
+
+/**
+ * Is a saved "paid up to" a restatement of the balance? Only when the
+ * owner changed the date on screen (`typed` differs from `shown`, what the
+ * form displayed) and it lands somewhere other than the stored position.
+ * A stale page, or a period switch that moves the unchanged date onto a
+ * new grid, is not a restatement — the stored balance and credit carry
+ * over. An untracked contract (nothing stored) is always stated.
+ */
+export function restatesBalance(input: {
+  stored: Date | null;
+  typed: string;
+  shown: string | null;
+  stated: Date | null;
+}): boolean {
+  if (!input.stated) return false;
+  const touched = input.stored == null || input.shown == null || input.typed !== input.shown;
+  return touched && input.stated.getTime() !== input.stored?.getTime();
+}

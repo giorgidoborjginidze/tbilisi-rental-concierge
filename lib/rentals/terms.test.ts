@@ -6,7 +6,14 @@ import {
   templateKeysFor,
   type TemplateKey,
 } from "@/lib/notify/templates";
-import { contractTerms, statusFor } from "./terms";
+import {
+  contractTerms,
+  hasBalance,
+  lateContract,
+  settlementContract,
+  statusFor,
+  unsettledContracts,
+} from "./terms";
 import { applyPayment } from "./ledger";
 
 const d = (iso: string) => new Date(`${iso}T00:00:00Z`);
@@ -102,5 +109,74 @@ describe("messages follow the asset category", () => {
     ]);
     expect(templateKeysFor("vehicle")).toContain("geo_breach_driver");
     expect(templateKeysFor("vehicle")).not.toContain("lease_due_tenant");
+  });
+});
+
+describe("settling a finished contract that still owes rent", () => {
+  // A daily car rental 25–28 Sep with nothing paid.
+  const unpaid = {
+    id: "ended",
+    startDate: d("2026-09-25"),
+    endDate: d("2026-09-28"),
+    paymentPeriod: "daily",
+    paymentAmount: 60,
+    monthlyRent: 1826.4,
+    graceDays: 1,
+    paidThrough: d("2026-09-25"),
+    creditBalance: 0,
+  };
+  const paidUp = {
+    ...unpaid,
+    id: "paid",
+    startDate: d("2026-09-10"),
+    endDate: d("2026-09-12"),
+    paidThrough: d("2026-09-12"),
+  };
+  const upcoming = {
+    ...unpaid,
+    id: "next",
+    startDate: d("2026-10-05"),
+    endDate: d("2026-10-08"),
+    paidThrough: d("2026-10-05"),
+  };
+  const today = d("2026-09-30");
+
+  it("still has a balance after its end", () => {
+    const status = statusFor(unpaid, today, null);
+    expect(status.periodsOwed).toBe(3);
+    expect(status.amountDue).toBe(180);
+    expect(hasBalance(unpaid, today, null)).toBe(true);
+    expect(hasBalance(paidUp, today, null)).toBe(false);
+    expect(hasBalance({ ...unpaid, paidThrough: null }, today, null)).toBe(false);
+  });
+
+  it("is the contract the rental page settles when nothing runs", () => {
+    expect(settlementContract([paidUp, unpaid], today, null)?.id).toBe("ended");
+    expect(unsettledContracts([paidUp, unpaid], today, null).map((c) => c.id)).toEqual([
+      "ended",
+    ]);
+    // A booked next rental is what the page follows; the debt stays listed.
+    expect(settlementContract([unpaid, upcoming], today, null)?.id).toBe("next");
+    expect(unsettledContracts([unpaid, upcoming], today, null).map((c) => c.id)).toEqual([
+      "ended",
+    ]);
+    // Once paid, it drops out.
+    const settled = { ...unpaid, paidThrough: d("2026-09-28") };
+    expect(settlementContract([settled], today, null)).toBeUndefined();
+  });
+
+  it("keeps the late marker on the asset until the money is in", () => {
+    expect(lateContract([unpaid, upcoming], today, null)?.id).toBe("ended");
+    // Beyond the dashboard window it is no longer pushed there.
+    expect(lateContract([unpaid], d("2027-03-01"), null)).toBeUndefined();
+    // A running late contract comes first.
+    const running = {
+      ...unpaid,
+      id: "running",
+      startDate: d("2026-09-29"),
+      endDate: d("2026-10-10"),
+      paidThrough: d("2026-09-29"),
+    };
+    expect(lateContract([unpaid, running], today, null)?.id).toBe("running");
   });
 });

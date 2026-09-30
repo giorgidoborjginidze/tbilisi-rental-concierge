@@ -3,10 +3,16 @@
 import { useActionState, useState } from "react";
 import { saveGpsDevice, savePlate } from "@/lib/rentals/actions";
 import type { FormState } from "@/lib/units/actions";
+import { EXAMPLE_POSITION } from "@/lib/geo/presets";
+import { IconCheck, IconCopy } from "@/app/icons";
 
 // Binding the tracker to this vehicle, and the plate that the geofence
-// messages quote. The ping address and token are shown ready to copy —
-// that is all most trackers need.
+// messages quote. A tracker cannot start reporting here by itself: the
+// installer or the tracking provider sets it (or their tracking server) up
+// with the address shown, so the page says exactly that. The address that
+// is copied carries the device and its token only — never a position; the
+// example with coordinates sits apart, under the technical details, and
+// is marked as an example (the endpoint refuses its position anyway).
 export default function GpsForm({
   assetId,
   plate,
@@ -36,8 +42,9 @@ export default function GpsForm({
   const [copied, setCopied] = useState<string | null>(null);
 
   const pingUrl = device
-    ? `${endpoint}?deviceId=${encodeURIComponent(device.deviceId)}&token=${device.token}&lat=41.7151&lng=44.8271`
-    : `${endpoint}?deviceId=…&token=…&lat=…&lng=…`;
+    ? `${endpoint}?deviceId=${encodeURIComponent(device.deviceId)}&token=${encodeURIComponent(device.token)}`
+    : `${endpoint}?deviceId=…&token=…`;
+  const exampleUrl = `${pingUrl}&lat=${EXAMPLE_POSITION.lat}&lng=${EXAMPLE_POSITION.lng}&speed=54`;
 
   const copy = (value: string, key: string) => {
     navigator.clipboard?.writeText(value).then(
@@ -94,29 +101,40 @@ export default function GpsForm({
 
         {device && (
           <div className="col-span-2 gps-copy">
-            <div>
-              <span className="field-hint">{labels.gps_token}</span>
-              <code>{device.token}</code>
-              <button
-                type="button"
-                className="btn-chip"
-                onClick={() => copy(device.token, "token")}
-              >
-                {copied === "token" ? "✓" : "⧉"}
-              </button>
-            </div>
+            <p className="field-hint" style={{ margin: 0 }}>{labels.gps_endpoint_hint}</p>
             <div>
               <span className="field-hint">{labels.gps_endpoint}</span>
               <code>{pingUrl}</code>
               <button
                 type="button"
                 className="btn-chip"
+                aria-label={labels.gps_endpoint}
                 onClick={() => copy(pingUrl, "url")}
               >
-                {copied === "url" ? "✓" : "⧉"}
+                {copied === "url" ? <IconCheck size={16} /> : <IconCopy size={16} />}
               </button>
             </div>
-            <p className="field-hint">{labels.gps_endpoint_hint}</p>
+            <details className="gps-tech">
+              <summary>{labels.gps_tech_details}</summary>
+              <div>
+                <span className="field-hint">{labels.gps_token}</span>
+                <code>{device.token}</code>
+                <button
+                  type="button"
+                  className="btn-chip"
+                  aria-label={labels.gps_token}
+                  onClick={() => copy(device.token, "token")}
+                >
+                  {copied === "token" ? <IconCheck size={16} /> : <IconCopy size={16} />}
+                </button>
+              </div>
+              {/* An example of one position, never offered for copying. */}
+              <div className="gps-tech__example">
+                <span className="field-hint">{labels.gps_example}</span>
+                <code>{exampleUrl}</code>
+              </div>
+              <p className="field-hint">{labels.gps_tech_note}</p>
+            </details>
           </div>
         )}
 

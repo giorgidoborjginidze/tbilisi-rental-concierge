@@ -1,8 +1,21 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { t, type Locale, type StringKey } from "@/lib/i18n/strings";
-import { statusFor, periodAmount } from "@/lib/rentals/terms";
-import { activeContract as runningContract, activeContractWhere, assetStatusNow } from "@/lib/rentals/phase";
+import {
+  lateContract,
+  periodAmount,
+  SETTLEMENT_WINDOW_DAYS,
+  statusFor,
+} from "@/lib/rentals/terms";
+import { formatDue } from "@/lib/rentals/money";
+import { alertCategories } from "@/lib/alerts/category";
+import {
+  activeContract as runningContract,
+  activeContractWhere,
+  assetStatusNow,
+  contractPhase,
+  recentlyEndedWhere,
+} from "@/lib/rentals/phase";
 import { formatAmount, periodWordKey } from "@/lib/rentals/display";
 import { templateFamily } from "@/lib/notify/templates";
 import { dayKey, monthKeyTbilisi, monthStartTbilisi, startOfTodayTbilisi, tbilisiFormat } from "@/lib/time";
@@ -155,6 +168,7 @@ const TIP_TINTS: Record<string, string> = {
   rent_overdue: "linear-gradient(140deg,#f5cdd9,#e08ba4)",
   repossession_right: "linear-gradient(140deg,#f5cdd9,#e08ba4)",
   geofence_breach: "linear-gradient(140deg,#f5cdd9,#e08ba4)",
+  tracker_silent: "linear-gradient(140deg,#dfe6ee,#9fb0c4)",
 };
 const TIP_GLYPHS: Record<string, string> = {
   underpriced: "↑",
@@ -165,6 +179,7 @@ const TIP_GLYPHS: Record<string, string> = {
   rent_overdue: "!",
   repossession_right: "!",
   geofence_breach: "⚑",
+  tracker_silent: "◌",
 };
 
 /** Where each kind of advice actually comes from — stated, not implied. */
@@ -176,7 +191,8 @@ const TIP_SOURCE: Record<string, StringKey> = {
   contract_ended: "tips_src_contract",
   rent_overdue: "tips_src_contract",
   repossession_right: "tips_src_contract",
-  geofence_breach: "tips_src_contract",
+  geofence_breach: "tips_src_gps",
+  tracker_silent: "tips_src_gps",
 };
 
 export async function MarketTips({
@@ -191,6 +207,8 @@ export async function MarketTips({
     orderBy: { createdAt: "desc" },
     take: 3,
   });
+  // Older alerts carry no category — it is looked up from the asset.
+  const categoryOf = await alertCategories(operatorId, alerts);
 
   return (
     <section>
@@ -211,10 +229,11 @@ export async function MarketTips({
               category?: string;
             };
             // Late rent on a flat speaks of the lease, not of a vehicle.
+            const category = categoryOf(payload);
             const property =
               alert.type === "repossession_right" &&
-              payload.category != null &&
-              templateFamily(payload.category) === "property";
+              category != null &&
+              templateFamily(category) === "property";
             return (
               <div key={alert.id} className="card tip-card">
                 <span
@@ -305,10 +324,15 @@ export async function DecideToday({
 }) {
   const today = startOfTodayTbilisi();
   // Running contracts by their dates, priced exactly as the rental page
-  // and the WhatsApp message price them (weekend and holiday days too).
+  // and the WhatsApp message price them (weekend and holiday days too) —
+  // and recently finished ones that still have rent owed, so the money
+  // can be recorded when the renter pays.
   const contracts = await prisma.rentalContract.findMany({
     where: {
-      ...activeContractWhere(today),
+      OR: [
+        activeContractWhere(today),
+        recentlyEndedWhere(today, SETTLEMENT_WINDOW_DAYS),
+      ],
       paidThrough: { not: null },
       asset: { operatorId },
     },
@@ -326,6 +350,7 @@ export async function DecideToday({
   for (const contract of contracts) {
     const status = statusFor(contract, today, contract.asset);
     if (!["due", "grace", "repossess"].includes(status.state)) continue;
+    const ended = contractPhase(contract, today) === "ended";
     const name =
       locale === "ka" && contract.asset.nameKa
         ? contract.asset.nameKa
@@ -335,7 +360,7 @@ export async function DecideToday({
       assetId: contract.asset.id,
       name,
       title: `${name} — ${t(locale, "decide_rent")}`,
-      sub: `${contract.tenantName ?? "—"}${
+      sub: `${contract.tenantName ?? "—"}${ended ? ` · ${t(locale, "cstatus_ended")}` : ""}${
         status.daysOverdue > 0
           ? ` · ${t(locale, "decide_late")}: ${status.daysOverdue} ${t(locale, "decide_days")}`
           : ""
@@ -489,8 +514,11 @@ export async function AssetDeck({
     });
 
     // 3 · Where it stands — the payment schedule when tracked, else status.
-    const schedule = contract?.paidThrough ? statusFor(contract, today, asset) : null;
-    if (schedule && ["due", "grace", "repossess"].includes(schedule.state)) {
+    // The running contract when it is late — else a finished one that still
+    // has rent owed, which stays in sight until it is settled.
+    const owing = lateContract(asset.contracts, today, asset);
+    const schedule = owing ? statusFor(owing, today, asset) : null;
+    if (owing && schedule && ["due", "grace", "repossess"].includes(schedule.state)) {
       slides.push({
         kind: "metric",
         label: t(locale, "pay_days_overdue"),
@@ -498,7 +526,9 @@ export async function AssetDeck({
         unit: `/ ${schedule.graceDays}`,
         meter: (schedule.daysOverdue / Math.max(1, schedule.graceDays)) * 100,
         tone: schedule.state === "repossess" ? "bad" : undefined,
-        note: `${t(locale, "pay_amount_due")}: ${fmtMoney(schedule.amountDue)} ${contract!.currency}`,
+        note: `${t(locale, "pay_amount_due")}: ${formatDue(schedule.amountDue)} ${owing.currency}${
+          owing !== contract ? ` · ${t(locale, "cstatus_ended")}` : ""
+        }`,
       });
     } else {
       slides.push({
@@ -513,7 +543,18 @@ export async function AssetDeck({
 
     // 4 · The one thing worth doing about it.
     let advice: DeckSlide;
-    if (schedule?.state === "repossess") {
+    if (owing && schedule && owing !== contract) {
+      // A finished contract is not chased any more; the money is still owed.
+      advice = {
+        kind: "advice",
+        label: t(locale, "deck_attention"),
+        note: t(locale, "deck_adv_ended_owed").replace(
+          "{amount}",
+          `${formatDue(schedule.amountDue)} ${owing.currency}`,
+        ),
+        tone: "warn",
+      };
+    } else if (schedule?.state === "repossess") {
       advice = {
         kind: "advice",
         label: t(locale, "deck_attention"),

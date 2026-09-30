@@ -69,20 +69,47 @@ once per vehicle, not per rental.
 1. Open the asset → **Rental service**.
 2. Enter the vehicle's state plate — the notifications quote it verbatim.
 3. Under **GPS tracker**, enter the tracker's IMEI as the Device ID and save.
-4. Copy the **ping address** shown, and set it as the forward URL in Traccar
-   (or the retranslation target in Wialon) for that device.
+4. Copy the **ping address** shown (it carries the device id and its token,
+   never a position) and hand it to whoever runs the gateway: they set it as
+   the forward URL in Traccar (or the retranslation target in Wialon) for
+   that device, adding the position fields from each record.
 5. Draw the **red lines**, set how far ahead to warn, and check the message
    texts.
 
-The endpoint accepts both `POST` (JSON) and `GET` (query string), because
-some gateways and cheap devices can only fire a plain URL:
+`POST` is preferred (JSON or form-encoded), with the token in the
+`Authorization: Bearer <token>` header so it stays out of URLs and logs.
+`GET` with the same fields as a query string is still accepted, because some
+gateways and cheap devices can only fire a plain URL:
 
 ```
-GET /api/gps/ping?deviceId=<IMEI>&token=<token>&lat=41.7151&lng=44.8271&speed=54
+POST /api/gps/ping
+Authorization: Bearer <token>
+{ "deviceId": "<IMEI>", "lat": 41.6410, "lng": 41.6330, "speed": 54, "at": "2026-09-30T10:00:00Z" }
+
+GET /api/gps/ping?deviceId=<IMEI>&token=<token>&lat=<latitude>&lng=<longitude>&speed=<km/h>&timestamp=<fix time>
 ```
 
-Each device has its own token; nothing else can post positions on its behalf.
-Rotate it from the same screen if it leaks.
+`lon` is read as `lng`, and `timestamp` (ISO, or Unix seconds / milliseconds)
+as `at`. A ping is refused unless it is one real, fresh fix:
+
+| Refused | Response |
+|---|---|
+| wrong device id or token | 401 `unauthorized` |
+| a coordinate given more than once (`lat` twice, or `lng` and `lon` together) | 400 `duplicate_position` |
+| an empty, non-numeric or out-of-range coordinate | 400 `invalid_position` |
+| 0,0 or `valid=false` (no satellite fix) | 422 `no_fix` |
+| the example position shown on the rental page (41.7151, 44.8271) | 422 `example_position` |
+| a fix time more than 5 minutes in the future | 400 `future_timestamp` |
+| a fix no newer than the last accepted one | 409 `stale_ping` |
+| more than one accepted ping per device every 5 seconds | 429 `rate_limited` |
+
+Each device has its own token (compared in constant time); nothing else can
+post positions on its behalf. Rotate it from the same screen if it leaks.
+
+A tracker that has reported before and then stays silent for more than 30
+minutes, on a rented vehicle with an active red line, raises a "tracker
+silent" alert at the next scan, and the rental page shows the red lines as
+"unknown" instead of "inside".
 
 ## Offering this as a service
 
@@ -162,20 +189,37 @@ Queclink და დანარჩენები **ბინარულ პა
 1. გახსენი აქტივი → **გაქირავების სერვისი**.
 2. შეიყვანე სახელმწიფო ნომერი — შეტყობინებებში ზუსტად ეს ჩაიწერება.
 3. **GPS მოწყობილობაში** ჩაწერე ტრეკერის IMEI როგორც Device ID და შეინახე.
-4. დააკოპირე გამოჩენილი **მისამართი** და Traccar-ში (ან Wialon-ში) მიუთითე
-   იმ მოწყობილობის გადამისამართების URL-ად.
+4. დააკოპირე გამოჩენილი **მისამართი** (მასში მხოლოდ მოწყობილობის ID და
+   ტოკენია, კოორდინატი — არა) და გადაეცი მას, ვინც გეითვეის მართავს: ის
+   Traccar-ში (ან Wialon-ში) მიუთითებს მას იმ მოწყობილობის გადამისამართების
+   URL-ად და ყოველ ჩანაწერს კოორდინატის ველებს დაუმატებს.
 5. დახაზე **წითელი ხაზები**, მიუთითე რამდენი კილომეტრით ადრე გააფრთხილოს და
    გადახედე შეტყობინებების ტექსტებს.
 
-მისამართი იღებს როგორც `POST`-ს (JSON), ისე `GET`-ს (query), რადგან ზოგ
-გეითვეის და იაფ მოწყობილობას მხოლოდ ბმულის გამოძახება შეუძლია:
+სასურველია `POST` (JSON ან ფორმა), ტოკენით სათაურში
+`Authorization: Bearer <token>`, რომ ბმულებსა და ლოგებში არ მოხვდეს. `GET`
+იგივე ველებით კვლავ მიიღება, რადგან ზოგ გეითვეის და იაფ მოწყობილობას მხოლოდ
+ბმულის გამოძახება შეუძლია:
 
 ```
-GET /api/gps/ping?deviceId=<IMEI>&token=<token>&lat=41.7151&lng=44.8271&speed=54
+POST /api/gps/ping
+Authorization: Bearer <token>
+{ "deviceId": "<IMEI>", "lat": 41.6410, "lng": 41.6330, "speed": 54, "at": "2026-09-30T10:00:00Z" }
+
+GET /api/gps/ping?deviceId=<IMEI>&token=<token>&lat=<განედი>&lng=<გრძედი>&speed=<კმ/სთ>&timestamp=<დრო>
 ```
+
+არ მიიღება: ერთზე მეტჯერ მოცემული კოორდინატი (`lat` ორჯერ, ან `lng` და `lon` ერთად), ცარიელი ან
+არარიცხვითი კოორდინატი, 0,0 ან `valid=false` (სატელიტური სიგნალი არ არის),
+გაქირავების გვერდზე ნაჩვენები მაგალითის კოორდინატი, 5 წუთზე მეტით მომავალი
+დრო, ბოლო მიღებულზე არაახალი კოორდინატი და 5 წამში ერთზე მეტი კოორდინატი.
 
 თითოეულ მოწყობილობას თავისი ტოკენი აქვს; სხვა ვერავინ ჩაწერს კოორდინატს მის
 ნაცვლად. გაჟონვის შემთხვევაში იმავე ეკრანიდან შეცვლი.
+
+თუ ტრეკერი, რომელსაც ადრე უგზავნია, 30 წუთზე მეტხანს დუმს გაქირავებულ
+მანქანაზე აქტიური წითელი ხაზით, შემდეგი შემოწმება ქმნის გაფრთხილებას
+„ტრეკერი დადუმდა“, გაქირავების გვერდი კი წითელ ხაზებს „უცნობია“-დ აჩვენებს.
 
 ## როგორ შევთავაზოთ ეს სერვისად
 

@@ -15,7 +15,7 @@ import ListingControls, { type ListingLink } from "./listing-controls";
 import DoorKey from "./door-key";
 import AssetSegments from "./asset-segments";
 import AssetFlipCard, { type FlipAsset } from "./asset-flip-card";
-import { statusFor } from "@/lib/rentals/terms";
+import { lateContract, statusFor } from "@/lib/rentals/terms";
 import { activeContract as runningContract, assetStatusNow } from "@/lib/rentals/phase";
 import { rentLabel } from "@/lib/rentals/display";
 import { monthKeyTbilisi, monthStartTbilisi, startOfTodayTbilisi, tbilisiFormat } from "@/lib/time";
@@ -371,7 +371,9 @@ export default async function AssetsPage() {
                   ),
                   value: asset.estimatedValue ? money(asset.estimatedValue) : null,
                   daily: asset.rentalMode === "daily",
-                  overdue: overdueBadge(contract, asset),
+                  // The running contract when late, else a finished one
+                  // that still has rent owed.
+                  overdue: overdueBadge(lateContract(asset.contracts, today, asset), asset),
                   serviceHref: `/assets/${asset.id}/rental`,
                   category: asset.category,
                 };

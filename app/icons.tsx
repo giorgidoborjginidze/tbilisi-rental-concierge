@@ -105,3 +105,23 @@ export function IconArrowRight({ size = 22 }: Props) {
     </svg>
   );
 }
+
+/** Two sheets — copy to the clipboard. */
+export function IconCopy({ size = 22 }: Props) {
+  return (
+    <svg width={size} height={size} {...base}>
+      <rect x="8.5" y="8.5" width="11" height="11" rx="2" />
+      <path d="M15.5 8.5V6.5a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h2" />
+    </svg>
+  );
+}
+
+/** Map pin — a place, the current position. */
+export function IconPin({ size = 22 }: Props) {
+  return (
+    <svg width={size} height={size} {...base}>
+      <path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11Z" />
+      <circle cx="12" cy="10" r="2.4" />
+    </svg>
+  );
+}

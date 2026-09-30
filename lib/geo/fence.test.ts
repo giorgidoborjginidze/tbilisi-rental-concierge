@@ -7,9 +7,11 @@ import {
   parsePolygon,
   pointInPolygon,
   shapeFromRow,
+  stepFence,
   transition,
   type FenceShape,
 } from "./fence";
+import { FENCE_PRESETS, GEORGIA_ROUGH } from "./presets";
 
 const TBILISI = { lat: 41.7151, lng: 44.8271 };
 const RUSTAVI = { lat: 41.5495, lng: 45.0 };
@@ -130,5 +132,98 @@ describe("parsing stored fences", () => {
     expect(
       shapeFromRow({ kind: "circle", centerLat: 41.7, centerLng: 44.8, radiusKm: 30, points: null }),
     ).toEqual({ kind: "circle", centerLat: 41.7, centerLng: 44.8, radiusKm: 30 });
+  });
+});
+
+describe("stepFence — the zone is stored at every ping", () => {
+  const fence: FenceShape = {
+    kind: "circle",
+    centerLat: TBILISI.lat,
+    centerLng: TBILISI.lng,
+    radiusKm: 30,
+  };
+  const edge = { lat: TBILISI.lat + 29.5 / 111.32, lng: TBILISI.lng };
+
+  /** Feed positions through the fence the way the monitor does. */
+  const drive = (points: { lat: number; lng: number }[], stored: string | null = null) =>
+    points.map((point) => {
+      const step = stepFence(stored, undefined, evaluateFence(fence, 1, point).zone);
+      stored = step.lastZone;
+      return step;
+    });
+
+  it("re-arms the approach warning once the car is back in the safe zone", () => {
+    const steps = drive([edge, TBILISI, edge]);
+    expect(steps.map((step) => step.event)).toEqual(["approach", null, "approach"]);
+    // Moving away withdraws the warning still waiting to go out.
+    expect(steps[1].relief).toBe("moved_away");
+  });
+
+  it("announces a crossing once, and the return as relief", () => {
+    const steps = drive([TBILISI, BATUMI, BATUMI, TBILISI]);
+    expect(steps.map((step) => step.event)).toEqual([null, "breach", null, "return"]);
+    expect(steps[3].relief).toBe("returned");
+  });
+
+  it("falls back to the last event for a fence saved before zones were stored", () => {
+    expect(stepFence(null, "breach", "safe")).toMatchObject({ event: "return", lastZone: "safe" });
+    expect(stepFence(null, "approach", "approach").event).toBeNull();
+    // Once stored, the stored zone wins over an old event.
+    expect(stepFence("safe", "approach", "approach").event).toBe("approach");
+  });
+});
+
+describe("red-line presets", () => {
+  const georgia: FenceShape = { kind: "polygon", points: GEORGIA_ROUGH };
+  const inside = {
+    Tbilisi: TBILISI,
+    Batumi: BATUMI,
+    Sarpi: { lat: 41.52, lng: 41.55 },
+    Kutaisi: { lat: 42.2679, lng: 42.6946 },
+    Zugdidi: { lat: 42.51, lng: 41.87 },
+    Mestia: { lat: 43.05, lng: 42.73 },
+    Stepantsminda: { lat: 42.66, lng: 44.64 },
+    Lagodekhi: { lat: 41.83, lng: 46.28 },
+    Dedoplistskaro: { lat: 41.46, lng: 46.1 },
+    Sadakhlo: { lat: 41.25, lng: 44.8 },
+    Ninotsminda: { lat: 41.26, lng: 43.59 },
+    Akhaltsikhe: { lat: 41.64, lng: 42.98 },
+    Khulo: { lat: 41.64, lng: 42.31 },
+    Sukhumi: { lat: 43.0, lng: 41.02 },
+  };
+  const outside = {
+    Yerevan: { lat: 40.18, lng: 44.51 },
+    Gyumri: { lat: 40.79, lng: 43.85 },
+    Kars: { lat: 40.6, lng: 43.1 },
+    Trabzon: { lat: 41.0, lng: 39.72 },
+    Hopa: { lat: 41.39, lng: 41.42 },
+    Posof: { lat: 41.51, lng: 42.73 },
+    Vladikavkaz: { lat: 43.02, lng: 44.68 },
+    Sochi: { lat: 43.6, lng: 39.73 },
+    Qazax: { lat: 41.09, lng: 45.37 },
+    Ganja: { lat: 40.68, lng: 46.36 },
+    Zaqatala: { lat: 41.63, lng: 46.64 },
+  };
+
+  it("the rough Georgia polygon holds Georgian towns and leaves the neighbours out", () => {
+    for (const [name, point] of Object.entries(inside)) {
+      expect([name, isInside(georgia, point)]).toEqual([name, true]);
+    }
+    for (const [name, point] of Object.entries(outside)) {
+      expect([name, isInside(georgia, point)]).toEqual([name, false]);
+    }
+  });
+
+  it("every preset is a valid shape", () => {
+    for (const preset of FENCE_PRESETS) {
+      const shape = shapeFromRow({
+        kind: preset.kind,
+        centerLat: preset.kind === "circle" ? preset.centerLat : null,
+        centerLng: preset.kind === "circle" ? preset.centerLng : null,
+        radiusKm: preset.kind === "circle" ? preset.radiusKm : null,
+        points: preset.kind === "polygon" ? preset.points : null,
+      });
+      expect(shape).not.toBeNull();
+    }
   });
 });

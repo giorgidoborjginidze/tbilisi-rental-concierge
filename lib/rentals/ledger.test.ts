@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyPayment, replayLedger, type LedgerTerms } from "./ledger";
+import { applyPayment, replayLedger, restatesBalance, type LedgerTerms } from "./ledger";
 import { evaluateSchedule } from "./schedule";
 
 const d = (iso: string) => new Date(`${iso}T00:00:00Z`);
@@ -166,5 +166,37 @@ describe("replaying the ledger", () => {
   it("moves a legacy off-grid opening date onto the grid", () => {
     const replay = replayLedger(weekly, { paidThrough: d("2026-09-03"), credit: 0 }, []);
     expect(replay.state.paidThrough).toEqual(d("2026-09-08"));
+  });
+});
+
+describe("restatesBalance", () => {
+  const stored = new Date("2026-09-20T00:00:00Z");
+  const earlier = new Date("2026-09-10T00:00:00Z");
+
+  it("treats a date the owner changed on screen as a restatement", () => {
+    expect(
+      restatesBalance({ stored, typed: "2026-09-10", shown: "2026-09-20", stated: earlier }),
+    ).toBe(true);
+  });
+
+  it("does not roll back a payment recorded after the page was loaded", () => {
+    // The page showed 10 Sep; a payment elsewhere moved it to 20 Sep; the
+    // owner only changed the grace days, so 10 Sep comes back unchanged.
+    expect(
+      restatesBalance({ stored, typed: "2026-09-10", shown: "2026-09-10", stated: earlier }),
+    ).toBe(false);
+  });
+
+  it("does not drop the credit when a period switch moves the unchanged date", () => {
+    const snapped = new Date("2026-09-21T00:00:00Z");
+    expect(
+      restatesBalance({ stored, typed: "2026-09-20", shown: "2026-09-20", stated: snapped }),
+    ).toBe(false);
+  });
+
+  it("always states an untracked contract", () => {
+    expect(
+      restatesBalance({ stored: null, typed: "2026-09-10", shown: "2026-09-10", stated: earlier }),
+    ).toBe(true);
   });
 });

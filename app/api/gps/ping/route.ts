@@ -1,62 +1,101 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { processPing } from "@/lib/geo/monitor";
+import {
+  checkFixTime,
+  fieldsFromJson,
+  fieldsFromParams,
+  MIN_PING_INTERVAL_MS,
+  parsePing,
+  pingCredentials,
+  PING_ERROR_STATUS,
+  tokensMatch,
+  type PingError,
+  type PingFields,
+} from "@/lib/geo/ping";
 import { flushOutbox } from "@/lib/notify/whatsapp";
 
-// GPS ingest. Trackers (or the middleware in front of them) POST a
-// position here; the device authenticates with the token issued when it
-// was bound to the vehicle — no login session is involved.
+// GPS ingest. Trackers do not call this by themselves: the installer or the
+// tracking provider (usually a Traccar server forwarding positions) is set
+// up with this address. The device authenticates with the token issued when
+// it was bound to the vehicle — no login session is involved.
 //
-//   POST /api/gps/ping
-//   { "deviceId": "…", "token": "…", "lat": 41.71, "lng": 44.82,
+//   POST /api/gps/ping                      (preferred)
+//   Authorization: Bearer <token>           (or X-Device-Token, or "token" in the body)
+//   { "deviceId": "…", "lat": 41.71, "lng": 44.82,
 //     "speed": 54, "at": "2026-08-31T10:00:00Z" }
 //
-// GET is accepted too, with the same fields as query parameters, because
-// several cheap trackers can only fire a plain URL.
+// Form-encoded POST bodies are read the same way. GET with the same fields
+// as query parameters is kept for cheap trackers that can only fire a URL —
+// the token then travels in the URL, so rotate it if it leaks.
+//
+// A ping is refused unless it is one real, fresh fix: a position repeated
+// in the request, an empty or non-numeric one, 0,0 (no satellite fix), a
+// fix stamped more than five minutes ahead, one no newer than the last
+// accepted fix, or more than one ping per device every five seconds.
 
 export const dynamic = "force-dynamic";
 
-interface PingBody {
-  deviceId?: string;
-  token?: string;
-  lat?: number | string;
-  lng?: number | string;
-  speed?: number | string;
-  at?: string;
+const refuse = (error: PingError) =>
+  NextResponse.json(
+    { error },
+    {
+      status: PING_ERROR_STATUS[error],
+      headers:
+        error === "rate_limited"
+          ? { "Retry-After": String(Math.ceil(MIN_PING_INTERVAL_MS / 1000)) }
+          : undefined,
+    },
+  );
+
+/** The token from a header, when the sender keeps it out of the URL. */
+function headerToken(request: Request): string | null {
+  const auth = request.headers.get("authorization") ?? "";
+  const bearer = /^Bearer\s+(.+)$/i.exec(auth);
+  return bearer?.[1]?.trim() || request.headers.get("x-device-token")?.trim() || null;
 }
 
-const num = (value: unknown): number | null => {
-  const parsed = typeof value === "string" ? Number(value) : (value as number);
-  return typeof parsed === "number" && Number.isFinite(parsed) ? parsed : null;
-};
-
-async function handle(body: PingBody) {
-  const deviceId = String(body.deviceId ?? "").trim();
-  const token = String(body.token ?? "").trim();
-  const lat = num(body.lat);
-  const lng = num(body.lng);
-
-  if (!deviceId || !token) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
-  if (lat == null || lng == null || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-    return NextResponse.json({ error: "invalid_position" }, { status: 400 });
+async function handle(fields: PingFields, token: string | null) {
+  // Credentials first: a sender without the device's token learns nothing
+  // about why its position would have been refused.
+  const credentials = pingCredentials(fields, token);
+  const device = credentials
+    ? await prisma.gpsDevice.findUnique({
+        where: { deviceId: credentials.deviceId },
+        include: { asset: { select: { operatorId: true } } },
+      })
+    : null;
+  if (!credentials || !device || !tokensMatch(device.token, credentials.token)) {
+    return refuse("unauthorized");
   }
 
-  const device = await prisma.gpsDevice.findUnique({
-    where: { deviceId },
-    include: { asset: { select: { operatorId: true } } },
+  const parsed = parsePing(fields, token);
+  if (!parsed.ok) return refuse(parsed.error);
+
+  const now = new Date();
+  const at = parsed.ping.at ?? now;
+  const timeError = checkFixTime(at, device.lastPingAt, now);
+  if (timeError) return refuse(timeError);
+
+  // At most one accepted ping per device every few seconds — claimed
+  // atomically, so two concurrent requests cannot both pass.
+  const claimed = await prisma.gpsDevice.updateMany({
+    where: {
+      id: device.id,
+      OR: [
+        { lastReceivedAt: null },
+        { lastReceivedAt: { lte: new Date(now.getTime() - MIN_PING_INTERVAL_MS) } },
+      ],
+    },
+    data: { lastReceivedAt: now },
   });
-  if (!device || device.token !== token) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  if (claimed.count === 0) return refuse("rate_limited");
 
-  const at = body.at ? new Date(body.at) : new Date();
   const outcomes = await processPing(device.assetId, {
-    lat,
-    lng,
-    speed: num(body.speed),
-    at: Number.isNaN(at.getTime()) ? new Date() : at,
+    lat: parsed.ping.lat,
+    lng: parsed.ping.lng,
+    speed: parsed.ping.speed,
+    at,
   });
 
   // Deliver straight away when the Cloud API is configured; otherwise the
@@ -77,18 +116,22 @@ async function handle(body: PingBody) {
 }
 
 export async function POST(request: Request) {
-  const body = (await request.json().catch(() => ({}))) as PingBody;
-  return handle(body);
+  const type = request.headers.get("content-type") ?? "";
+  let fields: PingFields = {};
+  if (type.includes("application/x-www-form-urlencoded") || type.includes("multipart/form-data")) {
+    const form = await request.formData().catch(() => null);
+    if (form) fields = fieldsFromParams(form);
+  } else {
+    fields = fieldsFromJson(await request.json().catch(() => ({})));
+  }
+  // Query parameters on a POST count too (and are checked for repeats).
+  const query = fieldsFromParams(new URL(request.url).searchParams);
+  for (const [key, values] of Object.entries(query)) {
+    fields[key] = [...(fields[key] ?? []), ...values];
+  }
+  return handle(fields, headerToken(request));
 }
 
 export async function GET(request: Request) {
-  const params = new URL(request.url).searchParams;
-  return handle({
-    deviceId: params.get("deviceId") ?? params.get("id") ?? undefined,
-    token: params.get("token") ?? undefined,
-    lat: params.get("lat") ?? undefined,
-    lng: params.get("lng") ?? params.get("lon") ?? undefined,
-    speed: params.get("speed") ?? undefined,
-    at: params.get("at") ?? undefined,
-  });
+  return handle(fieldsFromParams(new URL(request.url).searchParams), headerToken(request));
 }

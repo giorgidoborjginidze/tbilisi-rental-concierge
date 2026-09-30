@@ -9,6 +9,7 @@ import {
 import { dayKey, sameTbilisiDay, startOfTodayTbilisi } from "@/lib/time";
 import { activeContractWhere } from "./phase";
 import { statusFor } from "./terms";
+import { formatDue } from "./money";
 import { sweepStaleMessages, sweepStaleRentAlerts } from "./settle";
 
 // Re-exported so existing callers keep one import for "the rent status".
@@ -102,7 +103,9 @@ export async function monitorRentPayments(
     const tenantMessages =
       contract.remindersEnabled && !sameTbilisiDay(contract.createdAt, now);
     const dueKey = dayKey(status.nextDueDate);
-    const amount = Math.round(status.amountDue).toLocaleString("en-US");
+    // Quoted rounded UP to the tetri: paying exactly what the renter is told
+    // must settle exactly the periods it is about.
+    const amount = formatDue(status.amountDue);
     const vars = {
       asset: contract.asset.name,
       plate: contract.asset.plateNumber ?? "—",
@@ -195,7 +198,8 @@ export async function monitorRentPayments(
       dueDate: dueKey,
       daysOverdue: status.daysOverdue,
       graceDays: status.graceDays,
-      amountDue: Math.round(status.amountDue),
+      // Exact, to the tetri — screens format it themselves.
+      amountDue: status.amountDue,
       currency: contract.currency,
       repossessFrom: dayKey(status.repossessFrom),
     };

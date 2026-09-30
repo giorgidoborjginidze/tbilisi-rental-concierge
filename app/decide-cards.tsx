@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { receiveRent, undoPayment } from "@/lib/rentals/actions";
+import { formatDue } from "@/lib/rentals/money";
 import { IconArrowRight, IconCheck } from "./icons";
 
 export interface DecideItem {
@@ -46,7 +47,8 @@ type Toast =
 /** Cards shown before "show all" — the rest are one tap away, never cut. */
 const FIRST = 4;
 
-const fmt = (value: number) => Math.round(value).toLocaleString("en-US");
+// Rounded up to the tetri: recording the amount shown settles it exactly.
+const fmt = formatDue;
 
 // The demo's "confirm with a flick", wired to real money: swipe right
 // records the outstanding rent as received (a real RentPayment row),

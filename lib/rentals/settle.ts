@@ -28,7 +28,10 @@ export type WithdrawReason =
   | "changed"
   | "contract_ended"
   | "contract_deleted"
-  | "returned";
+  | "returned"
+  | "moved_away"
+  | "signal_back"
+  | "superseded";
 
 export const WITHDRAW_REASONS: WithdrawReason[] = [
   "paid",
@@ -36,6 +39,9 @@ export const WITHDRAW_REASONS: WithdrawReason[] = [
   "contract_ended",
   "contract_deleted",
   "returned",
+  "moved_away",
+  "signal_back",
+  "superseded",
 ];
 
 /** Late-rent alerts; each carries payload.contractId and payload.dueDate. */
@@ -315,18 +321,21 @@ export async function restoreAfterUndo(
 }
 
 /**
- * The vehicle is back inside a red line: the approach / breach messages
- * still waiting about that fence are withdrawn and its breach alerts are
- * closed.
+ * The vehicle is back inside a red line ("returned"), or back in the safe
+ * zone after nearing it ("moved_away"): the warnings still waiting about
+ * that fence are withdrawn — the approach and breach texts on a return,
+ * the approach text on moving away — and its breach alerts are closed.
  */
 export async function withdrawFence(
   db: PrismaClient,
   fenceId: string,
   returnedAt: Date,
   now: Date = new Date(),
+  reason: "returned" | "moved_away" = "returned",
 ): Promise<SettleResult> {
+  const kinds = reason === "returned" ? ["approach", "breach"] : ["approach"];
   const events = await db.geoEvent.findMany({
-    where: { geofenceId: fenceId, kind: { in: ["approach", "breach"] }, createdAt: { lte: returnedAt } },
+    where: { geofenceId: fenceId, kind: { in: kinds }, createdAt: { lte: returnedAt } },
     select: { id: true },
   });
   if (events.length === 0) return { resolved: 0, cancelled: 0 };
@@ -343,7 +352,7 @@ export async function withdrawFence(
   const cancelled = await cancelMessages(
     db,
     messages.map((message) => message.id),
-    "returned",
+    reason,
     now,
   );
 
@@ -355,10 +364,41 @@ export async function withdrawFence(
   const resolved = await autoResolve(
     db,
     alerts.filter((alert) => idSet.has((alert.payload as { key?: string }).key ?? "")),
-    "returned",
+    reason,
     now,
   );
   return { resolved, cancelled };
+}
+
+/** The tracker is sending again: its open "tracker silent" alerts close. */
+export async function resolveTrackerSilence(
+  db: PrismaClient,
+  operatorId: string,
+  assetId: string,
+  now: Date = new Date(),
+): Promise<number> {
+  const alerts = await db.alert.findMany({
+    where: { operatorId, type: "tracker_silent", status: "open" },
+    select: { id: true, payload: true },
+  });
+  return autoResolve(
+    db,
+    alerts.filter((alert) => (alert.payload as { assetId?: string } | null)?.assetId === assetId),
+    "signal_back",
+    now,
+  );
+}
+
+/**
+ * "Contract ended" alerts that no longer stand — a later stay on the same
+ * asset ended, or a new contract now follows — are closed.
+ */
+export async function closeSupersededEndings(
+  db: PrismaClient,
+  alerts: AlertRow[],
+  now: Date = new Date(),
+): Promise<number> {
+  return autoResolve(db, alerts, "superseded", now);
 }
 
 /**

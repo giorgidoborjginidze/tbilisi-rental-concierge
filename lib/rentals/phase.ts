@@ -92,3 +92,30 @@ export function assetStatusNow(
   if (asset.statusSetAt && asset.statusSetAt.getTime() >= lastEnd) return asset.status;
   return "vacant";
 }
+
+/** A contract shorter than this is a stay, not a lease. */
+export const SHORT_STAY_DAYS = 28;
+
+/**
+ * The one finished contract an asset's "contract ended" alert is about.
+ *
+ * Only the contract that ended last counts, and only while nothing runs or
+ * is booked after it — a daily-let asset whose stays are short contracts
+ * would otherwise raise one "contract ended" per past stay. A short stay
+ * that was paid in full needs no follow-up either (the vacancy signals
+ * cover the empty days); one that still owes money does.
+ */
+export function endedContractToFollowUp<T extends ContractDates>(
+  contracts: T[],
+  today: Date,
+  owes: (contract: T) => boolean,
+): T | null {
+  if (contracts.some((contract) => contractPhase(contract, today) !== "ended")) return null;
+  const last = [...contracts].sort((a, b) => b.endDate.getTime() - a.endDate.getTime())[0];
+  if (!last) return null;
+  const days = Math.round(
+    (dayStart(last.endDate).getTime() - dayStart(last.startDate).getTime()) / DAY_MS,
+  );
+  if (days < SHORT_STAY_DAYS && !owes(last)) return null;
+  return last;
+}

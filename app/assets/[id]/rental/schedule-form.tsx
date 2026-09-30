@@ -22,6 +22,7 @@ export default function ScheduleForm({
   contractId,
   currency,
   tracked,
+  payOnly = false,
   defaults,
   labels,
 }: {
@@ -29,6 +30,8 @@ export default function ScheduleForm({
   contractId: string;
   currency: string;
   tracked: boolean;
+  /** Only the "money received" box — for a finished contract's balance. */
+  payOnly?: boolean;
   defaults: ScheduleDefaults;
   labels: Record<string, string>;
 }) {
@@ -46,6 +49,7 @@ export default function ScheduleForm({
 
   return (
     <div className="rental-two">
+      {!payOnly && (
       <form action={saveTerms} className="card form-grid" style={{ padding: 18 }}>
         <input type="hidden" name="assetId" value={assetId} />
         <input type="hidden" name="contractId" value={contractId} />
@@ -93,6 +97,10 @@ export default function ScheduleForm({
             defaultValue={defaults.paidThrough}
             required
           />
+          {/* What the page showed: the balance is restated only when the
+              owner actually changed the date, never because the page was
+              stale or the period grid moved. */}
+          <input type="hidden" name="paidThroughWas" value={defaults.paidThrough} />
         </label>
 
         <label
@@ -120,6 +128,7 @@ export default function ScheduleForm({
           </button>
         </div>
       </form>
+      )}
 
       {tracked && (
       <form action={pay} className="card form-grid" style={{ padding: 18 }}>

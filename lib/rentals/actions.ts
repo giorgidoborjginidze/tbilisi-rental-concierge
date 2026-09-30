@@ -12,7 +12,7 @@ import { parsePolygon } from "@/lib/geo/fence";
 import { startOfTodayTbilisi } from "@/lib/time";
 import { PAYMENT_PERIODS, snapToBoundary, type PaymentPeriod } from "./schedule";
 import { monthlyEquivalent } from "./amount";
-import { alignPaidThrough, applyPayment, replayLedger } from "./ledger";
+import { alignPaidThrough, applyPayment, replayLedger, restatesBalance } from "./ledger";
 import { contractTerms, periodAmount } from "./terms";
 import { restoreAfterUndo, settlePaidRent } from "./settle";
 
@@ -106,7 +106,18 @@ export async function saveSchedule(
     ? snapToBoundary(contract.startDate, contract.endDate, period, typed)
     : null;
 
-  if (stated && stated.getTime() !== contract.paidThrough?.getTime()) {
+  // A restatement is the owner changing the date on screen. The form sends
+  // back what it showed (paidThroughWas): a page loaded before a payment
+  // was recorded elsewhere, or a period switch that moves the date onto a
+  // new grid, must not roll the balance back or drop the credit.
+  const restated = restatesBalance({
+    stored: contract.paidThrough,
+    typed: paidRaw,
+    shown: formData.has("paidThroughWas") ? str(formData, "paidThroughWas") : null,
+    stated,
+  });
+
+  if (restated && stated) {
     // The owner restates the balance: paid up to this date, no credit.
     ledger = {
       paidThrough: stated,

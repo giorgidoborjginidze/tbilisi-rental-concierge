@@ -286,6 +286,9 @@ const en = {
     "A part payment is kept as credit and counts toward the next period. The schedule moves forward only when a whole period is covered, so a part payment leaves the contract as late as it was.",
   pay_no_contract:
     "Add an active contract for this asset first — the schedule follows the contract.",
+  pay_ended_owed:
+    "This contract ended on {date} with rent still owed. Nothing more is sent to the renter; record the money here when it comes in.",
+  pay_unsettled_title: "Still owed from finished contracts",
   pay_untracked:
     "This contract is not being tracked yet. Set \"Rent Paid Up To\" below and save — the schedule counts from that date and reminders begin from there. Nothing is sent about the period before it.",
   pstate_not_started: "Not started",
@@ -297,7 +300,7 @@ const en = {
 
   gps_title: "GPS Tracker",
   gps_intro:
-    "Bind the tracker fitted in this vehicle. It reports its position to the address below; nothing else can post on its behalf.",
+    "Link the tracker fitted in this vehicle. A tracker cannot start sending to Activo by itself: the installer or your tracking provider has to set it (or their tracking server) up with the address below. Until then the red lines have nothing to check.",
   gps_device_id: "Device ID",
   gps_label: "Label",
   gps_provider: "Provider",
@@ -305,16 +308,35 @@ const en = {
   gps_token: "Device Token",
   gps_endpoint: "Ping Address",
   gps_endpoint_hint:
-    "Give this to the tracker (or its middleware). GET works too, for devices that can only call a URL.",
+    "Send this address and the token to whoever installed the tracker or runs your tracking service. Their system adds each position; the address itself carries none.",
+  gps_tech_details: "Technical details",
+  gps_example: "Example only — do not give this line to the tracker",
+  gps_tech_note:
+    "POST (JSON or form) is preferred, with the token in the header \"Authorization: Bearer <token>\". GET with the same fields is accepted for trackers that can only call a URL. Fields: lat, lng (or lon), speed in km/h, at or timestamp. Refused: a position given twice, an empty one, 0,0 (no satellite fix), the example position, a time more than 5 minutes ahead or not newer than the last position, and more than one position every 5 seconds. If the token leaks, press \"New Token\".",
+  gps_silent: "No signal for {span}",
+  gps_silent_hint:
+    "The tracker has not reported for a while, so where the car is now is unknown. Call the driver and check the tracker's power and SIM.",
+  dur_min: "{n} min",
+  dur_hours: "{n} h",
+  dur_days: "{n} d",
   gps_rotate: "New Token",
   gps_remove: "Disconnect",
   gps_last_ping: "Last Position",
-  gps_never: "No position yet",
+  gps_never: "No signal yet. The first position appears here once the installer has set the tracker up.",
   gps_speed: "Speed",
 
   fence_title: "Red Lines",
   fence_intro:
-    "The area the vehicle is allowed to stay in. The driver is warned one kilometre before the line and again on crossing it.",
+    "The area the vehicle is allowed to stay in. The driver is warned as the car nears the line (you choose how far ahead) and again on crossing it. The warning re-arms once the car moves back away from the line.",
+  fence_presets: "Quick choice",
+  fence_preset_tbilisi30: "Tbilisi 30 km",
+  fence_preset_tbilisi50: "Tbilisi 50 km",
+  fence_preset_batumi20: "Batumi 20 km",
+  fence_preset_kutaisi20: "Kutaisi 20 km",
+  fence_preset_georgia: "Georgia (rough border)",
+  fence_preset_hint:
+    "A choice fills in the name, centre and radius — you can still change them. The Georgia outline is rough: near a border it can be off by a few kilometres.",
+  fence_status_unknown: "Unknown",
   fence_name: "Name",
   fence_kind: "Shape",
   fence_circle: "Circle (centre + radius)",
@@ -391,6 +413,10 @@ const en = {
   alert_geofence_breach: "Red Line Crossed",
   action_geofence_breach:
     "The vehicle is outside the agreed area. Contact the driver, or report it to 112.",
+  alert_tracker_silent: "Tracker Silent",
+  action_tracker_silent:
+    "The tracker has stopped reporting, so the red lines cannot see the car. Call the driver and check the tracker's power and SIM.",
+  tips_src_gps: "your GPS tracker",
 
   nav_invest: "Investment Calculator",
   invest_title: "Investment Calculator",
@@ -583,6 +609,7 @@ const en = {
   deck_adv_vacant: "Vacant for {days} day(s). Publish it — each week costs you roughly {loss}.",
   deck_adv_overdue: "Payment is {days} day(s) late. The contract allows {grace}.",
   deck_adv_repossess: "The grace period has run out — you are entitled to require the vehicle back.",
+  deck_adv_ended_owed: "The contract has ended with {amount} still unpaid. Record it when the renter pays.",
   deck_adv_ok: "Everything is in order. No action needed right now.",
   deck_adv_no_value: "No estimated value yet — add one and the portfolio total includes it.",
   bars_title: "All income · 6 months",
@@ -1020,6 +1047,9 @@ const en = {
   withdraw_contract_ended: "The contract has ended",
   withdraw_contract_deleted: "The contract was deleted",
   withdraw_returned: "The vehicle came back inside the red line",
+  withdraw_moved_away: "The vehicle moved away from the line",
+  withdraw_signal_back: "The tracker is sending again",
+  withdraw_superseded: "A later contract took its place",
   alert_auto: "Closed automatically",
   alert_unpaid: "Unpaid",
   alert_live_note: "Figures as of today",
@@ -1320,6 +1350,9 @@ const ka: Record<StringKey, string> = {
     "ნაწილობრივი თანხა ავანსად რჩება და შემდეგ პერიოდს აკლდება. გრაფიკი წინ მხოლოდ მაშინ მიიწევს, როცა მთელი პერიოდი დაიფარება — ამიტომ ნაწილობრივი გადახდა დაგვიანებას არ ხსნის.",
   pay_no_contract:
     "ჯერ დაამატე მოქმედი ხელშეკრულება ამ აქტივზე — გრაფიკი კონტრაქტს მიჰყვება.",
+  pay_ended_owed:
+    "ეს კონტრაქტი {date}-ს დასრულდა და ქირა ბოლომდე არ არის გადახდილი. დამქირავებელს აღარაფერი ეგზავნება; თანხა აქ ჩაწერე, როცა მიიღებ.",
+  pay_unsettled_title: "დასრულებული კონტრაქტების დავალიანება",
   pay_untracked:
     "ეს ხელშეკრულება ჯერ არ ითვლება. ქვემოთ მიუთითე „ქირა გადახდილია თარიღამდე“ და შეინახე — გრაფიკი ამ თარიღიდან იწყებს ათვლას და შეხსენებებიც აქედან ამოქმედდება. მანამდელ პერიოდზე არაფერი იგზავნება.",
   pstate_not_started: "ჯერ არ დაწყებულა",
@@ -1331,7 +1364,7 @@ const ka: Record<StringKey, string> = {
 
   gps_title: "GPS მოწყობილობა",
   gps_intro:
-    "მიაბი ამ მანქანაში ჩამონტაჟებული ტრეკერი. ის კოორდინატებს ქვემოთ მითითებულ მისამართზე აგზავნის; სხვა ვერავინ ჩაწერს მის ნაცვლად.",
+    "მიაბი ამ მანქანაში ჩამონტაჟებული ტრეკერი. ტრეკერი Activo-ში გაგზავნას თავისით ვერ დაიწყებს: ის (ან თვალთვალის სერვერი) ქვემოთ მოცემულ მისამართზე უნდა დააყენოს ინსტალატორმა ან თვალთვალის სერვისის მომწოდებელმა. მანამდე წითელ ხაზებს შესამოწმებელი არაფერი აქვთ.",
   gps_device_id: "მოწყობილობის ID",
   gps_label: "დასახელება",
   gps_provider: "მომწოდებელი",
@@ -1339,16 +1372,35 @@ const ka: Record<StringKey, string> = {
   gps_token: "მოწყობილობის ტოკენი",
   gps_endpoint: "მისამართი",
   gps_endpoint_hint:
-    "ეს მისამართი მიეცი ტრეკერს. GET-იც მუშაობს, იმ მოწყობილობებისთვის რომლებსაც მხოლოდ ბმულის გამოძახება შეუძლიათ.",
+    "ეს მისამართი და ტოკენი გაუგზავნე მას, ვინც ტრეკერი დაგიმონტაჟა ან თვალთვალის სერვისს გიწევს. კოორდინატს ყოველ ჯერზე მათი სისტემა ამატებს — თავად მისამართში კოორდინატი არ არის.",
+  gps_tech_details: "ტექნიკური დეტალები",
+  gps_example: "მხოლოდ მაგალითი — ეს ხაზი ტრეკერს არ მისცე",
+  gps_tech_note:
+    "სასურველია POST (JSON ან ფორმა), ტოკენით სათაურში „Authorization: Bearer <token>“. GET იგივე ველებით მიიღება იმ ტრეკერებისთვის, რომლებსაც მხოლოდ ბმულის გამოძახება შეუძლიათ. ველები: lat, lng (ან lon), speed კმ/სთ-ში, at ან timestamp. არ მიიღება: ორჯერ მოცემული კოორდინატი, ცარიელი, 0,0 (სატელიტური სიგნალი არ არის), მაგალითის კოორდინატი, დრო, რომელიც 5 წუთზე მეტით მომავალშია ან ბოლო კოორდინატზე ახალი არ არის, და 5 წამში ერთზე მეტი კოორდინატი. თუ ტოკენი გაჟონა, დააჭირე „ახალი ტოკენი“.",
+  gps_silent: "სიგნალი არ არის {span}",
+  gps_silent_hint:
+    "ტრეკერს დიდი ხანია არაფერი გამოუგზავნია, ამიტომ მანქანა ახლა სად არის — უცნობია. დაურეკე მძღოლს და შეამოწმე ტრეკერის კვება და SIM ბარათი.",
+  dur_min: "{n} წთ",
+  dur_hours: "{n} სთ",
+  dur_days: "{n} დღე",
   gps_rotate: "ახალი ტოკენი",
   gps_remove: "მოხსნა",
   gps_last_ping: "ბოლო კოორდინატი",
-  gps_never: "კოორდინატი ჯერ არ მოსულა",
+  gps_never: "სიგნალი ჯერ არ მოსულა. პირველი კოორდინატი აქ გამოჩნდება, როცა ინსტალატორი ტრეკერს დააყენებს.",
   gps_speed: "სიჩქარე",
 
   fence_title: "წითელი ხაზები",
   fence_intro:
-    "ტერიტორია, რომლის ფარგლებშიც უნდა დარჩეს ავტომობილი. მძღოლს გაფრთხილება მიდის ხაზამდე ერთი კილომეტრით ადრე და ხელახლა — გადაკვეთისას.",
+    "ტერიტორია, რომლის ფარგლებშიც უნდა დარჩეს ავტომობილი. მძღოლს გაფრთხილება მიდის ხაზთან მიახლოებისას (რამდენით ადრე — შენ წყვეტ) და ხელახლა — გადაკვეთისას. როცა მანქანა ხაზს დაშორდება, გაფრთხილება ისევ ჩაირთვება.",
+  fence_presets: "სწრაფი არჩევანი",
+  fence_preset_tbilisi30: "თბილისი 30 კმ",
+  fence_preset_tbilisi50: "თბილისი 50 კმ",
+  fence_preset_batumi20: "ბათუმი 20 კმ",
+  fence_preset_kutaisi20: "ქუთაისი 20 კმ",
+  fence_preset_georgia: "საქართველო (უხეში საზღვარი)",
+  fence_preset_hint:
+    "არჩევანი ავსებს სახელს, ცენტრს და რადიუსს — შემდეგ შეცვლაც შეგიძლია. საქართველოს კონტური უხეშია: საზღვართან რამდენიმე კილომეტრით შეიძლება ცდებოდეს.",
+  fence_status_unknown: "უცნობია",
   fence_name: "დასახელება",
   fence_kind: "ფორმა",
   fence_circle: "წრე (ცენტრი + რადიუსი)",
@@ -1425,6 +1477,10 @@ const ka: Record<StringKey, string> = {
   alert_geofence_breach: "წითელი ხაზი გადაკვეთილია",
   action_geofence_breach:
     "ავტომობილი შეთანხმებული ტერიტორიის გარეთაა. დაუკავშირდი მძღოლს ან შეატყობინე 112-ს.",
+  alert_tracker_silent: "ტრეკერი დადუმდა",
+  action_tracker_silent:
+    "ტრეკერი აღარ აგზავნის სიგნალს, ამიტომ წითელი ხაზები მანქანას ვეღარ ხედავს. დაურეკე მძღოლს და შეამოწმე ტრეკერის კვება და SIM ბარათი.",
+  tips_src_gps: "შენი GPS ტრეკერი",
 
   nav_invest: "საინვესტიციო კალკულატორი",
   invest_title: "საინვესტიციო კალკულატორი",
@@ -1617,6 +1673,7 @@ const ka: Record<StringKey, string> = {
   deck_adv_vacant: "თავისუფალია {days} დღეა. გამოაქვეყნე — ყოველი კვირა დაახლოებით {loss} გიჯდება.",
   deck_adv_overdue: "გადახდა {days} დღით არის დაგვიანებული. კონტრაქტი {grace} დღეს უშვებს.",
   deck_adv_repossess: "შეღავათიანი ვადა ამოიწურა — ავტომობილის დაბრუნების მოთხოვნის უფლება გაქვს.",
+  deck_adv_ended_owed: "კონტრაქტი დასრულდა, გადაუხდელი დარჩა {amount}. ჩაწერე, როცა გადაგიხდის.",
   deck_adv_ok: "ყველაფერი წესრიგშია. ამ წუთას მოქმედება არ სჭირდება.",
   deck_adv_no_value: "შეფასებული ღირებულება ჯერ არ მიგითითებია — დაამატე და პორტფელის ჯამში ჩაჯდება.",
   bars_title: "ყველა შემოსავალი · 6 თვე",
@@ -2054,6 +2111,9 @@ const ka: Record<StringKey, string> = {
   withdraw_contract_ended: "კონტრაქტი დასრულდა",
   withdraw_contract_deleted: "კონტრაქტი წაიშალა",
   withdraw_returned: "მანქანა წითელი ხაზის შიგნით დაბრუნდა",
+  withdraw_moved_away: "მანქანა ხაზს დაშორდა",
+  withdraw_signal_back: "ტრეკერი ისევ აგზავნის სიგნალს",
+  withdraw_superseded: "მის ადგილას უფრო ახალი კონტრაქტია",
   alert_auto: "ავტომატურად დაიხურა",
   alert_unpaid: "გადაუხდელი",
   alert_live_note: "მონაცემები დღევანდელი მდგომარეობით",

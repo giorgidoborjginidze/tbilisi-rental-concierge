@@ -4,9 +4,12 @@ import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
 import { runAlertScan, setAlertStatus } from "@/lib/alerts/actions";
+import { alertCategories } from "@/lib/alerts/category";
 import { templateFamily } from "@/lib/notify/templates";
 import { formatAmount, periodWordKey } from "@/lib/rentals/display";
 import { statusFor } from "@/lib/rentals/terms";
+import { formatDue } from "@/lib/rentals/money";
+import { silenceSpan } from "@/lib/geo/silence";
 import { WITHDRAW_REASONS } from "@/lib/rentals/settle";
 import type { ScheduleStatus } from "@/lib/rentals/schedule";
 import { dayKey, startOfTodayTbilisi, tbilisiFormat } from "@/lib/time";
@@ -22,6 +25,7 @@ const TYPE_STYLE: Record<string, string> = {
   rent_overdue: "alert-card--overdue",
   repossession_right: "alert-card--repossess",
   geofence_breach: "alert-card--geofence",
+  tracker_silent: "alert-card--geofence",
 };
 
 interface AlertPayload {
@@ -56,6 +60,9 @@ interface AlertPayload {
   distanceKm?: number;
   driverName?: string | null;
   contractId?: string;
+  // Silent tracker.
+  deviceId?: string;
+  lastPingAt?: string;
   /** Set when the system (not the owner) closed the alert. */
   autoResolved?: string;
 }
@@ -80,6 +87,9 @@ export default async function AlertsPage({
     take: done ? 50 : undefined,
   });
 
+  // Older alerts carry no category — it is looked up from the asset.
+  const categoryOf = await alertCategories(operator.id, alerts);
+
   const displayName = (unit: { name: string; nameKa: string | null } | null) =>
     unit ? (locale === "ka" && unit.nameKa ? unit.nameKa : unit.name) : "—";
 
@@ -87,7 +97,11 @@ export default async function AlertsPage({
   // same statusFor, with the asset's pricing, as the dashboard, the rental
   // page and the WhatsApp text — not from the snapshot taken the day the
   // alert was raised, which would freeze at "1/3 days, 90 GEL".
-  const today = startOfTodayTbilisi();
+  const now = new Date();
+  const today = startOfTodayTbilisi(now);
+  const fmtStamp = tbilisiFormat(locale, {
+    day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+  });
   const contractIds = [
     ...new Set(
       alerts
@@ -111,7 +125,8 @@ export default async function AlertsPage({
     ]),
   );
   const currencyOf = new Map(contracts.map((contract) => [contract.id, contract.currency]));
-  const money = (value: number) => Math.round(value).toLocaleString("en-US");
+  // Amounts owed are quoted rounded up to the tetri, as in the WhatsApp text.
+  const money = formatDue;
   const owes = (status: ScheduleStatus | null | undefined) =>
     status != null && status.periodsOwed > 0 && status.amountDue > 0;
 
@@ -166,11 +181,28 @@ export default async function AlertsPage({
           payload.assetName,
           payload.plate,
           payload.tenantName ?? "—",
-          `${payload.amountDue} ${unit}`,
+          payload.amountDue != null ? `${money(payload.amountDue)} ${unit}` : null,
           `${t(locale, "pay_next_due")}: ${payload.dueDate}`,
           `${t(locale, "pay_days_overdue")}: ${payload.daysOverdue}/${payload.graceDays}`,
           !done && payload.contractId && !live.has(payload.contractId)
             ? t(locale, "withdraw_contract_deleted")
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" · ");
+      }
+      case "tracker_silent": {
+        const last = payload.lastPingAt ? new Date(payload.lastPingAt) : null;
+        const span = last ? silenceSpan(last, now) : null;
+        return [
+          payload.assetName,
+          payload.plate,
+          last ? `${t(locale, "gps_last_ping")}: ${fmtStamp.format(last)}` : null,
+          span
+            ? t(locale, "gps_silent").replace(
+                "{span}",
+                t(locale, `dur_${span.unit}` as StringKey).replace("{n}", String(span.n)),
+              )
             : null,
         ]
           .filter(Boolean)
@@ -225,10 +257,11 @@ export default async function AlertsPage({
           const payload = alert.payload as AlertPayload;
           const currency = alert.unit?.currency ?? "GEL";
           // Late rent on a flat is not a vehicle to take back.
+          const category = categoryOf(payload);
           const property =
             alert.type === "repossession_right" &&
-            payload.category != null &&
-            templateFamily(payload.category) === "property";
+            category != null &&
+            templateFamily(category) === "property";
           return (
             <div key={alert.id} className={`alert-card ${TYPE_STYLE[alert.type] ?? ""}`}>
               <div>
