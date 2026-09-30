@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { formatMoney } from "@/lib/format";
+import { formatMoney, formatNumber, formatQuantity, formatSignedPercent } from "@/lib/format";
 import { IconArrowLeft, IconTrash } from "@/app/icons";
 import { prisma } from "@/lib/db";
 import { tbilisiFormat, todayKey } from "@/lib/time";
@@ -13,6 +13,7 @@ import Approx from "@/app/approx";
 import { TROY_OUNCE_GRAMS } from "@/lib/assets/trade-input";
 import ConfirmAction from "@/app/confirm-action";
 import CryptoTrades from "./crypto-trades";
+import Kpi, { KpiSub } from "../../../kpi";
 
 type HoldingKind = "crypto" | "stock" | "metal";
 
@@ -65,7 +66,7 @@ export default async function HoldingView({
   const gel = (nUsd: number | null) => (nUsd == null ? "—" : formatMoney(nUsd * usdGel));
   // Without any price the holding counts at what was paid for it.
   const shownValue = v.currentValue ?? v.costBasis;
-  const qty = v.quantity.toLocaleString("en-US", { maximumFractionDigits: kind === "metal" ? 4 : 8 });
+  const qty = formatQuantity(v.quantity, kind);
 
   const fmtDate = tbilisiFormat(locale, { day: "numeric", month: "short", year: "numeric" });
 
@@ -115,7 +116,7 @@ export default async function HoldingView({
         <p className="alert-card alert-card--warn" role="status" style={{ display: "block", fontSize: 13 }}>
           {t(locale, "holding_oversold").replace(
             "{n}",
-            v.oversold.toLocaleString("en-US", { maximumFractionDigits: kind === "metal" ? 4 : 8 }),
+            formatQuantity(v.oversold, kind),
           )}
         </p>
       )}
@@ -126,55 +127,53 @@ export default async function HoldingView({
         </p>
       ) : (
         <section className="kpi-grid" style={{ marginTop: 8 }}>
-          <div className="kpi">
-            <div className="kpi__label">{t(locale, holdingLabel)}</div>
-            <div className="kpi__value">
-              {qty} {kind === "metal" ? t(locale, "metal_unit_oz") : asset.symbol}
-            </div>
-            <div className="kpi__sub">
-              {kind === "metal"
-                ? `${(v.quantity * TROY_OUNCE_GRAMS).toLocaleString("en-US", { maximumFractionDigits: 1 })} ${t(locale, "metal_unit_g")} · `
-                : ""}
-              {t(locale, "crypto_avg_price")}: {usd(v.avgBuyPrice)}
-            </div>
-          </div>
-          <div className="kpi">
-            <div className="kpi__label">{t(locale, "crypto_current_price")}</div>
-            <div className="kpi__value">{usd(currentPrice)}</div>
-            <div className="kpi__sub">
-              {!quote
+          <Kpi
+            label={t(locale, holdingLabel)}
+            value={`${qty} ${kind === "metal" ? t(locale, "metal_unit_oz") : asset.symbol}`}
+            sub={
+              <>
+                {kind === "metal"
+                  ? `${formatNumber(v.quantity * TROY_OUNCE_GRAMS, 1)} ${t(locale, "metal_unit_g")} · `
+                  : ""}
+                {t(locale, "crypto_avg_price")}: {usd(v.avgBuyPrice)}
+              </>
+            }
+          />
+          <Kpi
+            label={t(locale, "crypto_current_price")}
+            value={usd(currentPrice)}
+            sub={
+              !quote
                 ? t(locale, "crypto_price_na")
                 : quote.fresh
                   ? t(locale, "crypto_live")
-                  : t(locale, "price_last_known").replace("{age}", priceAge(locale, quote.fetchedAt, now))}
-            </div>
-          </div>
-          <div className="kpi">
-            <div className="kpi__label">{t(locale, "crypto_value")}</div>
-            <div className="kpi__value">
-              {approx && <Approx label={approxLabel} />}
-              {usd(shownValue, 0)}
-            </div>
-            <div className="kpi__sub">
-              {gel(shownValue)}
-              {!quote && v.quantity > 0 ? ` · ${t(locale, "price_at_cost")}` : ""}
-            </div>
-          </div>
-          <div className="kpi">
-            <div className="kpi__label">{t(locale, "crypto_pnl")}</div>
-            <div className="kpi__value" style={{ color: profitColor }}>
-              {v.profit == null ? "—" : `${v.profit >= 0 ? "+" : ""}${usd(v.profit, 0)}`}
-            </div>
-            <div className="kpi__sub" style={{ color: profitColor }}>
-              {v.profitPct == null ? "" : `${v.profitPct >= 0 ? "+" : ""}${(v.profitPct * 100).toFixed(1)}%`}
-            </div>
+                  : t(locale, "price_last_known").replace("{age}", priceAge(locale, quote.fetchedAt, now))
+            }
+          />
+          <Kpi
+            label={t(locale, "crypto_value")}
+            value={
+              <>
+                {approx && <Approx label={approxLabel} />}
+                {usd(shownValue, 0)}
+              </>
+            }
+            sub={`${gel(shownValue)}${!quote && v.quantity > 0 ? ` · ${t(locale, "price_at_cost")}` : ""}`}
+          />
+          <Kpi
+            label={t(locale, "crypto_pnl")}
+            value={v.profit == null ? "—" : `${v.profit >= 0 ? "+" : ""}${usd(v.profit, 0)}`}
+            valueStyle={{ color: profitColor }}
+            sub={v.profitPct == null ? undefined : formatSignedPercent(v.profitPct)}
+            subStyle={{ color: profitColor }}
+          >
             {Math.abs(v.realizedProfit) >= 0.005 && (
-              <div className="kpi__sub">
+              <KpiSub>
                 {t(locale, "holding_realized")}: {v.realizedProfit >= 0 ? "+" : ""}
                 {usd(v.realizedProfit, 0)}
-              </div>
+              </KpiSub>
             )}
-          </div>
+          </Kpi>
         </section>
       )}
 

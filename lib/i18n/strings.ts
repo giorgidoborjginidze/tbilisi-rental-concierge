@@ -1,7 +1,5 @@
 export type Locale = "en" | "ka";
 
-export const LOCALES: Locale[] = ["en", "ka"];
-
 /** Georgian first: English only when someone switched to it. */
 export const DEFAULT_LOCALE: Locale = "ka";
 
@@ -20,7 +18,6 @@ const en = {
 
   onboarding_title: "Welcome",
   onboarding_intro: "Set up your account to start managing your portfolio.",
-  onboarding_submit: "Create account",
   operator_name: "Company or your name",
   operator_email: "Email",
 
@@ -112,26 +109,17 @@ const en = {
   operator_name_hint:
     "Optional \u2014 a display label only. You can leave it blank and use the app with just your email.",
   privacy_note_register:
-    "We ask for the minimum: an email and a password. Your data is private to you, isolated from every other account, and never sold or shared.",
-  nav_privacy: "Privacy",
-  privacy_title: "Privacy & Confidentiality",
-  privacy_intro:
-    "Your portfolio is sensitive. This app is built to know as little as possible about you and to keep what it does know strictly yours.",
-  privacy_h_minimal: "We collect the minimum",
-  privacy_p_minimal:
-    "Signing up needs only an email and a password. Your name is optional. Tenant details (name, phone) are optional and stored only to help you contact them \u2014 nothing about a booking is required beyond dates and an amount.",
-  privacy_h_isolation: "Your data is isolated",
-  privacy_p_isolation:
-    "Every account is fully separated. Each page, action and export is scoped to you \u2014 no other user, and no employee you have not invited, can see your units, assets, income or contracts.",
-  privacy_h_security: "Security",
-  privacy_p_security:
-    "Passwords are hashed (never stored in the clear). Sessions are held as one-way hashes, so even a database leak exposes no usable login. Traffic is encrypted in transit.",
-  privacy_h_sharing: "No selling, no sharing",
-  privacy_p_sharing:
-    "We never sell your data or share it with third parties. Market figures shown in the app are approximate reference averages, not data drawn from your account.",
-  privacy_h_control: "You are in control",
-  privacy_p_control:
-    "Delete any asset, contract or income record at any time \u2014 it is removed for good. Remove a team member and their access ends immediately.",
+    "We ask for the minimum: an email and a password. Your data is yours, kept apart from every other account and never sold.",
+  register_legal_note:
+    "By creating an account you accept the [Terms of Service](/terms) and the [Privacy Policy](/privacy).",
+  billing_terms_note:
+    "Paying means you accept the [Terms of Service](/terms). Nothing is charged to your card automatically.",
+  legal_updated: "Last updated",
+  legal_contents: "Contents",
+  // The link to the other language's version is labelled in that language.
+  legal_language_version: "English version",
+  footer_privacy: "Privacy",
+  footer_terms: "Terms",
   footer_about: "About Us",
   footer_contact: "Contact",
   // \u2500\u2500 About page \u2500\u2500
@@ -218,16 +206,9 @@ const en = {
   rental_mode: "Rental Mode",
   mode_long_term: "Long-term",
   mode_daily: "Daily",
-  listings_label: "Listings",
-  ss_url: "ss.ge Listing URL",
-  myauto_url: "myauto.ge Listing URL",
   door_key: "Door Key",
   door_generate: "New Code",
   tenant_phone: "Tenant Phone (WhatsApp)",
-  myhome_url: "myhome.ge Listing URL",
-  myhome_hint:
-    "Paste this asset's own listing URLs. The status buttons update the status here and open the listing so you can flip it there too.",
-  myhome_open: "Open on myhome.ge",
   mark_rented: "Rented",
   mark_vacant: "Vacant",
   listing_links: "Listing Links",
@@ -237,7 +218,6 @@ const en = {
     "Just paste the listing URL — we detect the platform (myhome.ge, ss.ge, myauto.ge, Airbnb, Booking) automatically. Add more than one if it's listed in several places.",
 
   assets_total_value: "Total Value",
-  assets_rented_count: "Rented",
 
   contracts_title: "Rental Contracts",
   contracts_col: "Contract",
@@ -248,7 +228,6 @@ const en = {
   contract_tenant: "Tenant",
   contract_start: "Start Date",
   contract_end: "End Date",
-  contract_rent: "Monthly Rent",
   contract_deposit: "Deposit (₾, optional)",
   contract_until: "until",
   cstatus_active: "Active",
@@ -294,8 +273,6 @@ const en = {
   pay_history: "Payments",
   pay_partial_hint:
     "A part payment is kept as credit and counts toward the next period. The schedule moves forward only when a whole period is covered, so a part payment leaves the contract as late as it was.",
-  pay_no_contract:
-    "Add an active contract for this asset first — the schedule follows the contract.",
   pay_ended_owed:
     "This contract ended on {date} with rent still owed. Nothing more is sent to the renter; record the money here when it comes in.",
   pay_unsettled_title: "Still owed from finished contracts",
@@ -358,7 +335,6 @@ const en = {
   fence_approach: "Warn ahead (km)",
   fence_approach_hint: "How far before the line the first warning goes out.",
   fence_add: "Add Red Line",
-  fence_save: "Save",
   fence_active: "Active",
   fence_paused: "Paused",
   fence_pause: "Pause",
@@ -398,7 +374,6 @@ const en = {
   outbox_empty: "Nothing queued.",
   outbox_send: "Send on WhatsApp",
   outbox_mark_sent: "Mark sent",
-  outbox_delete: "Remove",
   outbox_retry: "Retry failed",
   outbox_status_queued: "Queued",
   outbox_status_sent: "Sent",
@@ -476,8 +451,6 @@ const en = {
   res_verdict_ok: "About Par with a Deposit",
   res_verdict_poor: "A Deposit Earns More",
   wor_title: "Pro Analysis — Is It Worth It?",
-  wor_teaser: "Full 5-year assessment: loan repayments, taxes, cash flow, yearly yield (cap rate), return on the cash you put in (cash-on-cash) and a clear verdict. Included from the Standard plan up.",
-  wor_open: "Open Pro Analysis",
   wor_locked: "PRO analysis is available from the Standard plan up. Upgrade on the Plan page — during your free trial it is already unlocked.",
   wor_intro:
     "Enter the deal \u2014 the engine runs the full 5-year underwriting and gives a verdict. Every field is editable; the essentials are enough to start.",
@@ -538,9 +511,6 @@ const en = {
   settings_interface: "Interface",
   settings_language: "Language",
   settings_theme: "Theme",
-  settings_manage_plan: "Manage Plan",
-  billing_intro:
-    "The first month is free with full access. From the second month, pick the plan that fits your portfolio. Card payments are handled securely by Flitt.",
   billing_trial: "Free Trial",
   billing_trial_over:
     "Your free month is over \u2014 choose a plan to keep adding records.",
@@ -561,7 +531,6 @@ const en = {
   billing_units: "rental units",
   billing_members: "team seats",
   billing_analysis: "PRO investment analysis",
-  usage_title: "Usage",
   team_title: "Team",
   team_invite: "Invite Employee",
   team_invite_hint:
@@ -623,17 +592,13 @@ const en = {
   tips_src_calendar: "your calendar",
   tips_src_contract: "your contracts",
   day_sub: "Was it rented today? The suggested figure is the day's tariff — agree anything else and type it in.",
-  day_question: "Rented today?",
   day_yes: "Rented",
   day_no: "Empty",
   day_amount: "Agreed amount",
   day_holiday: "Public holiday",
   day_weekend: "Weekend",
   day_base: "Regular day",
-  day_saved: "Saved",
   day_edit: "Edit",
-  day_empty: "No daily-let assets — switch an asset to daily mode and it appears here every morning.",
-  day_all_done: "Every daily let is answered for today.",
   day_earned: "Today",
   contract_amount_daily: "Rent per Day (₾)",
   contract_amount_weekly: "Rent per Week (₾)",
@@ -838,7 +803,6 @@ const en = {
   land_hero: "All Your Property \u2014 One Dashboard",
   land_sub:
     "Real estate, vehicles, rentals, income and investment analysis \u2014 all in one place, from your phone.",
-  details: "Details",
   back: "Back",
   nav_learn: "Learn",
   tour_next: "Next",
@@ -868,6 +832,8 @@ const en = {
   learn_start_tour: "Start the interactive tour",
   learn_tour_signin: "The tour runs inside your account — sign in (or open the demo) first.",
   learn_video_soon: "Video coming soon",
+  learn_video_updating: "Video being updated",
+  learn_video_updating_hint: "The recording showed the old design; a new one is on its way. The same steps are written out below.",
   land_stat_assets: "asset classes in one view",
   land_stat_platforms: "platforms auto-detected",
   land_stat_days: "days free, full access",
@@ -1036,14 +1002,11 @@ const en = {
   seg_income: "Salary / Dividend",
   seg_digital: "Digital Assets",
   add_cta: "Add a new asset in 1 minute",
-  crypto_new_title: "Add a Crypto Holding",
-  crypto_new_intro: "Pick a coin, then log your buys and sells. We show the live price and your profit or loss automatically.",
   crypto_coin: "Coin",
   crypto_custom: "Other (Enter Manually)",
   crypto_custom_symbol: "Symbol",
   crypto_custom_id: "CoinGecko ID (Optional)",
   crypto_custom_id_hint: "Needed to fetch the live price. Find it on coingecko.com — it's the last part of the coin's page URL.",
-  crypto_add: "Add Holding",
   crypto_buy: "Buy",
   crypto_sell: "Sell",
   crypto_quantity: "Quantity",
@@ -1059,7 +1022,6 @@ const en = {
   crypto_pnl: "Profit / Loss",
   crypto_hint: "The average buy price follows your trades in date order: a buy moves the average, a sell reduces the quantity at the average and books the difference as realized profit. Once everything is sold, the average starts again.",
   crypto_trades: "Buys & Sells",
-  crypto_footnote: "Crypto values use the live price from CoinGecko, converted to GEL at the current rate.",
 
   // Digital assets segment (crypto + stocks together)
   section_digital: "Digital Assets",
@@ -1087,20 +1049,15 @@ const en = {
 
   // Stock holdings
   section_stock: "Stock Holdings",
-  stock_new_title: "Add a Stock Holding",
-  stock_new_intro: "Pick a stock, then log your buys and sells. We show the live price and your profit or loss automatically. US-listed tickers only.",
   stock_ticker: "Stock",
   stock_custom_ticker: "Ticker",
-  stock_add: "Add Stock",
   stock_holdings: "Shares",
   stock_unit_price: "Price per Share (USD)",
   stock_hint: "The average buy price follows your trades in date order: a buy moves the average, a sell reduces the shares at the average and books the difference as realized profit. Once everything is sold, the average starts again.",
-  stock_footnote: "Stock values use the latest US-market price from Stooq, converted to GEL at the current rate.",
 
   // Precious metals
   section_metal: "Precious Metals",
   metal_holdings: "Holding",
-  metal_unit_price: "Price per oz (USD)",
   metal_footnote: "Metal prices are the live USD spot price per troy ounce, converted to GEL at the current rate.",
 
   // One income definition (lib/analytics/income.ts) and its two scopes.
@@ -1462,7 +1419,6 @@ const ka: Record<StringKey, string> = {
   onboarding_title: "მოგესალმებით",
   onboarding_intro:
     "შექმენი ანგარიში და დაიწყე შენი პორტფელის მართვა.",
-  onboarding_submit: "ანგარიშის შექმნა",
   operator_name: "კომპანიის ან შენი სახელი",
   operator_email: "ელფოსტა",
 
@@ -1554,26 +1510,16 @@ const ka: Record<StringKey, string> = {
   operator_name_hint:
     "არასავალდებულო \u2014 მხოლოდ საჩვენებელი სახელი. შეგიძლია ცარიელი დატოვო და მხოლოდ ელფოსტით ისარგებლო.",
   privacy_note_register:
-    "ვითხოვთ მინიმუმს: ელფოსტას და პაროლს. შენი მონაცემები მხოლოდ შენია, იზოლირებულია ყველა სხვა ანგარიშისგან და არასდროს იყიდება ან ზიარდება.",
-  nav_privacy: "კონფიდენციალურობა",
-  privacy_title: "კონფიდენციალურობა და მონაცემთა დაცვა",
-  privacy_intro:
-    "შენი პორტფელი მგრძნობიარე ინფორმაციაა. ეს აპლიკაცია აგებულია ისე, რომ შენზე მინიმალური იცოდეს და რაც იცის, მკაცრად შენად შეინახოს.",
-  privacy_h_minimal: "ვაგროვებთ მინიმუმს",
-  privacy_p_minimal:
-    "რეგისტრაციას მხოლოდ ელფოსტა და პაროლი სჭირდება. სახელი არასავალდებულოა. დამქირავებლის მონაცემები (სახელი, ტელეფონი) არასავალდებულოა და ინახება მხოლოდ დასაკავშირებლად \u2014 ჯავშანზე თარიღებისა და თანხის გარდა არაფერია საჭირო.",
-  privacy_h_isolation: "შენი მონაცემები იზოლირებულია",
-  privacy_p_isolation:
-    "ყველა ანგარიში სრულად გამიჯნულია. თითოეული გვერდი, ქმედება და ექსპორტი მხოლოდ შენზეა მიბმული \u2014 ვერც სხვა მომხმარებელი და ვერც შენ მიერ არ-მოწვეული თანამშრომელი ვერ ხედავს შენს ერთეულებს, აქტივებს, შემოსავალს ან ხელშეკრულებებს.",
-  privacy_h_security: "უსაფრთხოება",
-  privacy_p_security:
-    "პაროლები დაჰეშილია (არასდროს ინახება ღიად). სესიები ცალმხრივი ჰეშითაა დაცული, ამიტომ ბაზის გაჟონვაც კი გამოსაყენებელ პაროლს არ ამჟღავნებს. მონაცემები გადაცემისას დაშიფრულია.",
-  privacy_h_sharing: "არ იყიდება, არ ზიარდება",
-  privacy_p_sharing:
-    "შენს მონაცემებს არასდროს ვყიდით და მესამე მხარეს არ ვუზიარებთ. აპში ნაჩვენები საბაზრო ციფრები მიახლოებითი საორიენტაციო საშუალოა და არა შენი ანგარიშიდან აღებული მონაცემი.",
-  privacy_h_control: "კონტროლი შენ გაქვს",
-  privacy_p_control:
-    "ნებისმიერი აქტივი, ხელშეკრულება თუ შემოსავალი ნებისმიერ დროს წაშალე \u2014 სამუდამოდ იშლება. თანამშრომლის მოშორებისთანავე მისი წვდომა წყდება.",
+    "ვითხოვთ მინიმუმს: ელფოსტას და პაროლს. შენი მონაცემები მხოლოდ შენია, გამიჯნულია ყველა სხვა ანგარიშისგან და არასდროს იყიდება.",
+  register_legal_note:
+    "ანგარიშის შექმნით ეთანხმები [მომსახურების პირობებს](/terms) და [კონფიდენციალურობის პოლიტიკას](/privacy).",
+  billing_terms_note:
+    "გადახდით ეთანხმები [მომსახურების პირობებს](/terms). ბარათიდან თანხა ავტომატურად არ ჩამოიჭრება.",
+  legal_updated: "ბოლო განახლება",
+  legal_contents: "შინაარსი",
+  legal_language_version: "ქართული ვერსია",
+  footer_privacy: "კონფიდენციალურობა",
+  footer_terms: "პირობები",
   footer_about: "ჩვენ შესახებ",
   footer_contact: "კონტაქტი",
   // ── About page ──
@@ -1660,15 +1606,9 @@ const ka: Record<StringKey, string> = {
   rental_mode: "გაქირავების რეჟიმი",
   mode_long_term: "გრძელვადიანი",
   mode_daily: "დღიური",
-  listings_label: "განცხადებები",
-  ss_url: "ss.ge განცხადების ბმული",
-  myauto_url: "myauto.ge განცხადების ბმული",
   door_key: "კარის კოდი",
   door_generate: "ახალი კოდი",
   tenant_phone: "დამქირავებლის ტელეფონი (WhatsApp)",
-  myhome_url: "myhome.ge განცხადების ბმული",
-  myhome_hint: "ჩასვი ამ აქტივის საკუთარი განცხადებების ბმულები. სტატუსის ღილაკები აქ განაახლებს სტატუსს და გახსნის განცხადებას, რომ იქაც შეცვალო.",
-  myhome_open: "myhome.ge-ზე გახსნა",
   mark_rented: "გაქირავებულია",
   mark_vacant: "თავისუფალია",
   listing_links: "განცხადების ბმულები",
@@ -1678,7 +1618,6 @@ const ka: Record<StringKey, string> = {
     "უბრალოდ ჩასვი განცხადების ბმული — პლატფორმას (myhome.ge, ss.ge, myauto.ge, Airbnb, Booking) თავად ამოვიცნობთ. დაამატე რამდენიმე, თუ რამდენიმე საიტზეა განთავსებული.",
 
   assets_total_value: "ჯამური ღირებულება",
-  assets_rented_count: "გაქირავებული",
 
   contracts_title: "ქირავნობის ხელშეკრულებები",
   contracts_col: "ხელშეკრულება",
@@ -1689,7 +1628,6 @@ const ka: Record<StringKey, string> = {
   contract_tenant: "დამქირავებელი",
   contract_start: "დაწყების თარიღი",
   contract_end: "დასრულების თარიღი",
-  contract_rent: "თვიური ქირა",
   contract_deposit: "დეპოზიტი (₾, არასავალდებულო)",
   contract_until: "ვადა",
   cstatus_active: "მოქმედი",
@@ -1733,7 +1671,6 @@ const ka: Record<StringKey, string> = {
   pay_history: "გადახდები",
   pay_partial_hint:
     "ნაწილობრივი თანხა ავანსად რჩება და შემდეგ პერიოდს აკლდება. გრაფიკი წინ მხოლოდ მაშინ მიიწევს, როცა მთელი პერიოდი დაიფარება — ამიტომ ნაწილობრივი გადახდა დაგვიანებას არ ხსნის.",
-  pay_no_contract: "ჯერ დაამატე მოქმედი ხელშეკრულება ამ აქტივზე — გრაფიკი მას მიჰყვება.",
   pay_ended_owed: "ეს ხელშეკრულება დასრულდა ({date}) და ქირა ბოლომდე არ არის გადახდილი. დამქირავებელს აღარაფერი ეგზავნება; თანხა აქ ჩაწერე, როცა მიიღებ.",
   pay_unsettled_title: "დასრულებული ხელშეკრულებების დავალიანება",
   pay_untracked:
@@ -1795,7 +1732,6 @@ const ka: Record<StringKey, string> = {
   fence_approach: "გაფრთხილება წინასწარ (კმ)",
   fence_approach_hint: "რამდენი კილომეტრით ადრე გავიდეს პირველი შეტყობინება.",
   fence_add: "წითელი ხაზის დამატება",
-  fence_save: "შენახვა",
   fence_active: "აქტიური",
   fence_paused: "შეჩერებული",
   fence_pause: "შეჩერება",
@@ -1834,7 +1770,6 @@ const ka: Record<StringKey, string> = {
   outbox_empty: "რიგში არაფერია.",
   outbox_send: "WhatsApp-ით გაგზავნა",
   outbox_mark_sent: "მონიშნე გაგზავნილად",
-  outbox_delete: "წაშლა",
   outbox_retry: "ხელახლა ცდა",
   outbox_status_queued: "რიგშია",
   outbox_status_sent: "გაგზავნილია",
@@ -1912,8 +1847,6 @@ const ka: Record<StringKey, string> = {
   res_verdict_ok: "დაახლოებით დეპოზიტის ტოლია",
   res_verdict_poor: "დეპოზიტი მეტს გამოიმუშავებს",
   wor_title: "პრო ანალიზი — ღირს თუ არა?",
-  wor_teaser: "სრული 5-წლიანი შეფასება: სესხის დაფარვის გრაფიკი, გადასახადები, ფულადი ნაკადი, წლიური შემოსავლიანობა (Cap Rate), უკუგება ჩადებულ ფულზე (Cash-on-Cash) და მკაფიო ვერდიქტი. შედის სტანდარტი პაკეტიდან ზემოთ.",
-  wor_open: "პრო ანალიზის გახსნა",
   wor_locked: "პრო ანალიზი ხელმისაწვდომია სტანდარტი პაკეტიდან ზემოთ. გაზარდე პაკეტი გვერდზე «პაკეტი» — უფასო პერიოდში უკვე ჩართულია.",
   wor_intro:
     "შეიყვანე გარიგება — ძრავი სრულ 5-წლიან შეფასებას გააკეთებს და ვერდიქტს გამოიტანს. ყველა ველი შეცვლადია; დასაწყისისთვის ძირითადებიც საკმარისია.",
@@ -1974,9 +1907,6 @@ const ka: Record<StringKey, string> = {
   settings_interface: "ინტერფეისი",
   settings_language: "ენა",
   settings_theme: "თემა",
-  settings_manage_plan: "პაკეტის მართვა",
-  billing_intro:
-    "პირველი თვე უფასოა სრული წვდომით. მეორე თვიდან აირჩიე შენს პორტფელზე მორგებული პაკეტი. ბარათით გადახდას უსაფრთხოდ ამუშავებს Flitt.",
   billing_trial: "უფასო პერიოდი",
   billing_trial_over:
     "უფასო თვე დასრულდა — ჩანაწერების დამატების გასაგრძელებლად აირჩიე პაკეტი.",
@@ -1997,7 +1927,6 @@ const ka: Record<StringKey, string> = {
   billing_units: "გასაქირავებელი ერთეული",
   billing_members: "გუნდის წევრი",
   billing_analysis: "პრო საინვესტიციო ანალიზი",
-  usage_title: "მოხმარება",
   team_title: "გუნდი",
   team_invite: "თანამშრომლის მოწვევა",
   team_invite_hint:
@@ -2059,17 +1988,13 @@ const ka: Record<StringKey, string> = {
   tips_src_calendar: "შენი კალენდარი",
   tips_src_contract: "შენი ხელშეკრულებები",
   day_sub: "დღეს გაქირავდა? შემოთავაზებული ციფრი დღის ტარიფია — თუ სხვა თანხაზე შეთანხმდი, ჩაწერე.",
-  day_question: "დღეს გაქირავებულია?",
   day_yes: "გაქირავდა",
   day_no: "ცარიელი",
   day_amount: "შეთანხმებული თანხა",
   day_holiday: "სადღესასწაულო დღე",
   day_weekend: "შაბ-კვირა",
   day_base: "ჩვეულებრივი დღე",
-  day_saved: "შენახულია",
   day_edit: "შეცვლა",
-  day_empty: "დღიური აქტივები არ არის — გადაიყვანე აქტივი დღიურ რეჟიმში და აქ ყოველ დილით გამოჩნდება.",
-  day_all_done: "დღევანდელი დღე ყველა ობიექტზე შევსებულია.",
   day_earned: "დღეს",
   contract_amount_daily: "თანხა დღეში (₾)",
   contract_amount_weekly: "თანხა კვირაში (₾)",
@@ -2273,7 +2198,6 @@ const ka: Record<StringKey, string> = {
   land_hero: "მთელი შენი ქონება — ერთ დაფაზე",
   land_sub:
     "უძრავი ქონება, ავტომობილები, გაქირავება, შემოსავალი და ინვესტ-ანალიზი — ერთ ადგილას, ტელეფონიდანაც.",
-  details: "დეტალები",
   back: "უკან",
   nav_learn: "სწავლება",
   tour_next: "შემდეგი",
@@ -2303,6 +2227,8 @@ const ka: Record<StringKey, string> = {
   learn_start_tour: "დაიწყე ინტერაქციული ტური",
   learn_tour_signin: "ტური შენს ანგარიშში მუშაობს — ჯერ შედი (ან გახსენი დემო).",
   learn_video_soon: "ვიდეო მალე დაემატება",
+  learn_video_updating: "ვიდეო განახლდება",
+  learn_video_updating_hint: "ჩანაწერი ძველ დიზაინს აჩვენებდა — ახალს მალე დავამატებთ. იგივე ნაბიჯები ქვემოთ წერია.",
   land_stat_assets: "აქტივის კლასი ერთ ხედში",
   land_stat_platforms: "პლატფორმის ავტო-ამოცნობა",
   land_stat_days: "დღე უფასოდ, სრული წვდომით",
@@ -2471,14 +2397,11 @@ const ka: Record<StringKey, string> = {
   seg_income: "ხელფასი / დივიდენდი",
   seg_digital: "ციფრული აქტივები",
   add_cta: "დაამატე ახალი აქტივი 1 წუთში",
-  crypto_new_title: "კრიპტო აქტივის დამატება",
-  crypto_new_intro: "აირჩიე მონეტა, შემდეგ ჩაწერე ყიდვები და გაყიდვები. ცოცხალ ფასს და შენს მოგება-ზარალს ავტომატურად გაჩვენებთ.",
   crypto_coin: "მონეტა",
   crypto_custom: "სხვა (ხელით შეყვანა)",
   crypto_custom_symbol: "სიმბოლო",
   crypto_custom_id: "CoinGecko ID (არასავალდებულო)",
   crypto_custom_id_hint: "საჭიროა ცოცხალი ფასის წამოსაღებად. ნახე coingecko.com-ზე — ეს მონეტის გვერდის მისამართის ბოლო ნაწილია.",
-  crypto_add: "აქტივის დამატება",
   crypto_buy: "ყიდვა",
   crypto_sell: "გაყიდვა",
   crypto_quantity: "რაოდენობა",
@@ -2494,7 +2417,6 @@ const ka: Record<StringKey, string> = {
   crypto_pnl: "მოგება / ზარალი",
   crypto_hint: "საშუალო ყიდვის ფასი ოპერაციებს თარიღის მიხედვით მიჰყვება: ყიდვა საშუალოს ცვლის, გაყიდვა რაოდენობას საშუალო ფასით ამცირებს და სხვაობას რეალიზებულ მოგებაში წერს. ყველაფრის გაყიდვის შემდეგ საშუალო თავიდან იწყება.",
   crypto_trades: "ყიდვები და გაყიდვები",
-  crypto_footnote: "კრიპტოს ღირებულება იყენებს ცოცხალ ფასს CoinGecko-დან, გადაყვანილს ლარში მიმდინარე კურსით.",
 
   // Digital assets segment (crypto + stocks together)
   section_digital: "ციფრული აქტივები",
@@ -2522,20 +2444,15 @@ const ka: Record<StringKey, string> = {
 
   // Stock holdings
   section_stock: "აქციები",
-  stock_new_title: "აქციის დამატება",
-  stock_new_intro: "აირჩიე აქცია, შემდეგ ჩაწერე ყიდვები და გაყიდვები. ცოცხალ ფასს და შენს მოგება-ზარალს ავტომატურად გაჩვენებთ. მხოლოდ აშშ-ის ბირჟის ტიკერები.",
   stock_ticker: "აქცია",
   stock_custom_ticker: "ტიკერი",
-  stock_add: "აქციის დამატება",
   stock_holdings: "აქციები",
   stock_unit_price: "ფასი აქციაზე (USD)",
   stock_hint: "საშუალო ყიდვის ფასი ოპერაციებს თარიღის მიხედვით მიჰყვება: ყიდვა საშუალოს ცვლის, გაყიდვა აქციებს საშუალო ფასით ამცირებს და სხვაობას რეალიზებულ მოგებაში წერს. ყველაფრის გაყიდვის შემდეგ საშუალო თავიდან იწყება.",
-  stock_footnote: "აქციების ღირებულება იყენებს აშშ-ის ბირჟის ბოლო ფასს Stooq-დან, გადაყვანილს ლარში მიმდინარე კურსით.",
 
   // Precious metals
   section_metal: "ძვირფასი ლითონები",
   metal_holdings: "მარაგი",
-  metal_unit_price: "ფასი უნცია-ზე (USD)",
   metal_footnote: "ლითონის ფასი — მიმდინარე საბირჟო ფასი აშშ დოლარში ტროის უნციაზე (31,1 გ), გადაყვანილი ლარში მიმდინარე კურსით.",
 
   // One income definition (lib/analytics/income.ts) and its two scopes.

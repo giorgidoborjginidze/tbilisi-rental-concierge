@@ -2,8 +2,16 @@
 
 import { Fragment, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { CELL_CLASS, OVERLAP_CODE, STRIP_DAYS, stripStart, stripStep } from "@/lib/calendar/cells";
+import {
+  CELL_CLASS,
+  OVERLAP_CODE,
+  STRIP_DAYS,
+  stripHandOff,
+  stripStart,
+  stripStep,
+} from "@/lib/calendar/cells";
 import { IconChevronLeft, IconChevronRight } from "../icons";
+import { addDaysKey } from "@/lib/time";
 
 export interface StripDay {
   /** "YYYY-MM-DD" */
@@ -35,22 +43,24 @@ export interface StripRow {
 // slivers. Full unit names stay pinned on the left while the days scroll,
 // today's column is marked, and every cell is a link — a taken night opens
 // its booking (or contract), a free one the add-a-stay form on that date.
-// The server sends the month and two weeks either side; paging past that
-// goes to the neighbouring month.
+// The server sends the month, two weeks before it and four after; paging
+// past that goes to the neighbouring month, carrying the night to open on
+// (`&from=`) so the pages continue instead of jumping back to today.
 export default function CalendarStrip({
   days,
   rows,
   todayIndex,
-  fallbackIndex,
+  openIndex,
   prevMonthHref,
   nextMonthHref,
   labels,
 }: {
   days: StripDay[];
   rows: StripRow[];
+  /** Today's night in the range (marked), null when outside it. */
   todayIndex: number | null;
-  /** Where the window opens when today is not in the range (the month's first night). */
-  fallbackIndex: number;
+  /** Where the window opens (lib/calendar/cells.ts stripOpen). */
+  openIndex: number;
   prevMonthHref: string;
   nextMonthHref: string;
   labels: {
@@ -63,8 +73,9 @@ export default function CalendarStrip({
     overlap: string;
   };
 }) {
-  const home = stripStart(days.length, todayIndex, fallbackIndex);
-  const [start, setStart] = useState(home);
+  const [start, setStart] = useState(openIndex);
+  // "Today" pages back to today's fortnight from anywhere in the range.
+  const todayStart = todayIndex != null ? stripStart(days.length, todayIndex, openIndex) : null;
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // A new window starts at its first day.
@@ -98,11 +109,14 @@ export default function CalendarStrip({
     const label = direction < 0 ? labels.prev : labels.next;
     const icon = direction < 0 ? <IconChevronLeft size={18} /> : <IconChevronRight size={18} />;
     if (target == null) {
-      // Past the loaded range: the neighbouring month.
+      // Past the loaded range: the neighbouring month, opening on the
+      // night after the last one shown (or the fortnight before the first).
       const monthLabel = direction < 0 ? labels.prevMonth : labels.nextMonth;
+      const from = days.length ? addDaysKey(days[0].key, stripHandOff(start, days.length, direction)) : null;
+      const href = direction < 0 ? prevMonthHref : nextMonthHref;
       return (
         <Link
-          href={direction < 0 ? prevMonthHref : nextMonthHref}
+          href={from ? `${href}&from=${from}` : href}
           className="btn-chip btn-chip--icon"
           aria-label={monthLabel}
           title={monthLabel}
@@ -132,8 +146,8 @@ export default function CalendarStrip({
           {days[start]?.title} – {days[end - 1]?.title}
         </b>
         {pager(1)}
-        {todayIndex != null && start !== home && (
-          <button type="button" className="btn-chip" onClick={() => setStart(home)}>
+        {todayStart != null && start !== todayStart && (
+          <button type="button" className="btn-chip" onClick={() => setStart(todayStart)}>
             {labels.today}
           </button>
         )}

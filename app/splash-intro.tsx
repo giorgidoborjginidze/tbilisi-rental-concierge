@@ -10,8 +10,17 @@ import { SPLASH_COOKIE, SPLASH_DONE_EVENT } from "@/lib/ui/splash";
 // it to a signed-in owner. The full wordmark builds itself, then the
 // screen fades; a tap skips it. Rendered on first paint (SSR) so it
 // covers the page with no flash.
+
+// Set when the splash first plays in this page load. Back to "/" after a
+// client-side navigation restores the landing page from the router cache
+// with the splash still in its payload; that mount starts gone, so the
+// intro never replays without a fresh server render (where the cookie
+// decides). Module state: a reload starts over, and the server never runs
+// the effect that sets it.
+let played = false;
+
 export default function SplashIntro({ tapHint }: { tapHint: string }) {
-  const [gone, setGone] = useState(false);
+  const [gone, setGone] = useState(() => played);
   const [leaving, setLeaving] = useState(false);
 
   const dismiss = useCallback(() => {
@@ -23,6 +32,8 @@ export default function SplashIntro({ tapHint }: { tapHint: string }) {
   }, []);
 
   useEffect(() => {
+    if (gone) return;
+    played = true;
     // Seen once this browser session: a session cookie (no expiry).
     document.cookie = `${SPLASH_COOKIE}=1; path=/; SameSite=Lax`;
     // With reduced motion the mark renders finished, so there is nothing
@@ -33,7 +44,7 @@ export default function SplashIntro({ tapHint }: { tapHint: string }) {
     ).matches;
     const timer = setTimeout(dismiss, stillImage ? 800 : 2150);
     return () => clearTimeout(timer);
-  }, [dismiss]);
+  }, [dismiss, gone]);
 
   if (gone) return null;
 

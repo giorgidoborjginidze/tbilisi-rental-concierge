@@ -61,7 +61,6 @@ export const endedAlertSeverity = (type: string, owesRent: boolean): Severity =>
 
 /** Calculator verdicts — the same three colours in every calculator. */
 export type Verdict = "good" | "ok" | "poor";
-export const VERDICT_TONE: Record<Verdict, Tone> = { good: "good", ok: "warn", poor: "danger" };
 export const VERDICT_BADGE: Record<Verdict, string> = {
   good: badgeClass("good"),
   ok: badgeClass("warn"),

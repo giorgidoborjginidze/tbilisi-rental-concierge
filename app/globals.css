@@ -83,6 +83,26 @@
   --cal-lease: #9a7bf7;
   --cal-overlap: #d4232f;
   --cal-vacant: #edeff5;
+
+  /* Liquid glass (the Ice skin): a translucent fill for flat surfaces that
+     blur what is behind them, a denser one for surfaces inside 3D
+     transforms (no backdrop blur there — it glitches in Chromium) and for
+     phones, and the lit edge every glass surface carries. */
+  --glass-fill: linear-gradient(120deg,
+    rgba(255, 255, 255, 0.66),
+    rgba(255, 255, 255, 0.38) 45%,
+    rgba(255, 255, 255, 0.56));
+  --glass-fill-solid: linear-gradient(120deg,
+    rgba(255, 255, 255, 0.9),
+    rgba(255, 255, 255, 0.72) 45%,
+    rgba(255, 255, 255, 0.84));
+  --glass-edge:
+    0 22px 44px -22px rgba(38, 92, 130, 0.42),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.5),
+    inset 0 1.6px 1px rgba(255, 255, 255, 0.95),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.35),
+    inset 0 0 20px 1px rgba(255, 255, 255, 0.14);
+  --glass-blur: blur(14px) saturate(1.7);
 }
 
 /* Light is the default theme for everyone, regardless of the OS setting.
@@ -117,6 +137,20 @@
   --cal-vacant: #262b3b;
   --shadow-card:
     0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 26px -12px rgba(0, 0, 0, 0.5);
+  --glass-fill: linear-gradient(120deg,
+    rgba(22, 40, 58, 0.62),
+    rgba(16, 30, 46, 0.42) 45%,
+    rgba(22, 40, 58, 0.56));
+  --glass-fill-solid: linear-gradient(120deg,
+    rgba(23, 42, 61, 0.94),
+    rgba(16, 30, 46, 0.86) 45%,
+    rgba(22, 40, 58, 0.92));
+  --glass-edge:
+    0 22px 44px -22px rgba(0, 0, 0, 0.6),
+    inset 0 0 0 1px rgba(163, 205, 235, 0.12),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.22),
+    inset 0 0 20px 1px rgba(140, 200, 240, 0.07);
+  --glass-blur: blur(14px) saturate(1.5);
 }
 
 /* ========================= BASE ========================= */
@@ -138,14 +172,20 @@ main {
 h1 {
   font-size: 25px;
   font-weight: 700;
-  letter-spacing: -0.02em;
   margin-bottom: 8px;
 }
 h2 {
   font-size: 16px;
   font-weight: 600;
-  letter-spacing: -0.01em;
   margin: 36px 0 14px;
+}
+/* The serif voice for headings (the Ice design). */
+h1, h2,
+.land-hero__title,
+.card3d__title,
+.section-h {
+  font-family: var(--font-noto-serif), var(--font-noto), Georgia, serif;
+  letter-spacing: 0.005em;
 }
 a {
   color: var(--color-accent);
@@ -155,13 +195,17 @@ a:hover {
 }
 
 /* ========================= COMPONENTS ========================= */
+/* The top nav is a glass shelf: dense enough that a page heading
+   scrolling under it never reads through the logo, even where the blur
+   is missing. */
 .nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 14px 32px;
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-bg);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 55%, transparent);
+  background: color-mix(in srgb, var(--color-page) 82%, transparent);
+  backdrop-filter: blur(18px) saturate(1.7);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -275,6 +319,11 @@ a:hover {
   font-family: inherit;
   letter-spacing: 0.01em;
   transition: background 0.15s ease, transform 0.1s ease;
+  /* The bead of light on glass buttons. */
+  box-shadow:
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.45),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.12),
+    0 10px 20px -10px color-mix(in srgb, var(--color-primary) 65%, transparent);
 }
 .btn-primary:hover {
   background: var(--color-primary-hover);
@@ -289,8 +338,11 @@ a:hover {
 .btn-secondary {
   display: inline-block;
   cursor: pointer;
-  background: var(--color-bg);
-  border: 1px solid var(--color-border-strong);
+  background: var(--glass-fill);
+  /* Unprefixed only: the build adds -webkit- for Safari (see .card). */
+  backdrop-filter: blur(10px) saturate(1.6);
+  border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+  box-shadow: inset 0 1.2px 1px rgba(255, 255, 255, 0.6);
   color: var(--color-text);
   padding: 9px 18px;
   border-radius: var(--radius-md);
@@ -327,8 +379,10 @@ a:hover {
   height: 26px;
   box-sizing: border-box;
   cursor: pointer;
-  background: transparent;
-  border: 1px solid var(--color-border-strong);
+  background: var(--glass-fill);
+  backdrop-filter: blur(10px) saturate(1.6);
+  border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+  box-shadow: inset 0 1.2px 1px rgba(255, 255, 255, 0.6);
   color: var(--color-text-muted);
   padding: 0 11px;
   border-radius: 999px;
@@ -353,6 +407,18 @@ a:hover {
 .btn-chip--active:hover {
   color: var(--color-primary-contrast);
 }
+/* The chosen chip (sub-tabs, filters) keeps its fill on hover too — the
+   plain chip's hover would otherwise wash it out. */
+.btn-chip.btn-chip--active,
+.btn-chip.btn-chip--active:hover {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-primary-contrast);
+}
+:root[data-theme="dark"] .btn-chip,
+:root[data-theme="dark"] .btn-secondary {
+  box-shadow: inset 0 1.2px 1px rgba(255, 255, 255, 0.14);
+}
 /* Selection chip (radio labels): grows with its text instead of clipping. */
 .btn-chip--select {
   height: auto;
@@ -372,7 +438,6 @@ a:hover {
   flex: 1;
 }
 .btn-chip--wa {
-  border-color: color-mix(in srgb, #1fa855 45%, var(--color-bg));
   color: #128c46;
 }
 .btn-chip--wa:hover {
@@ -477,12 +542,13 @@ a:hover {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+/* Tiles tilt in 3D (kpi-grid--3d): glass by gradient only, no backdrop. */
 .kpi {
-  border: 1px solid var(--color-border);
+  border: 1px solid transparent;
   border-radius: var(--radius-lg);
   padding: 18px 20px;
-  background: var(--color-bg);
-  box-shadow: var(--shadow-card);
+  background: var(--glass-fill-solid);
+  box-shadow: var(--glass-edge);
 }
 /* Labels in sentence case at 12 px: upper-case with wide tracking made
    the Georgian labels the hardest text on the screen to read. */
@@ -505,11 +571,16 @@ a:hover {
   margin-top: 6px;
 }
 
+/* Flat surfaces are true liquid glass: a translucent fill over a blur of
+   what is behind. backdrop-filter is written unprefixed only — the build
+   adds -webkit- for Safari; writing both made the CSS compiler keep just
+   the last (prefixed) one, which left Chrome and Android with no blur. */
 .card {
-  border: 1px solid var(--color-border);
+  border: 1px solid transparent;
   border-radius: var(--radius-lg);
-  background: var(--color-bg);
-  box-shadow: var(--shadow-card);
+  background: var(--glass-fill);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-edge);
   overflow: hidden;
   overflow-x: auto;
 }
@@ -621,7 +692,7 @@ td:first-child {
 }
 
 .alert-card {
-  border: 1px solid var(--color-border);
+  border: 1px solid transparent;
   border-radius: var(--radius-lg);
   padding: 18px 20px;
   display: flex;
@@ -629,12 +700,13 @@ td:first-child {
   align-items: flex-start;
   gap: 12px;
   margin-bottom: 14px;
-  background: var(--color-bg);
-  box-shadow: var(--shadow-card);
+  /* Glass, like .card; the severity tint is laid over it (alert-card--*). */
+  background: var(--glass-fill);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-edge);
 }
-/* Severity tints live in the "visual signals" block at the end of this
-   file (alert-card--danger/--warn/--info/--good/--muted), after the glass
-   skin that used to flatten them. */
+/* Severity tints live in the "visual signals" block further down
+   (alert-card--danger/--warn/--info/--good/--muted). */
 .alert-card__title {
   font-weight: 600;
   font-size: 14.5px;
@@ -1018,8 +1090,10 @@ td:first-child {
   gap: 14px;
 }
 .feature-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  /* Tilts in 3D: glass by gradient only (no backdrop blur). */
+  background: var(--glass-fill-solid);
+  border: 1px solid transparent;
+  box-shadow: var(--glass-edge);
   border-radius: 16px;
   padding: 18px;
 }
@@ -1232,15 +1306,14 @@ td:first-child {
   display: block;
   padding: 22px 20px 20px;
   border-radius: 18px;
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
+  /* Tilts in 3D: glass by gradient only (no backdrop blur). */
+  background: var(--glass-fill-solid);
+  border: 1px solid transparent;
   text-decoration: none;
   color: inherit;
   transform-style: preserve-3d;
   will-change: transform;
-  box-shadow:
-    0 1px 2px rgba(24, 28, 55, 0.05),
-    0 10px 24px -16px rgba(24, 28, 55, 0.35);
+  box-shadow: var(--glass-edge);
   transition:
     transform 0.4s cubic-bezier(0.2, 0.7, 0.3, 1),
     box-shadow 0.4s ease,
@@ -1416,9 +1489,10 @@ td:first-child {
   flex-direction: column;
   padding: 16px;
   border-radius: 16px;
+  /* Opaque (the flip depends on it), with the glass edge. */
   background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  box-shadow: var(--shadow-card);
+  border: 1px solid transparent;
+  box-shadow: var(--glass-edge);
 }
 .aflip__face--back {
   position: absolute;
@@ -1731,10 +1805,11 @@ td:first-child {
   max-height: min(560px, calc(100vh - 120px));
   display: flex;
   flex-direction: column;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 16px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+  background: var(--glass-fill);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glass-edge);
   overflow: hidden;
   z-index: 60;
 }
@@ -1861,17 +1936,33 @@ td:first-child {
 .bot-input .btn-primary {
   padding: 9px 14px;
 }
+/* On a phone: a 44 px outlined circle — smaller than the Assets bubble
+   (54 px), never the loudest thing on the screen — just above the tab
+   bar's right end. It steps aside while a field has focus (the keyboard
+   is up) and is left out of form pages (support-bot.tsx). */
 @media (max-width: 760px) {
   .bot-launcher {
+    width: 44px;
+    height: 44px;
     right: 14px;
-    bottom: 14px;
-    width: 60px;
-    height: 60px;
+    bottom: calc(82px + env(safe-area-inset-bottom, 0px));
+    background: var(--glass-fill-solid);
+    color: var(--color-primary);
+    border: 1.5px solid color-mix(in srgb, var(--color-primary) 55%, transparent);
+    box-shadow: 0 8px 18px -10px rgba(38, 92, 130, 0.55);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+  }
+  .bot-launcher:hover { background: var(--glass-fill-solid); }
+  .bot-launcher svg { width: 22px; height: 22px; }
+  .bot-launcher--typing {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.8);
   }
   .bot-panel {
     right: 12px;
     left: 12px;
-    bottom: 84px;
+    bottom: calc(134px + env(safe-area-inset-bottom, 0px));
     width: auto;
     max-width: none;
   }
@@ -1975,10 +2066,11 @@ td:first-child {
   margin-top: 20px;
 }
 .pv {
-  border: 1px solid var(--color-border);
+  /* Tilts in 3D: glass by gradient only (no backdrop blur). */
+  border: 1px solid transparent;
   border-radius: 18px;
-  background: var(--color-bg);
-  box-shadow: var(--shadow-card);
+  background: var(--glass-fill-solid);
+  box-shadow: var(--glass-edge);
   padding: 16px;
 }
 .pv__bar {
@@ -2117,9 +2209,11 @@ td:first-child {
   max-width: 760px;
 }
 details.faq {
-  border: 1px solid var(--color-border);
-  border-radius: 14px;
-  background: var(--color-bg);
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  background: var(--glass-fill);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-edge);
   padding: 0 18px;
   margin-bottom: 10px;
 }
@@ -2402,9 +2496,11 @@ details[open] .faq__plus {
 }
 .learn-lesson {
   padding: 22px;
-  border-radius: 18px;
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--glass-fill);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid transparent;
+  box-shadow: var(--glass-edge);
 }
 .learn-lesson__head {
   display: flex;
@@ -2435,12 +2531,25 @@ details[open] .faq__plus {
 .learn-lesson__soon {
   margin-top: 14px;
   padding: 26px;
-  border-radius: 12px;
-  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  border: 1px dashed transparent;
   text-align: center;
   font-size: 13px;
   color: var(--color-text-muted);
-  background: var(--color-surface);
+  background: var(--glass-fill);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-edge);
+}
+/* A recording held back until it is re-recorded: what happened, and that
+   the written steps below still apply. */
+.learn-lesson__soon--updating {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+}
+.learn-lesson__soon-hint {
+  max-width: 44ch;
+  line-height: 1.5;
 }
 .learn-lesson__steps {
   list-style: decimal;
@@ -2568,13 +2677,6 @@ details[open] .faq__plus {
   flex-wrap: wrap;
   gap: 6px;
 }
-/* The chosen preset reads as chosen (the glass chip rule further down
-   would otherwise wash the active fill out). */
-.fence-presets .btn-chip.btn-chip--active {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: var(--color-primary-contrast);
-}
 .fence-presets .btn-chip,
 .gps-copy .btn-chip {
   display: inline-flex;
@@ -2621,8 +2723,13 @@ details[open] .faq__plus {
   flex: 0 0 auto;
 }
 
-/* ═══════════════════ ACTIVO ICE — liquid glass skin ═══════════════════
-   Ported from the approved Ice demo. Two rules govern everything below:
+/* ═══════════════════ ACTIVO ICE — ambience and Ice-only parts ═══════════
+   Ported from the approved Ice demo. The glass itself is no longer an
+   override layer here: its tokens live with the theme tokens at the top
+   (--glass-fill, --glass-fill-solid, --glass-edge, --glass-blur) and each
+   component's own rule uses them (.card, .alert-card, .kpi, .nav,
+   .btn-chip …), so editing a component's base rule is what you see.
+   Two rules govern the glass:
    1. Real backdrop blur only on FLAT surfaces. Elements that live inside
       3D transforms (tilting KPIs, card3d, flip-card faces) render glass
       with translucent gradients alone — backdrop-filter inside
@@ -2651,122 +2758,8 @@ body::before {
     radial-gradient(40% 32% at 88% 90%, rgba(196, 108, 144, 0.1), transparent 70%);
 }
 
-/* ── The serif voice for headings, as in the demo. ── */
-h1, h2,
-.land-hero__title,
-.card3d__title,
-.section-h {
-  font-family: var(--font-noto-serif), var(--font-noto), Georgia, serif;
-  letter-spacing: 0.005em;
-}
-
-/* ── Glass tokens per theme. ── */
-:root {
-  --glass-fill: linear-gradient(120deg,
-    rgba(255, 255, 255, 0.66),
-    rgba(255, 255, 255, 0.38) 45%,
-    rgba(255, 255, 255, 0.56));
-  --glass-fill-solid: linear-gradient(120deg,
-    rgba(255, 255, 255, 0.9),
-    rgba(255, 255, 255, 0.72) 45%,
-    rgba(255, 255, 255, 0.84));
-  --glass-edge:
-    0 22px 44px -22px rgba(38, 92, 130, 0.42),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.5),
-    inset 0 1.6px 1px rgba(255, 255, 255, 0.95),
-    inset 0 -1px 1px rgba(255, 255, 255, 0.35),
-    inset 0 0 20px 1px rgba(255, 255, 255, 0.14);
-  --glass-blur: blur(14px) saturate(1.7);
-}
-:root[data-theme="dark"] {
-  --glass-fill: linear-gradient(120deg,
-    rgba(22, 40, 58, 0.62),
-    rgba(16, 30, 46, 0.42) 45%,
-    rgba(22, 40, 58, 0.56));
-  --glass-fill-solid: linear-gradient(120deg,
-    rgba(23, 42, 61, 0.94),
-    rgba(16, 30, 46, 0.86) 45%,
-    rgba(22, 40, 58, 0.92));
-  --glass-edge:
-    0 22px 44px -22px rgba(0, 0, 0, 0.6),
-    inset 0 0 0 1px rgba(163, 205, 235, 0.12),
-    inset 0 1.5px 1px rgba(255, 255, 255, 0.22),
-    inset 0 0 20px 1px rgba(140, 200, 240, 0.07);
-  --glass-blur: blur(14px) saturate(1.5);
-}
-
-/* ── Flat surfaces: true liquid glass. ── */
-.card,
-.alert-card,
-.learn-lesson,
-.learn-lesson__soon,
-details.faq,
-.bot-panel {
-  background: var(--glass-fill);
-  /* Unprefixed only: the build adds -webkit- for Safari. Writing both
-     makes the CSS compiler keep just the last one — which, prefixed,
-     left Chrome and Android with no blur at all. */
-  backdrop-filter: var(--glass-blur);
-  border-color: transparent;
-  box-shadow: var(--glass-edge);
-  border-radius: var(--radius-lg);
-}
-
-/* ── Tilting / 3D surfaces: glass by gradient only (no backdrop). ── */
-.kpi,
-.card3d,
-.feature-card,
-.pv,
-.land-stats .stat {
-  background: var(--glass-fill-solid);
-  border-color: transparent;
-  box-shadow: var(--glass-edge);
-}
-
-/* ── The top nav becomes a glass shelf. ── */
-.nav {
-  /* Dense enough that a page heading scrolling under it never reads
-     through the logo, even where the blur is missing. */
-  background: color-mix(in srgb, var(--color-page) 82%, transparent);
-  backdrop-filter: blur(18px) saturate(1.7);
-  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 55%, transparent);
-}
-
-/* ── Buttons and chips pick up the bead of light. ── */
-.btn-primary {
-  box-shadow:
-    inset 0 1.5px 1px rgba(255, 255, 255, 0.45),
-    inset 0 -1px 1px rgba(0, 0, 0, 0.12),
-    0 10px 20px -10px color-mix(in srgb, var(--color-primary) 65%, transparent);
-}
-.btn-chip,
-.btn-secondary {
-  background: var(--glass-fill);
-  backdrop-filter: blur(10px) saturate(1.6);
-  border-color: color-mix(in srgb, var(--color-border) 70%, transparent);
-  box-shadow: inset 0 1.2px 1px rgba(255, 255, 255, 0.6);
-}
-:root[data-theme="dark"] .btn-chip,
-:root[data-theme="dark"] .btn-secondary {
-  box-shadow: inset 0 1.2px 1px rgba(255, 255, 255, 0.14);
-}
-/* The chosen chip (sub-tabs, filters) keeps its fill: the glass rule above
-   would otherwise wash it to a blank white pill with white text. */
-.btn-chip.btn-chip--active,
-.btn-chip.btn-chip--active:hover {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: var(--color-primary-contrast);
-}
-
-/* ── Asset flip cards: opaque faces (the flip depends on it) with the
-   glass edge, and a category-tinted "photo" header on the front — the
-   place a real photo will live once uploads exist. ── */
-.aflip__face {
-  background: var(--color-bg);
-  border-color: transparent;
-  box-shadow: var(--glass-edge);
-}
+/* ── Asset flip cards: a category-tinted "photo" header on the front —
+   the place a real photo will live once uploads exist. ── */
 .aflip__art {
   position: relative;
   height: 86px;
@@ -2988,9 +2981,6 @@ details.faq,
   .tabbar { display: flex; }
   /* Room for the bar so the last content never hides behind it. */
   main { padding-bottom: 130px; }
-  /* The support bot floats above the tab bar, not on it. */
-  .bot-launcher { bottom: 92px; }
-  .bot-panel { bottom: 162px; }
 }
 
 
@@ -3552,8 +3542,7 @@ main > section > h2:first-child {
 }
 
 /* ── Alerts: when the platform last checked by itself, and the alerts
-   that need action today. Placed after the liquid-glass block, which
-   otherwise flattens every alert card to the same glass. ── */
+   that need action today. ── */
 .alerts-run {
   font-size: 12.5px;
   color: var(--color-text-muted);
@@ -3777,7 +3766,6 @@ main > section > h2:first-child {
 }
 
 /* ═══════════════ VISUAL SIGNALS — one meaning per colour ═══════════════
-   Placed last: these must win over the liquid-glass skin above.
    The semantic map, used by badges, alert cards, fence zones, the outbox,
    calculator verdicts and the calendar alike (lib/ui/tone.ts):
      green  good · paid · safe · sent · active
@@ -4822,12 +4810,13 @@ td:has(> .confirm-inline) { white-space: normal; }
    moment it is tapped. ═══════════ */
 
 /* ── Footer: on a phone with the tab bar it keeps clear of the bar and the
-   home indicator, so the privacy link can be tapped at the page's end. ── */
+   home indicator, so the legal links can be tapped at the page's end. ── */
 .site-footer {
   border-top: 1px solid var(--color-border);
   padding: 16px 32px;
   display: flex;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 4px 16px;
   align-items: center;
   justify-content: center;
   font-size: 12px;
@@ -4857,31 +4846,6 @@ td:has(> .confirm-inline) { white-space: normal; }
 }
 .inline-arrow { display: inline-block; vertical-align: -1px; }
 
-/* ── Support button on a phone: a 44 px outlined circle — smaller than the
-   Assets bubble (54 px), never the loudest thing on the screen — just
-   above the tab bar's right end. It steps aside while a field has focus
-   (the keyboard is up) and is left out of form pages (support-bot.tsx). */
-@media (max-width: 760px) {
-  .bot-launcher {
-    width: 44px;
-    height: 44px;
-    right: 14px;
-    bottom: calc(82px + env(safe-area-inset-bottom, 0px));
-    background: var(--glass-fill-solid);
-    color: var(--color-primary);
-    border: 1.5px solid color-mix(in srgb, var(--color-primary) 55%, transparent);
-    box-shadow: 0 8px 18px -10px rgba(38, 92, 130, 0.55);
-    transition: opacity 0.15s ease, transform 0.15s ease;
-  }
-  .bot-launcher:hover { background: var(--glass-fill-solid); }
-  .bot-launcher svg { width: 22px; height: 22px; }
-  .bot-launcher--typing {
-    opacity: 0;
-    pointer-events: none;
-    transform: scale(0.8);
-  }
-  .bot-panel { bottom: calc(134px + env(safe-area-inset-bottom, 0px)); }
-}
 
 /* ── Tap targets: 44 px on a phone for chips, buttons, the tab bar's
    seats and text links; form fields at 16 px so iOS never zooms in. ── */
@@ -5325,7 +5289,9 @@ td:has(> .confirm-inline) { white-space: normal; }
   color: var(--color-text);
   cursor: pointer;
 }
-.cal-mcell.cal-cell[class*="cal-cell--"] { color: #0b2233; }
+/* A coloured (taken) day keeps a dark number; the selected day is excluded —
+   it is white on the primary blue below. */
+.cal-mcell.cal-cell[class*="cal-cell--"]:not(.cal-cell--sel) { color: #0b2233; }
 .cal-mcell.cal-cell--sel {
   background: var(--color-primary);
   color: var(--color-primary-contrast);
@@ -5372,4 +5338,44 @@ td:has(> .confirm-inline) { white-space: normal; }
   width: 9ch;
   height: 0.9em;
   vertical-align: middle;
+}
+
+/* ── Legal pages (Terms of Service, Privacy policy): one readable column of
+   numbered sections under a short table of contents. ── */
+main.legal { max-width: 780px; }
+.legal__meta {
+  color: var(--color-text-muted);
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+.legal__toc {
+  padding: 16px 20px;
+  margin: 8px 0 30px;
+}
+.legal__toc b { display: block; margin-bottom: 4px; }
+.legal__toc ol {
+  list-style: decimal;
+  margin: 0;
+  padding-left: 22px;
+  columns: 2 220px;
+  column-gap: 28px;
+}
+.legal__sections { list-style: none; counter-reset: legal; margin: 0; padding: 0; }
+.legal__section {
+  counter-increment: legal;
+  scroll-margin-top: 90px;
+  margin-bottom: 26px;
+}
+.legal__section h2 { margin: 0 0 8px; }
+.legal__section h2::before {
+  content: counter(legal) ". ";
+  color: var(--color-text-muted);
+}
+.legal__section p,
+.legal__section ul { max-width: 68ch; margin: 0 0 10px; }
+.legal__section ul {
+  list-style: disc;
+  padding-left: 20px;
+  display: grid;
+  gap: 6px;
 }

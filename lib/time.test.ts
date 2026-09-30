@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  addDaysKey,
+  daysInMonth,
   hourTbilisi,
   monthStartTbilisi,
   sameTbilisiDay,
@@ -7,6 +9,7 @@ import {
   tbilisiDayStartInstant,
   tbilisiFormat,
   todayKey,
+  utcDay,
 } from "./time";
 
 describe("Tbilisi today", () => {
@@ -61,5 +64,18 @@ describe("tbilisiFormat", () => {
   it("keeps a stored calendar day on its own date", () => {
     const fmt = tbilisiFormat("en", { day: "numeric", month: "short", year: "numeric" });
     expect(fmt.format(new Date("2026-08-10T00:00:00Z"))).toBe("10 Aug 2026");
+  });
+});
+
+describe("stored-day helpers", () => {
+  it("utcDay drops the time of day, daysInMonth counts the month, addDaysKey steps day keys", () => {
+    expect(utcDay(new Date("2026-09-30T23:59:59Z"))).toEqual(new Date("2026-09-30T00:00:00Z"));
+    expect(daysInMonth(new Date("2026-02-10T00:00:00Z"))).toBe(28);
+    expect(daysInMonth(new Date("2028-02-10T00:00:00Z"))).toBe(29);
+    expect(daysInMonth(new Date("2026-12-31T00:00:00Z"))).toBe(31);
+    expect(addDaysKey("2026-12-31", 1)).toBe("2027-01-01");
+    expect(addDaysKey("2026-03-01", -1)).toBe("2026-02-28");
+    expect(addDaysKey("", 1)).toBeUndefined();
+    expect(addDaysKey("2026-13-45", 1)).toBeUndefined();
   });
 });

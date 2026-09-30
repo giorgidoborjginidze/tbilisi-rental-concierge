@@ -9,6 +9,7 @@
 //
 // Framework-free and pure.
 
+import { utcDay } from "@/lib/time";
 export type ContractPhase = "upcoming" | "active" | "ended";
 
 export interface ContractDates {
@@ -18,8 +19,7 @@ export interface ContractDates {
 
 const DAY_MS = 86_400_000;
 
-const dayStart = (date: Date) =>
-  new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+const dayStart = utcDay;
 
 export function contractPhase(contract: ContractDates, today: Date): ContractPhase {
   const day = dayStart(today);
@@ -57,6 +57,15 @@ export function scheduleContract<T extends ContractDates>(
   today: Date,
 ): T | undefined {
   return activeContract(contracts, today) ?? upcomingContract(contracts, today);
+}
+
+/**
+ * Prisma filter for a contract, lease or stay that overlaps [start, end):
+ * it starts before the window ends and ends after it starts (end dates are
+ * exclusive — the check-out day is free).
+ */
+export function overlapsWhere(start: Date, end: Date) {
+  return { startDate: { lt: end }, endDate: { gt: start } };
 }
 
 /** Prisma filter for contracts running on `today`. */

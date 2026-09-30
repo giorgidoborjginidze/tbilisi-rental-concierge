@@ -30,6 +30,7 @@
 import { dayPrice } from "../assets/daily-price";
 import { asPeriod, perPeriodAmount } from "../rentals/amount";
 import { proratedRevenue } from "./metrics";
+import { daysInMonth, utcDay } from "@/lib/time";
 
 const DAY_MS = 86_400_000;
 
@@ -111,13 +112,9 @@ export interface IncomeBreakdown {
   unpricedNights: number;
 }
 
-const dayStart = (date: Date) =>
-  Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+const dayStart = (date: Date) => utcDay(date).getTime();
 
-const daysInMonthOf = (day: number) => {
-  const date = new Date(day);
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
-};
+const daysInMonthOf = (day: number) => daysInMonth(new Date(day));
 
 /** Each night (as a UTC-midnight timestamp) of [from, to) inside the window. */
 function* nightsIn(from: Date, to: Date, window: IncomeWindow) {

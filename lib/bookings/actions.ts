@@ -14,6 +14,7 @@ import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 import { submittedValues } from "@/lib/forms";
 import { parseStayDates } from "./dates";
+import { overlapsWhere } from "@/lib/rentals/phase";
 
 const str = (formData: FormData, key: string) =>
   String(formData.get(key) ?? "").trim();
@@ -250,7 +251,7 @@ async function firstClash(
     }`;
   }
   const lease = await prisma.lease.findFirst({
-    where: { unitId, startDate: { lt: checkOut }, endDate: { gt: checkIn } },
+    where: { unitId, ...overlapsWhere(checkIn, checkOut) },
     orderBy: { startDate: "asc" },
   });
   if (lease) {
@@ -259,7 +260,7 @@ async function firstClash(
     }`;
   }
   const contract = await prisma.rentalContract.findFirst({
-    where: { asset: { unitId }, startDate: { lt: checkOut }, endDate: { gt: checkIn }, ...LIVE_CONTRACT },
+    where: { asset: { unitId }, ...overlapsWhere(checkIn, checkOut), ...LIVE_CONTRACT },
     orderBy: { startDate: "asc" },
   });
   if (contract) {

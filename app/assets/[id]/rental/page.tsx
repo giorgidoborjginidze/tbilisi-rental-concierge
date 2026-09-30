@@ -48,6 +48,7 @@ import OutboxList, { type OutboxItem } from "@/app/outbox-list";
 import { outboxView, PENDING_STATUSES } from "@/lib/notify/outbox-view";
 import { titled } from "@/lib/i18n/metadata";
 import { LIVE_CONTRACT } from "@/lib/rentals/live";
+import Kpi from "../../../kpi";
 
 export const dynamic = "force-dynamic";
 
@@ -310,8 +311,7 @@ export default async function RentalServicePage({
             </p>
           ) : (
             <div className="kpi-grid kpi-grid--3d" style={{ marginBottom: 16 }}>
-              <div className="kpi">
-                <div className="kpi__label">{t(locale, "status_label")}</div>
+              <Kpi label={t(locale, "status_label")}>
                 <div className="flex flex-wrap gap-1.5" style={{ marginTop: 10 }}>
                   {contractEnded && (
                     <span className={badgeClass("muted")}>{t(locale, "cstatus_ended")}</span>
@@ -325,29 +325,26 @@ export default async function RentalServicePage({
                     {paymentState.label}
                   </span>
                 </div>
-              </div>
-              <div className="kpi">
-                <div className="kpi__label">{t(locale, "pay_next_due")}</div>
-                <div className="kpi__value">{fmtShort.format(status.nextDueDate)}</div>
-              </div>
-              <div className="kpi">
-                <div className="kpi__label">{t(locale, "pay_days_overdue")}</div>
-                <div className="kpi__value">
-                  {status.daysOverdue}
-                  <span className="kpi__unit"> / {status.graceDays}</span>
-                </div>
-              </div>
-              <div className="kpi">
-                <div className="kpi__label">{t(locale, "pay_amount_due")}</div>
-                <div className="kpi__value">
-                  {formatDueMoney(status.amountDue, contract.currency)}
-                </div>
-                {status.credit > 0 && (
-                  <div className="kpi__sub">
-                    {t(locale, "pay_credit")}: {formatMoney(status.credit, contract.currency, "auto")}
-                  </div>
-                )}
-              </div>
+              </Kpi>
+              <Kpi label={t(locale, "pay_next_due")} value={fmtShort.format(status.nextDueDate)} />
+              <Kpi
+                label={t(locale, "pay_days_overdue")}
+                value={
+                  <>
+                    {status.daysOverdue}
+                    <span className="kpi__unit"> / {status.graceDays}</span>
+                  </>
+                }
+              />
+              <Kpi
+                label={t(locale, "pay_amount_due")}
+                value={formatDueMoney(status.amountDue, contract.currency)}
+                sub={
+                  status.credit > 0
+                    ? `${t(locale, "pay_credit")}: ${formatMoney(status.credit, contract.currency, "auto")}`
+                    : undefined
+                }
+              />
             </div>
           )}
 

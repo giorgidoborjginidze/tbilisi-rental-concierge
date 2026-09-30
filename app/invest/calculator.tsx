@@ -15,6 +15,7 @@ import {
 } from "@/lib/invest/market";
 import { formatMoney } from "@/lib/format";
 import { VERDICT_BADGE } from "@/lib/ui/tone";
+import Kpi, { KpiSub } from "../kpi";
 
 const fmt = (v: number) => formatMoney(v);
 const pct = (v: number) => `${v.toFixed(1)}%`;
@@ -207,66 +208,48 @@ export default function Calculator({
         </div>
 
         <div className="kpi-grid kpi-grid--3d" style={{ margin: "14px 0", gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
-          <div className="kpi" style={{ "--i": 0 } as React.CSSProperties}>
-            <div className="kpi__label">{labels.res_total_investment}</div>
-            <div className="kpi__value">{fmt(result.totalInvestment)}</div>
-            {useLoan && (
-              <div className="kpi__sub">
-                {labels.res_cash_invested}: {fmt(result.cashInvested)}
-              </div>
-            )}
-          </div>
-          <div className="kpi" style={{ "--i": 1 } as React.CSSProperties}>
-            <div className="kpi__label">{labels.res_net_income}</div>
-            <div className="kpi__value">{fmt(result.netMonthlyIncome)}</div>
-            <div className="kpi__sub">
-              {labels.res_deposit_income.replace("{amount}", fmt(result.totalInvestment))}:{" "}
-              {fmt(result.depositMonthlyIncome)}
-            </div>
-          </div>
+          <Kpi
+            index={0}
+            label={labels.res_total_investment}
+            value={fmt(result.totalInvestment)}
+            sub={useLoan ? `${labels.res_cash_invested}: ${fmt(result.cashInvested)}` : undefined}
+          />
+          <Kpi
+            index={1}
+            label={labels.res_net_income}
+            value={fmt(result.netMonthlyIncome)}
+            sub={`${labels.res_deposit_income.replace("{amount}", fmt(result.totalInvestment))}: ${fmt(result.depositMonthlyIncome)}`}
+          />
           {useLoan && (
-            <div className="kpi" style={{ "--i": 2 } as React.CSSProperties}>
-              <div className="kpi__label">{labels.res_monthly_payment}</div>
-              <div className="kpi__value">{fmt(result.monthlyPayment)}</div>
-              <div className="kpi__sub">
-                {labels.res_total_loan_cost}: {fmt(result.totalLoanCost)}
-              </div>
-            </div>
+            <Kpi
+              index={2}
+              label={labels.res_monthly_payment}
+              value={fmt(result.monthlyPayment)}
+              sub={`${labels.res_total_loan_cost}: ${fmt(result.totalLoanCost)}`}
+            />
           )}
           {useLoan && (
-            <div className="kpi" style={{ "--i": 3 } as React.CSSProperties}>
-              <div className="kpi__label">{labels.res_cash_flow}</div>
-              <div
-                className="kpi__value"
-                style={{
-                  color:
-                    result.monthlyCashFlow >= 0
-                      ? "var(--status-rented-text)"
-                      : "var(--status-danger-text)",
-                }}
-              >
-                {fmt(result.monthlyCashFlow)}
-              </div>
-              <div className="kpi__sub">
-                {labels.res_deposit_own.replace("{amount}", fmt(result.cashInvested))}:{" "}
-                {fmt(result.depositOnCashMonthly)}
-              </div>
-              <div className="kpi__sub">
+            <Kpi
+              index={3}
+              label={labels.res_cash_flow}
+              value={fmt(result.monthlyCashFlow)}
+              valueStyle={{
+                color: result.monthlyCashFlow >= 0 ? "var(--status-rented-text)" : "var(--status-danger-text)",
+              }}
+              sub={`${labels.res_deposit_own.replace("{amount}", fmt(result.cashInvested))}: ${fmt(result.depositOnCashMonthly)}`}
+            >
+              <KpiSub>
                 {labels.res_cash_payback}: {years(result.cashPaybackYears)}
-              </div>
-            </div>
+              </KpiSub>
+            </Kpi>
           )}
-          <div className="kpi" style={{ "--i": 4 } as React.CSSProperties}>
-            <div className="kpi__label">{labels.res_net_yield}</div>
-            <div className="kpi__value">{pct(result.netYieldPct)}</div>
-            <div className="kpi__sub">
-              {labels.res_gross_yield}: {pct(result.grossYieldPct)}
-            </div>
-          </div>
-          <div className="kpi" style={{ "--i": 5 } as React.CSSProperties}>
-            <div className="kpi__label">{labels.res_payback}</div>
-            <div className="kpi__value">{years(result.paybackYears)}</div>
-          </div>
+          <Kpi
+            index={4}
+            label={labels.res_net_yield}
+            value={pct(result.netYieldPct)}
+            sub={`${labels.res_gross_yield}: ${pct(result.grossYieldPct)}`}
+          />
+          <Kpi index={5} label={labels.res_payback} value={years(result.paybackYears)} />
         </div>
 
         <p className="demo-hint" style={{ marginTop: 0 }}>{labels.invest_disclaimer}</p>

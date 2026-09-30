@@ -12,6 +12,7 @@ import {
 import { TAXI_DEFAULTS, TAXI_GOOD_PCT, TAXI_OK_PCT, evaluateTaxi, taxiVsRental } from "@/lib/invest/taxi";
 import { formatMoney } from "@/lib/format";
 import { TONE_BADGE, VERDICT_BADGE } from "@/lib/ui/tone";
+import Kpi from "../kpi";
 
 const fmt = (v: number) => formatMoney(v);
 
@@ -232,15 +233,8 @@ export default function CarCalculator({
               </span>
             </div>
             <div className="kpi-grid kpi-grid--3d" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))", marginTop: 14 }}>
-              <div className="kpi" style={{ "--i": 0 } as React.CSSProperties}>
-                <div className="kpi__label">{labels.car_market_price}</div>
-                <div className="kpi__value">{fmt(market.avgPrice)}</div>
-                <div className="kpi__sub">{model}</div>
-              </div>
-              <div className="kpi" style={{ "--i": 1 } as React.CSSProperties}>
-                <div className="kpi__label">{labels.car_market_rate}</div>
-                <div className="kpi__value">{fmt(market.avgDailyRate)}</div>
-              </div>
+              <Kpi index={0} label={labels.car_market_price} value={fmt(market.avgPrice)} sub={model} />
+              <Kpi index={1} label={labels.car_market_rate} value={fmt(market.avgDailyRate)} />
             </div>
             <p className="hint" style={{ marginTop: 10 }}>{labels.car_market_hint}</p>
           </div>
@@ -264,75 +258,71 @@ export default function CarCalculator({
 
           {mode === "rental" ? (
             <div className="kpi-grid kpi-grid--3d" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))", marginTop: 14 }}>
-              <div className="kpi" style={{ "--i": 0 } as React.CSSProperties}>
-                <div className="kpi__label">{labels.car_monthly_income}</div>
-                <div className="kpi__value">{fmt(result.netMonthly)}</div>
-                <div className="kpi__sub">
-                  {labels.car_gross}: {fmt(result.grossMonthly)}
-                </div>
-              </div>
-              <div className="kpi" style={{ "--i": 1 } as React.CSSProperties}>
-                <div className="kpi__label">{labels.car_annual_yield}</div>
-                <div className="kpi__value">{result.annualYieldPct.toFixed(1)}%</div>
-              </div>
-              <div className="kpi" style={{ gridColumn: "1 / -1", "--i": 2 } as React.CSSProperties}>
-                <div className="kpi__label">{labels.res_payback}</div>
-                <div className="kpi__value">
-                  {result.paybackYears == null
+              <Kpi
+                index={0}
+                label={labels.car_monthly_income}
+                value={fmt(result.netMonthly)}
+                sub={`${labels.car_gross}: ${fmt(result.grossMonthly)}`}
+              />
+              <Kpi index={1} label={labels.car_annual_yield} value={`${result.annualYieldPct.toFixed(1)}%`} />
+              <Kpi
+                index={2}
+                style={{ gridColumn: "1 / -1" }}
+                label={labels.res_payback}
+                value={
+                  result.paybackYears == null
                     ? labels.res_never
-                    : `${result.paybackYears.toFixed(1)} ${labels.res_years}`}
-                </div>
-              </div>
+                    : `${result.paybackYears.toFixed(1)} ${labels.res_years}`
+                }
+              />
             </div>
           ) : (
             <>
               <div className="kpi-grid kpi-grid--3d" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))", marginTop: 14 }}>
-                <div className="kpi" style={{ "--i": 0 } as React.CSSProperties}>
-                  <div className="kpi__label">{labels.taxi_res_cash}</div>
-                  <div className="kpi__value" style={{ color: netColor(taxi.cashMonthly) }}>
-                    {fmt(taxi.cashMonthly)}
-                  </div>
-                  <div className="kpi__sub">
-                    {labels.taxi_res_gross}: {fmt(taxi.grossMonthly)}
-                  </div>
-                </div>
-                <div className="kpi" style={{ "--i": 1 } as React.CSSProperties}>
-                  <div className="kpi__label">{labels.taxi_res_net}</div>
-                  <div className="kpi__value" style={{ color: netColor(taxi.netMonthly) }}>
-                    {fmt(taxi.netMonthly)}
-                  </div>
-                  <div className="kpi__sub">{labels.taxi_res_net_hint}</div>
-                </div>
-                <div className="kpi" style={{ "--i": 2 } as React.CSSProperties}>
-                  <div className="kpi__label">{labels.taxi_res_yield}</div>
-                  <div className="kpi__value">{taxi.annualYieldPct.toFixed(1)}%</div>
-                  <div className="kpi__sub">{labels.taxi_res_yield_hint}</div>
-                </div>
-                <div className="kpi" style={{ "--i": 3 } as React.CSSProperties}>
-                  <div className="kpi__label">{labels.taxi_res_payback}</div>
-                  <div className="kpi__value">
-                    {taxi.paybackYears == null
+                <Kpi
+                  index={0}
+                  label={labels.taxi_res_cash}
+                  value={fmt(taxi.cashMonthly)}
+                  valueStyle={{ color: netColor(taxi.cashMonthly) }}
+                  sub={`${labels.taxi_res_gross}: ${fmt(taxi.grossMonthly)}`}
+                />
+                <Kpi
+                  index={1}
+                  label={labels.taxi_res_net}
+                  value={fmt(taxi.netMonthly)}
+                  valueStyle={{ color: netColor(taxi.netMonthly) }}
+                  sub={labels.taxi_res_net_hint}
+                />
+                <Kpi
+                  index={2}
+                  label={labels.taxi_res_yield}
+                  value={`${taxi.annualYieldPct.toFixed(1)}%`}
+                  sub={labels.taxi_res_yield_hint}
+                />
+                <Kpi
+                  index={3}
+                  label={labels.taxi_res_payback}
+                  value={
+                    taxi.paybackYears == null
                       ? labels.res_never
-                      : `${taxi.paybackYears.toFixed(1)} ${labels.res_years}`}
-                  </div>
-                </div>
-                <div className="kpi" style={{ gridColumn: "1 / -1", "--i": 4 } as React.CSSProperties}>
-                  <div className="kpi__label">{labels.taxi_res_costs}</div>
-                  <div className="kpi__value">
-                    {fmt(
-                      taxi.platformFee + taxi.fuelMonthly +
-                      taxi.runningMonthly + taxi.driverShare,
-                    )}
-                  </div>
-                  <div className="kpi__sub">
-                    {labels.taxi_c_platform}: {fmt(taxi.platformFee)} ·{" "}
-                    {labels.taxi_c_fuel}: {fmt(taxi.fuelMonthly)} ·{" "}
-                    {labels.taxi_c_running}: {fmt(taxi.runningMonthly)}
-                    {taxi.driverShare > 0 && (
-                      <> · {labels.taxi_c_driver}: {fmt(taxi.driverShare)}</>
-                    )}
-                  </div>
-                </div>
+                      : `${taxi.paybackYears.toFixed(1)} ${labels.res_years}`
+                  }
+                />
+                <Kpi
+                  index={4}
+                  style={{ gridColumn: "1 / -1" }}
+                  label={labels.taxi_res_costs}
+                  value={fmt(taxi.platformFee + taxi.fuelMonthly + taxi.runningMonthly + taxi.driverShare)}
+                  sub={
+                    <>
+                      {labels.taxi_c_platform}: {fmt(taxi.platformFee)} · {labels.taxi_c_fuel}: {fmt(taxi.fuelMonthly)} ·{" "}
+                      {labels.taxi_c_running}: {fmt(taxi.runningMonthly)}
+                      {taxi.driverShare > 0 && (
+                        <> · {labels.taxi_c_driver}: {fmt(taxi.driverShare)}</>
+                      )}
+                    </>
+                  }
+                />
               </div>
 
               {/* Rent it out or drive it? Both after the car's lost value. */}

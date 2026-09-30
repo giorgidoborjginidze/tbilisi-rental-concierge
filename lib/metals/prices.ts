@@ -16,8 +16,6 @@ export const METALS: Record<string, { name: string; type: string }> = {
   XPD: { name: "Palladium", type: "palladium" },
 };
 
-export const METAL_SYMBOLS = Object.keys(METALS);
-
 /** USD price per troy ounce for the given metal tickers → { XAU: price }. */
 export async function fetchMetalPrices(
   symbols: string[],

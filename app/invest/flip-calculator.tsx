@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { analyzeFlip } from "@/lib/invest/flip";
 import { formatMoney } from "@/lib/format";
 import { VERDICT_BADGE } from "@/lib/ui/tone";
+import Kpi from "../kpi";
 
 const fmt = (v: number) => formatMoney(v);
 const pct = (v: number) => `${v >= 0 ? "" : "−"}${Math.abs(v).toFixed(1)}%`;
@@ -154,53 +155,43 @@ export default function FlipCalculator({
             className="kpi-grid kpi-grid--3d"
             style={{ margin: "14px 0", gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}
           >
-            <div className="kpi" style={{ "--i": 0 } as React.CSSProperties}>
-              <div className="kpi__label">{labels.flip_res_invested}</div>
-              <div className="kpi__value">{fmt(result.totalInvested)}</div>
-              <div className="kpi__sub">
-                {labels.flip_res_holding}: {fmt(result.holdingCosts)}
-              </div>
-            </div>
+            <Kpi
+              index={0}
+              label={labels.flip_res_invested}
+              value={fmt(result.totalInvested)}
+              sub={`${labels.flip_res_holding}: ${fmt(result.holdingCosts)}`}
+            />
 
-            <div className="kpi" style={{ "--i": 1 } as React.CSSProperties}>
-              <div className="kpi__label">{labels.flip_res_profit}</div>
-              <div className="kpi__value" style={{ color: profitColor }}>
-                {fmt(result.netProfit)}
-              </div>
-              <div className="kpi__sub">
-                {labels.flip_res_tax}: {fmt(result.tax)}
-              </div>
-            </div>
+            <Kpi
+              index={1}
+              label={labels.flip_res_profit}
+              value={fmt(result.netProfit)}
+              valueStyle={{ color: profitColor }}
+              sub={`${labels.flip_res_tax}: ${fmt(result.tax)}`}
+            />
 
-            <div className="kpi" style={{ "--i": 2 } as React.CSSProperties}>
-              <div className="kpi__label">{labels.flip_res_annual}</div>
-              <div className="kpi__value" style={{ color: profitColor }}>
-                {pct(result.annualizedPct)}
-              </div>
-              <div className="kpi__sub">
-                {labels.flip_res_roi}: {pct(result.roiPct)}
-              </div>
-            </div>
+            <Kpi
+              index={2}
+              label={labels.flip_res_annual}
+              value={pct(result.annualizedPct)}
+              valueStyle={{ color: profitColor }}
+              sub={`${labels.flip_res_roi}: ${pct(result.roiPct)}`}
+            />
 
-            <div className="kpi" style={{ "--i": 3 } as React.CSSProperties}>
-              <div className="kpi__label">{labels.flip_res_per_month}</div>
-              <div className="kpi__value" style={{ color: profitColor }}>
-                {fmt(result.profitPerMonth)}
-              </div>
-            </div>
+            <Kpi
+              index={3}
+              label={labels.flip_res_per_month}
+              value={fmt(result.profitPerMonth)}
+              valueStyle={{ color: profitColor }}
+            />
 
-            <div
-              className="kpi"
-              style={{ gridColumn: "1 / -1", "--i": 4 } as React.CSSProperties}
-            >
-              <div className="kpi__label">{labels.flip_res_breakeven}</div>
-              <div className="kpi__value">{fmt(result.breakEvenPrice)}</div>
-              <div className="kpi__sub">
-                {labels.flip_res_breakeven_hint} · {labels.flip_res_net_proceeds}:{" "}
-                {fmt(result.netSaleProceeds)} ({labels.flip_res_selling_fee}:{" "}
-                {fmt(result.sellingFee)})
-              </div>
-            </div>
+            <Kpi
+              index={4}
+              style={{ gridColumn: "1 / -1" }}
+              label={labels.flip_res_breakeven}
+              value={fmt(result.breakEvenPrice)}
+              sub={`${labels.flip_res_breakeven_hint} · ${labels.flip_res_net_proceeds}: ${fmt(result.netSaleProceeds)} (${labels.flip_res_selling_fee}: ${fmt(result.sellingFee)})`}
+            />
           </div>
 
           <p className="demo-hint" style={{ marginTop: 0 }}>

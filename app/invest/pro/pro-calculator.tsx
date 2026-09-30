@@ -13,6 +13,7 @@ import {
 import { PAYBACK_CAP_YEARS } from "@/lib/invest/market";
 import { currencySign, formatMoney } from "@/lib/format";
 import { TONE_BADGE, VERDICT_BADGE } from "@/lib/ui/tone";
+import Kpi from "../../kpi";
 
 export default function ProCalculator({
   labels,
@@ -165,36 +166,19 @@ export default function ProCalculator({
         )}
 
         <div className="kpi-grid kpi-grid--3d" style={{ margin: "14px 0", gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
-          <div className="kpi">
-            <div className="kpi__label">{labels.wor_cf_month}</div>
-            <div
-              className="kpi__value"
-              style={{
-                color:
-                  y1.atCashFlow >= 0
-                    ? "var(--status-rented-text)"
-                    : "var(--status-danger-text)",
-              }}
-            >
-              {fmt(y1.atCashFlow / 12)}
-            </div>
-            <div className="kpi__sub">{labels.wor_payment}: {fmt(result.monthlyPayment)}</div>
-          </div>
-          <div className="kpi">
-            <div className="kpi__label">{labels.wor_coc}</div>
-            <div className="kpi__value">{pct(y1.atCocPct)}</div>
-            <div className="kpi__sub">{labels.wor_cap}: {pct(y1.capRatePct)}</div>
-          </div>
-          <div className="kpi">
-            <div className="kpi__label">{labels.wor_payback}</div>
-            <div className="kpi__value">{years(result.paybackYears)}</div>
-            <div className="kpi__sub">{labels.wor_invested}: {fmt(result.totalInvested)}</div>
-          </div>
-          <div className="kpi">
-            <div className="kpi__label">{labels.wor_equity5}</div>
-            <div className="kpi__value">{fmt(y5.equityValue)}</div>
-            <div className="kpi__sub">{pct(y5.equityPct)}</div>
-          </div>
+          <Kpi
+            label={labels.wor_cf_month}
+            value={fmt(y1.atCashFlow / 12)}
+            valueStyle={{ color: y1.atCashFlow >= 0 ? "var(--status-rented-text)" : "var(--status-danger-text)" }}
+            sub={`${labels.wor_payment}: ${fmt(result.monthlyPayment)}`}
+          />
+          <Kpi label={labels.wor_coc} value={pct(y1.atCocPct)} sub={`${labels.wor_cap}: ${pct(y1.capRatePct)}`} />
+          <Kpi
+            label={labels.wor_payback}
+            value={years(result.paybackYears)}
+            sub={`${labels.wor_invested}: ${fmt(result.totalInvested)}`}
+          />
+          <Kpi label={labels.wor_equity5} value={fmt(y5.equityValue)} sub={pct(y5.equityPct)} />
         </div>
 
         <div className="card" style={{ overflowX: "auto" }}>

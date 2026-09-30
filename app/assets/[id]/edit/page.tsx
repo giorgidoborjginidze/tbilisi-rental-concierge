@@ -6,7 +6,7 @@ import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
 import { addAssetToRentals, restoreContract } from "@/lib/assets/actions";
 import { dayPrice } from "@/lib/assets/daily-price";
-import OccupancyCalendar from "./occupancy-calendar";
+import OccupancyCalendar, { type CalMonth } from "./occupancy-calendar";
 import HoldingView from "./holding-view";
 import { LISTING_PLATFORMS, parseChannelLinks } from "@/lib/types";
 import AssetForm from "../../asset-form";
@@ -176,17 +176,16 @@ export default async function EditAssetPage({
   const holidayPct = asset.holidayPct ?? 0;
 
   const fmtMonth = tbilisiFormat(locale, { month: "short" });
+  // The phone's month view shows one month at a time: its title names the
+  // year too (the calendar spans New Year).
+  const fmtMonthLong = tbilisiFormat(locale, { month: "long", year: "numeric" });
   const fmtDate = tbilisiFormat(locale, {
     day: "numeric", month: "short", year: "numeric",
   });
 
   const fmtDay = tbilisiFormat(locale, { day: "numeric", month: "short" });
 
-  const months: {
-    label: string;
-    current: boolean;
-    days: { iso: string; cls: string; title: string }[];
-  }[] = [];
+  const months: CalMonth[] = [];
   if (showCalendar) {
     for (let m = 0; m < 6; m++) {
       const mStart = new Date(Date.UTC(calStart.getUTCFullYear(), calStart.getUTCMonth() + m, 1));
@@ -228,6 +227,7 @@ export default async function EditAssetPage({
       });
       months.push({
         label: fmtMonth.format(mStart),
+        longLabel: fmtMonthLong.format(mStart),
         current: mStart.getTime() === monthStartTbilisi(0).getTime(),
         days,
       });

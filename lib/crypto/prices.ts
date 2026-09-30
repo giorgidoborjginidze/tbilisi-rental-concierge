@@ -42,8 +42,6 @@ export const COINS: Record<string, { id: string; name: string }> = {
   SUI: { id: "sui", name: "Sui" },
 };
 
-export const COIN_SYMBOLS = Object.keys(COINS);
-
 /**
  * USD→GEL used only when the NBG never answered and no earlier rate is
  * stored — always shown as "approximate rate", never as the NBG rate.

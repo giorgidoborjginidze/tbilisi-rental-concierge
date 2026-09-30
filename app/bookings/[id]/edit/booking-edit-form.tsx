@@ -8,6 +8,7 @@ import { currencySign } from "@/lib/format";
 import type { FormState } from "@/lib/units/actions";
 import { keepTyped } from "@/app/keep-typed";
 import { Req, RequiredLegend } from "@/app/form-bits";
+import { addDaysKey } from "@/lib/time";
 
 export interface EditableBooking {
   id: string;
@@ -18,12 +19,6 @@ export interface EditableBooking {
   currency: string;
 }
 
-/** "YYYY-MM-DD" of the day after `key`; undefined for an empty or bad date. */
-function nextDayKey(key: string): string | undefined {
-  const at = Date.parse(`${key}T00:00:00Z`);
-  if (!key || Number.isNaN(at)) return undefined;
-  return new Date(at + 86_400_000).toISOString().slice(0, 10);
-}
 
 export default function BookingEditForm({
   booking,
@@ -50,7 +45,7 @@ export default function BookingEditForm({
   const error = state?.error ? state : restoreState?.error ? restoreState : null;
   // Check-out is at least the night after check-in.
   const [checkIn, setCheckIn] = useState(val("checkIn"));
-  const minCheckOut = nextDayKey(checkIn);
+  const minCheckOut = addDaysKey(checkIn, 1);
 
   return (
     <>

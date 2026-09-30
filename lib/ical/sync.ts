@@ -2,6 +2,7 @@
 
 import type { IcalEvent } from "./parse";
 import type { BookingSource } from "@/lib/types";
+import { utcDay } from "@/lib/time";
 
 export interface BookingCandidate {
   source: BookingSource;
@@ -63,8 +64,7 @@ const dayStamp = (date: Date) =>
   date.toISOString().slice(0, 10).replace(/-/g, "");
 
 /** The calendar day of a DATE or DATE-TIME value, at UTC midnight. */
-const calendarDay = (date: Date) =>
-  new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+const calendarDay = utcDay;
 
 export function eventsToBookings(
   events: IcalEvent[],

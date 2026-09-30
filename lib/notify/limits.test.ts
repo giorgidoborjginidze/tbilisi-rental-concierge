@@ -5,7 +5,6 @@ import {
   MAX_MESSAGE_CHARS,
   PLATFORM_DAILY_LIMIT,
   RECIPIENT_DAILY_LIMIT,
-  withinDailyLimits,
 } from "./limits";
 
 const sent = (toPhone: number, toPhoneAllAccounts = toPhone, sameFenceKind?: number) => ({
@@ -16,24 +15,24 @@ const sent = (toPhone: number, toPhoneAllAccounts = toPhone, sameFenceKind?: num
 
 describe("daily limits per recipient", () => {
   it("lets one account send any number — renter or owner — at most three messages a day", () => {
-    expect(withinDailyLimits(sent(RECIPIENT_DAILY_LIMIT - 1))).toBe(true);
-    expect(withinDailyLimits(sent(RECIPIENT_DAILY_LIMIT))).toBe(false);
+    expect(dailyLimitReason(sent(RECIPIENT_DAILY_LIMIT - 1))).toBeNull();
+    expect(dailyLimitReason(sent(RECIPIENT_DAILY_LIMIT))).not.toBeNull();
     expect(dailyLimitReason(sent(RECIPIENT_DAILY_LIMIT))).toBe("limit");
   });
 
   it("counts per sending account, so another account's messages do not use up this owner's three", () => {
     // Someone else sent this driver 3 today; this owner has sent none.
-    expect(withinDailyLimits(sent(0, 3))).toBe(true);
-    expect(withinDailyLimits(sent(2, 8))).toBe(true);
+    expect(dailyLimitReason(sent(0, 3))).toBeNull();
+    expect(dailyLimitReason(sent(2, 8))).toBeNull();
   });
 
   it("stops a flood from many accounts at the platform-wide ceiling", () => {
-    expect(withinDailyLimits(sent(0, PLATFORM_DAILY_LIMIT - 1))).toBe(true);
+    expect(dailyLimitReason(sent(0, PLATFORM_DAILY_LIMIT - 1))).toBeNull();
     expect(dailyLimitReason(sent(0, PLATFORM_DAILY_LIMIT))).toBe("limit");
   });
 
   it("announces each kind of red-line event once per fence a day, with its own reason", () => {
-    expect(withinDailyLimits(sent(0, 0, 0))).toBe(true);
+    expect(dailyLimitReason(sent(0, 0, 0))).toBeNull();
     expect(dailyLimitReason(sent(0, 0, 1))).toBe("limit_fence");
   });
 });

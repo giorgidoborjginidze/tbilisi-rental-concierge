@@ -5,6 +5,7 @@ import { asPeriod, monthlyEquivalent } from "@/lib/rentals/amount";
 import { defaultPaidThrough } from "@/lib/rentals/schedule";
 import { dayFromKey, dayKey, todayKey } from "@/lib/time";
 import { Req } from "@/app/form-bits";
+import { formatNumber } from "@/lib/number";
 
 const AMOUNT_LABEL = {
   daily: "contract_amount_daily",
@@ -71,7 +72,7 @@ export default function ContractFields({
   const amountNumber = Number(amount);
   const monthly =
     period !== "monthly" && Number.isFinite(amountNumber) && amountNumber > 0
-      ? Math.round(monthlyEquivalent(amountNumber, period)).toLocaleString("en-US")
+      ? formatNumber(monthlyEquivalent(amountNumber, period))
       : null;
 
   return (

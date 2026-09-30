@@ -8,6 +8,9 @@
 // never less than what clears the debt. Pure and client-safe.
 
 import { payableAmount } from "./rentals/money";
+import { formatNumber, type Decimals } from "./number";
+
+export { formatNumber, formatQuantity, formatSignedPercent, type Decimals } from "./number";
 
 const SIGNS: Record<string, string> = { GEL: "₾", USD: "$", EUR: "€" };
 
@@ -15,23 +18,6 @@ const SIGNS: Record<string, string> = { GEL: "₾", USD: "$", EUR: "€" };
 export function currencySign(code: string | null | undefined): string {
   if (!code) return "₾";
   return SIGNS[code.trim().toUpperCase()] ?? code.trim();
-}
-
-export type Decimals = "auto" | number;
-
-/** "1,200" / "49.40" (auto) / "1,200.50" (2) — no currency. */
-export function formatNumber(value: number, decimals: Decimals = 0): string {
-  if (decimals === "auto") {
-    const whole = Math.abs(value - Math.round(value)) < 0.005;
-    return whole
-      ? Math.round(value).toLocaleString("en-US")
-      : value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  }
-  if (decimals <= 0) return Math.round(value).toLocaleString("en-US");
-  return value.toLocaleString("en-US", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: decimals,
-  });
 }
 
 /** "43,082 ₾" — "—" when there is no figure. */

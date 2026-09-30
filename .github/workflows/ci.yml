@@ -1,0 +1,47 @@
+# Checks every push and pull request: the same four gates run locally
+# before a commit (type check, lint, unit tests) on a clean install.
+# No secrets are needed: the Prisma client is generated for the local
+# SQLite schema and the tests are pure (no database, no network).
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # prisma.config.ts reads it; `prisma generate` never connects.
+      DATABASE_URL: file:./ci.db
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Generate the Prisma client
+        run: ./node_modules/.bin/prisma generate
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npx vitest run

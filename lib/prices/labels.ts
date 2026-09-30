@@ -2,6 +2,7 @@
 
 import { t, type Locale } from "@/lib/i18n/strings";
 import { ageOf, type FxRate } from "./freshness";
+import { formatNumber } from "@/lib/number";
 
 export function priceAge(locale: Locale, fetchedAt: Date, now: Date = new Date()): string {
   const age = ageOf(fetchedAt, now);
@@ -10,7 +11,7 @@ export function priceAge(locale: Locale, fetchedAt: Date, now: Date = new Date()
   return t(locale, key).replace("{n}", String(age.n));
 }
 
-const rateText = (value: number) => value.toLocaleString("en-US", { maximumFractionDigits: 4 });
+const rateText = (value: number) => formatNumber(value, 4);
 
 /** "In GEL at the National Bank rate: 1 $ = 2.6875 ₾ (2 h ago)." or the approximate-rate line. */
 export function rateLine(locale: Locale, rate: FxRate, now: Date = new Date()): string {

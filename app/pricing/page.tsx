@@ -10,7 +10,7 @@ import { groupRuns, type PricingResult } from "@/lib/pricing/engine";
 import UnitFilter from "../calendar/unit-filter";
 import RentalsSubnav from "../rentals-subnav";
 import { firstParam, type QueryValue } from "@/lib/params";
-import { formatMoney } from "@/lib/format";
+import { formatMoney, formatNumber } from "@/lib/format";
 import { titled } from "@/lib/i18n/metadata";
 
 export const dynamic = "force-dynamic";
@@ -46,7 +46,7 @@ export default async function PricingPage({
   });
   // Nights with the same price and reason read as one run.
   const runs = groupRuns(suggestions ?? []);
-  const whole = (v: number) => Math.round(v).toLocaleString("en-US");
+  const whole = (v: number) => formatNumber(v);
   const money = (v: number) => formatMoney(v, selected.currency);
   // The arithmetic behind a price, in the words of the page header.
   const maths = ({ steps, factors }: PricingResult) => {

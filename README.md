@@ -287,9 +287,12 @@ GDPR-aligned): `guestName` is optional; a booking needs only source, dates,
 and amount. Registration asks only for an email and a password — the
 operator's name is optional. Tenant name/phone are optional and stored
 only for contact. Income sources store an amount only (no employer or
-payer). A dedicated `/privacy` page states the confidentiality stance
-(minimal collection, full per-account isolation, hashed passwords and
-sessions, no selling or sharing) and is linked in the site footer.
+payer). `/terms` (Terms of Service) and `/privacy` (Privacy Policy, written
+against the Law of Georgia on Personal Data Protection) are linked in the
+site footer, on sign-up and on billing; their text lives in `lib/legal/`
+(Georgian first, English). Both are **drafts for a lawyer's review** — see
+`docs/legal-review.md` for the facts they rest on, the open questions and
+the placeholders (company details, support phone) that need real values.
 Market benchmark data is mock behind a pluggable `MarketDataSource` —
 no scraping/republishing of third-party listings.
 
@@ -297,6 +300,25 @@ Assets also include an **income-source** category (salary, dividend,
 business, pension, interest, royalty) that records a recurring monthly
 amount and folds into the monthly-income total alongside rent and STR
 revenue — no location, listing links or market-rent estimate.
+
+## Checks and release checklist
+
+`.github/workflows/ci.yml` runs on every push and pull request: `npm ci`,
+`prisma generate`, `tsc --noEmit`, `npm run lint` and `vitest run`. Run the
+same four locally before committing.
+
+Before a release:
+
+- CI is green (types, lint with zero problems, unit tests).
+- `npm run build` passes and the changed pages were checked on a phone
+  (390 px) and a desktop (1440 px), in Georgian.
+- Legal: `/terms` and `/privacy` still describe what the code does (new
+  data, new processors, new retention) — update `lib/legal/` and
+  `docs/legal-review.md` together.
+- A visible UI change? The tutorial recordings on `/learn`
+  (`public/tutorials/*.mp4`) must be re-recorded on the new build; until
+  then add the lesson's slug to `OUTDATED_VIDEOS` in `lib/learn/lessons.ts`
+  so the page shows "ვიდეო განახლდება" instead of the old design.
 
 ## Roadmap (build order)
 

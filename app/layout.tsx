@@ -113,7 +113,9 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const locale = await getLocale();
-  // Manual theme choice ("light" | "dark"); absent = follow the OS.
+  // Manual theme choice ("light" | "dark"). Absent = the light Ice theme:
+  // the OS dark setting is deliberately not followed (globals.css, above
+  // the dark tokens) — dark only when the owner picks it with the toggle.
   const themeCookie = (await cookies()).get("theme")?.value;
   const theme =
     themeCookie === "dark" || themeCookie === "light" ? themeCookie : undefined;
@@ -128,11 +130,14 @@ export default async function RootLayout({
         <Nav />
         <div className="flex-1">{children}</div>
         {/* On a phone with the tab bar, the footer keeps clear of it
-            (globals.css .site-footer) so the privacy link can be tapped. */}
+            (globals.css .site-footer) so the legal links can be tapped. */}
         <footer className="site-footer">
           <AppMark size={20} />
+          <Link href="/terms" className="link">
+            {t(locale, "footer_terms")}
+          </Link>
           <Link href="/privacy" className="link">
-            {t(locale, "privacy_title")}
+            {t(locale, "footer_privacy")}
           </Link>
         </footer>
         <SupportBot labels={botLabels(locale)} waUrl={whatsappUrl()} />

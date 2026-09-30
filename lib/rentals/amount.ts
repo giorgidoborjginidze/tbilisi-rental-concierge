@@ -46,12 +46,3 @@ export function perPeriodAmount(contract: ContractAmounts): number {
   }
   return contract.monthlyRent;
 }
-
-/** The price of one day of the contract. */
-export function perDayAmount(contract: ContractAmounts): number {
-  const period = asPeriod(contract.paymentPeriod);
-  const amount = perPeriodAmount(contract);
-  if (period === "daily") return amount;
-  if (period === "weekly") return Math.round((amount / 7) * 100) / 100;
-  return Math.round((contract.monthlyRent / DAYS_PER_MONTH) * 100) / 100;
-}

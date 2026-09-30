@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { dayKey, startOfTodayTbilisi } from "@/lib/time";
+import { dayKey, monthKeyTbilisi, startOfTodayTbilisi } from "@/lib/time";
 import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
@@ -15,7 +15,7 @@ import { titled } from "@/lib/i18n/metadata";
 import { AlertTypeIcon } from "../alert-icon";
 import { formatMoney } from "@/lib/format";
 import { IconAlert, IconArrowRight, IconChevronLeft, IconChevronRight } from "../icons";
-import { CELL_CLASS, nightCells, OVERLAP_CODE } from "@/lib/calendar/cells";
+import { CELL_CLASS, nightCells, nightIndex, OVERLAP_CODE, stripOpen, stripRange } from "@/lib/calendar/cells";
 import CalendarStrip, { type StripDay, type StripRow } from "./calendar-strip";
 import { getMarketDataSource } from "@/lib/market/source";
 import { benchmarkMonth, freeWindowRange, placeOccupancy, windowPrice } from "@/lib/pricing/nightly";
@@ -26,8 +26,6 @@ export const dynamic = "force-dynamic";
 export const generateMetadata = titled("nav_rentals");
 
 const DAY_MS = 86_400_000;
-/** Nights loaded before and after the month for the phone's strip. */
-const STRIP_PAD_DAYS = 14;
 
 const SOURCE_NAME: Record<string, string> = { airbnb: "Airbnb", booking: "Booking.com" };
 
@@ -52,7 +50,7 @@ const monthParam = (year: number, month: number) =>
 export default async function CalendarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: QueryValue; unit?: QueryValue }>;
+  searchParams: Promise<{ month?: QueryValue; unit?: QueryValue; from?: QueryValue }>;
 }) {
   const operator = await requireOperator();
 
@@ -60,6 +58,9 @@ export default async function CalendarPage({
   const query = await searchParams;
   const monthQuery = firstParam(query.month);
   const unitQuery = firstParam(query.unit);
+  // The night the phone's strip opens on when it was paged here from the
+  // neighbouring month (lib/calendar/cells.ts stripHandOff).
+  const fromQuery = firstParam(query.from);
   const { year, month } = parseMonth(monthQuery);
 
   const windowStart = new Date(Date.UTC(year, month - 1, 1));
@@ -78,12 +79,10 @@ export default async function CalendarPage({
     ? new Date(Math.max(range.end.getTime(), today.getTime() + 30 * DAY_MS))
     : today;
   // The phone's two-week strip pages through the month, two weeks before
-  // it and four after without a round trip.
-  const stripFrom = new Date(windowStart.getTime() - STRIP_PAD_DAYS * DAY_MS);
-  // Four weeks past the month's end, so today near the end of a month still
-  // pages forward by whole fortnights.
-  const stripTo = new Date(windowEnd.getTime() + 2 * STRIP_PAD_DAYS * DAY_MS);
-  const stripLength = Math.round((stripTo.getTime() - stripFrom.getTime()) / DAY_MS);
+  // it and four after (so a window near the month's end still pages by
+  // whole fortnights) without a round trip.
+  const { from: stripFrom, days: stripLength, monthIndex: stripMonthIndex } = stripRange(year, month);
+  const stripTo = new Date(stripFrom.getTime() + stripLength * DAY_MS);
   const loadStart = new Date(Math.min(windowStart.getTime(), today.getTime(), stripFrom.getTime()));
   const loadEnd = new Date(Math.max(windowEnd.getTime(), aheadEnd.getTime(), stripTo.getTime()));
 
@@ -247,6 +246,7 @@ export default async function CalendarPage({
     };
   });
   const stripToday = Math.round((today.getTime() - stripFrom.getTime()) / DAY_MS);
+  const stripTodayIndex = stripToday >= 0 && stripToday < stripLength ? stripToday : null;
   const stripRows: StripRow[] = rows.map((row) => {
     const used = new Map<number, number>();
     const stays: StripRow["stays"] = [];
@@ -420,12 +420,19 @@ export default async function CalendarPage({
       {/* Phones: two weeks at a time, full names, today marked, every
           cell a link (the month board above is hidden there). */}
       <CalendarStrip
-        // A new month is a new strip: it opens on today or the month's start.
-        key={`${monthParam(year, month)}|${unitQuery ?? ""}`}
+        // A new month (or a hand-off night) is a new strip: it opens where
+        // stripOpen says — the carried-over night, today in today's month,
+        // else the month's first night.
+        key={`${monthParam(year, month)}|${unitQuery ?? ""}|${fromQuery ?? ""}`}
         days={stripDays}
         rows={stripRows}
-        todayIndex={stripToday >= 0 && stripToday < stripLength ? stripToday : null}
-        fallbackIndex={STRIP_PAD_DAYS}
+        todayIndex={stripTodayIndex}
+        openIndex={stripOpen(stripLength, {
+          from: nightIndex(stripFrom, fromQuery),
+          today: stripTodayIndex,
+          currentMonth: monthParam(year, month) === monthKeyTbilisi(),
+          fallback: stripMonthIndex,
+        })}
         prevMonthHref={`/calendar?month=${monthParam(prev.year, prev.month)}${unitSuffix}`}
         nextMonthHref={`/calendar?month=${monthParam(next.year, next.month)}${unitSuffix}`}
         labels={{

@@ -44,6 +44,24 @@ export function dayKey(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
+/** The stored calendar day a date falls on: UTC midnight of its UTC date. */
+export function utcDay(date: Date): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+}
+
+/** How many days the (UTC) month of a stored day has. */
+export function daysInMonth(date: Date): number {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
+}
+
+/** "YYYY-MM-DD" `offset` days after `key`; undefined for an empty or malformed key. */
+export function addDaysKey(key: string, offset: number): string | undefined {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return undefined;
+  const at = Date.parse(`${key}T00:00:00Z`);
+  if (Number.isNaN(at)) return undefined;
+  return dayKey(new Date(at + offset * DAY_MS));
+}
+
 /**
  * Today in Tbilisi, in the stored form (UTC midnight of the local date),
  * so it compares directly with contract, booking and day-entry dates.

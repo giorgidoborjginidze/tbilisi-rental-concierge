@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 import { addTrade, deleteTrade } from "@/lib/crypto/actions";
 import type { FormState } from "@/lib/units/actions";
 import { IconClose, IconTrendDown, IconTrendUp } from "@/app/icons";
-import { formatMoney } from "@/lib/format";
+import { formatMoney, formatQuantity } from "@/lib/format";
 import ConfirmAction from "@/app/confirm-action";
 import { FormMessage, Req } from "@/app/form-bits";
 
@@ -50,7 +50,7 @@ export default function CryptoTrades({
   );
   const sent = state && "values" in state ? state.values : undefined;
 
-  const fmt = (v: number) => v.toLocaleString("en-US", { maximumFractionDigits: metal ? 4 : 8 });
+  const fmt = (v: number) => formatQuantity(v, metal ? "metal" : "coin");
   const quantityLabel = metal
     ? `${labels.crypto_quantity} (${unit === "g" ? labels.metal_unit_g : labels.metal_unit_oz})`
     : labels.crypto_quantity;

@@ -12,7 +12,6 @@ export const UNIT_TYPES = [
   "aparthotel_room",
   "house",
 ] as const;
-export type UnitType = (typeof UNIT_TYPES)[number];
 
 export const CITIES = ["Tbilisi", "Batumi"] as const;
 
@@ -56,18 +55,12 @@ export const ASSET_TYPES: Record<string, readonly string[]> = {
   other: ["equipment", "other"],
 };
 
-// Categories whose assets are pure income streams: no location, area,
-// listing links, market rent or door key — just a recurring amount.
-export const INCOME_CATEGORY = "income_source";
-
 export const ASSET_STATUSES = [
   "rented",
   "vacant",
   "personal_use",
   "listed",
 ] as const;
-
-export const RENTAL_MODES = ["long_term", "daily"] as const;
 
 // Listing platforms per asset category. field = Asset column name.
 export const LISTING_PLATFORMS: Record<
@@ -87,15 +80,6 @@ export const LISTING_PLATFORMS: Record<
   metal: [],
   other: [],
 };
-
-export const INCOME_SOURCES = [
-  "rent",
-  "str",
-  "salary",
-  "business",
-  "dividend",
-  "other",
-] as const;
 
 export function parseChannelLinks(value: unknown): ChannelLinks {
   const raw = (value ?? {}) as Partial<ChannelLinks>;

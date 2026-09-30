@@ -4,7 +4,8 @@ import { join } from "node:path";
 import { getSessionOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
-import { LESSONS } from "@/lib/learn/lessons";
+import { LESSONS, OUTDATED_VIDEOS } from "@/lib/learn/lessons";
+import { IconClock } from "../icons";
 import StartTourButton from "./start-tour-button";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +14,9 @@ export const generateMetadata = titled("learn_title", { alternates: { canonical:
 
 // The learning hub: the interactive tour up top, then one lesson per part
 // of the platform — a short silent recording with Georgian captions,
-// paired with the same flow written out as numbered steps.
+// paired with the same flow written out as numbered steps. A recording
+// that shows an old design is held back ("the video is being updated")
+// until it is re-recorded; the written steps stay.
 export default async function LearnPage() {
   const locale = await getLocale();
   const operator = await getSessionOperator();
@@ -21,6 +24,7 @@ export default async function LearnPage() {
 
   const has = (rel: string) => existsSync(join(process.cwd(), "public", rel));
   const videoFor = (slug: string) => {
+    if (OUTDATED_VIDEOS.has(slug)) return null;
     const rel = `/tutorials/${slug}.mp4`;
     return has(rel) ? rel : null;
   };
@@ -73,6 +77,14 @@ export default async function LearnPage() {
                   poster={posterFor(lesson.slug)}
                   src={video}
                 />
+              ) : OUTDATED_VIDEOS.has(lesson.slug) ? (
+                <div className="learn-lesson__soon learn-lesson__soon--updating" role="note">
+                  <span className="icon-text" style={{ justifyContent: "center", fontWeight: 600 }}>
+                    <IconClock size={18} />
+                    {t(locale, "learn_video_updating")}
+                  </span>
+                  <span className="learn-lesson__soon-hint">{t(locale, "learn_video_updating_hint")}</span>
+                </div>
               ) : (
                 <div className="learn-lesson__soon">
                   {t(locale, "learn_video_soon")}

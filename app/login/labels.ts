@@ -7,7 +7,7 @@ export const AUTH_LABEL_KEYS: StringKey[] = [
   "auth_have_account", "error_required", "error_password_short",
   "error_invalid_credentials", "error_email_taken", "error_invalid_number",
   "error_dates", "account_type", "account_personal", "account_business",
-  "invited_to_company", "error_invite_invalid", "privacy_note_register",
+  "invited_to_company", "error_invite_invalid",
   "profile_label", "profile_hotel", "profile_brokerage", "profile_car",
   "profile_hint", "error_email_invalid", "error_too_many_attempts",
   "forgot_link", "error_invite_email", "invite_email_hint",

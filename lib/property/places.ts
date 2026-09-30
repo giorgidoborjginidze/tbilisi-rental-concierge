@@ -16,6 +16,7 @@ import { LIVE_STAY } from "@/lib/bookings/live";
 import { LIVE_CONTRACT } from "@/lib/rentals/live";
 import type { Booking, Unit } from "@/app/generated/prisma/client";
 import { emptySources, type PlaceSources } from "./stays";
+import { overlapsWhere } from "@/lib/rentals/phase";
 
 export interface RentalPlace {
   /** The unit id, or "asset:<id>" for a day-let asset without a unit. */
@@ -55,7 +56,7 @@ const assetSelect = (range: Range) => ({
   holidayPct: true,
   currency: true,
   contracts: {
-    where: { startDate: { lt: range.end }, endDate: { gt: range.start }, ...LIVE_CONTRACT },
+    where: { ...overlapsWhere(range.start, range.end), ...LIVE_CONTRACT },
     select: {
       id: true,
       startDate: true,
@@ -97,7 +98,7 @@ export async function loadRentalPlaces(
           orderBy: { checkIn: "asc" },
         },
         leases: {
-          where: { startDate: { lt: range.end }, endDate: { gt: range.start } },
+          where: overlapsWhere(range.start, range.end),
           select: { id: true, startDate: true, endDate: true },
         },
         asset: { select: assetSelect(range) },
@@ -206,7 +207,7 @@ export async function loadAssetSources(
             select: { id: true, source: true, checkIn: true, checkOut: true, nights: true, amount: true },
           },
           leases: {
-            where: { startDate: { lt: range.end }, endDate: { gt: range.start } },
+            where: overlapsWhere(range.start, range.end),
             select: { id: true, startDate: true, endDate: true },
           },
         },

@@ -23,9 +23,10 @@ import { monthKeyTbilisi, monthStartTbilisi, startOfTodayTbilisi, tbilisiFormat 
 import RevenuePartial, { monthKeyOf } from "../revenue-partial";
 import { districtLabel } from "@/lib/places";
 import { titled } from "@/lib/i18n/metadata";
-import { formatMoney } from "@/lib/format";
+import { formatMoney, formatNumber, formatQuantity, formatSignedPercent } from "@/lib/format";
 import { deskHref, rentalDesk } from "@/lib/rentals/desk";
 import { LIVE_CONTRACT } from "@/lib/rentals/live";
+import Kpi from "../kpi";
 
 // What can be let to someone with a contract.
 const CONTRACT_CATEGORIES = ["real_estate", "vehicle", "other"];
@@ -41,16 +42,6 @@ const STATUS_BADGE: Record<string, string> = {
   personal_use: "badge--personal",
   listed: "badge--listed",
 };
-
-function Kpi({ label, value, sub }: { label: string; value: React.ReactNode; sub?: React.ReactNode }) {
-  return (
-    <div className="kpi">
-      <div className="kpi__label">{label}</div>
-      <div className="kpi__value">{value}</div>
-      {sub && <div className="kpi__sub">{sub}</div>}
-    </div>
-  );
-}
 
 // One holding sub-table (crypto / stock / metal) inside Digital Assets.
 // Every row says where its price comes from: live (nothing added), the
@@ -108,7 +99,7 @@ function HoldingTable({
                     <div className="cell-sub">{line.symbol}</div>
                   </td>
                   <td className="num" data-label={holdingsLabel}>
-                    {v.quantity.toLocaleString("en-US", { maximumFractionDigits: qtyDigits })}
+                    {formatNumber(v.quantity, qtyDigits)}
                   </td>
                   <td className="num" data-label={t(locale, "crypto_avg_price")}>{held ? d(v.avgBuyPrice) : "—"}</td>
                   <td className="num" data-label={t(locale, "crypto_current_price")}>
@@ -133,7 +124,7 @@ function HoldingTable({
                     {v.profit == null || !held ? "—" : `${v.profit >= 0 ? "+" : ""}${d(v.profit, 0)}`}
                     {held && v.profitPct != null && (
                       <div className="cell-sub" style={{ color: pc }}>
-                        {v.profitPct >= 0 ? "+" : ""}{(v.profitPct * 100).toFixed(1)}%
+                        {formatSignedPercent(v.profitPct)}
                       </div>
                     )}
                     {Math.abs(v.realizedProfit) >= 0.005 && (
@@ -207,7 +198,7 @@ async function DigitalHoldings({ locale, operatorId }: { locale: Locale; operato
           <Link href={`/assets/${line.id}/edit`} className="link">{line.name}</Link>:{" "}
           {t(locale, "holding_oversold").replace(
             "{n}",
-            line.valuation.oversold.toLocaleString("en-US", { maximumFractionDigits: 8 }),
+            formatQuantity(line.valuation.oversold, line.kind),
           )}
         </p>
       ))}

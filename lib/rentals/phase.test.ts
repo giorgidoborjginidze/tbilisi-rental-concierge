@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   activeContract,
   activeContractWhere,
+  overlapsWhere,
   assetStatusNow,
   contractPhase,
   endedContractToFollowUp,
@@ -125,5 +126,13 @@ describe("endedContractToFollowUp", () => {
     expect(
       endedContractToFollowUp(stays, today, (contract) => contract.id === "s2")?.id,
     ).toBe("s2");
+  });
+});
+
+describe("overlapsWhere", () => {
+  it("matches anything that starts before the window ends and ends after it starts", () => {
+    const from = new Date("2026-10-01T00:00:00Z");
+    const to = new Date("2026-11-01T00:00:00Z");
+    expect(overlapsWhere(from, to)).toEqual({ startDate: { lt: to }, endDate: { gt: from } });
   });
 });

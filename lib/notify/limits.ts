@@ -48,9 +48,6 @@ export function dailyLimitReason(sent: SentToday): LimitReason | null {
   return null;
 }
 
-/** May one more message go to this recipient today? */
-export const withinDailyLimits = (sent: SentToday): boolean => dailyLimitReason(sent) === null;
-
 /**
  * One line, no runs of spaces, at most MAX_MESSAGE_CHARS characters
  * (cut at a word where possible, with an ellipsis).

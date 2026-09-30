@@ -4,6 +4,21 @@ import type { Locale } from "@/lib/i18n/strings";
 // (public/tutorials/<slug>.mp4, silent, captions burnt in) with the same
 // flow as numbered steps, so the page works before a video exists and for
 // anyone who prefers reading.
+/**
+ * Lessons whose recording shows an old design. The four videos in
+ * public/tutorials (recorded 2026-08-24) predate the Ice redesign — a
+ * purple button, plain cards, other figures — so /learn shows a "video is
+ * being updated" placeholder for them and keeps the written steps. Take a
+ * slug out of this set once its video has been re-recorded on the current
+ * build (see the release checklist in README.md).
+ */
+export const OUTDATED_VIDEOS: ReadonlySet<string> = new Set([
+  "assets-add",
+  "calendar-ical",
+  "digital",
+  "calc-plans",
+]);
+
 export interface Lesson {
   slug: string;
   title: string;

@@ -6,14 +6,10 @@ import { createBooking } from "@/lib/bookings/actions";
 import type { FormState } from "@/lib/units/actions";
 import { Req, RequiredLegend } from "@/app/form-bits";
 import { keepTyped } from "@/app/keep-typed";
+import { addDaysKey } from "@/lib/time";
 
 /** "YYYY-MM-DD" of the next day. */
-const dayAfter = (key: string) => {
-  const date = new Date(`${key}T00:00:00Z`);
-  if (Number.isNaN(date.getTime())) return undefined;
-  date.setUTCDate(date.getUTCDate() + 1);
-  return date.toISOString().slice(0, 10);
-};
+const dayAfter = (key: string) => addDaysKey(key, 1);
 
 
 export default function BookingForm({

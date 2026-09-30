@@ -35,6 +35,7 @@ import { dayPrice } from "@/lib/assets/daily-price";
 import { asPeriod, perPeriodAmount } from "@/lib/rentals/amount";
 import type { WindowMetrics } from "@/lib/analytics/metrics";
 import type { Interval, Stay } from "@/lib/calendar/occupancy";
+import { daysInMonth, utcDay } from "@/lib/time";
 
 const DAY_MS = 86_400_000;
 
@@ -93,9 +94,6 @@ export const emptySources = (): PlaceSources => ({
   holidayPct: 0,
 });
 
-/** Calendar colour key of a stay: a booking's channel, "lease", "contract" or "day". */
-export type StayKind = string;
-
 export interface PlaceStay extends Stay {
   /** "sold": a night sold short-term; "lease": a long let, not for sale. */
   role: "sold" | "lease";
@@ -103,8 +101,7 @@ export interface PlaceStay extends Stay {
   record: "booking" | "lease" | "contract" | "day";
 }
 
-const dayStart = (date: Date) =>
-  Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+const dayStart = (date: Date) => utcDay(date).getTime();
 
 /**
  * The stays of a place — bookings, leases and contracts — for the calendar
@@ -187,10 +184,7 @@ export function stayOn(src: PlaceSources, night: Date): PlaceStay | null {
   );
 }
 
-const daysInMonthOf = (night: number) => {
-  const date = new Date(night);
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
-};
+const daysInMonthOf = (night: number) => daysInMonth(new Date(night));
 
 /** What one night of a contract earns — the same rule as lib/analytics/income.ts. */
 export function contractNightValue(

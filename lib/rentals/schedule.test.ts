@@ -5,8 +5,6 @@ import {
   defaultPaidThrough,
   evaluateSchedule,
   periodBoundary,
-  periodsBetween,
-  periodsCovered,
   snapToBoundary,
 } from "./schedule";
 
@@ -24,19 +22,6 @@ describe("addPeriods", () => {
     expect(addPeriods(d("2026-01-31"), "monthly", 1)).toEqual(d("2026-02-28"));
     expect(addPeriods(d("2026-01-15"), "weekly", 2)).toEqual(d("2026-01-29"));
     expect(addPeriods(d("2026-01-15"), "daily", 5)).toEqual(d("2026-01-20"));
-  });
-});
-
-describe("periodsBetween", () => {
-  it("counts only whole periods", () => {
-    expect(periodsBetween(d("2026-01-01"), d("2026-01-10"), "daily")).toBe(9);
-    expect(periodsBetween(d("2026-01-01"), d("2026-01-20"), "weekly")).toBe(2);
-    expect(periodsBetween(d("2026-01-31"), d("2026-02-27"), "monthly")).toBe(0);
-    expect(periodsBetween(d("2026-01-31"), d("2026-02-28"), "monthly")).toBe(1);
-  });
-
-  it("never goes negative", () => {
-    expect(periodsBetween(d("2026-05-01"), d("2026-01-01"), "daily")).toBe(0);
   });
 });
 
@@ -338,13 +323,5 @@ describe("credit toward the next period", () => {
     expect(status.credit).toBe(10);
     expect(status.daysOverdue).toBe(2);
     expect(status.state).toBe("grace");
-  });
-});
-
-describe("converting money to periods", () => {
-  it("counts whole periods only", () => {
-    expect(periodsCovered(350, 100)).toBe(3);
-    expect(periodsCovered(90, 100)).toBe(0);
-    expect(periodsCovered(100, 0)).toBe(0);
   });
 });

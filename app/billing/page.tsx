@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/db";
+import { LegalNote } from "../legal-doc";
+import Kpi from "../kpi";
 import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
@@ -198,19 +200,10 @@ export default async function BillingPage({
           {standingBlock}
 
           <div className="kpi-grid kpi-grid--3d" style={{ margin: "14px 0 8px" }}>
-            <div className="kpi">
-              <div className="kpi__label">{t(locale, "nav_assets")}</div>
-              <div className="kpi__value">{context.assetCount} / {context.plan.maxAssets}</div>
-            </div>
-            <div className="kpi">
-              <div className="kpi__label">{t(locale, "nav_units")}</div>
-              <div className="kpi__value">{context.unitCount} / {context.plan.maxUnits}</div>
-            </div>
+            <Kpi label={t(locale, "nav_assets")} value={`${context.assetCount} / ${context.plan.maxAssets}`} />
+            <Kpi label={t(locale, "nav_units")} value={`${context.unitCount} / ${context.plan.maxUnits}`} />
             {accountType === "business" && (
-              <div className="kpi">
-                <div className="kpi__label">{t(locale, "team_members")}</div>
-                <div className="kpi__value">{context.memberCount} / {context.plan.maxMembers}</div>
-              </div>
+              <Kpi label={t(locale, "team_members")} value={`${context.memberCount} / ${context.plan.maxMembers}`} />
             )}
           </div>
 
@@ -245,6 +238,11 @@ export default async function BillingPage({
             labels={labels}
           />
           </div>
+          {!checkoutOff && !operator.isDemo && (
+            <p className="hint" style={{ marginTop: 10 }}>
+              <LegalNote text={t(locale, "billing_terms_note")} />
+            </p>
+          )}
 
           {history.length > 0 && (
             <section style={{ marginTop: 22 }}>

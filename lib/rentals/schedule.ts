@@ -15,6 +15,7 @@
 //
 // Framework-free and pure: dates in, status out, no database.
 
+import { utcDay } from "@/lib/time";
 export type PaymentPeriod = "daily" | "weekly" | "monthly";
 
 export const PAYMENT_PERIODS: PaymentPeriod[] = ["daily", "weekly", "monthly"];
@@ -82,12 +83,8 @@ export interface ScheduleStatus {
 
 const DAY_MS = 86_400_000;
 
-/** Midnight UTC of the day `date` falls on. */
-export function startOfDay(date: Date): Date {
-  return new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
-  );
-}
+/** Midnight UTC of the day `date` falls on (lib/time.ts utcDay). */
+export const startOfDay = utcDay;
 
 export function addDays(date: Date, days: number): Date {
   return new Date(date.getTime() + days * DAY_MS);
@@ -182,30 +179,6 @@ export function defaultPaidThrough(
   today: Date,
 ): Date {
   return snapToBoundary(start, end, period, today);
-}
-
-/** How many whole periods fit between two dates (never negative). */
-export function periodsBetween(
-  from: Date,
-  to: Date,
-  period: PaymentPeriod,
-): number {
-  if (to <= from) return 0;
-  if (period === "daily") return Math.floor((to.getTime() - from.getTime()) / DAY_MS);
-  if (period === "weekly")
-    return Math.floor((to.getTime() - from.getTime()) / (7 * DAY_MS));
-  // Monthly: count calendar months, then check the partial one.
-  let count =
-    (to.getUTCFullYear() - from.getUTCFullYear()) * 12 +
-    (to.getUTCMonth() - from.getUTCMonth());
-  if (addMonths(from, count) > to) count -= 1;
-  return Math.max(0, count);
-}
-
-/** How many whole periods an amount of money covers at a flat rate. */
-export function periodsCovered(amount: number, perPeriod: number): number {
-  if (!Number.isFinite(perPeriod) || perPeriod <= 0) return 0;
-  return Math.floor(amount / perPeriod);
 }
 
 /** Money is kept to the tetri, so float noise never decides a period. */

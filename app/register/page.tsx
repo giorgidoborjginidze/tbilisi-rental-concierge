@@ -7,6 +7,7 @@ import { t } from "@/lib/i18n/strings";
 import AuthForm from "../login/auth-form";
 import { AUTH_LABEL_KEYS } from "../login/labels";
 import { titled } from "@/lib/i18n/metadata";
+import { LegalNote } from "../legal-doc";
 
 export const dynamic = "force-dynamic";
 
@@ -53,8 +54,7 @@ export default async function RegisterPage({
         />
       )}
       <p className="demo-hint" style={{ marginTop: 20 }}>
-        {labels.privacy_note_register}{" "}
-        <a href="/privacy" className="link">{t(locale, "privacy_title")}</a>
+        {t(locale, "privacy_note_register")} <LegalNote text={t(locale, "register_legal_note")} />
       </p>
       </section>
     </main>

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   monthlyEquivalent,
-  perDayAmount,
   perPeriodAmount,
 } from "./amount";
 
@@ -15,7 +14,6 @@ describe("per-period amounts and their monthly equivalent", () => {
   it("charges what the owner typed per period", () => {
     const taxi = { paymentPeriod: "daily", paymentAmount: 60, monthlyRent: 1826.4 };
     expect(perPeriodAmount(taxi)).toBe(60);
-    expect(perDayAmount(taxi)).toBe(60);
   });
 
   it("charges a legacy row (no paymentAmount) what it was charged before", () => {

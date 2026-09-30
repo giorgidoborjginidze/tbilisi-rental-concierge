@@ -15,6 +15,7 @@ import RevenuePartial, { monthKeyOf } from "../revenue-partial";
 import { cityLabel, districtLabel } from "@/lib/places";
 import { titled } from "@/lib/i18n/metadata";
 import { currencySign, formatMoney, formatNumber } from "@/lib/format";
+import Kpi from "../kpi";
 
 export const dynamic = "force-dynamic";
 
@@ -27,28 +28,6 @@ const pct = (rate: number) => `${Math.round(rate * 100)}%`;
 // KPI tiles carry the sign: "192 ₾".
 const money = (value: number | null, currency: string) =>
   currency ? formatMoney(value, currency) : value == null ? "—" : formatNumber(value);
-
-function Kpi({
-  label,
-  value,
-  hint,
-  partial,
-}: {
-  label: string;
-  value: string;
-  /** What a finance term means — on hover, and read aloud. */
-  hint?: string;
-  /** Some sold nights have no price: the figure is a floor. */
-  partial?: string;
-}) {
-  return (
-    <div className="kpi">
-      <div className="kpi__label" title={hint}>{label}</div>
-      <div className="kpi__value">{value}</div>
-      {partial && <div className="kpi__sub price-missing">{partial}</div>}
-    </div>
-  );
-}
 
 /**
  * A money cell that says "partial" when some of its nights have no price
@@ -175,12 +154,14 @@ export default async function AnalyticsPage() {
             label={t(locale, "kpi_revpar")}
             hint={t(locale, "kpi_revpar_hint")}
             value={money(portfolioThisMonth.revpar, currency)}
-            partial={portfolioThisMonth.unpricedNights > 0 ? t(locale, "revenue_partial_short") : undefined}
+            sub={portfolioThisMonth.unpricedNights > 0 ? t(locale, "revenue_partial_short") : undefined}
+            subClassName="price-missing"
           />
           <Kpi
             label={t(locale, "kpi_booking_revenue")}
             value={money(portfolioThisMonth.revenue, currency)}
-            partial={portfolioThisMonth.unpricedNights > 0 ? t(locale, "revenue_partial_short") : undefined}
+            sub={portfolioThisMonth.unpricedNights > 0 ? t(locale, "revenue_partial_short") : undefined}
+            subClassName="price-missing"
           />
           <Kpi
             label={t(locale, "next_30_occupancy")}

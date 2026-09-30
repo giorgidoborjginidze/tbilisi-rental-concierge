@@ -8,6 +8,7 @@ import type { FormState } from "@/lib/units/actions";
 import { IconChevronLeft, IconChevronRight } from "@/app/icons";
 import { keepTyped } from "@/app/keep-typed";
 import { Req } from "@/app/form-bits";
+import { addDaysKey } from "@/lib/time";
 
 /** Blank cells before a month's first day in a Monday-first week. */
 const mondayOffset = (iso: string | undefined) =>
@@ -19,7 +20,10 @@ export interface CalDay {
   title: string;
 }
 export interface CalMonth {
+  /** Short, for the desktop grid's row ("სექ"). */
   label: string;
+  /** Month and year, for the phone's month view title ("სექტემბერი, 2026"). */
+  longLabel: string;
   current: boolean;
   days: CalDay[];
 }
@@ -136,11 +140,7 @@ export default function OccupancyCalendar({
 
   // Checkout convention: the contract ends the day AFTER the last
   // selected night (same as booking check-out).
-  const dayAfter = (iso: string) => {
-    const date = new Date(`${iso}T00:00:00Z`);
-    date.setUTCDate(date.getUTCDate() + 1);
-    return date.toISOString().slice(0, 10);
-  };
+  const dayAfter = (iso: string) => addDaysKey(iso, 1);
 
   const nights =
     range == null
@@ -209,7 +209,7 @@ export default function OccupancyCalendar({
             >
               <IconChevronLeft size={18} />
             </button>
-            <b className={months[shown].current ? "is-current" : undefined}>{months[shown].label}</b>
+            <b className={months[shown].current ? "is-current" : undefined}>{months[shown].longLabel}</b>
             <button
               type="button"
               className="btn-chip btn-chip--icon"

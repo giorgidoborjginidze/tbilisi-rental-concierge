@@ -24,9 +24,6 @@ export const PLATFORMS: PlatformDef[] = [
   { key: "booking", label: "Booking.com", field: "bookingUrl", hosts: ["booking.com"] },
 ];
 
-/** All Asset columns that hold a listing URL. */
-export const LISTING_FIELDS = PLATFORMS.map((p) => p.field);
-
 /** Detects a listing platform from a URL, or null if unrecognized. */
 export function detectPlatform(url: string): PlatformDef | null {
   const raw = url.trim();

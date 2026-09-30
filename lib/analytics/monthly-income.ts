@@ -13,6 +13,7 @@ import {
   type IncomeWindow,
 } from "./income";
 import { LIVE_STAY } from "@/lib/bookings/live";
+import { overlapsWhere } from "@/lib/rentals/phase";
 
 export type { IncomeBreakdown } from "./income";
 
@@ -37,7 +38,7 @@ export async function loadIncomeSources(
       },
     }),
     prisma.rentalContract.findMany({
-      where: { asset: { operatorId }, startDate: { lt: to }, endDate: { gt: from }, ...LIVE_CONTRACT },
+      where: { asset: { operatorId }, ...overlapsWhere(from, to), ...LIVE_CONTRACT },
       select: {
         assetId: true,
         startDate: true,
@@ -48,7 +49,7 @@ export async function loadIncomeSources(
       },
     }),
     prisma.lease.findMany({
-      where: { unit: { operatorId }, startDate: { lt: to }, endDate: { gt: from } },
+      where: { unit: { operatorId }, ...overlapsWhere(from, to) },
       select: { unitId: true, startDate: true, endDate: true, monthlyRent: true },
     }),
     prisma.booking.findMany({

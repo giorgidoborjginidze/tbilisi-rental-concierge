@@ -786,15 +786,3 @@ export async function saveDayRange(
   revalidatePath("/analytics");
   return held > 0 ? { ok: true, notice: "notice_days_held" } : { ok: true };
 }
-
-export async function deleteDayEntry(formData: FormData) {
-  const assetId = str(formData, "assetId");
-  const dateRaw = str(formData, "date");
-  const owned = assetId ? await ownAsset(assetId) : null;
-  if (!owned || !dateRaw) return;
-  await prisma.dayEntry.deleteMany({
-    where: { assetId, date: new Date(`${dateRaw}T00:00:00Z`) },
-  });
-  revalidatePath("/");
-  refresh(assetId);
-}

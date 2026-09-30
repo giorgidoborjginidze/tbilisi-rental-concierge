@@ -77,16 +77,6 @@ export function IconChat({ size = 22, className }: Props) {
   );
 }
 
-/** Shield — privacy and data protection. */
-export function IconShield({ size = 22, className }: Props) {
-  return (
-    <svg width={size} height={size} className={className} {...base}>
-      <path d="M12 2.8 4.5 6v6c0 4.6 3.2 8.2 7.5 9.2 4.3-1 7.5-4.6 7.5-9.2V6L12 2.8Z" />
-      <path d="m9 12 2.2 2.2L15.3 10" />
-    </svg>
-  );
-}
-
 /** Check mark — received, done. */
 export function IconCheck({ size = 22, className }: Props) {
   return (
@@ -195,15 +185,6 @@ export const IconKey = glyph(
     <path d="m11.2 11.8 8.3-8.3" />
     <path d="m16.5 6.5 2.5 2.5" />
     <path d="m14 9 2 2" />
-  </>,
-);
-
-/** Padlock — privacy, a protected step. */
-export const IconLock = glyph(
-  <>
-    <rect x="4.5" y="10.5" width="15" height="10" rx="2.5" />
-    <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" />
-    <path d="M12 14.5v2" />
   </>,
 );
 
@@ -329,23 +310,6 @@ export const IconSignalOff = glyph(
     <path d="M3 9a13 13 0 0 1 4-2.6" />
     <path d="M21 9a13 13 0 0 0-9-3.5" />
     <path d="m3.5 3.5 17 17" />
-  </>,
-);
-
-/** Bricks — one account's data walled off from another's. */
-export const IconWall = glyph(
-  <>
-    <rect x="3.5" y="5" width="17" height="14" rx="1.5" />
-    <path d="M3.5 9.7h17M3.5 14.3h17" />
-    <path d="M9 5v4.7M15 5v4.7M12 9.7v4.6M9 14.3V19M15 14.3V19" />
-  </>,
-);
-
-/** Circle with a slash — never shared, never sold. */
-export const IconBan = glyph(
-  <>
-    <circle cx="12" cy="12" r="8.5" />
-    <path d="m6 6 12 12" />
   </>,
 );
 

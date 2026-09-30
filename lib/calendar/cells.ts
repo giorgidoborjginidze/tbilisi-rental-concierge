@@ -69,21 +69,72 @@ export function nightCells(
 
 /** The two-week window on a phone: how many nights it shows. */
 export const STRIP_DAYS = 14;
+/** Nights the strip loads before the month's first night… */
+export const STRIP_PAD_BEFORE = 14;
+/** …and after its last, so a window near the month's end still pages by fortnights. */
+export const STRIP_PAD_AFTER = 28;
+
+/** The nights one month's strip loads: its first night and how many. */
+export function stripRange(year: number, month: number): { from: Date; days: number; monthIndex: number } {
+  const monthStart = Date.UTC(year, month - 1, 1);
+  const monthEnd = Date.UTC(year, month, 1);
+  const from = new Date(monthStart - STRIP_PAD_BEFORE * DAY_MS);
+  const days = Math.round((monthEnd - monthStart) / DAY_MS) + STRIP_PAD_BEFORE + STRIP_PAD_AFTER;
+  return { from, days, monthIndex: STRIP_PAD_BEFORE };
+}
 
 /**
- * Where the window opens inside a loaded range of `days` nights: on today
- * when the range holds it, else on `fallback` (the month's first night),
- * never running past the range's end.
+ * Where the window opens inside a loaded range of `days` nights: on
+ * `preferred` when the range holds it, else on `fallback` (the month's
+ * first night), never running past the range's end.
  */
-export function stripStart(days: number, todayIndex: number | null, fallback: number): number {
+export function stripStart(days: number, preferred: number | null, fallback: number): number {
   const last = Math.max(0, days - STRIP_DAYS);
-  const wanted = todayIndex != null && todayIndex >= 0 && todayIndex < days ? todayIndex : fallback;
+  const wanted = preferred != null && preferred >= 0 && preferred < days ? preferred : fallback;
   return Math.min(Math.max(0, wanted), last);
 }
 
-/** One page back or forward, kept inside the range; null past its edge. */
+/**
+ * The night the strip opens on: `from` — the night carried over from the
+ * neighbouring month's strip, so paging continues where it left off — when
+ * the range holds it; else today, but only when the month shown is today's
+ * month (a month opened from the header starts on its first night);
+ * else the month's first night.
+ */
+export function stripOpen(
+  days: number,
+  opts: { from: number | null; today: number | null; currentMonth: boolean; fallback: number },
+): number {
+  const inRange = (index: number | null): index is number => index != null && index >= 0 && index < days;
+  if (inRange(opts.from)) return stripStart(days, opts.from, opts.fallback);
+  if (opts.currentMonth && inRange(opts.today)) return stripStart(days, opts.today, opts.fallback);
+  return stripStart(days, null, opts.fallback);
+}
+
+/**
+ * One page back or forward: always a whole fortnight, so no night is shown
+ * twice or skipped. Null when the next full page would leave the range —
+ * the neighbouring month's strip takes over from there (`stripHandOff`).
+ */
 export function stripStep(start: number, days: number, direction: -1 | 1): number | null {
-  const last = Math.max(0, days - STRIP_DAYS);
-  if (direction < 0) return start <= 0 ? null : Math.max(0, start - STRIP_DAYS);
-  return start >= last ? null : Math.min(last, start + STRIP_DAYS);
+  if (direction < 0) return start - STRIP_DAYS >= 0 ? start - STRIP_DAYS : null;
+  return start + 2 * STRIP_DAYS <= days ? start + STRIP_DAYS : null;
+}
+
+/**
+ * Past the range's edge: the night the neighbouring month's strip should
+ * open on, as an offset from this range's first night — the night after
+ * the last one shown (forward), or two weeks before the first one shown
+ * (back). The offset may lie outside this range.
+ */
+export function stripHandOff(start: number, days: number, direction: -1 | 1): number {
+  return direction < 0 ? start - STRIP_DAYS : Math.min(days, start + STRIP_DAYS);
+}
+
+/** The index of the night `key` ("YYYY-MM-DD") in a range starting at `from`; null when malformed. */
+export function nightIndex(from: Date, key: string | undefined): number | null {
+  if (!key || !/^\d{4}-\d{2}-\d{2}$/.test(key)) return null;
+  const at = Date.parse(`${key}T00:00:00Z`);
+  if (Number.isNaN(at)) return null;
+  return Math.round((at - from.getTime()) / DAY_MS);
 }

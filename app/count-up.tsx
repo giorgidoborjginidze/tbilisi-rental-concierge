@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { afterSplash } from "@/lib/ui/splash";
+import { formatNumber } from "@/lib/number";
 
 // A number that counts up when it scrolls into view — once the splash (if
 // the page has one) is gone, so the count is not played unseen behind it.
@@ -58,7 +59,7 @@ export default function CountUp({
   return (
     <span ref={ref}>
       {prefix}
-      {value.toLocaleString("en-US")}
+      {formatNumber(value)}
       {suffix}
     </span>
   );

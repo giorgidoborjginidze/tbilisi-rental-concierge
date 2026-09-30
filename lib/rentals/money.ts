@@ -5,7 +5,11 @@
 // told. Amounts are therefore rounded UP to the tetri and shown with two
 // decimals whenever they are not whole.
 //
-// Pure and client-safe.
+// The bare number, WITHOUT a currency, is for WhatsApp bodies whose
+// template adds {currency}; on screen use lib/format.ts formatMoney /
+// formatDueMoney, which add the sign. Pure and client-safe.
+
+import { formatNumber } from "@/lib/number";
 
 /** The amount to ask for: `value` rounded up to the tetri (float noise ignored). */
 export function payableAmount(value: number): number {
@@ -15,20 +19,5 @@ export function payableAmount(value: number): number {
   return cents / 100;
 }
 
-/**
- * "1,200" for a whole amount, "49.40" otherwise — the bare number, WITHOUT
- * a currency, for WhatsApp bodies whose template adds {currency}. On screen
- * use lib/format.ts formatMoney / formatDueMoney, which add the sign.
- */
-export function formatAmountPlain(value: number): string {
-  const whole = Math.abs(value - Math.round(value)) < 0.005;
-  return whole
-    ? Math.round(value).toLocaleString("en-US")
-    : value.toLocaleString("en-US", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      });
-}
-
 /** An amount owed, as it is quoted to the owner and to the renter. */
-export const formatDue = (value: number): string => formatAmountPlain(payableAmount(value));
+export const formatDue = (value: number): string => formatNumber(payableAmount(value), "auto");

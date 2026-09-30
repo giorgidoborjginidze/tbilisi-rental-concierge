@@ -1,12 +1,25 @@
 // Central place for support/contact details. These are placeholders for now
 // (agreed with the owner) and will be replaced with the real support inbox
 // and WhatsApp number later — change them here and every page + the support
-// bot updates automatically.
+// bot updates automatically. docs/legal-review.md lists every placeholder
+// that needs a real value before launch (the Terms and the Privacy policy
+// name them).
 export const CONTACT_EMAIL = "contact@activo.world";
 
 // Display form and the digits-only form used to build a wa.me link.
 export const CONTACT_WHATSAPP_DISPLAY = "+995 555 12 34 56";
 export const CONTACT_WHATSAPP_DIGITS = "995555123456";
+
+/**
+ * The legal entity that provides the service — the "controller" of the
+ * Privacy policy and the party to the Terms. A placeholder (the brand)
+ * until the owner supplies the registered company's name, identification
+ * code and legal address (docs/legal-review.md).
+ */
+export const LEGAL_ENTITY = {
+  ka: "Activo (activo.world)",
+  en: "Activo (activo.world)",
+} as const;
 
 /** Deep link that opens a WhatsApp chat with our number. */
 export function whatsappUrl(message?: string): string {
