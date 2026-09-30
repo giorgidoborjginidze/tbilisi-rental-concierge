@@ -3,7 +3,7 @@
 import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireOperator } from "@/lib/auth/session";
+import { getWriter, requireWriter } from "@/lib/auth/session";
 import type { FormState } from "@/lib/units/actions";
 import type { StringKey } from "@/lib/i18n/strings";
 import { TEMPLATE_KEYS, type TemplateKey } from "@/lib/notify/templates";
@@ -33,9 +33,12 @@ const optionalNumber = (formData: FormData, key: string): number | null => {
   return Number.isFinite(value) ? value : Number.NaN;
 };
 
-/** Confirm the asset belongs to the signed-in workspace. */
+/**
+ * Confirm the asset belongs to the signed-in workspace — and that the
+ * workspace may write (the shared demo may not: requireWriter).
+ */
 async function ownAsset(assetId: string) {
-  const operator = await requireOperator();
+  const operator = await requireWriter();
   const asset = await prisma.asset.findFirst({
     where: { id: assetId, operatorId: operator.id },
   });
@@ -210,6 +213,8 @@ export type ReceiveResult = { paymentId: string } | { error: StringKey };
  * the dashboard's "received" card offers to undo it straight away.
  */
 export async function receiveRent(formData: FormData): Promise<ReceiveResult> {
+  // The card reads the result: the demo gets an error, not a redirect.
+  if (!(await getWriter())) return { error: "error_demo_readonly" };
   return receivePayment(formData);
 }
 
@@ -285,6 +290,7 @@ export async function deletePayment(formData: FormData) {
 export async function undoPayment(
   formData: FormData,
 ): Promise<{ ok: true } | { error: StringKey }> {
+  if (!(await getWriter())) return { error: "error_demo_readonly" };
   const error = await removePayment(str(formData, "assetId"), str(formData, "paymentId"), true);
   return error ? { error } : { ok: true };
 }
@@ -537,7 +543,7 @@ export async function saveNotifySetup(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const operator = await requireOperator();
+  const operator = await requireWriter();
   const assetId = str(formData, "assetId");
 
   // Messages go out on one line and are kept short (lib/notify/limits.ts).
@@ -597,7 +603,7 @@ export async function savePlate(
 
 /** Mark a queued message as handled after the operator sent it by hand. */
 export async function markMessageSent(formData: FormData) {
-  const operator = await requireOperator();
+  const operator = await requireWriter();
   const messageId = str(formData, "messageId");
   const assetId = str(formData, "assetId");
   if (!messageId) return;
@@ -609,7 +615,7 @@ export async function markMessageSent(formData: FormData) {
 }
 
 export async function deleteMessage(formData: FormData) {
-  const operator = await requireOperator();
+  const operator = await requireWriter();
   const messageId = str(formData, "messageId");
   const assetId = str(formData, "assetId");
   if (!messageId) return;
@@ -621,7 +627,7 @@ export async function deleteMessage(formData: FormData) {
 
 /** Retry automatic delivery (no-op without Cloud API credentials). */
 export async function retryOutbox(formData: FormData) {
-  const operator = await requireOperator();
+  const operator = await requireWriter();
   const assetId = str(formData, "assetId");
   await prisma.notifyMessage.updateMany({
     where: { operatorId: operator.id, status: "failed" },

@@ -3672,3 +3672,143 @@ main > section > h2:first-child {
     padding-top: 8px;
   }
 }
+
+/* ── Shared public demo: a thin ribbon under the nav, and a note when a
+   change was refused (app/demo-ribbon.tsx). ── */
+.demo-ribbon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  padding: 6px 16px;
+  font-size: 12.5px;
+  color: var(--status-vacant-text);
+  background: color-mix(in srgb, var(--status-vacant-bg) 70%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--status-vacant-text) 18%, transparent);
+}
+.demo-ribbon__tag {
+  font-weight: 700;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--status-vacant-text) 45%, transparent);
+}
+.demo-ribbon form,
+.demo-toast form { display: inline; }
+.demo-ribbon__cta {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.demo-toast {
+  /* Just under the sticky nav: in view wherever the page was scrolled,
+     clear of the tab bar and the help button. */
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 78px;
+  width: min(560px, calc(100% - 32px));
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 8px 12px 16px;
+  border-radius: var(--radius-lg);
+  /* Opaque: it sits over the ribbon and the page heading. */
+  background: var(--color-bg);
+  box-shadow: var(--glass-edge), var(--shadow-card);
+  border: 1px solid color-mix(in srgb, var(--status-vacant-text) 35%, transparent);
+  color: var(--color-text);
+  font-size: 13.5px;
+  line-height: 1.45;
+  animation: decide-toast-in 0.22s ease;
+}
+.demo-toast__acts {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.demo-toast__close {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+.demo-toast__close:hover { color: var(--color-text); }
+@media (max-width: 760px) {
+  .demo-toast { top: 66px; }
+  .demo-ribbon { font-size: 12px; padding: 5px 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .demo-toast { animation: none; }
+}
+
+/* Plan cards: line-icon feature list. */
+.plan-feature {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.plan-feature svg { flex-shrink: 0; color: var(--status-rented-text); }
+.billing-standing {
+  margin: 10px 0 0;
+  font-size: 13.5px;
+  color: var(--color-text-muted);
+}
+.billing-standing strong { color: var(--color-text); }
+.billing-history {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 6px 16px;
+}
+.billing-history li {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 0;
+  font-size: 13.5px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+}
+.billing-history li:last-child { border-bottom: 0; }
+@media (max-width: 520px) {
+  .billing-history li { grid-template-columns: minmax(0, 1fr) auto; }
+  .billing-history li > span:nth-child(2),
+  .billing-history li > span:nth-child(3) { color: var(--color-text-muted); font-size: 12.5px; }
+}
+
+/* Settings: sign-in and security forms. */
+.settings-form {
+  display: grid;
+  gap: 12px;
+}
+.settings-form + .settings-form {
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+  padding-top: 16px;
+}
+.settings-form__title { font-size: 14px; }
+.settings-form__pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+/* A value that cannot be changed here (the invited email). */
+.field input[readonly] {
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: default;
+}

@@ -403,6 +403,7 @@ export async function DecideToday({
     "error_invalid_number",
     "error_untracked",
     "error_payment_locked",
+    "error_demo_readonly",
   ];
   return (
     <section>

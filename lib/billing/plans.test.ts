@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  addMonthsUtc,
   effectivePlan,
   fallbackPlan,
+  GRACE_DAYS,
+  planStanding,
+  renewedUntil,
   planById,
   plansFor,
   trialDaysLeft,
@@ -43,17 +47,51 @@ describe("trialDaysLeft", () => {
 });
 
 describe("effectivePlan", () => {
-  it("uses the chosen plan when set", () => {
+  it("uses the chosen plan while it is paid", () => {
     const plan = effectivePlan(
-      { accountType: "personal", plan: "standard", trialEndsAt: inDays(-5) },
+      { accountType: "personal", plan: "standard", trialEndsAt: inDays(-5), paidUntil: inDays(12) },
       now,
     );
     expect(plan.id).toBe("standard");
   });
 
+  it("keeps the plan for the grace days after the paid-through date, then falls back", () => {
+    const state = (paidUntil: Date) =>
+      ({ accountType: "personal", plan: "standard", trialEndsAt: inDays(-60), paidUntil }) as const;
+    expect(effectivePlan(state(inDays(-1)), now).id).toBe("standard");
+    expect(planStanding(state(inDays(-1)), now)).toBe("grace");
+    expect(effectivePlan(state(inDays(-GRACE_DAYS - 0.01)), now).id).toBe("starter");
+    expect(planStanding(state(inDays(-GRACE_DAYS - 0.01)), now)).toBe("expired");
+  });
+
+  it("does not let one payment unlock a plan forever", () => {
+    // Paid once, seven months ago: back to the free bottom tier, no analysis.
+    const plan = effectivePlan(
+      { accountType: "personal", plan: "standard", trialEndsAt: inDays(-240), paidUntil: inDays(-210) },
+      now,
+    );
+    expect(plan.id).toBe("starter");
+    expect(plan.analysis).toBe(false);
+  });
+
+  it("treats a plan with no payment at all as unpaid (trial or bottom tier)", () => {
+    const base = { accountType: "personal", plan: "pro", paidUntil: null } as const;
+    expect(effectivePlan({ ...base, trialEndsAt: inDays(5) }, now).id).toBe("pro"); // the trial
+    expect(effectivePlan({ ...base, trialEndsAt: inDays(-5) }, now).id).toBe("starter");
+    expect(planStanding({ ...base, trialEndsAt: inDays(-5) }, now)).toBe("expired");
+  });
+
+  it("keeps the demo's showcase plan without payment", () => {
+    const plan = effectivePlan(
+      { accountType: "personal", plan: "pro", trialEndsAt: inDays(-200), paidUntil: null, complimentary: true },
+      now,
+    );
+    expect(plan.id).toBe("pro");
+  });
+
   it("ignores a plan of the wrong account type", () => {
     const plan = effectivePlan(
-      { accountType: "business", plan: "pro", trialEndsAt: inDays(10) },
+      { accountType: "business", plan: "pro", trialEndsAt: inDays(10), paidUntil: inDays(20) },
       now,
     );
     expect(plan.id).toBe("biz_m"); // trial tier, not the personal plan
@@ -61,7 +99,7 @@ describe("effectivePlan", () => {
 
   it("grants the top tier during the trial", () => {
     const plan = effectivePlan(
-      { accountType: "personal", plan: null, trialEndsAt: inDays(10) },
+      { accountType: "personal", plan: null, trialEndsAt: inDays(10), paidUntil: null },
       now,
     );
     expect(plan.id).toBe("pro");
@@ -69,7 +107,7 @@ describe("effectivePlan", () => {
 
   it("falls back to the bottom tier after the trial", () => {
     const plan = effectivePlan(
-      { accountType: "personal", plan: null, trialEndsAt: inDays(-1) },
+      { accountType: "personal", plan: null, trialEndsAt: inDays(-1), paidUntil: null },
       now,
     );
     expect(plan.id).toBe("starter");
@@ -88,5 +126,23 @@ describe("planById", () => {
     expect(planById("pro")?.priceGel).toBe(49);
     expect(planById("nope")).toBeNull();
     expect(planById(null)).toBeNull();
+  });
+});
+
+describe("renewal", () => {
+  it("adds calendar months in UTC, clamped to the month's last day", () => {
+    expect(addMonthsUtc(new Date("2026-01-31T10:30:00Z"), 1).toISOString()).toBe("2026-02-28T10:30:00.000Z");
+    expect(addMonthsUtc(new Date("2028-01-31T10:30:00Z"), 1).toISOString()).toBe("2028-02-29T10:30:00.000Z");
+    expect(addMonthsUtc(new Date("2026-12-15T00:00:00Z"), 1).toISOString()).toBe("2027-01-15T00:00:00.000Z");
+  });
+
+  it("extends from the current paid-through date when renewing early — no days lost", () => {
+    const paidUntil = inDays(10);
+    expect(renewedUntil(paidUntil, now).toISOString()).toBe(addMonthsUtc(paidUntil, 1).toISOString());
+  });
+
+  it("extends from now when the plan has lapsed or was never paid", () => {
+    expect(renewedUntil(inDays(-2), now).toISOString()).toBe(addMonthsUtc(now, 1).toISOString());
+    expect(renewedUntil(null, now).toISOString()).toBe(addMonthsUtc(now, 1).toISOString());
   });
 });

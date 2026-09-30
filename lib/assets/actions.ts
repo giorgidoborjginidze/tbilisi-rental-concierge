@@ -5,7 +5,7 @@ import { randomInt } from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireOperator } from "@/lib/auth/session";
+import { requireWriter } from "@/lib/auth/session";
 import { ASSET_CATEGORIES, ASSET_STATUSES } from "@/lib/types";
 import { COINS } from "@/lib/crypto/prices";
 import { POPULAR_STOCKS } from "@/lib/stocks/prices";
@@ -83,7 +83,7 @@ export async function saveAsset(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const operator = await requireOperator();
+  const operator = await requireWriter();
 
   const assetId = str(formData, "assetId") || null;
   const name = str(formData, "name");
@@ -130,6 +130,15 @@ export async function saveAsset(
   }
 
   const unitId = str(formData, "unitId") || null;
+  // Only one of this workspace's own units can be linked — otherwise the
+  // asset's calendar would show another account's bookings.
+  if (unitId) {
+    const unit = await prisma.unit.findFirst({
+      where: { id: unitId, operatorId: operator.id },
+      select: { id: true },
+    });
+    if (!unit) return { error: "error_required" };
+  }
   const data = {
     name,
     nameKa: str(formData, "nameKa") || null,
@@ -214,7 +223,7 @@ export async function saveAsset(
 // Generate a fresh 6-digit door code for an asset (daily rentals /
 // tenant handovers); sent to the tenant via a WhatsApp deep link.
 export async function generateDoorCode(formData: FormData) {
-  const operator = await requireOperator();
+  const operator = await requireWriter();
   const assetId = str(formData, "assetId");
   if (assetId) {
     await prisma.asset.updateMany({
@@ -230,7 +239,7 @@ export async function generateDoorCode(formData: FormData) {
 
 // Quick status flip used by the per-asset listing buttons (rented/vacant).
 export async function setAssetStatus(formData: FormData) {
-  const operator = await requireOperator();
+  const operator = await requireWriter();
   const assetId = str(formData, "assetId");
   const status = str(formData, "status");
   if (assetId && (status === "rented" || status === "vacant")) {
@@ -244,7 +253,7 @@ export async function setAssetStatus(formData: FormData) {
 }
 
 export async function deleteAsset(formData: FormData) {
-  const operator = await requireOperator();
+  const operator = await requireWriter();
   const assetId = str(formData, "assetId");
   if (assetId) {
     const owned = await prisma.asset.findFirst({
@@ -294,7 +303,7 @@ export async function saveContract(
   const deposit = optionalNumber(formData, "deposit");
   if (Number.isNaN(deposit)) return { error: "error_invalid_number" };
 
-  const operator = await requireOperator();
+  const operator = await requireWriter();
   const asset = await prisma.asset.findFirst({
     where: { id: assetId, operatorId: operator.id },
   });
@@ -374,7 +383,7 @@ export async function saveContract(
 }
 
 export async function deleteContract(formData: FormData) {
-  const operator = await requireOperator();
+  const operator = await requireWriter();
   const contractId = str(formData, "contractId");
   const assetId = str(formData, "assetId");
   if (contractId) {
@@ -398,7 +407,7 @@ export async function addIncome(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const operator = await requireOperator();
+  const operator = await requireWriter();
 
   const dateRaw = str(formData, "date");
   const amount = Number(str(formData, "amount"));
@@ -407,15 +416,27 @@ export async function addIncome(
     return { error: "error_invalid_number" };
   }
 
+  const date = new Date(`${dateRaw}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return { error: "error_required" };
+  // The income can only be tied to one of this workspace's own assets.
+  const assetId = str(formData, "incomeAssetId") || null;
+  if (assetId) {
+    const asset = await prisma.asset.findFirst({
+      where: { id: assetId, operatorId: operator.id },
+      select: { id: true },
+    });
+    if (!asset) return { error: "error_required" };
+  }
+
   await prisma.incomeRecord.create({
     data: {
       operatorId: operator.id,
       source: str(formData, "source") || "other",
       description: str(formData, "description") || null,
-      date: new Date(`${dateRaw}T00:00:00Z`),
+      date,
       amount,
       currency: "GEL",
-      assetId: str(formData, "incomeAssetId") || null,
+      assetId,
     },
   });
 
@@ -424,7 +445,7 @@ export async function addIncome(
 }
 
 export async function deleteIncome(formData: FormData) {
-  const operator = await requireOperator();
+  const operator = await requireWriter();
   const incomeId = str(formData, "incomeId");
   if (incomeId) {
     await prisma.incomeRecord.deleteMany({

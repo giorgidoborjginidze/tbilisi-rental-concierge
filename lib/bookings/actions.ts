@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireOperator } from "@/lib/auth/session";
+import { requireWriter } from "@/lib/auth/session";
 import { summarizeSync, syncAllUnits } from "@/lib/ical/run-sync";
 import type { FormState } from "@/lib/units/actions";
 import { getLocale } from "@/lib/i18n/locale";
@@ -44,7 +44,7 @@ export async function createBooking(
     return { error: "error_required", values };
   }
 
-  const operator = await requireOperator();
+  const operator = await requireWriter();
   const unit = await prisma.unit.findFirst({
     where: { id: unitId, operatorId: operator.id },
   });
@@ -89,7 +89,7 @@ export async function updateBooking(
   formData: FormData,
 ): Promise<FormState> {
   const values = submittedValues(formData);
-  const operator = await requireOperator();
+  const operator = await requireWriter();
   const booking = await prisma.booking.findFirst({
     where: { id: str(formData, "bookingId"), unit: { operatorId: operator.id } },
   });
@@ -129,7 +129,7 @@ export async function updateBooking(
 
 /** Cancel a booking (imported ones too — a feed never revives it). */
 export async function cancelBooking(formData: FormData) {
-  const operator = await requireOperator();
+  const operator = await requireWriter();
   const booking = await prisma.booking.findFirst({
     where: { id: str(formData, "bookingId"), unit: { operatorId: operator.id } },
   });
@@ -152,7 +152,7 @@ export async function restoreBooking(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const operator = await requireOperator();
+  const operator = await requireWriter();
   const booking = await prisma.booking.findFirst({
     where: { id: str(formData, "bookingId"), unit: { operatorId: operator.id } },
   });
@@ -228,7 +228,7 @@ export type SyncState = ReturnType<typeof summarizeSync> | null;
 
 /** "Sync Calendars": run every feed of this workspace and say how it went. */
 export async function syncCalendars(): Promise<SyncState> {
-  const operator = await requireOperator();
+  const operator = await requireWriter();
   const results = await syncAllUnits(undefined, operator.id);
   refresh();
   return summarizeSync(results);

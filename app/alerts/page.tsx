@@ -15,6 +15,7 @@ import type { ScheduleStatus } from "@/lib/rentals/schedule";
 import { dayKey, startOfTodayTbilisi, tbilisiFormat } from "@/lib/time";
 import { lastRunFor } from "@/lib/automation/run";
 import { rankAlerts } from "@/lib/alerts/rank";
+import { firstParam, type QueryValue } from "@/lib/params";
 
 export const dynamic = "force-dynamic";
 
@@ -87,11 +88,11 @@ const CONTRACT_ALERTS = ["rent_overdue", "repossession_right", "contract_ended"]
 export default async function AlertsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string }>;
+  searchParams: Promise<{ view?: QueryValue }>;
 }) {
   const operator = await requireOperator();
 
-  const { view } = await searchParams;
+  const view = firstParam((await searchParams).view);
   const done = view === "done";
   const locale = await getLocale();
   const found = await prisma.alert.findMany({

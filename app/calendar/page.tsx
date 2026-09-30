@@ -12,6 +12,7 @@ import {
 } from "@/lib/calendar/occupancy";
 import UnitFilter from "./unit-filter";
 import RentalsSubnav from "../rentals-subnav";
+import { firstParam, type QueryValue } from "@/lib/params";
 
 export const dynamic = "force-dynamic";
 
@@ -44,12 +45,14 @@ const monthParam = (year: number, month: number) =>
 export default async function CalendarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string; unit?: string }>;
+  searchParams: Promise<{ month?: QueryValue; unit?: QueryValue }>;
 }) {
   const operator = await requireOperator();
 
   const locale = await getLocale();
-  const { month: monthQuery, unit: unitQuery } = await searchParams;
+  const query = await searchParams;
+  const monthQuery = firstParam(query.month);
+  const unitQuery = firstParam(query.unit);
   const { year, month } = parseMonth(monthQuery);
 
   const windowStart = new Date(Date.UTC(year, month - 1, 1));

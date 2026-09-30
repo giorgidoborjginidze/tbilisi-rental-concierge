@@ -42,13 +42,37 @@ Tbilisi time the full daily job — see **Automatic jobs** below).
 The app is multi-tenant: each operator registers with email + password
 (`/register`), signs in at `/login`, and sees only their own units,
 bookings, assets, alerts, and income. Passwords are hashed with Node's
-built-in scrypt (no native dependencies); sessions are 30-day httpOnly
-cookies backed by a `Session` table storing only the token's SHA-256.
-Every page, server action, and API route is scoped to the signed-in
-operator — cross-tenant record access returns 404, and the manual
-scan/sync routes return 401 without a session. The only route that works
-for every operator is `/api/cron`, and it requires `CRON_SECRET`. The seeded demo account is
-**ops@kolkhetistays.ge / demo1234** (shown on the login page).
+built-in scrypt (async, so hashing never blocks other requests); sessions
+are 30-day httpOnly cookies backed by a `Session` table storing only the
+token's SHA-256. Every page, server action, and API route is scoped to the
+signed-in operator — cross-tenant record access returns 404, links to
+another account's unit or asset are refused, and the manual scan/sync
+routes (POST only) return 401 without a session. The only route that works
+for every operator is `/api/cron`, and it requires `CRON_SECRET`.
+
+- **Sign-in protection:** 5 failed attempts per email and 5 per IP address
+  within 15 minutes, then a 15-minute pause (`AuthAttempt` table, so it
+  holds across serverless instances). An unknown email costs one scrypt
+  against a dummy hash, so response times do not reveal which emails have
+  accounts; registering a taken email gets a neutral message.
+- **Password reset:** `/forgot` sends a single-use link to `/reset/<token>`
+  that works for one hour (only the token's SHA-256 is stored, in
+  `PasswordReset`; 3 requests per email an hour). Email goes through
+  Resend when `RESEND_API_KEY` and `EMAIL_FROM` are set; without them the
+  page says reset by email is not on yet and shows the support address.
+  Setting a new password signs out every device.
+- **Settings → Sign-in and security:** change password (current one
+  required; other devices are signed out), change email (password
+  required), and "sign out other devices". Email verification is not built
+  yet.
+- **Team invites** work only for the invited email, once, for 7 days.
+- **Demo:** the seeded demo account **test@activo.world / test1234** (shown
+  on the landing and login pages) is flagged `Operator.isDemo`. Every server
+  action goes through `requireWriter()` (lib/auth/session.ts), which refuses
+  the demo and sends the visitor back with a "changes aren't saved —
+  register free" note; its WhatsApp outbox never sends over the Cloud API,
+  and its trackers' pings are refused. `scripts/ensure-demo.ts` sets the
+  flag on every deploy.
 
 ## Deployment (Vercel + Neon Postgres)
 
@@ -64,6 +88,23 @@ Postgres database (e.g. Neon), and set two environment variables —
 automatically (`@prisma/adapter-pg` vs better-sqlite3). Note: the seed
 script is for local SQLite demo data; production starts empty and users
 register their own accounts.
+
+The schema push never passes `--accept-data-loss`: a change that would
+drop or rewrite data (a removed or renamed column, a new unique constraint
+over existing rows) makes `prisma db push` refuse and the deploy fail
+before anything is lost. Keep schema changes additive (new tables, new
+columns with defaults).
+
+Other production settings: `FLITT_MERCHANT_ID` / `FLITT_SECRET_KEY`
+(without them checkout is switched off on production, never the free
+sandbox), `RESEND_API_KEY` / `EMAIL_FROM` (password-reset email) — see
+`.env.example`. Server errors are logged as one JSON line each
+(`instrumentation.ts`, `onRequestError`: route, kind, message, digest —
+never headers, cookies, query strings or bodies), visible in Vercel → Logs
+or any log drain. `next.config.ts` sends security headers on every
+response (X-Frame-Options DENY, a report-only CSP with
+`frame-ancestors 'none'`, nosniff, `strict-origin-when-cross-origin`, a
+minimal Permissions-Policy, HSTS on production) and drops `X-Powered-By`.
 
 ### Automatic jobs (Vercel Cron)
 
@@ -87,9 +128,19 @@ same header — that pulls the calendars only and sends nothing.
 
 ## Plans & teams
 
-Every new account gets a 30-day free trial with top-tier limits. After
-that, a chosen plan's limits apply (payments land in a later stage —
-choosing a plan on `/billing` activates it immediately). Personal tiers:
+Every new account gets a 30-day free trial with top-tier limits. A plan
+is bought one month at a time on `/billing` through Flitt's hosted
+checkout; only the verified server callback
+(`/api/payments/flitt/callback`) activates it and sets `paidUntil`. The
+plan applies while it is paid plus 3 grace days, then the account falls
+back to the trial (if still running) or the bottom tier — nothing is
+deleted, only adding past the limits stops. Paying again extends from the
+current paid-through date while it is still ahead (renewing early loses no
+days), with calendar months clamped in UTC (31 Jan → 28/29 Feb). After the
+payment page the buyer lands on `/billing/return`, which forwards to
+`/billing?order=<id>` and shows that order's real status (approved,
+waiting — re-checked every 3 s for a minute — or declined), plus a payment
+history. Personal tiers:
 Starter 15₾ (5 assets / 3 units), Standard 29₾ (20 / 10), Pro 49₾
 (50 / 30). Company tiers add team seats: Business S 99₾ (100 assets /
 60 units / 5 seats), Business M 199₾ (300 / 200 / 15). Business owners
@@ -138,7 +189,7 @@ single-currency return ratios).
 ## Alerts
 
 The scan job (the daily cron, the **Scan now** button on `/alerts`,
-`POST /api/alerts/scan`, or the local scheduler) creates alerts with a
+`POST /api/alerts/scan` — POST only, or the local scheduler) creates alerts with a
 suggested action: double bookings (two stays, or two contracts on one
 asset, sharing nights in the next 90 days), free windows of 2+ nights
 starting within 14 days, leases and contracts expiring within 30 days,
@@ -151,10 +202,12 @@ themselves (the reason shows under **Completed**); alerts the owner closed
 never reappear. `/alerts` and the dashboard's Market Advice list the most
 severe first.
 
-WhatsApp messages are limited per recipient: 3 a day to a renter's
-number, 3 per asset (20 in all) to the owner's own number, and one per red
-line and event kind a day; texts are kept on one line and under 600
-characters (templates: 500).
+WhatsApp messages are limited per recipient: one account sends any number
+(a renter's or the owner's own — it is free text and not verified) at most
+3 a day, one number receives at most 10 a day from all accounts together,
+and each red line announces each event kind once a day; texts are kept on
+one line and under 600 characters (templates: 500). The shared demo account
+never sends over the Cloud API (its outbox only offers wa.me links).
 
 ## iCal sync
 

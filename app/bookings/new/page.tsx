@@ -3,16 +3,17 @@ import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
 import BookingForm from "./booking-form";
+import { firstParam, type QueryValue } from "@/lib/params";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewBookingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ unit?: string }>;
+  searchParams: Promise<{ unit?: QueryValue }>;
 }) {
   const operator = await requireOperator();
-  const { unit: unitParam } = await searchParams;
+  const unitParam = firstParam((await searchParams).unit);
 
   const locale = await getLocale();
   const units = await prisma.unit.findMany({

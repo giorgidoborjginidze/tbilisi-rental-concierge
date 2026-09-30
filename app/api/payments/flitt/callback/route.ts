@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { verifyFlittCallback } from "@/lib/billing/flitt";
+import { callbackOutcome, flittConfig, verifyFlittCallback } from "@/lib/billing/flitt";
+import { renewedUntil } from "@/lib/billing/plans";
 
 // Server-to-server payment callback from Flitt. Flitt POSTs the final order
 // status here (form-urlencoded or JSON). We verify the signature, then — and
@@ -30,8 +31,13 @@ async function readFields(request: Request): Promise<Record<string, string>> {
 }
 
 export async function POST(request: Request) {
+  const cfg = flittConfig();
+  if (!cfg) {
+    console.error("[flitt] callback received but Flitt is not configured (FLITT_MERCHANT_ID / FLITT_SECRET_KEY)");
+    return NextResponse.json({ error: "payments not configured" }, { status: 503 });
+  }
   const fields = await readFields(request);
-  const result = verifyFlittCallback(fields);
+  const result = verifyFlittCallback(fields, cfg);
 
   if (!result.valid || !result.orderId) {
     return NextResponse.json({ error: "invalid signature" }, { status: 400 });
@@ -49,10 +55,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  const approved =
-    result.status === "approved" && result.amountMinor === payment.amountMinor;
-
-  if (!approved) {
+  const outcome = callbackOutcome(result.status, result.amountMinor === payment.amountMinor);
+  if (outcome === "pending") {
+    // "created" / "processing": the final callback follows.
+    return NextResponse.json({ ok: true });
+  }
+  if (outcome === "declined") {
+    // A later "approved" for the same order still activates (checked above
+    // only for status "approved"), so a decline is never final by mistake.
     await prisma.payment.update({
       where: { orderId: payment.orderId },
       data: { status: "declined", providerRef: result.providerRef },
@@ -60,21 +70,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  // Success: activate the plan and extend the paid-through date by a month.
+  // Success: claim the payment (two identical callbacks must not both add
+  // a month), then activate the plan. The paid month is added after the
+  // current paid-through date while it is still ahead — renewing early
+  // loses no days.
   const now = new Date();
-  const paidUntil = new Date(now);
-  paidUntil.setMonth(paidUntil.getMonth() + 1);
+  const claimed = await prisma.payment.updateMany({
+    where: { orderId: payment.orderId, status: { not: "approved" } },
+    data: { status: "approved", paidAt: now, providerRef: result.providerRef },
+  });
+  if (claimed.count === 0) return NextResponse.json({ ok: true });
 
-  await prisma.$transaction([
-    prisma.payment.update({
-      where: { orderId: payment.orderId },
-      data: { status: "approved", paidAt: now, providerRef: result.providerRef },
-    }),
-    prisma.operator.update({
-      where: { id: payment.operatorId },
-      data: { plan: payment.plan, planSetAt: now, paidUntil },
-    }),
-  ]);
+  const operator = await prisma.operator.findUnique({
+    where: { id: payment.operatorId },
+    select: { paidUntil: true },
+  });
+  await prisma.operator.update({
+    where: { id: payment.operatorId },
+    data: {
+      plan: payment.plan,
+      planSetAt: now,
+      paidUntil: renewedUntil(operator?.paidUntil ?? null, now),
+    },
+  });
 
   return NextResponse.json({ ok: true });
 }

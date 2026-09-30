@@ -4,10 +4,10 @@ import { randomBytes } from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireOperator } from "@/lib/auth/session";
+import { requireWriter } from "@/lib/auth/session";
 import { siteUrl } from "@/lib/site";
-import { createFlittCheckout } from "./flitt";
-import { planById, plansFor, type AccountType } from "./plans";
+import { createFlittCheckout, flittConfig } from "./flitt";
+import { planById, type AccountType } from "./plans";
 import type { FormState } from "@/lib/units/actions";
 
 const str = (formData: FormData, key: string) =>
@@ -20,12 +20,20 @@ export async function startCheckout(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const operator = await requireOperator();
+  const operator = await requireWriter();
   if (operator.companyId) return { error: "error_owner_only" };
 
   const plan = planById(str(formData, "plan"));
   if (!plan || plan.kind !== (operator.accountType as AccountType)) {
     return { error: "error_required" };
+  }
+
+  // Production without merchant keys: no checkout at all (never the public
+  // sandbox, whose "payments" cost nothing).
+  const cfg = flittConfig();
+  if (!cfg) {
+    console.error("[flitt] checkout refused: FLITT_MERCHANT_ID / FLITT_SECRET_KEY are not set for this deployment");
+    return { error: "error_payment_unavailable" };
   }
 
   const orderId = `activo-${operator.id}-${Date.now()}-${randomBytes(4).toString("hex")}`;
@@ -48,8 +56,9 @@ export async function startCheckout(
       amountMinor,
       description: `Activo — ${plan.id} (${plan.priceGel} GEL/mo)`,
       callbackUrl: `${siteUrl()}/api/payments/flitt/callback`,
-      responseUrl: `${siteUrl()}/billing?paid=1`,
-    });
+      // The buyer comes back to this order's own status (app/billing/return).
+      responseUrl: `${siteUrl()}/billing/return?order=${encodeURIComponent(orderId)}`,
+    }, cfg);
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     // Logged for diagnosis; the user sees a friendly message.
@@ -69,7 +78,7 @@ export async function createInvite(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const operator = await requireOperator();
+  const operator = await requireWriter();
   if (operator.accountType !== "business" || operator.companyId) {
     return { error: "error_owner_only" };
   }
@@ -99,7 +108,7 @@ export async function createInvite(
 }
 
 export async function revokeInvite(formData: FormData) {
-  const operator = await requireOperator();
+  const operator = await requireWriter();
   await prisma.invite.deleteMany({
     where: { id: str(formData, "inviteId"), companyId: operator.id, usedAt: null },
   });
@@ -108,7 +117,7 @@ export async function revokeInvite(formData: FormData) {
 
 // Detaches the member from the company; their records stay their own.
 export async function removeMember(formData: FormData) {
-  const operator = await requireOperator();
+  const operator = await requireWriter();
   await prisma.operator.updateMany({
     where: { id: str(formData, "memberId"), companyId: operator.id },
     data: { companyId: null, accountType: "personal", role: "owner" },

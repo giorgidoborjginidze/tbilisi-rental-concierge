@@ -4,7 +4,9 @@ import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
 import { toggleLocale } from "@/lib/i18n/actions";
-import { updateProfileName } from "@/lib/account/actions";
+import { signOutOtherDevices, updateProfileName } from "@/lib/account/actions";
+import { currentSessionId } from "@/lib/auth/session";
+import { ChangeEmailForm, ChangePasswordForm } from "./security-forms";
 import { getBillingContext } from "@/lib/billing/context";
 import { planById, type AccountType } from "@/lib/billing/plans";
 import ThemeToggle from "../theme-toggle";
@@ -18,16 +20,29 @@ const PLAN_LATIN: Record<string, string> = {
   biz_s: "Business S", biz_m: "Business M",
 };
 
-export default async function SettingsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}) {
+export default async function SettingsPage() {
   const operator = await requireOperator();
   const locale = await getLocale();
   const other = locale === "en" ? "ka" : "en";
   const context = await getBillingContext(operator);
-  const justReturned = (await searchParams).paid === "1";
+
+  // Other browsers/phones signed in to this account (live sessions only).
+  const sessionId = await currentSessionId();
+  const otherSessions = await prisma.session.count({
+    where: {
+      operatorId: operator.id,
+      expiresAt: { gt: new Date() },
+      ...(sessionId ? { id: { not: sessionId } } : {}),
+    },
+  });
+  const securityKeys: StringKey[] = [
+    "password_change", "password_current", "password_new", "password_repeat",
+    "password_changed", "email_change", "email_new", "password_confirm", "email_changed",
+    "error_required", "error_password_short", "error_password_mismatch",
+    "error_password_wrong", "error_too_many_attempts", "error_email_invalid",
+    "error_email_unavailable", "error_demo_readonly",
+  ];
+  const securityLabels = Object.fromEntries(securityKeys.map((k) => [k, t(locale, k)]));
 
   const fmtDate = tbilisiFormat(locale, {
     day: "numeric", month: "short", year: "numeric",
@@ -35,9 +50,15 @@ export default async function SettingsPage({
 
   const isMember = operator.companyId != null;
   const accountType = (isMember ? "business" : operator.accountType) as AccountType;
-  const planLatin = operator.plan
-    ? PLAN_LATIN[operator.plan] ?? planById(operator.plan)?.id ?? "—"
-    : "Trial";
+  // The plan in force: a bought plan while paid (or in its grace days),
+  // otherwise the trial or the free bottom tier.
+  const planLatin =
+    context.standing === "paid" || context.standing === "grace" || context.standing === "complimentary"
+      ? PLAN_LATIN[context.plan.id] ?? planById(context.plan.id)?.id ?? "—"
+      : context.trialDaysLeft > 0
+        ? "Trial"
+        : PLAN_LATIN[context.plan.id] ?? context.plan.id;
+  const lapsed = !isMember && context.standing === "expired" && context.paidUntil != null;
 
   const [members, invites] = context.isOwner && accountType === "business"
     ? await Promise.all([
@@ -66,14 +87,6 @@ export default async function SettingsPage({
     <main>
       <h1>{t(locale, "settings_title")}</h1>
 
-      {justReturned && (
-        <div className="alert-card alert-card--underpriced">
-          <div className="alert-card__detail" style={{ marginTop: 0 }}>
-            {t(locale, "billing_pay_return")}
-          </div>
-        </div>
-      )}
-
       {/* ── Account ── */}
       <section style={{ marginTop: 8 }}>
         <h2>{t(locale, "settings_account")}</h2>
@@ -93,9 +106,10 @@ export default async function SettingsPage({
             <span style={row}>{t(locale, "billing_current")}</span>
             <span className="flex flex-wrap items-center justify-end gap-2">
               <span className="badge badge--listed">{planLatin}</span>
-              {operator.paidUntil && (
-                <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
-                  {t(locale, "billing_paid_until")}: {fmtDate.format(operator.paidUntil)}
+              {!isMember && context.paidUntil && context.standing !== "complimentary" && (
+                <span style={{ fontSize: 12, color: lapsed ? "var(--status-danger-text)" : "var(--color-text-muted)" }}>
+                  {lapsed ? t(locale, "billing_expired_short") : t(locale, "billing_paid_until")}:{" "}
+                  {fmtDate.format(context.paidUntil)}
                 </span>
               )}
               {!isMember && (
@@ -105,6 +119,25 @@ export default async function SettingsPage({
               )}
             </span>
           </div>
+        </div>
+      </section>
+
+      {/* ── Sign-in and security ── */}
+      <section style={{ marginTop: 20 }}>
+        <h2>{t(locale, "settings_security")}</h2>
+        <div className="card" style={{ marginTop: 12, padding: 18, display: "grid", gap: 16 }}>
+          <ChangePasswordForm labels={securityLabels} />
+          <ChangeEmailForm labels={securityLabels} current={operator.email} />
+          <form action={signOutOtherDevices} className="settings-form">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span style={row}>
+                {t(locale, "sessions_other").replace("{n}", String(otherSessions))}
+              </span>
+              <button type="submit" className="btn-secondary" disabled={otherSessions === 0}>
+                {t(locale, "sessions_signout_others")}
+              </button>
+            </div>
+          </form>
         </div>
       </section>
 

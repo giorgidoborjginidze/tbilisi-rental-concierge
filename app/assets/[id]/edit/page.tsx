@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
@@ -53,7 +53,7 @@ export default async function EditAssetPage({
     where: { id, operatorId: operator.id },
     include: {
       contracts: { orderBy: { endDate: "desc" } },
-      unit: { select: { id: true, name: true } },
+      unit: { select: { id: true, name: true, operatorId: true } },
     },
   });
   if (!asset) notFound();
@@ -122,6 +122,8 @@ export default async function EditAssetPage({
     ? await prisma.booking.findMany({
         where: {
           unitId: asset.unitId,
+          // Second safeguard: only this workspace's own unit's stays.
+          unit: { operatorId: operator.id },
           status: { not: "cancelled" },
           checkIn: { lt: calEnd },
           checkOut: { gt: calStart },
@@ -265,7 +267,7 @@ export default async function EditAssetPage({
               {asset.rentalMode === "daily" && (
                 <span className="badge badge--str">{t(locale, "mode_daily")}</span>
               )}
-              {asset.unit && (
+              {asset.unit && asset.unit.operatorId === operator.id && (
                 <Link href={`/calendar?unit=${asset.unit.id}`} className="link" style={{ fontSize: 13 }}>
                   ({asset.unit.name})
                 </Link>

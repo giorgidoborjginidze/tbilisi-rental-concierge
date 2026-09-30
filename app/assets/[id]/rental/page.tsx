@@ -40,7 +40,7 @@ import {
   type TemplateKey,
 } from "@/lib/notify/templates";
 import { waLink } from "@/lib/notify/phone";
-import { whatsappConfig } from "@/lib/notify/whatsapp";
+import { autoSendFor } from "@/lib/notify/whatsapp";
 import ScheduleForm from "./schedule-form";
 import GpsForm from "./gps-form";
 import FenceForm from "./fence-form";
@@ -193,7 +193,8 @@ export default async function RentalServicePage({
     orderBy: { createdAt: "desc" },
     take: 20,
   });
-  const autoSend = whatsappConfig() != null;
+  // Never for the shared demo: its messages only get the manual send link.
+  const autoSend = await autoSendFor(operator.id);
   // A reminder whose rent has been paid (or whose contract ended) since it
   // was queued must not be offered for sending, even before the next check
   // withdraws it.

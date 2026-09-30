@@ -363,7 +363,7 @@ const en = {
 
   tpl_title: "Messages",
   tpl_intro:
-    "Activo prepares these when an event fires — the rent check runs every morning, the red lines at every GPS position — and sends them over WhatsApp, automatically once WhatsApp Business is connected. One number receives at most 3 messages a day, and a text can be up to 500 characters. Edit any of them — clear a field to restore the default wording.",
+    "Activo prepares these when an event fires — the rent check runs every morning, the red lines at every GPS position — and sends them over WhatsApp, automatically once WhatsApp Business is connected. Any one number — yours included — gets at most 3 messages a day from your account, each red-line event is announced once a day, and a text can be up to 500 characters. Edit any of them — clear a field to restore the default wording.",
   tpl_disclaimer:
     "Activo cannot contact 112 itself. The default wording therefore speaks about your contractual right to hand the plate over, not about a report already made — you decide whether to actually call.",
   tpl_notify_phone: "Your WhatsApp Number",
@@ -528,12 +528,8 @@ const en = {
   billing_trial_over:
     "Your free month is over \u2014 choose a plan to keep adding records.",
   billing_current: "Current Plan",
-  billing_choose: "Choose",
-  billing_chosen: "Selected",
   billing_pay: "Subscribe",
   billing_paid_until: "Paid Until",
-  billing_pay_return:
-    "Thanks! Once your payment is confirmed, your plan activates automatically \u2014 it may take a few seconds.",
   billing_sandbox: "Test Mode",
   billing_sandbox_card:
     "Payments run in Flitt's sandbox. Use test card 4444 5555 6666 1111, any future expiry, CVV 123 \u2014 no real money moves.",
@@ -783,7 +779,7 @@ const en = {
     "Your plan's unit limit is reached \u2014 upgrade on the Plan page.",
   error_limit_members: "No free team seats on your plan.",
   error_owner_only: "Only the account owner can do this.",
-  error_invite_invalid: "This invite link is invalid or already used.",
+  error_invite_invalid: "This invite link is invalid, expired or already used.",
 
   below_market: "Below Market",
 
@@ -1012,7 +1008,8 @@ const en = {
   error_invalid_credentials: "Incorrect email or password.",
   error_required: "Please fill in all required fields.",
   error_invalid_number: "Rates, capacity and bedrooms must be valid numbers.",
-  error_email_taken: "An operator with this email already exists.",
+  error_email_taken:
+    "We couldn't create an account with this email. If you already have one, sign in or reset your password.",
   error_dates: "Check-out must be after check-in.",
   error_payment: "Couldn't start the payment. Please try again in a moment.",
 
@@ -1104,7 +1101,7 @@ const en = {
   withdraw_fence_removed: "The red line was deleted",
   withdraw_fence_off: "The red line was switched off",
   withdraw_asset_deleted: "The asset was deleted",
-  withdraw_limit: "Daily limit for this number reached (3 messages a day)",
+  withdraw_limit: "Today's sending limit for this number was reached",
   withdraw_filled: "The free window was booked",
   withdraw_passed: "Its dates are over",
   withdraw_replaced: "Replaced by an updated alert",
@@ -1143,6 +1140,77 @@ const en = {
   decide_error: "Not recorded",
   decide_show_all: "Show all ({n})",
   decide_show_less: "Show fewer",
+  // Demo account: read-only.
+  demo_ribbon: "Changes aren't saved",
+  demo_readonly: "Changes aren't saved in the demo — register for free",
+  demo_register_cta: "Register for free",
+  error_demo_readonly: "Changes aren't saved in the demo — register for free",
+
+  // Sign-in protection, password reset.
+  error_too_many_attempts: "Too many failed attempts. Try again in 15 minutes, or reset your password.",
+  forgot_link: "Forgot your password?",
+  forgot_title: "Reset Password",
+  forgot_intro:
+    "Enter your account's email — we'll send a link to choose a new password. The link works for one hour.",
+  forgot_submit: "Send link",
+  forgot_sent:
+    "If an account with this email exists, a link is on its way. Check your inbox (and spam) — it works for one hour.",
+  forgot_unavailable:
+    "Password reset by email isn't switched on yet. Write to us at {email} from your account's email address and we'll help you back in.",
+  forgot_back: "Back to sign in",
+  error_too_many_resets: "Too many requests for this email. Try again in an hour.",
+  reset_title: "New Password",
+  reset_intro:
+    "Choose a new password (at least 8 characters). Every device signed in to this account will be signed out.",
+  reset_submit: "Save and sign in",
+  reset_invalid: "This link is invalid, expired or already used. Request a new one.",
+  password_new: "New password",
+  password_repeat: "Repeat the new password",
+  error_password_mismatch: "The two passwords don't match.",
+  email_reset_subject: "Activo — reset your password",
+  email_reset_body:
+    "Someone (hopefully you) asked to reset the password of your Activo account. Open this link within one hour to choose a new one: {link} — If it wasn't you, ignore this email; your password stays the same.",
+  error_invite_email: "This invite was made for a different email address.",
+  invite_email_hint: "The invite works only with this email.",
+
+  // Settings: sign-in and security.
+  settings_security: "Sign-in and Security",
+  password_current: "Current password",
+  password_change: "Change password",
+  password_changed: "Password changed. Other devices were signed out.",
+  error_password_wrong: "The current password is incorrect.",
+  email_change: "Change email",
+  email_new: "New email",
+  password_confirm: "Password (to confirm)",
+  email_changed: "Email changed — sign in with the new one from now on.",
+  error_email_invalid: "Enter a valid email address.",
+  error_email_unavailable: "This email can't be used. Choose another one.",
+  sessions_other: "Other devices signed in: {n}",
+  sessions_signout_others: "Sign out other devices",
+
+  // Billing: paid-through date, renewal, return from the payment page.
+  billing_renew: "Renew",
+  billing_expired: "Your {plan} plan ran out on {date}. Renew it to get its limits back — your records stay.",
+  billing_grace: "Payment was due on {date} — the plan stays on until {grace}. Renew to keep it.",
+  billing_extends: "Paying now adds a month after {date}.",
+  billing_expired_short: "Expired",
+  billing_unavailable:
+    "Online payment isn't switched on yet. Write to {email} and we'll set up your plan.",
+  error_payment_unavailable: "Online payment isn't available right now.",
+  billing_ret_approved: "Payment received — {plan} is active until {date}. Thank you!",
+  billing_ret_pending: "Waiting for the bank's confirmation… this page checks again by itself.",
+  billing_ret_pending_long:
+    "The bank hasn't confirmed yet. If money left your card, the plan turns on as soon as the confirmation arrives — don't pay again. Questions: {email}",
+  billing_ret_declined: "The payment was declined, so your plan didn't change. You can try again below.",
+  billing_ret_unknown: "We couldn't find this payment. If money left your card, write to {email}.",
+  billing_history: "Payments",
+  pay_status_pending: "Waiting",
+  pay_status_approved: "Paid",
+  pay_status_declined: "Declined",
+  withdraw_limit_fence: "This red-line event was already announced today",
+  not_found_title: "Page not found",
+  not_found_body: "This page doesn't exist, or it isn't in your account.",
+  not_found_home: "Go to the dashboard",
 };
 
 const ka: Record<StringKey, string> = {
@@ -1156,7 +1224,7 @@ const ka: Record<StringKey, string> = {
 
   onboarding_title: "მოგესალმებით",
   onboarding_intro:
-    "შექმენით ოპერატორის ანგარიში პორტფელის მართვის დასაწყებად.",
+    "შექმენი ანგარიში და დაიწყე შენი პორტფელის მართვა.",
   onboarding_submit: "ანგარიშის შექმნა",
   operator_name: "კომპანიის / ოპერატორის სახელი",
   operator_email: "ელფოსტა",
@@ -1506,7 +1574,7 @@ const ka: Record<StringKey, string> = {
 
   tpl_title: "შეტყობინებები",
   tpl_intro:
-    "Activo ამ ტექსტებს მოვლენისას ამზადებს — ქირას ყოველ დილით ამოწმებს, წითელ ხაზებს GPS-ის ყოველ სიგნალზე — და WhatsApp-ით აგზავნის, ავტომატურად, როცა WhatsApp Business მიერთებულია. ერთ ნომერზე დღეში მაქსიმუმ 3 შეტყობინება მიდის, ტექსტი კი 500 სიმბოლომდე შეიძლება იყოს. ნებისმიერი მათგანი შეგიძლია შეცვალო — ველის გასუფთავება ნაგულისხმევ ტექსტს აბრუნებს.",
+    "Activo ამ ტექსტებს მოვლენისას ამზადებს — ქირას ყოველ დილით ამოწმებს, წითელ ხაზებს GPS-ის ყოველ სიგნალზე — და WhatsApp-ით აგზავნის, ავტომატურად, როცა WhatsApp Business მიერთებულია. შენი ანგარიშიდან ერთ ნომერზე — შენსაზეც — დღეში მაქსიმუმ 3 შეტყობინება მიდის, წითელი ხაზის თითო მოვლენა დღეში ერთხელ ცხადდება, ტექსტი კი 500 სიმბოლომდე შეიძლება იყოს. ნებისმიერი მათგანი შეგიძლია შეცვალო — ველის გასუფთავება ნაგულისხმევ ტექსტს აბრუნებს.",
   tpl_disclaimer:
     "Activo თავად 112-ს ვერ დაუკავშირდება. ამიტომ ნაგულისხმევი ტექსტი ლაპარაკობს შენს კონტრაქტისეულ უფლებაზე, გადასცე ნომერი — და არა უკვე გაკეთებულ განცხადებაზე. დარეკვა შენი გადასაწყვეტია.",
   tpl_notify_phone: "შენი WhatsApp ნომერი",
@@ -1671,12 +1739,8 @@ const ka: Record<StringKey, string> = {
   billing_trial_over:
     "უფასო თვე დასრულდა — ჩანაწერების დამატების გასაგრძელებლად აირჩიე პაკეტი.",
   billing_current: "მიმდინარე პაკეტი",
-  billing_choose: "არჩევა",
-  billing_chosen: "არჩეულია",
   billing_pay: "გამოწერა",
   billing_paid_until: "გადახდილია",
-  billing_pay_return:
-    "მადლობა! გადახდის დადასტურებისთანავე პაკეტი ავტომატურად აქტიურდება — შესაძლოა რამდენიმე წამი დასჭირდეს.",
   billing_sandbox: "სატესტო რეჟიმი",
   billing_sandbox_card:
     "გადახდები მუშაობს Flitt-ის sandbox-ში. გამოიყენე სატესტო ბარათი 4444 5555 6666 1111, ნებისმიერი მომავალი ვადა, CVV 123 — ნამდვილი ფული არ იხარჯება.",
@@ -1926,7 +1990,7 @@ const ka: Record<StringKey, string> = {
     "პაკეტის ერთეულების ლიმიტი ამოიწურა — გაზარდე პაკეტი გვერდზე «პაკეტი».",
   error_limit_members: "პაკეტში თავისუფალი ადგილი აღარ არის.",
   error_owner_only: "ამის გაკეთება მხოლოდ ანგარიშის მფლობელს შეუძლია.",
-  error_invite_invalid: "მოწვევის ლინკი არასწორია ან უკვე გამოყენებულია.",
+  error_invite_invalid: "მოწვევის ბმული არასწორია, ვადაგასულია ან უკვე გამოყენებულია.",
 
   below_market: "ბაზარზე დაბალი",
 
@@ -2145,17 +2209,18 @@ const ka: Record<StringKey, string> = {
   register_title: "ანგარიშის შექმნა",
   register_submit: "ანგარიშის შექმნა",
   password_label: "პაროლი",
-  auth_no_account: "ჯერ არ გაქვთ ანგარიში?",
-  auth_have_account: "უკვე გაქვთ ანგარიში?",
+  auth_no_account: "ჯერ არ გაქვს ანგარიში?",
+  auth_have_account: "უკვე გაქვს ანგარიში?",
   logout: "გასვლა",
   demo_hint: "სადემონსტრაციო ანგარიში: test@activo.world / test1234",
 
   error_password_short: "პაროლი მინიმუმ 8 სიმბოლო უნდა იყოს.",
   error_invalid_credentials: "ელფოსტა ან პაროლი არასწორია.",
-  error_required: "გთხოვთ, შეავსოთ ყველა სავალდებულო ველი.",
+  error_required: "შეავსე ყველა სავალდებულო ველი.",
   error_invalid_number:
     "ტარიფი, ტევადობა და საძინებლების რაოდენობა უნდა იყოს რიცხვები.",
-  error_email_taken: "ოპერატორი ამ ელფოსტით უკვე არსებობს.",
+  error_email_taken:
+    "ამ ელფოსტით ანგარიშის შექმნა ვერ მოხერხდა. თუ უკვე გაქვს ანგარიში, შედი ან აღადგინე პაროლი.",
   error_dates: "გასვლის თარიღი შესვლის თარიღის შემდეგ უნდა იყოს.",
   error_payment: "გადახდის დაწყება ვერ მოხერხდა. სცადე ცოტა ხანში.",
 
@@ -2247,7 +2312,7 @@ const ka: Record<StringKey, string> = {
   withdraw_fence_removed: "წითელი ხაზი წაიშალა",
   withdraw_fence_off: "წითელი ხაზი გამოირთო",
   withdraw_asset_deleted: "აქტივი წაიშალა",
-  withdraw_limit: "ამ ნომრის დღიური ლიმიტი ამოიწურა (დღეში 3 შეტყობინება)",
+  withdraw_limit: "ამ ნომრის დღევანდელი გაგზავნის ლიმიტი ამოიწურა",
   withdraw_filled: "თავისუფალი ფანჯარა დაიჯავშნა",
   withdraw_passed: "მისი თარიღები გავიდა",
   withdraw_replaced: "ჩაანაცვლა განახლებულმა გაფრთხილებამ",
@@ -2286,6 +2351,77 @@ const ka: Record<StringKey, string> = {
   decide_error: "ვერ ჩაიწერა",
   decide_show_all: "ყველას ჩვენება ({n})",
   decide_show_less: "ნაკლების ჩვენება",
+  // Demo account: read-only.
+  demo_ribbon: "ცვლილებები არ ინახება",
+  demo_readonly: "დემოში ცვლილება არ ინახება — დარეგისტრირდი უფასოდ",
+  demo_register_cta: "დარეგისტრირდი უფასოდ",
+  error_demo_readonly: "დემოში ცვლილება არ ინახება — დარეგისტრირდი უფასოდ",
+
+  // Sign-in protection, password reset.
+  error_too_many_attempts: "ძალიან ბევრი წარუმატებელი მცდელობა. სცადე 15 წუთში ან აღადგინე პაროლი.",
+  forgot_link: "დაგავიწყდა პაროლი?",
+  forgot_title: "პაროლის აღდგენა",
+  forgot_intro:
+    "შეიყვანე ანგარიშის ელფოსტა — გამოგიგზავნით ბმულს ახალი პაროლის ასარჩევად. ბმული ერთი საათი მოქმედებს.",
+  forgot_submit: "ბმულის გაგზავნა",
+  forgot_sent:
+    "თუ ამ ელფოსტით ანგარიში არსებობს, ბმული უკვე გზაშია. შეამოწმე შემოსულები (და სპამიც) — ბმული ერთი საათი მოქმედებს.",
+  forgot_unavailable:
+    "ელფოსტით პაროლის აღდგენა ჯერ არ არის ჩართული. მოგვწერე {email}-ზე შენი ანგარიშის ელფოსტიდან და ანგარიშში დაბრუნებაში დაგეხმარებით.",
+  forgot_back: "შესვლაზე დაბრუნება",
+  error_too_many_resets: "ამ ელფოსტაზე ძალიან ბევრი მოთხოვნაა. სცადე ერთ საათში.",
+  reset_title: "ახალი პაროლი",
+  reset_intro:
+    "აირჩიე ახალი პაროლი (მინიმუმ 8 სიმბოლო). ამ ანგარიშით შესულ ყველა მოწყობილობაზე სესია დაიხურება.",
+  reset_submit: "შენახვა და შესვლა",
+  reset_invalid: "ეს ბმული არასწორია, ვადაგასულია ან უკვე გამოყენებულია. მოითხოვე ახალი.",
+  password_new: "ახალი პაროლი",
+  password_repeat: "გაიმეორე ახალი პაროლი",
+  error_password_mismatch: "პაროლები ერთმანეთს არ ემთხვევა.",
+  email_reset_subject: "Activo — პაროლის აღდგენა",
+  email_reset_body:
+    "ვიღაცამ (იმედია, შენ) შენი Activo-ს ანგარიშის პაროლის აღდგენა მოითხოვა. ახალი პაროლის ასარჩევად ერთი საათის განმავლობაში გახსენი ეს ბმული: {link} — თუ ეს შენ არ იყავი, უბრალოდ ყურადღებას ნუ მიაქცევ ამ წერილს; პაროლი არ შეიცვლება.",
+  error_invite_email: "ეს მოწვევა სხვა ელფოსტისთვის შეიქმნა.",
+  invite_email_hint: "მოწვევა მხოლოდ ამ ელფოსტით მუშაობს.",
+
+  // Settings: sign-in and security.
+  settings_security: "შესვლა და უსაფრთხოება",
+  password_current: "ამჟამინდელი პაროლი",
+  password_change: "პაროლის შეცვლა",
+  password_changed: "პაროლი შეიცვალა. სხვა მოწყობილობებზე სესია დაიხურა.",
+  error_password_wrong: "ამჟამინდელი პაროლი არასწორია.",
+  email_change: "ელფოსტის შეცვლა",
+  email_new: "ახალი ელფოსტა",
+  password_confirm: "პაროლი (დასადასტურებლად)",
+  email_changed: "ელფოსტა შეიცვალა — ამიერიდან ახლით შედი.",
+  error_email_invalid: "შეიყვანე სწორი ელფოსტა.",
+  error_email_unavailable: "ამ ელფოსტის გამოყენება ვერ ხერხდება. აირჩიე სხვა.",
+  sessions_other: "სხვა შესული მოწყობილობები: {n}",
+  sessions_signout_others: "სხვა მოწყობილობებიდან გამოსვლა",
+
+  // Billing: paid-through date, renewal, return from the payment page.
+  billing_renew: "განახლება",
+  billing_expired: "{plan} პაკეტის ვადა ამოიწურა ({date}). განაახლე და ლიმიტები დაგიბრუნდება — ჩანაწერები რჩება.",
+  billing_grace: "გადახდის ვადა გავიდა ({date}) — პაკეტი ჯერ კიდევ მოქმედებს, ბოლო დღე: {grace}. განაახლე, რომ შეინარჩუნო.",
+  billing_extends: "ახლა გადახდისას ერთი თვე მიმდინარე ვადას ({date}) დაემატება.",
+  billing_expired_short: "ვადაგასული",
+  billing_unavailable:
+    "ონლაინ გადახდა ჯერ არ არის ჩართული. მოგვწერე {email}-ზე და პაკეტს ჩვენ გაგიაქტიურებთ.",
+  error_payment_unavailable: "ონლაინ გადახდა ახლა მიუწვდომელია.",
+  billing_ret_approved: "გადახდა მიღებულია — {plan} გააქტიურდა, გადახდილია ამ თარიღამდე: {date}. მადლობა!",
+  billing_ret_pending: "ველოდებით ბანკის დადასტურებას… ეს გვერდი თავად გადაამოწმებს.",
+  billing_ret_pending_long:
+    "ბანკს ჯერ არ დაუდასტურებია. თუ ბარათიდან თანხა ჩამოგეჭრა, პაკეტი დადასტურებისთანავე ჩაირთვება — ხელახლა ნუ გადაიხდი. კითხვებისთვის: {email}",
+  billing_ret_declined: "გადახდა უარყოფილია, ამიტომ პაკეტი არ შეცვლილა. ქვემოთ შეგიძლია ხელახლა სცადო.",
+  billing_ret_unknown: "ეს გადახდა ვერ მოიძებნა. თუ ბარათიდან თანხა ჩამოგეჭრა, მოგვწერე {email}-ზე.",
+  billing_history: "გადახდები",
+  pay_status_pending: "მოლოდინში",
+  pay_status_approved: "გადახდილი",
+  pay_status_declined: "უარყოფილი",
+  withdraw_limit_fence: "წითელი ხაზის ეს მოვლენა დღეს უკვე ეცნობა",
+  not_found_title: "გვერდი ვერ მოიძებნა",
+  not_found_body: "ეს გვერდი არ არსებობს, ან შენს ანგარიშს არ ეკუთვნის.",
+  not_found_home: "მთავარ გვერდზე დაბრუნება",
 };
 
 export type StringKey = keyof typeof en;

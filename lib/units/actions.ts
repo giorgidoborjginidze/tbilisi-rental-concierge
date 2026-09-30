@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireOperator } from "@/lib/auth/session";
+import { requireWriter } from "@/lib/auth/session";
 import { UNIT_TYPES } from "@/lib/types";
 import type { StringKey } from "@/lib/i18n/strings";
 import { checkFeedUrl } from "@/lib/ical/fetch";
@@ -31,7 +31,7 @@ export async function saveUnit(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const operator = await requireOperator();
+  const operator = await requireWriter();
 
   const unitId = str(formData, "unitId") || null;
   const name = str(formData, "name");
@@ -124,7 +124,7 @@ export async function saveUnit(
 }
 
 export async function deleteUnit(formData: FormData) {
-  const operator = await requireOperator();
+  const operator = await requireWriter();
   const unitId = str(formData, "unitId");
   if (unitId) {
     await prisma.unit.deleteMany({

@@ -3,14 +3,15 @@
 // session tokens.
 
 import { createHash, randomBytes } from "node:crypto";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { demoRefusalPath } from "./demo";
 
 export const SESSION_COOKIE = "session";
 const SESSION_DAYS = 30;
 
-const sha256 = (value: string) =>
+export const sha256 = (value: string) =>
   createHash("sha256").update(value).digest("hex");
 
 export async function createSession(operatorId: string): Promise<void> {
@@ -41,6 +42,8 @@ export type SessionOperator = {
   paidUntil: Date | null;
   companyId: string | null;
   role: string;
+  /** The shared public demo: read-only (requireWriter). */
+  isDemo: boolean;
 };
 
 export async function getSessionOperator(): Promise<SessionOperator | null> {
@@ -55,7 +58,7 @@ export async function getSessionOperator(): Promise<SessionOperator | null> {
         select: {
           id: true, name: true, email: true, locale: true,
           accountType: true, profile: true, plan: true, trialEndsAt: true,
-          paidUntil: true, companyId: true, role: true,
+          paidUntil: true, companyId: true, role: true, isDemo: true,
         },
       },
     },
@@ -73,6 +76,47 @@ export async function requireOperator(): Promise<SessionOperator> {
   const operator = await getSessionOperator();
   if (!operator) redirect("/login");
   return operator;
+}
+
+/**
+ * For every server action that changes data: the signed-in operator, unless
+ * it is the shared public demo. A demo visitor is sent back to the page they
+ * were on with ?demo=readonly, where the demo ribbon says "დემოში ცვლილება
+ * არ ინახება — დარეგისტრირდი უფასოდ" (app/demo-ribbon.tsx). Nothing is
+ * written.
+ */
+export async function requireWriter(): Promise<SessionOperator> {
+  const operator = await requireOperator();
+  if (operator.isDemo) {
+    const store = await headers();
+    redirect(demoRefusalPath(store.get("referer"), store.get("host")));
+  }
+  return operator;
+}
+
+/**
+ * The same check for actions whose caller reads a result instead of
+ * following a redirect (the decide cards): null for the demo, which the
+ * action turns into { error: "error_demo_readonly" }.
+ */
+export async function getWriter(): Promise<SessionOperator | null> {
+  const operator = await requireOperator();
+  return operator.isDemo ? null : operator;
+}
+
+/** The id (token hash) of this browser's session, if signed in. */
+export async function currentSessionId(): Promise<string | null> {
+  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  return token ? sha256(token) : null;
+}
+
+/** Sign out every other device: all of the operator's sessions but this one. */
+export async function destroyOtherSessions(operatorId: string): Promise<number> {
+  const current = await currentSessionId();
+  const { count } = await prisma.session.deleteMany({
+    where: { operatorId, ...(current ? { id: { not: current } } : {}) },
+  });
+  return count;
 }
 
 export async function destroySession(): Promise<void> {

@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { startCheckout } from "@/lib/billing/actions";
+import { IconCheck } from "../icons";
 import type { FormState } from "@/lib/units/actions";
 
 export interface PlanCard {
@@ -18,13 +19,16 @@ export default function PlanCards({
   plans,
   currentPlan,
   effectivePlanId,
+  checkoutOff = false,
   labels,
 }: {
   plans: PlanCard[];
-  /** The explicitly chosen plan (null while on trial only). */
+  /** The explicitly chosen (bought) plan, paid or lapsed; null if none. */
   currentPlan: string | null;
   /** The plan whose limits currently apply (trial tier included). */
   effectivePlanId: string;
+  /** Online payment is not set up on this deployment. */
+  checkoutOff?: boolean;
   labels: Record<string, string>;
 }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(
@@ -63,22 +67,23 @@ export default function PlanCards({
                 {plan.priceGel} {labels.per_month}
               </div>
               <ul className="kpi__sub" style={{ listStyle: "none", padding: 0, marginTop: 10, display: "grid", gap: 4 }}>
-                <li>✓ {plan.maxAssets} {labels.billing_assets}</li>
-                <li>✓ {plan.maxUnits} {labels.billing_units}</li>
+                <li className="plan-feature"><IconCheck size={14} /> {plan.maxAssets} {labels.billing_assets}</li>
+                <li className="plan-feature"><IconCheck size={14} /> {plan.maxUnits} {labels.billing_units}</li>
                 {plan.isBusiness && (
-                  <li>✓ {plan.maxMembers} {labels.billing_members}</li>
+                  <li className="plan-feature"><IconCheck size={14} /> {plan.maxMembers} {labels.billing_members}</li>
                 )}
-                {plan.analysis && <li>✓ {labels.billing_analysis}</li>}
+                {plan.analysis && <li className="plan-feature"><IconCheck size={14} /> {labels.billing_analysis}</li>}
               </ul>
               <form action={formAction} style={{ marginTop: "auto", paddingTop: 14 }}>
                 <input type="hidden" name="plan" value={plan.id} />
+                {/* The bought plan is renewed here, one month at a time. */}
                 <button
                   type="submit"
-                  disabled={pending || isChosen}
+                  disabled={pending || checkoutOff}
                   className={isChosen ? "btn-secondary" : "btn-primary"}
                   style={{ width: "100%", textAlign: "center" }}
                 >
-                  {isChosen ? labels.billing_chosen : (pending ? "…" : labels.billing_pay)}
+                  {pending ? "…" : isChosen ? labels.billing_renew : labels.billing_pay}
                 </button>
               </form>
             </div>

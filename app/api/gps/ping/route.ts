@@ -63,11 +63,16 @@ async function handle(fields: PingFields, token: string | null) {
   const device = credentials
     ? await prisma.gpsDevice.findUnique({
         where: { deviceId: credentials.deviceId },
-        include: { asset: { select: { operatorId: true } } },
+        include: { asset: { select: { operatorId: true, operator: { select: { isDemo: true } } } } },
       })
     : null;
   if (!credentials || !device || !tokensMatch(device.token, credentials.token)) {
     return refuse("unauthorized");
+  }
+  // The shared demo is read-only: its trackers' tokens are visible to every
+  // visitor, so their positions are not moved from outside.
+  if (device.asset.operator.isDemo) {
+    return NextResponse.json({ error: "demo_readonly" }, { status: 403 });
   }
 
   const parsed = parsePing(fields, token);

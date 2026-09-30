@@ -238,7 +238,8 @@ async function main() {
   if (isPostgres) {
     // Production (Neon): additive and idempotent. Ensure the demo account
     // exists with the current credentials — rotating/renaming an earlier
-    // demo if needed — and NEVER wipe real accounts.
+    // demo if needed — flagged as the read-only demo, and NEVER wipe real
+    // accounts.
     const existing = await prisma.operator.findFirst({
       where: { email: { in: ["ops@kolkhetistays.ge", "test@activo.world"] } },
     });
@@ -248,10 +249,17 @@ async function main() {
         data: {
           name: "Activo",
           email: "test@activo.world",
-          passwordHash: hashPassword("test1234"),
+          passwordHash: await hashPassword("test1234"),
+          // Read-only for visitors, never sends WhatsApp itself, keeps its
+          // showcase plan without payment (lib/auth/session.ts requireWriter).
+          isDemo: true,
+          plan: "pro",
         },
       });
-      console.log("Demo account present — credentials ensured (test@activo.world).");
+      // Anyone signed in to the demo is signed in on a shared account: keep
+      // nothing that could let one visitor act as another.
+      await prisma.passwordReset.deleteMany({ where: { operatorId: existing.id } });
+      console.log("Demo account present — credentials and read-only flag ensured (test@activo.world).");
       await prisma.$disconnect();
       return;
     }
@@ -274,7 +282,9 @@ async function main() {
     data: {
       name: "Activo",
       email: "test@activo.world",
-      passwordHash: hashPassword("test1234"),
+      passwordHash: await hashPassword("test1234"),
+      // The public demo: read-only, no WhatsApp sending, plan without payment.
+      isDemo: true,
       locale: "en",
       // Demo account: personal Pro plan (12 units / 11 assets need it).
       accountType: "personal",

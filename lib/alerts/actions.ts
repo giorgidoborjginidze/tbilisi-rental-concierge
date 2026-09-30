@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { requireOperator } from "@/lib/auth/session";
+import { requireWriter } from "@/lib/auth/session";
 import { flushOutbox } from "@/lib/notify/whatsapp";
 import { scanAlerts } from "./scan";
 
@@ -11,7 +11,7 @@ export async function setAlertStatus(formData: FormData) {
   const id = String(formData.get("alertId") ?? "");
   const status = String(formData.get("status") ?? "");
   if (id && (status === "dismissed" || status === "resolved")) {
-    const operator = await requireOperator();
+    const operator = await requireWriter();
     await prisma.alert.updateMany({
       where: { id, operatorId: operator.id },
       data: { status, resolvedAt: new Date() },
@@ -28,7 +28,7 @@ export async function setAlertStatus(formData: FormData) {
  * API is configured; otherwise the messages wait with a send link).
  */
 export async function runAlertScan() {
-  const operator = await requireOperator();
+  const operator = await requireWriter();
   await scanAlerts(new Date(), operator.id);
   await flushOutbox(operator.id).catch(() => undefined);
   revalidatePath("/alerts");

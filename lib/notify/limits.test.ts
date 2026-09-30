@@ -1,31 +1,40 @@
 import { describe, expect, it } from "vitest";
 import {
   clampMessage,
+  dailyLimitReason,
   MAX_MESSAGE_CHARS,
-  OWNER_DAILY_LIMIT,
-  RENTER_DAILY_LIMIT,
+  PLATFORM_DAILY_LIMIT,
+  RECIPIENT_DAILY_LIMIT,
   withinDailyLimits,
 } from "./limits";
 
+const sent = (toPhone: number, toPhoneAllAccounts = toPhone, sameFenceKind?: number) => ({
+  toPhone,
+  toPhoneAllAccounts,
+  sameFenceKind,
+});
+
 describe("daily limits per recipient", () => {
-  it("lets a renter's number receive at most three messages a day", () => {
-    const sent = (n: number) => ({ toPhone: n, toPhoneForAsset: n });
-    expect(withinDailyLimits("driver", sent(RENTER_DAILY_LIMIT - 1))).toBe(true);
-    expect(withinDailyLimits("driver", sent(RENTER_DAILY_LIMIT))).toBe(false);
-    expect(withinDailyLimits("tenant", sent(RENTER_DAILY_LIMIT))).toBe(false);
+  it("lets one account send any number — renter or owner — at most three messages a day", () => {
+    expect(withinDailyLimits(sent(RECIPIENT_DAILY_LIMIT - 1))).toBe(true);
+    expect(withinDailyLimits(sent(RECIPIENT_DAILY_LIMIT))).toBe(false);
+    expect(dailyLimitReason(sent(RECIPIENT_DAILY_LIMIT))).toBe("limit");
   });
 
-  it("counts the owner's own number per asset, with an overall ceiling", () => {
-    // A fleet owner already told about five other cars still hears about this one.
-    expect(withinDailyLimits("owner", { toPhone: 5, toPhoneForAsset: 0 })).toBe(true);
-    expect(withinDailyLimits("owner", { toPhone: 5, toPhoneForAsset: 3 })).toBe(false);
-    expect(withinDailyLimits("owner", { toPhone: OWNER_DAILY_LIMIT, toPhoneForAsset: 0 })).toBe(false);
+  it("counts per sending account, so another account's messages do not use up this owner's three", () => {
+    // Someone else sent this driver 3 today; this owner has sent none.
+    expect(withinDailyLimits(sent(0, 3))).toBe(true);
+    expect(withinDailyLimits(sent(2, 8))).toBe(true);
   });
 
-  it("announces each kind of red-line event once per fence a day", () => {
-    expect(withinDailyLimits("driver", { toPhone: 0, toPhoneForAsset: 0, sameFenceKind: 0 })).toBe(true);
-    expect(withinDailyLimits("driver", { toPhone: 0, toPhoneForAsset: 0, sameFenceKind: 1 })).toBe(false);
-    expect(withinDailyLimits("owner", { toPhone: 0, toPhoneForAsset: 0, sameFenceKind: 1 })).toBe(false);
+  it("stops a flood from many accounts at the platform-wide ceiling", () => {
+    expect(withinDailyLimits(sent(0, PLATFORM_DAILY_LIMIT - 1))).toBe(true);
+    expect(dailyLimitReason(sent(0, PLATFORM_DAILY_LIMIT))).toBe("limit");
+  });
+
+  it("announces each kind of red-line event once per fence a day, with its own reason", () => {
+    expect(withinDailyLimits(sent(0, 0, 0))).toBe(true);
+    expect(dailyLimitReason(sent(0, 0, 1))).toBe("limit_fence");
   });
 });
 

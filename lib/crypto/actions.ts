@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireOperator } from "@/lib/auth/session";
+import { requireWriter } from "@/lib/auth/session";
 import { COINS } from "@/lib/crypto/prices";
 import type { FormState } from "@/lib/units/actions";
 
@@ -16,7 +16,7 @@ export async function createCrypto(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const operator = await requireOperator();
+  const operator = await requireWriter();
   const symbolRaw = str(formData, "symbol").toUpperCase();
   if (!symbolRaw) return { error: "error_required" };
 
@@ -50,7 +50,7 @@ export async function addTrade(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const operator = await requireOperator();
+  const operator = await requireWriter();
   const assetId = str(formData, "assetId");
   const side = str(formData, "side") === "sell" ? "sell" : "buy";
   const quantity = num(formData, "quantity");
@@ -81,7 +81,7 @@ export async function addTrade(
 }
 
 export async function deleteTrade(formData: FormData) {
-  const operator = await requireOperator();
+  const operator = await requireWriter();
   const tradeId = str(formData, "tradeId");
   const assetId = str(formData, "assetId");
   if (tradeId) {

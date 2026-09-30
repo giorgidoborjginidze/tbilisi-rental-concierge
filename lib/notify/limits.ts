@@ -1,11 +1,14 @@
 // How much the platform will send, so a WhatsApp number can never be used
 // to flood anyone — a renter's phone, or whatever number was typed in as
-// the owner's.
+// the owner's (that number is free text and not verified).
 //
-//   - a renter's number (driver / tenant): at most 3 messages a day, from
-//     every account on the platform together;
-//   - the owner's own number: at most 3 a day about any one asset and 20 a
-//     day in all, so a fleet owner still hears about every car;
+//   - any one number (driver, tenant or the owner's own): at most 3
+//     messages a day from one account. The owner still sees every event in
+//     /alerts; a higher owner allowance would need a confirmed number;
+//   - any one number from all accounts together: at most 10 a day — the
+//     backstop, so opening many accounts does not multiply the flood. The
+//     shared demo (which never sends) does not count toward it, so it can
+//     never use up a real owner's messages to their own renter;
 //   - a red line: one message of each kind (approaching / crossed) per
 //     fence per recipient a day — a car weaving across the line all
 //     afternoon is announced once, the alert feed records every crossing;
@@ -15,11 +18,10 @@
 // "A day" is the Tbilisi calendar day. Pure — the counts come from the
 // caller (lib/notify/whatsapp.ts queueMessage).
 
-import type { TemplateRole } from "./templates";
-
-export const RENTER_DAILY_LIMIT = 3;
-export const OWNER_ASSET_DAILY_LIMIT = 3;
-export const OWNER_DAILY_LIMIT = 20;
+/** Messages one account may send to one number a day. */
+export const RECIPIENT_DAILY_LIMIT = 3;
+/** Messages one number may receive a day from all accounts together. */
+export const PLATFORM_DAILY_LIMIT = 10;
 export const FENCE_KIND_DAILY_LIMIT = 1;
 
 /** Longest text the owner may save as a template. */
@@ -28,22 +30,26 @@ export const MAX_TEMPLATE_CHARS = 500;
 export const MAX_MESSAGE_CHARS = 600;
 
 export interface SentToday {
-  /** Messages to this number today (queued, sent or failed). */
+  /** Messages from this account to this number today (queued, sent or failed). */
   toPhone: number;
-  /** Of those, about the same asset. */
-  toPhoneForAsset: number;
+  /** Messages to this number today from every account except the demo. */
+  toPhoneAllAccounts: number;
   /** Red-line messages of this kind about the same fence (geo kinds only). */
   sameFenceKind?: number;
 }
 
-/** May one more message go to this recipient today? */
-export function withinDailyLimits(role: TemplateRole, sent: SentToday): boolean {
-  if ((sent.sameFenceKind ?? 0) >= FENCE_KIND_DAILY_LIMIT) return false;
-  if (role === "owner") {
-    return sent.toPhoneForAsset < OWNER_ASSET_DAILY_LIMIT && sent.toPhone < OWNER_DAILY_LIMIT;
-  }
-  return sent.toPhone < RENTER_DAILY_LIMIT;
+/** Why one more message to this recipient today is held back, or null. */
+export type LimitReason = "limit" | "limit_fence";
+
+export function dailyLimitReason(sent: SentToday): LimitReason | null {
+  if ((sent.sameFenceKind ?? 0) >= FENCE_KIND_DAILY_LIMIT) return "limit_fence";
+  if (sent.toPhone >= RECIPIENT_DAILY_LIMIT) return "limit";
+  if (sent.toPhoneAllAccounts >= PLATFORM_DAILY_LIMIT) return "limit";
+  return null;
 }
+
+/** May one more message go to this recipient today? */
+export const withinDailyLimits = (sent: SentToday): boolean => dailyLimitReason(sent) === null;
 
 /**
  * One line, no runs of spaces, at most MAX_MESSAGE_CHARS characters

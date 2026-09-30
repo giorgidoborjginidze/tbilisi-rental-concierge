@@ -6,13 +6,14 @@ import { t } from "@/lib/i18n/strings";
 import { computeSuggestionsForUnit } from "@/lib/pricing/run";
 import UnitFilter from "../calendar/unit-filter";
 import RentalsSubnav from "../rentals-subnav";
+import { firstParam, type QueryValue } from "@/lib/params";
 
 export const dynamic = "force-dynamic";
 
 export default async function PricingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ unit?: string }>;
+  searchParams: Promise<{ unit?: QueryValue }>;
 }) {
   const operator = await requireOperator();
 
@@ -24,7 +25,7 @@ export default async function PricingPage({
   });
   if (units.length === 0) redirect("/units");
 
-  const { unit: unitQuery } = await searchParams;
+  const unitQuery = firstParam((await searchParams).unit);
   const selected = units.find((u) => u.id === unitQuery) ?? units[0];
   const suggestions = await computeSuggestionsForUnit(selected.id, locale);
 

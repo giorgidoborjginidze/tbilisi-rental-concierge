@@ -1,21 +1,20 @@
-import { redirect } from "next/navigation";
-import { prisma } from "@/lib/db";
 import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 import AssetForm from "../asset-form";
 import { assetFormProps } from "../form-helpers";
+import { firstParam, type QueryValue } from "@/lib/params";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewAssetPage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string }>;
+  searchParams: Promise<{ category?: QueryValue }>;
 }) {
   const operator = await requireOperator();
 
-  const { category } = await searchParams;
+  const category = firstParam((await searchParams).category);
   const locale = await getLocale();
   const props = await assetFormProps(locale, operator.id);
 

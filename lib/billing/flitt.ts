@@ -1,16 +1,20 @@
 // Flitt (formerly Fondy) payment gateway — redirect checkout flow.
 //
-// All merchant details come from the environment so the same code runs
-// against Flitt's public sandbox (default) or a real merchant account:
-//   FLITT_MERCHANT_ID  — merchant id (default: 1396424, Flitt/Fondy test)
-//   FLITT_SECRET_KEY   — merchant secret / password (default: "test")
+// All merchant details come from the environment:
+//   FLITT_MERCHANT_ID  — merchant id
+//   FLITT_SECRET_KEY   — merchant secret / password
 //   FLITT_CURRENCY     — ISO currency (default: GEL)
 //   FLITT_API_URL      — checkout endpoint (default: pay.flitt.com)
+//   FLITT_SANDBOX=1    — preview deployments only: use the public sandbox
 //
-// Nothing secret is ever hard-coded; without env vars it uses the public
-// sandbox so the whole flow is testable before real onboarding.
+// Without keys, local development uses Flitt's public sandbox (merchant
+// 1396424 / "test") so the whole flow is testable before onboarding. In
+// production (VERCEL_ENV=production, or NODE_ENV=production on Vercel) it
+// fails closed instead: no keys → no checkout, and a clear message — never
+// a silent switch to the public test merchant, whose "payments" are free.
+// A real merchant id without its secret is never paired with "test".
 
-import { createHash } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 
 export interface FlittConfig {
   merchantId: string;
@@ -21,9 +25,36 @@ export interface FlittConfig {
 
 const SANDBOX_MERCHANT_ID = "1396424";
 
-export function flittConfig(): FlittConfig {
-  const merchantId = process.env.FLITT_MERCHANT_ID?.trim() || SANDBOX_MERCHANT_ID;
-  const isSandbox = merchantId === SANDBOX_MERCHANT_ID;
+type Env = Record<string, string | undefined>;
+
+/** A production deployment (the spec: VERCEL_ENV, or NODE_ENV on Vercel). */
+export function isProductionDeploy(env: Env = process.env): boolean {
+  return env.VERCEL_ENV === "production" || (env.NODE_ENV === "production" && Boolean(env.VERCEL));
+}
+
+/**
+ * The merchant to use, or null when payments must stay off (production
+ * without keys, or a merchant id without its secret).
+ */
+export function flittConfig(env: Env = process.env): FlittConfig | null {
+  const merchantId = env.FLITT_MERCHANT_ID?.trim();
+  const secretKey = env.FLITT_SECRET_KEY?.trim();
+  let cfgMerchant: string;
+  let cfgSecret: string;
+  if (merchantId || secretKey) {
+    if (!merchantId || !secretKey) return null;
+    cfgMerchant = merchantId;
+    cfgSecret = secretKey;
+  } else {
+    // No keys: the public sandbox, but never on a production deployment
+    // (a preview may opt in with FLITT_SANDBOX=1).
+    const sandboxAllowed =
+      !isProductionDeploy(env) || (env.FLITT_SANDBOX === "1" && env.VERCEL_ENV !== "production");
+    if (!sandboxAllowed) return null;
+    cfgMerchant = SANDBOX_MERCHANT_ID;
+    cfgSecret = "test";
+  }
+  const isSandbox = cfgMerchant === SANDBOX_MERCHANT_ID;
   // The public sandbox merchant doesn't support GEL, so default it to USD
   // (amounts are the same numbers, just test money). Real merchants → GEL.
   const defaultCurrency = isSandbox ? "USD" : "GEL";
@@ -33,16 +64,31 @@ export function flittConfig(): FlittConfig {
     ? "https://pay.fondy.eu/api/checkout/url/"
     : "https://pay.flitt.com/api/checkout/url/";
   return {
-    merchantId,
-    secretKey: process.env.FLITT_SECRET_KEY?.trim() || "test",
-    currency: process.env.FLITT_CURRENCY?.trim() || defaultCurrency,
-    apiUrl: process.env.FLITT_API_URL?.trim() || defaultApiUrl,
+    merchantId: cfgMerchant,
+    secretKey: cfgSecret,
+    currency: env.FLITT_CURRENCY?.trim() || defaultCurrency,
+    apiUrl: env.FLITT_API_URL?.trim() || defaultApiUrl,
   };
 }
 
 /** True when running against the built-in public sandbox merchant. */
-export function isFlittSandbox(cfg = flittConfig()): boolean {
-  return cfg.merchantId === SANDBOX_MERCHANT_ID;
+export function isFlittSandbox(cfg: FlittConfig | null = flittConfig()): boolean {
+  return cfg?.merchantId === SANDBOX_MERCHANT_ID;
+}
+
+/**
+ * What a callback's order_status means for our Payment row. Only an
+ * approved order with the exact amount activates anything; a final "no"
+ * (declined, expired, reversed) is recorded as declined; anything else
+ * (created, processing) leaves the payment waiting for the final callback.
+ */
+export function callbackOutcome(
+  status: string | null,
+  amountMatches: boolean,
+): "approved" | "declined" | "pending" {
+  if (status === "approved") return amountMatches ? "approved" : "declined";
+  if (status === "declined" || status === "expired" || status === "reversed") return "declined";
+  return "pending";
 }
 
 /**
@@ -75,7 +121,7 @@ export interface CheckoutInput {
  */
 export async function createFlittCheckout(
   input: CheckoutInput,
-  cfg = flittConfig(),
+  cfg: FlittConfig,
 ): Promise<string> {
   const request: Record<string, string | number> = {
     order_id: input.orderId,
@@ -144,7 +190,7 @@ export interface CallbackResult {
  */
 export function verifyFlittCallback(
   fields: Record<string, string>,
-  cfg = flittConfig(),
+  cfg: FlittConfig,
 ): CallbackResult {
   const provided = fields.signature ?? "";
   const toSign: Record<string, string> = { ...fields };
@@ -152,7 +198,11 @@ export function verifyFlittCallback(
   delete toSign.response_signature_string;
 
   const expected = flittSignature(toSign, cfg.secretKey);
-  const valid = provided.length > 0 && provided === expected;
+  // Constant-time: the comparison must not leak how much of a forged
+  // signature was right.
+  const valid =
+    provided.length === expected.length &&
+    timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
 
   return {
     valid,

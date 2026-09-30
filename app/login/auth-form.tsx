@@ -10,24 +10,33 @@ export default function AuthForm({
   mode,
   labels,
   invite,
+  inviteEmail,
 }: {
   mode: "login" | "register";
   labels: Record<string, string>;
   /** Team invite token (register mode): joins the inviter's company. */
   invite?: string;
+  /** The email the invite was made for — the only one it works with. */
+  inviteEmail?: string;
 }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     mode === "login" ? login : register,
     null,
   );
-  const [accountType, setAccountType] = useState<"personal" | "business">("personal");
+  // React resets the form after the action; what was typed comes back with
+  // an error (never the password).
+  const sent = state && "values" in state ? state.values : undefined;
+  const [accountType, setAccountType] = useState<"personal" | "business">(
+    sent?.accountType === "business" ? "business" : "personal",
+  );
+  const sentProfile = sent?.profile ?? "hotel";
 
   return (
     <form action={formAction} className="mt-6 flex flex-col gap-4">
       {mode === "register" && (
         <label className="field">
           {labels.operator_name_optional}
-          <input name="name" autoComplete="off" />
+          <input name="name" autoComplete="off" defaultValue={sent?.name ?? ""} />
           <span className="hint">{labels.operator_name_hint}</span>
         </label>
       )}
@@ -69,16 +78,16 @@ export default function AuthForm({
           {labels.profile_label}
           <div className="flex flex-col items-start gap-1.5">
             <label className="btn-chip btn-chip--select" style={{ cursor: "pointer" }}>
-              <input type="radio" name="profile" value="hotel" defaultChecked />
-              <span>🏨 {labels.profile_hotel}</span>
+              <input type="radio" name="profile" value="hotel" defaultChecked={sentProfile === "hotel"} />
+              <span>{labels.profile_hotel}</span>
             </label>
             <label className="btn-chip btn-chip--select" style={{ cursor: "pointer" }}>
-              <input type="radio" name="profile" value="brokerage" />
-              <span>🏢 {labels.profile_brokerage}</span>
+              <input type="radio" name="profile" value="brokerage" defaultChecked={sentProfile === "brokerage"} />
+              <span>{labels.profile_brokerage}</span>
             </label>
             <label className="btn-chip btn-chip--select" style={{ cursor: "pointer" }}>
-              <input type="radio" name="profile" value="car_rental" />
-              <span>🚗 {labels.profile_car}</span>
+              <input type="radio" name="profile" value="car_rental" defaultChecked={sentProfile === "car_rental"} />
+              <span>{labels.profile_car}</span>
             </label>
           </div>
           <span className="hint">{labels.profile_hint}</span>
@@ -86,7 +95,20 @@ export default function AuthForm({
       )}
       <label className="field">
         {labels.operator_email}
-        <input name="email" type="email" required />
+        {inviteEmail ? (
+          <>
+            <input name="email" type="email" value={inviteEmail} readOnly required />
+            <span className="hint">{labels.invite_email_hint}</span>
+          </>
+        ) : (
+          <input
+            name="email"
+            type="email"
+            required
+            autoComplete="email"
+            defaultValue={sent?.email ?? ""}
+          />
+        )}
       </label>
       <label className="field">
         {labels.password_label}
@@ -95,12 +117,20 @@ export default function AuthForm({
           type="password"
           required
           minLength={mode === "register" ? 8 : 1}
-         
+          autoComplete={mode === "register" ? "new-password" : "current-password"}
         />
       </label>
 
       {state?.error && (
-        <p style={{ color: "var(--status-danger-text)", fontSize: 13 }}>{labels[state.error]}</p>
+        <p style={{ color: "var(--status-danger-text)", fontSize: 13 }} role="alert">
+          {labels[state.error]}
+          {state.error === "error_email_taken" && (
+            <>
+              {" "}
+              <Link href="/forgot" className="link">{labels.forgot_link}</Link>
+            </>
+          )}
+        </p>
       )}
 
       <button
@@ -110,6 +140,12 @@ export default function AuthForm({
       >
         {mode === "login" ? labels.login_submit : labels.register_submit}
       </button>
+
+      {mode === "login" && (
+        <p style={{ margin: 0, fontSize: 13 }}>
+          <Link href="/forgot" className="link">{labels.forgot_link}</Link>
+        </p>
+      )}
 
       <p style={{ color: "var(--color-text-muted)", fontSize: 13 }}>
         {mode === "login" ? (

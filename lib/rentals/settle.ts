@@ -39,8 +39,10 @@ export type WithdrawReason =
   | "fence_removed"
   | "fence_off"
   | "asset_deleted"
-  // The per-recipient daily limit was reached.
+  // A daily sending limit was reached: this number's (per account, or the
+  // platform-wide backstop), or this red-line event was announced already.
   | "limit"
+  | "limit_fence"
   // Calendar alerts: the free window got booked, its dates are over, the
   // double booking no longer exists, or the grace period ran out and a
   // repossession-right alert took over.
@@ -67,6 +69,7 @@ export const WITHDRAW_REASONS: WithdrawReason[] = [
   "fence_off",
   "asset_deleted",
   "limit",
+  "limit_fence",
   "filled",
   "passed",
   "replaced",

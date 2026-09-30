@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import type { Locale } from "@/lib/i18n/strings";
 import { sweepStaleMessages } from "@/lib/rentals/settle";
 import { startOfTodayTbilisi, tbilisiDayStartInstant } from "@/lib/time";
-import { clampMessage, withinDailyLimits, type SentToday } from "./limits";
+import { clampMessage, dailyLimitReason, type SentToday } from "./limits";
 import { normalizePhone } from "./phone";
 import {
   defaultTemplate,
@@ -84,11 +84,12 @@ const LIVE = ["queued", "sent", "failed"];
 async function sentToday(input: QueueInput, phone: string, now: Date): Promise<SentToday> {
   const since = tbilisiDayStartInstant(now);
   const today = { status: { in: LIVE }, createdAt: { gte: since } };
-  const [toPhone, toPhoneForAsset] = await Promise.all([
-    prisma.notifyMessage.count({ where: { toPhone: phone, ...today } }),
-    input.assetId
-      ? prisma.notifyMessage.count({ where: { toPhone: phone, assetId: input.assetId, ...today } })
-      : Promise.resolve(0),
+  const [toPhone, toPhoneAllAccounts] = await Promise.all([
+    // This account's own messages to the number: one account's queue never
+    // uses up another account's allowance.
+    prisma.notifyMessage.count({ where: { toPhone: phone, operatorId: input.operatorId, ...today } }),
+    // The backstop across accounts. The demo never sends, so it is left out.
+    prisma.notifyMessage.count({ where: { toPhone: phone, operator: { isDemo: false }, ...today } }),
   ]);
   let sameFenceKind: number | undefined;
   if (input.fenceId) {
@@ -106,7 +107,7 @@ async function sentToday(input: QueueInput, phone: string, now: Date): Promise<S
         })
       : 0;
   }
-  return { toPhone, toPhoneForAsset, sameFenceKind };
+  return { toPhone, toPhoneAllAccounts, sameFenceKind };
 }
 
 /** "driver" | "owner" — the last part of a red-line message's dedupe key. */
@@ -115,9 +116,10 @@ const roleSuffix = (key: TemplateKey) => (TEMPLATE_ROLE[key] === "owner" ? "owne
 /**
  * Put one message in the outbox. Returns the row when a message has
  * (re-)entered the queue, null when it was already there (deduped), when
- * there is no usable phone number, or when the daily limit for this
- * recipient is reached — then the message is kept as withdrawn with the
- * reason "limit", so the owner sees why it did not go out.
+ * there is no usable phone number, or when a daily limit is reached — then
+ * the message is kept as withdrawn with the reason "limit" (this number) or
+ * "limit_fence" (this red-line event was already announced today), so the
+ * owner sees why it did not go out.
  *
  * A message still waiting keeps its figures current: its text is
  * re-rendered on every call. A message that was withdrawn (the rent was
@@ -149,14 +151,15 @@ export async function queueMessage(input: QueueInput) {
     return null;
   }
 
-  const allowed = withinDailyLimits(TEMPLATE_ROLE[input.key], await sentToday(input, phone, now));
+  const limited = dailyLimitReason(await sentToday(input, phone, now));
+  const allowed = limited === null;
   if (existing) {
     // Withdrawn earlier: back in the queue only while today's limit allows.
-    if (!allowed) {
-      if (existing.cancelReason === "limit") return null;
+    if (limited) {
+      if (existing.cancelReason === limited) return null;
       await prisma.notifyMessage.update({
         where: { id: existing.id },
-        data: { toPhone: phone, body, cancelReason: "limit", cancelledAt: now },
+        data: { toPhone: phone, body, cancelReason: limited, cancelledAt: now },
       });
       return null;
     }
@@ -185,7 +188,7 @@ export async function queueMessage(input: QueueInput) {
       body,
       dedupeKey: input.dedupeKey,
       createdAt: now,
-      ...(allowed ? {} : { status: "cancelled", cancelReason: "limit", cancelledAt: now }),
+      ...(limited ? { status: "cancelled", cancelReason: limited, cancelledAt: now } : {}),
     },
   });
   return allowed ? row : null;
@@ -239,17 +242,29 @@ export interface FlushResult {
   pending: number;
 }
 
-/**
- * Deliver one workspace's queued messages. Always per workspace: one
- * owner's action (a scan, a ping, a retry) never sends another owner's
- * queue. Without credentials nothing is sent and the messages stay queued
- * for click-to-send — that is a normal state, not an error.
- */
 /** A claimed message whose send never reported back within this is given up on. */
 const SENDING_TIMEOUT_MS = 10 * 60_000;
 
+/**
+ * Whether this workspace's messages go out over the Cloud API. Never for
+ * the shared public demo: anyone can type a phone number and a text there,
+ * so its messages only ever get the manual wa.me link (sent, if at all,
+ * from the visitor's own WhatsApp).
+ */
+export async function autoSendFor(operatorId: string): Promise<boolean> {
+  if (!whatsappConfig()) return false;
+  const operator = await prisma.operator.findUnique({ where: { id: operatorId }, select: { isDemo: true } });
+  return operator != null && !operator.isDemo;
+}
+
+/**
+ * Deliver one workspace's queued messages. Always per workspace: one
+ * owner's action (a scan, a ping, a retry) never sends another owner's
+ * queue. Without credentials (or for the demo) nothing is sent and the
+ * messages stay queued for click-to-send — a normal state, not an error.
+ */
 export async function flushOutbox(operatorId: string): Promise<FlushResult> {
-  const config = whatsappConfig();
+  const config = (await autoSendFor(operatorId)) ? whatsappConfig() : null;
   // A send that was cut off (the function timed out mid-request) may or may
   // not have reached the phone: it is marked failed, never sent again on
   // its own — the owner decides.

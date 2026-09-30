@@ -6,6 +6,7 @@ import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
 import { tbilisiFormat } from "@/lib/time";
 import BookingEditForm from "./booking-edit-form";
+import { firstParam, type QueryValue } from "@/lib/params";
 
 export const dynamic = "force-dynamic";
 
@@ -18,11 +19,11 @@ export default async function EditBookingPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ back?: string }>;
+  searchParams: Promise<{ back?: QueryValue }>;
 }) {
   const operator = await requireOperator();
   const { id } = await params;
-  const { back } = await searchParams;
+  const back = firstParam((await searchParams).back);
   const booking = await prisma.booking.findFirst({
     where: { id, unit: { operatorId: operator.id } },
     include: { unit: { select: { id: true, name: true, nameKa: true } } },

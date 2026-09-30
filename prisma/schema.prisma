@@ -22,8 +22,8 @@ model Operator {
   locale       String   @default("en") // "en" | "ka"
   createdAt    DateTime @default(now())
 
-  // Billing: 30-day full-access trial from signup, then a chosen plan.
-  // Payments land in a later stage — choosing a plan activates it.
+  // Billing: 30-day full-access trial from signup, then a paid plan. A plan
+  // applies while it is paid: paidUntil (+3 days grace, lib/billing/plans.ts).
   accountType String    @default("personal") // "personal" | "business"
   // Workspace profile: shapes the dashboard and nav.
   profile     String    @default("personal") // "personal" | "hotel" | "brokerage"
@@ -43,6 +43,11 @@ model Operator {
   // WhatsApp number that receives owner-side alerts (geofence, overdue rent).
   notifyPhone String?
 
+  // The shared public demo (credentials on the landing and login pages):
+  // read-only (lib/auth/session.ts requireWriter), never sends WhatsApp
+  // messages itself, and keeps its showcase plan without payment.
+  isDemo Boolean @default(false)
+
   units     Unit[]
   alerts    Alert[]
   assets    Asset[]
@@ -52,6 +57,7 @@ model Operator {
   payments  Payment[]
   templates NotifyTemplate[]
   messages  NotifyMessage[]
+  resets    PasswordReset[]
 
   @@index([companyId])
 }
@@ -80,6 +86,7 @@ model Payment {
 
 // A pending team invitation (business plans). The invite link is
 // /register?invite=<token>; no email sending yet — the owner copies it.
+// The link only works for the invited email, for 7 days (lib/auth/invite.ts).
 model Invite {
   id        String    @id @default(cuid())
   companyId String
@@ -103,6 +110,36 @@ model Session {
   operator Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
 
   @@index([operatorId])
+}
+
+// A password-reset link (/reset/<token>, sent by email). Like Session, the
+// id is the SHA-256 of the token, so the database never holds a usable
+// link. Single use (usedAt) and short-lived (expiresAt).
+model PasswordReset {
+  id         String    @id
+  operatorId String
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  operator Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+
+  @@index([operatorId])
+}
+
+// A failed sign-in or a reset request, for rate limiting (lib/auth/limit.ts):
+// counted per email and per IP over a short window, pruned after a day.
+// Holds no password and no session.
+model AuthAttempt {
+  id        String   @id @default(cuid())
+  kind      String // "login" | "reset"
+  email     String
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([kind, email, createdAt])
+  @@index([kind, ip, createdAt])
+  @@index([createdAt])
 }
 
 // A rentable unit (apartment, aparthotel room, studio...).
@@ -490,7 +527,7 @@ model NotifyMessage {
   cancelledAt  DateTime?
   // "paid" | "changed" | "contract_ended" | "contract_deleted" | "returned"
   // | "moved_away" | "newer_reminder" | "fence_removed" | "fence_off"
-  // | "asset_deleted" | "limit" (lib/rentals/settle.ts WithdrawReason)
+  // | "asset_deleted" | "limit" | "limit_fence" (lib/rentals/settle.ts WithdrawReason)
   cancelReason String?
 
   operator Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)

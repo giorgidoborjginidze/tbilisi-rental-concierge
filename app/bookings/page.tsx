@@ -5,6 +5,7 @@ import { getLocale } from "@/lib/i18n/locale";
 import { t, type Locale, type StringKey } from "@/lib/i18n/strings";
 import { startOfTodayTbilisi, tbilisiFormat } from "@/lib/time";
 import RentalsSubnav from "../rentals-subnav";
+import { firstParam, type QueryValue } from "@/lib/params";
 
 export const dynamic = "force-dynamic";
 
@@ -31,11 +32,13 @@ function sourceName(locale: Locale, source: string): string {
 export default async function BookingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ show?: string; unit?: string }>;
+  searchParams: Promise<{ show?: QueryValue; unit?: QueryValue }>;
 }) {
   const operator = await requireOperator();
   const locale = await getLocale();
-  const { show: showParam, unit: unitParam } = await searchParams;
+  const query = await searchParams;
+  const showParam = firstParam(query.show);
+  const unitParam = firstParam(query.unit);
   const show: Show = SHOWS.includes(showParam as Show) ? (showParam as Show) : "all";
 
   const since = new Date(startOfTodayTbilisi().getTime() - LOOKBACK_DAYS * DAY_MS);

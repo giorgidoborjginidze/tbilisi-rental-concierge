@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { prisma } from "@/lib/db";
 import { getSessionOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
@@ -8,7 +9,8 @@ import ThemeToggle from "./theme-toggle";
 import ActivoLogo from "./activo-logo";
 import AccountMenu from "./account-menu";
 import NavMenu from "./nav-menu";
-import { planById } from "@/lib/billing/plans";
+import DemoRibbon from "./demo-ribbon";
+import { effectivePlan, planById, planStanding, trialDaysLeft, type AccountType } from "@/lib/billing/plans";
 
 // Plan names always shown in Latin, per design.
 const PLAN_LATIN: Record<string, string> = {
@@ -60,6 +62,7 @@ export default async function Nav() {
   const menuLinks = [...links, ...infoLinks];
 
   return (
+    <>
     <nav className="nav">
       <Link href="/" className="nav__brand" aria-label={t(locale, "appName")}>
         <ActivoLogo height={24} />
@@ -87,9 +90,24 @@ export default async function Nav() {
             const username = /^[\x00-\x7F]+$/.test(rawName)
               ? rawName
               : operator.email.split("@")[0];
-            const plan = operator.plan
-              ? PLAN_LATIN[operator.plan] ?? planById(operator.plan)?.id ?? "—"
-              : "Trial";
+            // The plan in force: a bought plan only while it is paid.
+            const now = new Date();
+            const state = {
+              accountType: operator.accountType as AccountType,
+              plan: operator.plan,
+              trialEndsAt: operator.trialEndsAt,
+              paidUntil: operator.paidUntil,
+              complimentary: operator.isDemo,
+            };
+            const standing = planStanding(state, now);
+            const inForce = effectivePlan(state, now);
+            const plan = operator.companyId
+              ? "Team"
+              : standing === "paid" || standing === "grace" || standing === "complimentary"
+                ? PLAN_LATIN[inForce.id] ?? planById(inForce.id)?.id ?? "—"
+                : trialDaysLeft(operator.trialEndsAt, now) > 0
+                  ? "Trial"
+                  : PLAN_LATIN[inForce.id] ?? inForce.id;
             return (
               <AccountMenu
                 name={username}
@@ -119,5 +137,18 @@ export default async function Nav() {
         />
       )}
     </nav>
+    {operator?.isDemo && (
+      <Suspense fallback={null}>
+        <DemoRibbon
+          labels={{
+            ribbon: t(locale, "demo_ribbon"),
+            readonly: t(locale, "demo_readonly"),
+            cta: t(locale, "demo_register_cta"),
+            close: t(locale, "bot_close"),
+          }}
+        />
+      </Suspense>
+    )}
+    </>
   );
 }

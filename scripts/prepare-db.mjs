@@ -8,6 +8,12 @@
 //       to the database (prisma db push), then run the idempotent data
 //       repairs (scripts/repair-ledger.ts).
 //
+// The push NEVER passes --accept-data-loss: a change that would drop or
+// rewrite data (a removed or renamed column, a new unique constraint over
+// existing rows) makes `db push` refuse, and the deploy fails before
+// anything is lost. Schema changes must be additive (new tables, new
+// columns with defaults); anything else needs a planned migration.
+//
 // Keeps one schema file authoritative while supporting both databases.
 
 import { execSync } from "node:child_process";
@@ -37,9 +43,18 @@ if (!isPostgres) {
   if (process.env.VERCEL) {
     // Managed deploy: sync the schema (no migration history needed yet).
     // (Prisma 7 dropped --skip-generate; the extra generate is harmless.)
-    run(
-      "npx prisma db push --schema prisma/schema.postgres.prisma --accept-data-loss",
-    );
+    // Without --accept-data-loss: a destructive change fails the deploy
+    // here instead of silently dropping customer data.
+    try {
+      run("npx prisma db push --schema prisma/schema.postgres.prisma");
+    } catch (error) {
+      console.error(
+        "[prepare-db] schema push refused. If Prisma reported possible data loss, the schema change " +
+          "is not additive (a removed/renamed column or a new unique constraint). Nothing was changed; " +
+          "make the change additive or migrate the data deliberately — never add --accept-data-loss here.",
+      );
+      throw error;
+    }
     // Ensure the demo account exists (idempotent, additive — the seed
     // skips itself if the demo is already there and never wipes data).
     try {
@@ -47,6 +62,9 @@ if (!isPostgres) {
     } catch {
       console.warn("[prepare-db] demo seed skipped (non-fatal)");
     }
+    // The shared public demo must be read-only whatever happened to the
+    // seed above. Idempotent; fatal on failure.
+    run("npx tsx scripts/ensure-demo.ts");
     // Bring rows written before the rent-ledger fix onto it: per-period
     // amounts, no false "unpaid since the start" debts. Idempotent. Fatal
     // on failure — deploying the new ledger over unrepaired rows would
