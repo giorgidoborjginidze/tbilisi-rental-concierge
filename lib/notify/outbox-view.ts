@@ -12,7 +12,13 @@ export interface OutboxRow {
 }
 
 const RECENT_MS = 7 * 86_400_000;
-const PENDING = new Set(["queued", "failed", "sending"]);
+/** Statuses of a message that has not gone out yet. */
+export const PENDING_STATUSES: ReadonlySet<string> = new Set(["queued", "failed", "sending"]);
+const PENDING = PENDING_STATUSES;
+
+/** Sent by hand, a note to the owner would go to the owner's own number. */
+export const selfAddressed = (row: { toRole: string }, autoSend: boolean) =>
+  !autoSend && row.toRole === "owner";
 
 export function outboxView<T extends OutboxRow>(
   rows: T[],
@@ -23,7 +29,7 @@ export function outboxView<T extends OutboxRow>(
   // Sent by hand, a note to the owner would go from the owner's WhatsApp to
   // the owner's own number — the alert already tells them. Only automatic
   // sending delivers those.
-  const toOwner = (row: T) => !autoSend && row.toRole === "owner";
+  const toOwner = (row: T) => selfAddressed(row, autoSend);
   const waiting = pending
     .filter((row) => !toOwner(row))
     // Oldest first: the order they are due to go out.

@@ -9,6 +9,8 @@ import { IconArrowRight, IconCheck, IconClose } from "./icons";
 export interface DecideItem {
   contractId: string;
   assetId: string;
+  /** Where "open" (swipe left) leads: the asset's desk, on its payments. */
+  href: string;
   /** The asset's display name. */
   name: string;
   title: string;
@@ -19,6 +21,8 @@ export interface DecideItem {
   /** Unpaid periods already due — more than one asks before recording. */
   periodsOwed: number;
   severe: boolean;
+  /** Other urgent facts about the same asset (outside its red line…). */
+  flags: { label: string; tone: "danger" | "warn" }[];
 }
 
 export interface DecideLabels {
@@ -177,7 +181,7 @@ export default function DecideCards({
                 item={item}
                 labels={labels}
                 onPaid={() => paid(item)}
-                onOpen={() => router.push(`/assets/${item.assetId}/rental`)}
+                onOpen={() => router.push(item.href)}
               />
             ),
           )}
@@ -357,6 +361,15 @@ function Card({
         <span className="decide-txt">
           <b>{item.title}</b>
           <span>{item.sub}</span>
+          {item.flags.length > 0 && (
+            <span className="decide-flags">
+              {item.flags.map((flag) => (
+                <span key={flag.label} className={`badge badge--sm badge--${flag.tone}`}>
+                  {flag.label}
+                </span>
+              ))}
+            </span>
+          )}
         </span>
         <span className="decide-amount">
           {fmt(item.amount, item.currency)}

@@ -19,6 +19,7 @@ type Tab = "re" | "car" | "flip";
 // Free calculator tabs: buy-to-let, vehicle, flip. All stay mounted so
 // values survive switching back and forth.
 export default function InvestTabs({
+  initial = "re",
   reLabel,
   carLabel,
   flipLabel,
@@ -26,6 +27,8 @@ export default function InvestTabs({
   car,
   flip,
 }: {
+  /** The calculator shown first. */
+  initial?: Tab;
   reLabel: string;
   carLabel: string;
   flipLabel: string;
@@ -33,7 +36,7 @@ export default function InvestTabs({
   car: ReactNode;
   flip: ReactNode;
 }) {
-  const [tab, setTab] = useState<Tab>("re");
+  const [tab, setTab] = useState<Tab>(initial);
 
   const tabs: { id: Tab; label: string; svg: ReactNode }[] = [
     {

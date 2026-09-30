@@ -16,7 +16,7 @@ import { AlertTypeIcon } from "../alert-icon";
 import { formatMoney } from "@/lib/format";
 import { IconAlert, IconArrowRight, IconChevronLeft, IconChevronRight } from "../icons";
 import { getMarketDataSource } from "@/lib/market/source";
-import { benchmarkMonth, freeWindowRange, occupancyShare, windowPrice } from "@/lib/pricing/nightly";
+import { benchmarkMonth, freeWindowRange, placeOccupancy, windowPrice } from "@/lib/pricing/nightly";
 
 export const dynamic = "force-dynamic";
 
@@ -172,7 +172,8 @@ export default async function CalendarPage({
       // No base rate yet (a unit made for an asset with no day price and
       // no district figure): no price to suggest.
       if (!unit || unit.baseNightlyRate <= 0) return [];
-      const occupancy = occupancyShare(aheadOf(row.place), today, 30);
+      // The same demand input as /pricing (lib/pricing/run.ts).
+      const occupancy = placeOccupancy(row.place.sources, today, 30);
       return Promise.all(
         (gapsOf.get(row.place.key) ?? []).map(async (gap) => {
           const nights = Array.from({ length: gap.nights }, (_, i) => new Date(gap.start.getTime() + i * DAY_MS));

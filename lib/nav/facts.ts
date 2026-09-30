@@ -5,6 +5,7 @@ import { cache } from "react";
 import { prisma } from "@/lib/db";
 import { navModel, type NavModel } from "./model";
 import { DAY_LET_WITHOUT_UNIT } from "@/lib/property/places";
+import { NEEDS_YOU_TYPES } from "@/lib/alerts/rank";
 
 export const workspaceNav = cache(
   async (operatorId: string, profile: string): Promise<NavModel> => {
@@ -16,5 +17,24 @@ export const workspaceNav = cache(
       prisma.asset.count({ where: { operatorId, ...DAY_LET_WITHOUT_UNIT } }),
     ]);
     return navModel({ profile, units: units + looseFlats });
+  },
+);
+
+/**
+ * The bell's badge: how many open alerts need the owner now (urgent ones
+ * and late rent — lib/alerts/rank.ts), or a dot when only advice waits.
+ * Read once per request by the top nav and the tab bar.
+ */
+export const alertBadge = cache(
+  async (operatorId: string): Promise<number | "dot" | null> => {
+    const [needs, advice] = await Promise.all([
+      prisma.alert.count({
+        where: { operatorId, status: "open", type: { in: [...NEEDS_YOU_TYPES] } },
+      }),
+      prisma.alert.count({
+        where: { operatorId, status: "open", type: { notIn: [...NEEDS_YOU_TYPES] } },
+      }),
+    ]);
+    return needs > 0 ? needs : advice > 0 ? "dot" : null;
   },
 );

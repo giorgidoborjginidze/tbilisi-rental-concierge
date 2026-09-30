@@ -22,14 +22,13 @@ import RevenuePartial, { monthKeyOf } from "./revenue-partial";
 import {
   AssetDeck,
   CompositionRing,
-  DailyCheck,
-  DecideToday,
   IncomeBars,
   MarketTips,
   PortfolioRing,
   WealthHero,
   ringPartsFromAssets,
 } from "./dash-extras";
+import { TodayMoves, TodaySection } from "./dash-today";
 import {
   activeContract as runningContract,
   assetStatusNow,
@@ -57,31 +56,6 @@ export async function generateMetadata(): Promise<Metadata> {
 const DAY_MS = 86_400_000;
 
 const pct = (rate: number) => `${Math.round(rate * 100)}%`;
-
-function Kpi({
-  label,
-  value,
-  sub,
-  hint,
-  partial,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  /** What the label means (finance terms), shown on hover and read aloud. */
-  hint?: string;
-  /** Some sold nights have no price: the figure is a floor. */
-  partial?: string;
-}) {
-  return (
-    <div className="kpi">
-      <div className="kpi__label" title={hint}>{label}</div>
-      <div className="kpi__value">{value}</div>
-      {sub && <div className="kpi__sub">{sub}</div>}
-      {partial && <div className="kpi__sub price-missing">{partial}</div>}
-    </div>
-  );
-}
 
 // Public, informational landing for signed-out visitors: what the
 // product is, four benefits, the free calculator, one price line.
@@ -372,8 +346,38 @@ function DashboardHeader({
   );
 }
 
-const openAlertCount = (operatorId: string) =>
-  prisma.alert.count({ where: { operatorId, status: "open" } });
+// Every dashboard reads in one order: the hero number → "Today" → the
+// composition ring → the property deck → the income bars → the profile's
+// own working section → Market Advice, last, with nothing below it. No
+// KPI grid repeats the hero's figures.
+
+/** An account with nothing in it yet: one clear first step, no zeros. */
+function EmptyStart({ locale, profile }: { locale: Locale; profile: string }) {
+  const start =
+    profile === "hotel"
+      ? { title: "empty_title_hotel", body: "empty_body", cta: "empty_cta_hotel", href: "/units/new" }
+      : profile === "car_rental"
+        ? { title: "empty_title_car", body: "empty_body", cta: "empty_cta_car", href: "/assets/new?category=vehicle" }
+        : { title: "empty_title", body: "empty_body", cta: "empty_cta", href: "/assets/new" };
+  return (
+    <section className="card empty-start">
+      <h2>{t(locale, start.title as StringKey)}</h2>
+      <p>{t(locale, start.body as StringKey)}</p>
+      <Link href={start.href} className="btn-primary">
+        {t(locale, start.cta as StringKey)}
+      </Link>
+    </section>
+  );
+}
+
+/** Nothing in the workspace yet — no asset, no unit. */
+async function isEmptyWorkspace(operatorId: string) {
+  const [assets, units] = await Promise.all([
+    prisma.asset.count({ where: { operatorId } }),
+    prisma.unit.count({ where: { operatorId } }),
+  ]);
+  return assets === 0 && units === 0;
+}
 
 const sourceLabel = (locale: Locale, source: string) =>
   source === "airbnb"
@@ -384,7 +388,7 @@ const sourceLabel = (locale: Locale, source: string) =>
         ? t(locale, "source_direct")
         : t(locale, "source_manual");
 
-// ——— Hotel / aparthotel: today's operations + this month's key numbers. ———
+// ——— Hotel / aparthotel: tonight's house, today's arrivals and departures. ———
 async function HotelDashboard({
   locale,
   operator,
@@ -392,29 +396,36 @@ async function HotelDashboard({
   locale: Locale;
   operator: SessionOperator;
 }) {
+  if (await isEmptyWorkspace(operator.id)) {
+    return (
+      <main>
+        <DashboardHeader locale={locale} operator={operator} sub={t(locale, "profile_hotel")} />
+        <EmptyStart locale={locale} profile="hotel" />
+        <MarketTips locale={locale} operatorId={operator.id} empty />
+      </main>
+    );
+  }
+
   // Tbilisi's today: arrivals after midnight belong to the new day.
   const today = startOfTodayTbilisi();
+  const tomorrow = startOfTomorrowTbilisi();
   const monthStart = monthStartTbilisi(0);
   const monthEnd = monthStartTbilisi(1);
-  // Fetch a hair wider than the month so a stay ending exactly on the 1st
-  // still shows up in today's departures.
-  const queryStart = new Date(
-    Math.min(monthStart.getTime(), today.getTime()) - DAY_MS,
-  );
 
-  const [units, income, places] = await Promise.all([
-    prisma.unit.findMany({
-      where: { operatorId: operator.id },
-      orderBy: [{ city: "asc" }, { district: "asc" }, { name: "asc" }],
-      include: {
-        bookings: {
-          where: {
-            ...LIVE_STAY,
-            checkIn: { lt: monthEnd },
-            checkOut: { gt: queryStart },
-          },
-        },
+  const [unitCount, moves, income, places] = await Promise.all([
+    prisma.unit.count({ where: { operatorId: operator.id } }),
+    // Stays that arrive or leave today.
+    prisma.booking.findMany({
+      where: {
+        ...LIVE_STAY,
+        unit: { operatorId: operator.id },
+        OR: [
+          { checkIn: { gte: today, lt: tomorrow } },
+          { checkOut: { gte: today, lt: tomorrow } },
+        ],
       },
+      include: { unit: { select: { id: true, name: true, nameKa: true } } },
+      orderBy: { checkIn: "asc" },
     }),
     monthlyIncome(operator.id, monthStart),
     // The same places and nights as /analytics (lib/property/places.ts).
@@ -424,159 +435,97 @@ async function HotelDashboard({
     }),
   ]);
 
-  const currency = units[0]?.currency ?? "GEL";
   const monthWindow = { start: monthStart, end: monthEnd };
   // Nightly metrics, one source per night; nights let on a long lease or
   // a long contract are not for sale.
   const portfolio = aggregateMetrics(places.map((place) => placeMetrics(place.sources, monthWindow)));
+  const currency = moves[0]?.currency ?? "GEL";
+  // Places a stay, a contract or today's answer holds tonight.
+  const occupiedNow = places.filter((place) => stayOn(place.sources, today) != null).length;
+  const partial = portfolio.unpricedNights > 0 ? ` (${t(locale, "revenue_partial_short")})` : "";
 
   const displayName = (unit: { name: string; nameKa: string | null }) =>
     locale === "ka" && unit.nameKa ? unit.nameKa : unit.name;
-
-  const allBookings = units.flatMap((unit) =>
-    unit.bookings.map((booking) => ({ unit, booking })),
-  );
-  const sameDay = (a: Date, b: Date) => a.getTime() === b.getTime();
-  const startOfDay = (d: Date) =>
-    new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-  const arrivals = allBookings.filter(({ booking }) =>
-    sameDay(startOfDay(booking.checkIn), today),
-  );
-  const departures = allBookings.filter(({ booking }) =>
-    sameDay(startOfDay(booking.checkOut), today),
-  );
-  // Places a stay, a contract or today's answer holds tonight.
-  const occupiedNow = places.filter((place) => stayOn(place.sources, today) != null).length;
-
-  const stayList = (
-    rows: typeof arrivals,
-    emptyKey: StringKey,
-  ) =>
-    rows.length === 0 ? (
-      <p style={{ color: "var(--color-text-muted)", fontSize: 13, marginTop: 10 }}>
-        {t(locale, emptyKey)}
-      </p>
-    ) : (
-      <div className="card card--stack" style={{ marginTop: 12 }}>
-        <table>
-          <thead>
-            <tr>
-              <th>{t(locale, "unit_name")}</th>
-              <th>{t(locale, "dash_guest")}</th>
-              <th className="num">{t(locale, "nights_short")}</th>
-              <th className="num">{t(locale, "booking_price")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(({ unit, booking }) => (
-              <tr key={booking.id}>
-                <td>
-                  <Link href={`/calendar?unit=${unit.id}`} className="link">
-                    {displayName(unit)}
-                  </Link>
-                  <div className="cell-sub">{districtLabel(locale, unit.district)}</div>
-                </td>
-                <td data-label={t(locale, "dash_guest")}>
-                  {booking.guestName ?? "—"}
-                  <div className="cell-sub">{sourceLabel(locale, booking.source)}</div>
-                </td>
-                <td className="num" data-label={t(locale, "nights_short")}>
-                  {booking.nights}
-                </td>
-                <td className="num" data-label={t(locale, "booking_price")}>
-                  {booking.amount != null ? (
-                    <Link href={`/bookings/${booking.id}/edit`} className="link">
-                      {formatMoney(booking.amount, booking.currency)}
-                    </Link>
-                  ) : (
-                    // Imported stays arrive without a price.
-                    <Link href={`/bookings/${booking.id}/edit`} className="price-missing">
-                      {t(locale, "booking_no_price")}
-                    </Link>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    );
+  const inToday = (d: Date) => d >= today && d < tomorrow;
+  const moveRow = (booking: (typeof moves)[number]) => ({
+    key: booking.id,
+    href: `/calendar?unit=${booking.unit.id}&month=${monthKeyOf(today)}`,
+    name: displayName(booking.unit),
+    sub: [
+      booking.guestName,
+      sourceLabel(locale, booking.source),
+      `${booking.nights} ${t(locale, "nights_short")}`,
+    ]
+      .filter(Boolean)
+      .join(" · "),
+    aside:
+      booking.amount != null ? (
+        <Link href={`/bookings/${booking.id}/edit`} className="today-moves__amount">
+          {formatMoney(booking.amount, booking.currency)}
+        </Link>
+      ) : (
+        // Imported stays arrive without a price.
+        <Link href={`/bookings/${booking.id}/edit`} className="today-moves__amount price-missing">
+          {t(locale, "booking_no_price")}
+        </Link>
+      ),
+  });
 
   return (
     <main>
       <DashboardHeader
         locale={locale}
         operator={operator}
-        sub={`${t(locale, "profile_hotel")} · ${units.length} ${t(locale, "nav_units").toLowerCase()}`}
+        sub={`${t(locale, "profile_hotel")} · ${unitCount} ${t(locale, "nav_units").toLowerCase()}`}
       />
 
-      {units.length === 0 && (
-        <div className="alert-card" style={{ alignItems: "center" }}>
-          <div className="alert-card__detail" style={{ marginTop: 0 }}>
-            {t(locale, "units_empty")}
-          </div>
-          <Link href="/units/new" className="btn-primary">
-            {t(locale, "units_add")}
-          </Link>
-        </div>
-      )}
+      {/* The same "all income" as the income bars and /assets; the
+          booking-side figures (the analytics ones) ride as chips. */}
+      <WealthHero
+        label={t(locale, "income_all_month")}
+        total={income.total}
+        sub={incomeParts(locale, income, (v) => formatMoney(v))}
+        chips={
+          places.length > 0
+            ? [
+                `${t(locale, "dash_occupied_now")}: ${occupiedNow} / ${places.length}`,
+                `${t(locale, "kpi_occupancy")}: ${pct(portfolio.occupancyRate)}`,
+                `${t(locale, "kpi_adr_short")}: ${formatMoney(portfolio.adr, currency)}`,
+                `${t(locale, "kpi_revpar_chip")}: ${formatMoney(portfolio.revpar, currency)}${partial}`,
+                `${t(locale, "kpi_booking_revenue")}: ${formatMoney(portfolio.revenue, currency)}${partial}`,
+              ]
+            : []
+        }
+        link={places.length > 0 ? { href: "/analytics", label: t(locale, "nav_analytics") } : undefined}
+      />
+      <RevenuePartial locale={locale} nights={portfolio.unpricedNights} month={monthKeyOf(monthStart)} />
 
-      {units.length > 0 && (
-        <>
-          {/* The same "all income" as the income bars and /assets; the
-              booking revenue (the analytics figure) is named as such. */}
-          <WealthHero
-            label={t(locale, "income_all_month")}
-            total={income.total}
-            chips={[
-              `${t(locale, "kpi_booking_revenue")}: ${formatMoney(portfolio.revenue, currency)}${
-                portfolio.unpricedNights > 0 ? ` (${t(locale, "revenue_partial_short")})` : ""
-              }`,
-              `${t(locale, "kpi_occupancy")}: ${pct(portfolio.occupancyRate)}`,
-              `${t(locale, "kpi_adr_short")}: ${formatMoney(portfolio.adr, currency)}`,
-            ]}
-          />
-          <PortfolioRing locale={locale} operatorId={operator.id} />
-          <DailyCheck locale={locale} operatorId={operator.id} />
-          <DecideToday locale={locale} operatorId={operator.id} />
-          <AssetDeck locale={locale} operatorId={operator.id} />
-          <IncomeBars locale={locale} operatorId={operator.id} />
-          <section>
-            <h2>{t(locale, "this_month")}</h2>
-            <div className="kpi-grid kpi-grid--3d kpi-grid--5">
-              <Kpi label={t(locale, "kpi_occupancy")} value={pct(portfolio.occupancyRate)} />
-              <Kpi label={t(locale, "kpi_adr")} hint={t(locale, "kpi_adr_hint")} value={formatMoney(portfolio.adr, currency)} />
-              <Kpi
-                label={t(locale, "kpi_revpar")}
-                hint={t(locale, "kpi_revpar_hint")}
-                value={formatMoney(portfolio.revpar, currency)}
-                partial={portfolio.unpricedNights > 0 ? t(locale, "revenue_partial_short") : undefined}
-              />
-              <Kpi
-                label={t(locale, "kpi_booking_revenue")}
-                value={formatMoney(portfolio.revenue, currency)}
-                partial={portfolio.unpricedNights > 0 ? t(locale, "revenue_partial_short") : undefined}
-              />
-              <Kpi
-                label={t(locale, "dash_occupied_now")}
-                value={`${occupiedNow} / ${places.length}`}
-              />
-            </div>
-            <RevenuePartial locale={locale} nights={portfolio.unpricedNights} month={monthKeyOf(monthStart)} />
-          </section>
+      <TodaySection
+        locale={locale}
+        operatorId={operator.id}
+        moves={
+          unitCount > 0 ? (
+            <TodayMoves
+              columns={[
+                {
+                  title: t(locale, "today_arrivals"),
+                  empty: t(locale, "today_none"),
+                  rows: moves.filter((b) => inToday(b.checkIn)).map(moveRow),
+                },
+                {
+                  title: t(locale, "today_departures"),
+                  empty: t(locale, "today_none"),
+                  rows: moves.filter((b) => inToday(b.checkOut)).map(moveRow),
+                },
+              ]}
+            />
+          ) : null
+        }
+      />
 
-          <section>
-            <h2>{t(locale, "dash_arrivals_today")}</h2>
-            {stayList(arrivals, "dash_no_arrivals")}
-          </section>
-
-          <section>
-            <h2>{t(locale, "dash_departures_today")}</h2>
-            {stayList(departures, "dash_no_departures")}
-          </section>
-
-        </>
-      )}
+      <PortfolioRing locale={locale} operatorId={operator.id} />
+      <AssetDeck locale={locale} operatorId={operator.id} />
+      <IncomeBars locale={locale} operatorId={operator.id} />
 
       <MarketTips locale={locale} operatorId={operator.id} />
     </main>
@@ -591,35 +540,40 @@ async function BrokerageDashboard({
   locale: Locale;
   operator: SessionOperator;
 }) {
+  if (await isEmptyWorkspace(operator.id)) {
+    return (
+      <main>
+        <DashboardHeader locale={locale} operator={operator} sub={t(locale, "profile_brokerage")} />
+        <EmptyStart locale={locale} profile="brokerage" />
+        <MarketTips locale={locale} operatorId={operator.id} empty />
+      </main>
+    );
+  }
+
   const today = startOfTodayTbilisi();
   const in30 = new Date(today.getTime() + 30 * DAY_MS);
 
-  const [assets, alertCount, income] = await Promise.all([
+  const [assets, income] = await Promise.all([
     prisma.asset.findMany({
       where: { operatorId: operator.id, category: { not: "income_source" } },
       include: { contracts: { orderBy: { endDate: "desc" } } },
       orderBy: [{ category: "asc" }, { name: "asc" }],
     }),
-    openAlertCount(operator.id),
     monthlyIncome(operator.id),
   ]);
 
-  const activeContract = (asset: (typeof assets)[number]) =>
-    runningContract(asset.contracts, today);
   // The asset follows its contracts: a lease that has ended no longer
   // keeps it counted as rented.
   const effectiveStatus = (asset: (typeof assets)[number]) =>
-    activeContract(asset)
+    runningContract(asset.contracts, today)
       ? "rented"
       : asset.unitId
         ? "rented"
         : assetStatusNow(asset, asset.contracts, today);
-
-  const statusCounts = { rented: 0, listed: 0, vacant: 0, personal_use: 0 };
+  const statusCounts = new Map<string, number>();
   for (const asset of assets) {
     const status = effectiveStatus(asset);
-    statusCounts[status as keyof typeof statusCounts] =
-      (statusCounts[status as keyof typeof statusCounts] ?? 0) + 1;
+    statusCounts.set(status, (statusCounts.get(status) ?? 0) + 1);
   }
 
   const expiring = assets
@@ -634,36 +588,22 @@ async function BrokerageDashboard({
   const displayName = (a: { name: string; nameKa: string | null }) =>
     locale === "ka" && a.nameKa ? a.nameKa : a.name;
 
-  const statusRows: { key: StringKey; badge: string; count: number }[] = [
-    { key: "status_rented", badge: "badge--rented", count: statusCounts.rented },
-    { key: "status_listed", badge: "badge--listed", count: statusCounts.listed },
-    { key: "status_vacant", badge: "badge--vacant", count: statusCounts.vacant },
-    { key: "status_personal_use", badge: "badge--personal", count: statusCounts.personal_use },
-  ];
-
   return (
     <main>
-      <DashboardHeader
-        locale={locale}
-        operator={operator}
-        sub={t(locale, "profile_brokerage")}
+      <DashboardHeader locale={locale} operator={operator} sub={t(locale, "profile_brokerage")} />
+
+      <WealthHero
+        label={t(locale, "income_all_month")}
+        total={income.total}
+        sub={incomeParts(locale, income, (v) => formatMoney(v))}
+        chips={[
+          `${t(locale, "dash_managed")}: ${assets.length}`,
+          ...(["rented", "listed", "vacant", "personal_use"] as const)
+            .filter((status) => (statusCounts.get(status) ?? 0) > 0)
+            .map((status) => `${t(locale, `status_${status}` as StringKey)}: ${statusCounts.get(status)}`),
+        ]}
+        link={{ href: "/assets", label: t(locale, "nav_assets") }}
       />
-
-      <PortfolioRing locale={locale} operatorId={operator.id} />
-      <DailyCheck locale={locale} operatorId={operator.id} />
-          <DecideToday locale={locale} operatorId={operator.id} />
-      <AssetDeck locale={locale} operatorId={operator.id} />
-      <IncomeBars locale={locale} operatorId={operator.id} />
-
-      <section className="kpi-grid kpi-grid--3d kpi-grid--3">
-        <Kpi label={t(locale, "dash_managed")} value={String(assets.length)} />
-        <Kpi
-          label={t(locale, "income_all_month")}
-          value={formatMoney(income.total)}
-          sub={incomeParts(locale, income, (v) => formatMoney(v))}
-        />
-        <Kpi label={t(locale, "dash_open_alerts")} value={String(alertCount)} />
-      </section>
       <RevenuePartial
         locale={locale}
         nights={income.unpricedNights}
@@ -671,83 +611,61 @@ async function BrokerageDashboard({
         adr={false}
       />
 
-      {assets.length === 0 && (
-        <div className="alert-card" style={{ alignItems: "center" }}>
-          <div className="alert-card__detail" style={{ marginTop: 0 }}>
-            {t(locale, "assets_empty")}
+      <TodaySection locale={locale} operatorId={operator.id} />
+
+      <PortfolioRing locale={locale} operatorId={operator.id} />
+      <AssetDeck locale={locale} operatorId={operator.id} />
+      <IncomeBars locale={locale} operatorId={operator.id} />
+
+      {/* The working list: every contract ending within 30 days. */}
+      {expiring.length > 0 && (
+        <section>
+          <h2>{t(locale, "dash_expiring_30")}</h2>
+          <div className="card card--stack" style={{ marginTop: 12 }}>
+            <table>
+              <thead>
+                <tr>
+                  <th>{t(locale, "unit_name")}</th>
+                  <th>{t(locale, "contracts_col")}</th>
+                  <th className="num">{t(locale, "contract_until")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {expiring.map(({ asset, contract }) => (
+                  <tr key={contract.id}>
+                    <td>
+                      <Link href={`/assets/${asset.id}/edit#contracts`} className="link">
+                        {displayName(asset)}
+                      </Link>
+                      <div className="cell-sub">
+                        {[districtLabel(locale, asset.district), asset.address].filter(Boolean).join(" · ")}
+                      </div>
+                    </td>
+                    <td data-label={t(locale, "contracts_col")}>
+                      {rentLabel(locale, contract)} · {contract.tenantName ?? "—"}
+                    </td>
+                    <td className="num" data-label={t(locale, "contract_until")}>
+                      {fmtDate.format(contract.endDate)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          <Link href="/assets/new" className="btn-primary">
-            {t(locale, "assets_add")}
-          </Link>
-        </div>
+        </section>
       )}
 
-      {assets.length > 0 && (
-        <>
-          <section>
-            <h2>{t(locale, "dash_status_title")}</h2>
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {statusRows.map((row) => (
-                <Link key={row.key} href="/assets" className="btn-chip">
-                  <span className={`badge ${row.badge}`} style={{ marginRight: 6 }}>
-                    {t(locale, row.key)}
-                  </span>
-                  {row.count}
-                </Link>
-              ))}
-            </div>
-          </section>
-
-          <section>
-            <h2>{t(locale, "dash_expiring_30")}</h2>
-            {expiring.length === 0 ? (
-              <p style={{ color: "var(--color-text-muted)", fontSize: 13, marginTop: 10 }}>
-                {t(locale, "dash_no_expiring")}
-              </p>
-            ) : (
-              <div className="card card--stack" style={{ marginTop: 12 }}>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>{t(locale, "unit_name")}</th>
-                      <th>{t(locale, "contracts_col")}</th>
-                      <th className="num">{t(locale, "contract_until")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {expiring.map(({ asset, contract }) => (
-                      <tr key={contract.id}>
-                        <td>
-                          <Link href={`/assets/${asset.id}/edit`} className="link">
-                            {displayName(asset)}
-                          </Link>
-                          <div className="cell-sub">
-                            {[districtLabel(locale, asset.district), asset.address].filter(Boolean).join(" · ")}
-                          </div>
-                        </td>
-                        <td data-label={t(locale, "contracts_col")}>
-                          {rentLabel(locale, contract)} · {contract.tenantName ?? "—"}
-                        </td>
-                        <td className="num" data-label={t(locale, "contract_until")}>
-                          {fmtDate.format(contract.endDate)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
-
-        </>
-      )}
-
-      <MarketTips locale={locale} operatorId={operator.id} />
+      {/* Expiring contracts are listed in full above — not again as tips. */}
+      <MarketTips
+        locale={locale}
+        operatorId={operator.id}
+        skip={expiring.length > 0 ? ["contract_expiry"] : []}
+      />
     </main>
   );
 }
 
-// ——— Car rental: fleet status + today's handovers and returns. ———
+// ——— Car rental: the fleet's money and today's handovers and returns. ———
 async function CarRentalDashboard({
   locale,
   operator,
@@ -755,103 +673,62 @@ async function CarRentalDashboard({
   locale: Locale;
   operator: SessionOperator;
 }) {
+  if (await isEmptyWorkspace(operator.id)) {
+    return (
+      <main>
+        <DashboardHeader locale={locale} operator={operator} sub={t(locale, "profile_car")} />
+        <EmptyStart locale={locale} profile="car_rental" />
+        <MarketTips locale={locale} operatorId={operator.id} empty />
+      </main>
+    );
+  }
+
   const today = startOfTodayTbilisi();
   const tomorrow = startOfTomorrowTbilisi();
 
-  const [vehicles, alertCount, income] = await Promise.all([
+  const [vehicles, income] = await Promise.all([
     prisma.asset.findMany({
       where: { operatorId: operator.id, category: "vehicle" },
       include: { contracts: { orderBy: { endDate: "desc" } } },
       orderBy: { name: "asc" },
     }),
-    openAlertCount(operator.id),
     monthlyIncome(operator.id),
   ]);
 
-  const activeContract = (asset: (typeof vehicles)[number]) =>
-    runningContract(asset.contracts, today);
-  const rentedNow = vehicles.filter((v) => activeContract(v)).length;
-
+  const rentedNow = vehicles.filter((v) => runningContract(v.contracts, today)).length;
   const inDay = (d: Date) => d >= today && d < tomorrow;
+  const displayName = (a: { name: string; nameKa: string | null }) =>
+    locale === "ka" && a.nameKa ? a.nameKa : a.name;
   const withContracts = (pick: (c: { startDate: Date; endDate: Date }) => boolean) =>
     vehicles.flatMap((vehicle) =>
       vehicle.contracts
         .filter((c) => pick(c))
-        .map((contract) => ({ vehicle, contract })),
+        .map((contract) => ({
+          key: contract.id,
+          // A handover or a return: straight to the car's desk.
+          href: deskHref(vehicle.id, "vehicle"),
+          name: displayName(vehicle),
+          sub: [contract.tenantName, rentLabel(locale, contract)].filter(Boolean).join(" · "),
+        })),
     );
   const handovers = withContracts((c) => inDay(c.startDate));
   const returns = withContracts((c) => inDay(c.endDate));
 
-  const displayName = (a: { name: string; nameKa: string | null }) =>
-    locale === "ka" && a.nameKa ? a.nameKa : a.name;
-
-  const moveList = (
-    rows: typeof handovers,
-    emptyKey: StringKey,
-  ) =>
-    rows.length === 0 ? (
-      <p style={{ color: "var(--color-text-muted)", fontSize: 13, marginTop: 10 }}>
-        {t(locale, emptyKey)}
-      </p>
-    ) : (
-      <div className="card card--stack" style={{ marginTop: 12 }}>
-        <table>
-          <thead>
-            <tr>
-              <th>{t(locale, "unit_name")}</th>
-              <th>{t(locale, "contract_tenant")}</th>
-              <th className="num">{t(locale, "deck_rent")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(({ vehicle, contract }) => (
-              <tr key={contract.id}>
-                <td>
-                  {/* A handover or a return: straight to the car's desk. */}
-                  <Link href={deskHref(vehicle.id, "vehicle")} className="link">
-                    {displayName(vehicle)}
-                  </Link>
-                </td>
-                <td data-label={t(locale, "contract_tenant")}>
-                  {contract.tenantName ?? "—"}
-                </td>
-                <td className="num" data-label={t(locale, "deck_rent")}>
-                  {rentLabel(locale, contract)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    );
-
   return (
     <main>
-      <DashboardHeader
-        locale={locale}
-        operator={operator}
-        sub={t(locale, "profile_car")}
+      <DashboardHeader locale={locale} operator={operator} sub={t(locale, "profile_car")} />
+
+      <WealthHero
+        label={t(locale, "income_all_month")}
+        total={income.total}
+        sub={incomeParts(locale, income, (v) => formatMoney(v))}
+        chips={
+          vehicles.length > 0
+            ? [`${t(locale, "dash_rented_now")}: ${rentedNow} / ${vehicles.length}`]
+            : []
+        }
+        link={vehicles.length > 0 ? { href: "/fleet", label: t(locale, "nav_fleet") } : undefined}
       />
-
-      <PortfolioRing locale={locale} operatorId={operator.id} />
-      <DailyCheck locale={locale} operatorId={operator.id} />
-          <DecideToday locale={locale} operatorId={operator.id} />
-      <AssetDeck locale={locale} operatorId={operator.id} />
-      <IncomeBars locale={locale} operatorId={operator.id} />
-
-      <section className="kpi-grid kpi-grid--3d">
-        <Kpi label={t(locale, "dash_fleet")} value={String(vehicles.length)} />
-        <Kpi
-          label={t(locale, "dash_rented_now")}
-          value={`${rentedNow} / ${vehicles.length}`}
-        />
-        <Kpi
-          label={t(locale, "income_all_month")}
-          value={formatMoney(income.total)}
-          sub={incomeParts(locale, income, (v) => formatMoney(v))}
-        />
-        <Kpi label={t(locale, "dash_open_alerts")} value={String(alertCount)} />
-      </section>
       <RevenuePartial
         locale={locale}
         nights={income.unpricedNights}
@@ -859,31 +736,25 @@ async function CarRentalDashboard({
         adr={false}
       />
 
-      {vehicles.length === 0 && (
-        <div className="alert-card" style={{ alignItems: "center" }}>
-          <div className="alert-card__detail" style={{ marginTop: 0 }}>
-            {t(locale, "assets_empty")}
-          </div>
-          <Link href="/assets/new" className="btn-primary">
-            {t(locale, "assets_add")}
-          </Link>
-        </div>
-      )}
+      <TodaySection
+        locale={locale}
+        operatorId={operator.id}
+        fleetLink={vehicles.length > 0}
+        moves={
+          handovers.length + returns.length > 0 ? (
+            <TodayMoves
+              columns={[
+                { title: t(locale, "today_handovers"), empty: t(locale, "today_none"), rows: handovers },
+                { title: t(locale, "today_returns"), empty: t(locale, "today_none"), rows: returns },
+              ]}
+            />
+          ) : null
+        }
+      />
 
-      {vehicles.length > 0 && (
-        <>
-          <section>
-            <h2>{t(locale, "dash_handovers_today")}</h2>
-            {moveList(handovers, "dash_no_handovers")}
-          </section>
-
-          <section>
-            <h2>{t(locale, "dash_returns_today")}</h2>
-            {moveList(returns, "dash_no_returns")}
-          </section>
-        </>
-      )}
-
+      <PortfolioRing locale={locale} operatorId={operator.id} />
+      <AssetDeck locale={locale} operatorId={operator.id} />
+      <IncomeBars locale={locale} operatorId={operator.id} />
 
       <MarketTips locale={locale} operatorId={operator.id} />
     </main>
@@ -898,25 +769,30 @@ async function PersonalDashboard({
   locale: Locale;
   operator: SessionOperator;
 }) {
-  const [assets, income, alertCount] = await Promise.all([
+  if (await isEmptyWorkspace(operator.id)) {
+    return (
+      <main>
+        <DashboardHeader locale={locale} operator={operator} sub={t(locale, "account_personal")} />
+        <EmptyStart locale={locale} profile="personal" />
+        <MarketTips locale={locale} operatorId={operator.id} empty />
+      </main>
+    );
+  }
+
+  const [assets, income] = await Promise.all([
     prisma.asset.findMany({
       where: { operatorId: operator.id },
       select: { category: true, estimatedValue: true },
     }),
     // The one income definition: the same total as the bars and /assets.
     monthlyIncome(operator.id),
-    openAlertCount(operator.id),
   ]);
   const totalValue = assets.reduce((sum, a) => sum + (a.estimatedValue ?? 0), 0);
   const propertyCount = assets.filter((a) => a.category !== "income_source").length;
 
   return (
     <main>
-      <DashboardHeader
-        locale={locale}
-        operator={operator}
-        sub={t(locale, "account_personal")}
-      />
+      <DashboardHeader locale={locale} operator={operator} sub={t(locale, "account_personal")} />
 
       <WealthHero
         label={t(locale, "dash_wealth")}
@@ -928,12 +804,16 @@ async function PersonalDashboard({
           `${t(locale, "nav_assets")}: ${propertyCount}`,
         ]}
       />
+      <RevenuePartial
+        locale={locale}
+        nights={income.unpricedNights}
+        month={monthKeyOf(monthStartTbilisi(0))}
+        adr={false}
+      />
+
+      <TodaySection locale={locale} operatorId={operator.id} />
 
       <CompositionRing locale={locale} parts={ringPartsFromAssets(locale, assets)} />
-
-      <DailyCheck locale={locale} operatorId={operator.id} />
-          <DecideToday locale={locale} operatorId={operator.id} />
-
       <AssetDeck locale={locale} operatorId={operator.id} />
 
       {/* The one action the dashboard offers on its own: adding a salary,
@@ -943,38 +823,6 @@ async function PersonalDashboard({
         operatorId={operator.id}
         action={{ href: "/assets/new?category=income_source", label: t(locale, "add_income_source") }}
       />
-
-      <section className="kpi-grid kpi-grid--3d kpi-grid--3">
-        <Kpi
-          label={t(locale, "income_all_month")}
-          value={formatMoney(income.total)}
-          sub={incomeParts(locale, income, (v) => formatMoney(v))}
-        />
-        <Kpi label={t(locale, "assets_total_value")} value={formatMoney(totalValue)} />
-        <Kpi
-          label={t(locale, "nav_assets")}
-          value={String(propertyCount)}
-          sub={`${t(locale, "dash_open_alerts")}: ${alertCount}`}
-        />
-      </section>
-      <RevenuePartial
-        locale={locale}
-        nights={income.unpricedNights}
-        month={monthKeyOf(monthStartTbilisi(0))}
-        adr={false}
-      />
-
-      {assets.length === 0 && (
-        <div className="alert-card" style={{ alignItems: "center" }}>
-          <div className="alert-card__detail" style={{ marginTop: 0 }}>
-            {t(locale, "assets_empty")}
-          </div>
-          <Link href="/assets/new" className="btn-primary">
-            {t(locale, "assets_add")}
-          </Link>
-        </div>
-      )}
-
 
       <MarketTips locale={locale} operatorId={operator.id} />
     </main>

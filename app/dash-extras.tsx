@@ -1,50 +1,43 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { t, type Locale, type StringKey } from "@/lib/i18n/strings";
-import {
-  lateContract,
-  periodAmount,
-  SETTLEMENT_WINDOW_DAYS,
-  statusFor,
-} from "@/lib/rentals/terms";
+import { lateContract, periodAmount, statusFor } from "@/lib/rentals/terms";
 import { currencySign, formatDueMoney, formatMoney, formatNumber } from "@/lib/format";
 import { alertSeverity } from "@/lib/ui/tone";
 import { alertGlyph } from "./alert-icon";
 import { IconArrowRight } from "./icons";
-import { alertCategories } from "@/lib/alerts/category";
-import { rankAlerts } from "@/lib/alerts/rank";
-import {
-  activeContract as runningContract,
-  activeContractWhere,
-  assetStatusNow,
-  contractPhase,
-  recentlyEndedWhere,
-} from "@/lib/rentals/phase";
+import { adviceTips } from "@/lib/alerts/groups";
+import { alertHref } from "@/lib/alerts/links";
+import { ADVICE_TYPES } from "@/lib/alerts/rank";
+import { rentalDesk } from "@/lib/rentals/desk";
+import { activeContract as runningContract, assetStatusNow } from "@/lib/rentals/phase";
 import { periodWordKey } from "@/lib/rentals/display";
 import { templateFamily } from "@/lib/notify/templates";
-import { dayKey, monthKeyTbilisi, monthStartTbilisi, startOfTodayTbilisi, tbilisiFormat } from "@/lib/time";
+import { monthKeyTbilisi, monthStartTbilisi, startOfTodayTbilisi, tbilisiFormat } from "@/lib/time";
 import { estimateMarketRent, getRentBenchmark } from "@/lib/market/rent";
 import { monthlyIncomeSeries } from "@/lib/analytics/monthly-income";
 import CountUp from "./count-up";
-import DecideCards, { type DecideItem } from "./decide-cards";
 import AssetDeckClient, { type DeckAsset, type DeckSlide } from "./asset-deck-client";
-import DailyCheckClient, { type DayAsset } from "./daily-check-client";
-import { dayKind, dayPrice } from "@/lib/assets/daily-price";
 import { districtLabel } from "@/lib/places";
-import { loadAssetSources } from "@/lib/property/places";
-import { contractNightValue, placeStays } from "@/lib/property/stays";
 
 // The Ice dashboard pieces shared by every profile: the one hero number,
-// the composition ring, and the closing "market advice" feed.
+// the composition ring, the property deck, the income bars and the closing
+// "market advice" feed. The "Today" block lives in ./dash-today.tsx.
 
 export function WealthHero({
   label,
   total,
+  sub,
   chips,
+  link,
 }: {
   label: string;
   total: number;
+  /** What the figure is made of (e.g. rent · daily · bookings · other). */
+  sub?: string;
   chips: string[];
+  /** Where the figures are broken down (analytics, the fleet list). */
+  link?: { href: string; label: string };
 }) {
   return (
     <section className="card wealth-hero">
@@ -52,11 +45,17 @@ export function WealthHero({
       <div className="wealth-hero__figure">
         <CountUp to={Math.round(total)} /> <small>₾</small>
       </div>
-      {chips.length > 0 && (
+      {sub && <div className="wealth-hero__sub">{sub}</div>}
+      {(chips.length > 0 || link) && (
         <div className="wealth-hero__chips">
           {chips.map((chip) => (
             <span key={chip} className="chip">{chip}</span>
           ))}
+          {link && (
+            <Link href={link.href} className="chip chip--link icon-text">
+              {link.label} <IconArrowRight size={13} />
+            </Link>
+          )}
         </div>
       )}
     </section>
@@ -161,8 +160,9 @@ export function CompositionRing({
   );
 }
 
-// ── Market advice: the open alerts, spoken as advice. Nothing renders
-// below this section — it closes the dashboard. ──
+// ── Market advice: the non-urgent alerts, spoken as advice — a price to
+// raise, a free window, a contract ending. Urgent ones are in "Today".
+// Nothing renders below this section — it closes the dashboard. ──
 
 // Each tile carries its alert type's line icon on its severity tint —
 // the same icon and colour as the card on /alerts (lib/ui/tone.ts).
@@ -174,55 +174,118 @@ const TIP_SOURCE: Record<string, StringKey> = {
   lease_expiry: "tips_src_contract",
   contract_expiry: "tips_src_contract",
   contract_ended: "tips_src_contract",
-  rent_overdue: "tips_src_contract",
-  repossession_right: "tips_src_contract",
-  geofence_breach: "tips_src_gps",
-  tracker_silent: "tips_src_gps",
-  overlap: "tips_src_calendar",
 };
+
+/** Tips shown; the rest are one tap away on /alerts. */
+const TIPS_SHOWN = 3;
+
+interface TipPayload {
+  assetId?: string;
+  assetName?: string;
+  unitName?: string;
+  start?: string;
+  end?: string;
+  nights?: number;
+  openEnd?: boolean;
+  endDate?: string;
+  tenantName?: string | null;
+  daysLeft?: number;
+  month?: string;
+  baseNightlyRate?: number;
+  suggestedRate?: number;
+}
 
 export async function MarketTips({
   locale,
   operatorId,
+  empty = false,
+  skip = [],
 }: {
   locale: Locale;
   operatorId: string;
+  /** The account has nothing yet: say where tips will come from. */
+  empty?: boolean;
+  /** Kinds a section above already lists in full (e.g. expiring contracts). */
+  skip?: string[];
 }) {
-  // The three that matter most — a double booking or the repossession
-  // right before any "free window" advice — each named after its unit or
-  // asset.
-  const ranked = rankAlerts(
-    await prisma.alert.findMany({
-      where: { operatorId, status: "open" },
-      include: { unit: { select: { id: true, name: true, nameKa: true } } },
-      orderBy: { createdAt: "desc" },
-      take: 200,
+  const types = ADVICE_TYPES.filter((type) => !skip.includes(type));
+  const [open, linked] = await Promise.all([
+    prisma.alert.findMany({
+      where: { operatorId, status: "open", type: { in: types } },
+      include: { unit: { select: { id: true, name: true, nameKa: true, currency: true } } },
+      take: 300,
     }),
-  );
-  // Free windows are listed in one place — the calendar, with a suggested
-  // price — so here they take at most one tip that counts them.
-  const gaps = ranked.filter((alert) => alert.type === "vacancy_gap");
-  const firstGap = ranked.findIndex((alert) => alert.type === "vacancy_gap");
-  const alerts = ranked
-    .filter((alert, i) => alert.type !== "vacancy_gap" || i === firstGap)
-    .slice(0, 3);
-  const gapUnits = new Set(gaps.map((alert) => alert.unitId)).size;
-  // Older alerts carry no category — it is looked up from the asset.
-  const categoryOf = await alertCategories(operatorId, alerts);
-  // Named as the owner reads the asset (its Georgian name), not as the
-  // payload stored it.
+    // A unit and the asset linked to it are one place.
+    prisma.asset.findMany({
+      where: { operatorId, unitId: { not: null } },
+      select: { id: true, unitId: true },
+    }),
+  ]);
+  // One tip per kind per place, the most useful first; each names its
+  // place and dates, and leads to the exact spot to act on it.
+  const tips = adviceTips(open, types, new Map(linked.map((asset) => [asset.id, asset.unitId!])));
+  const shown = tips.slice(0, TIPS_SHOWN);
+
   const assetIds = [
-    ...new Set(alerts.map((alert) => (alert.payload as { assetId?: string }).assetId).filter(Boolean)),
+    ...new Set(
+      shown.map((tip) => (tip.alerts[0].payload as TipPayload).assetId).filter(Boolean),
+    ),
   ] as string[];
-  const assetNames = new Map(
-    (assetIds.length
-      ? await prisma.asset.findMany({
-          where: { id: { in: assetIds }, operatorId },
-          select: { id: true, name: true, nameKa: true },
-        })
-      : []
-    ).map((asset) => [asset.id, locale === "ka" && asset.nameKa ? asset.nameKa : asset.name]),
-  );
+  const assets = assetIds.length
+    ? await prisma.asset.findMany({
+        where: { id: { in: assetIds }, operatorId },
+        select: { id: true, name: true, nameKa: true, category: true, _count: { select: { contracts: true } } },
+      })
+    : [];
+  const assetBy = new Map(assets.map((asset) => [asset.id, asset]));
+  const deskOf = (assetId: string) => {
+    const asset = assetBy.get(assetId);
+    return asset ? rentalDesk(asset.category, asset._count.contracts) : null;
+  };
+  const named = (row: { name: string; nameKa: string | null }) =>
+    locale === "ka" && row.nameKa ? row.nameKa : row.name;
+
+  const fmtDay = tbilisiFormat(locale, { day: "numeric", month: "short" });
+  const day = (key: string | undefined) =>
+    key && /^\d{4}-\d{2}-\d{2}$/.test(key) ? fmtDay.format(new Date(`${key}T00:00:00Z`)) : "—";
+  const monthLabel = (key: string | undefined) =>
+    key && /^\d{4}-\d{2}$/.test(key)
+      ? tbilisiFormat(locale, { month: "long" }).format(new Date(`${key}-01T00:00:00Z`))
+      : "";
+
+  const detail = (type: string, payload: TipPayload, currency: string, more: number): string => {
+    switch (type) {
+      case "vacancy_gap":
+        return [
+          payload.openEnd
+            ? `${day(payload.start)} – … · ${payload.nights}+ ${t(locale, "nights_short")}`
+            : `${day(payload.start)} – ${day(payload.end)} · ${payload.nights} ${t(locale, "nights_short")}`,
+          more > 0 ? t(locale, "tips_more_windows").replace("{n}", String(more)) : null,
+        ]
+          .filter(Boolean)
+          .join(" · ");
+      case "underpriced":
+        return `${formatMoney(payload.baseNightlyRate ?? null, currency)} → ${formatMoney(
+          payload.suggestedRate ?? null,
+          currency,
+        )} · ${monthLabel(payload.month)}`;
+      case "lease_expiry":
+      case "contract_expiry":
+        return [
+          payload.tenantName,
+          day(payload.endDate),
+          payload.daysLeft != null ? `${payload.daysLeft} ${t(locale, "days_left")}` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ");
+      case "contract_ended":
+        return [payload.tenantName, `${t(locale, "cstatus_ended")}: ${day(payload.endDate)}`]
+          .filter(Boolean)
+          .join(" · ");
+      default:
+        return "";
+    }
+  };
 
   return (
     <section>
@@ -230,90 +293,41 @@ export async function MarketTips({
       <p style={{ color: "var(--color-text-muted)", fontSize: 13, margin: "2px 0 14px" }}>
         {t(locale, "tips_sub")}
       </p>
-      {alerts.length === 0 ? (
+      {shown.length === 0 ? (
         <p style={{ color: "var(--color-text-muted)", fontSize: 13 }}>
-          {t(locale, "tips_empty")}
+          {t(locale, empty ? "tips_empty_start" : "tips_empty")}
         </p>
       ) : (
         <div className="tips-grid">
-          {alerts.map((alert) => {
-            const payload = alert.payload as {
-              assetId?: string;
-              assetName?: string;
-              suggestedAction?: string;
-              category?: string;
-            };
-            // Late rent on a flat speaks of the lease, not of a vehicle.
-            const category = categoryOf(payload);
-            const property =
-              alert.type === "repossession_right" &&
-              category != null &&
-              templateFamily(category) === "property";
-            const contracts = alert.type === "overlap" && !alert.unit;
-            const name = alert.unit
-              ? locale === "ka" && alert.unit.nameKa
-                ? alert.unit.nameKa
-                : alert.unit.name
-              : (payload.assetId && assetNames.get(payload.assetId)) || payload.assetName;
-            if (alert.type === "vacancy_gap" && gaps.length > 1) {
-              return (
-                <div key={alert.id} className="card tip-card">
-                  <span className="tip-card__ico" data-sev={alertSeverity(alert.type)}>
-                    {alertGlyph(alert.type, 19)}
-                  </span>
-                  <div style={{ minWidth: 0 }}>
-                    <b className="t">
-                      {t(locale, "alerts_gaps_title").replace("{n}", String(gaps.length))}
-                    </b>
-                    <p>
-                      {t(locale, "alerts_gaps_detail").replace("{units}", String(gapUnits))}{" "}
-                      <Link href="/calendar" className="link icon-text" style={{ gap: 4 }}>
-                        {t(locale, "alerts_gaps_open")} <IconArrowRight size={14} />
-                      </Link>
-                      <span className="tip-card__src">
-                        {t(locale, "tips_source")}: {t(locale, TIP_SOURCE.vacancy_gap ?? "tips_src_contract")}
-                      </span>
-                    </p>
-                  </div>
-                </div>
-              );
-            }
+          {shown.map((tip) => {
+            const first = tip.alerts[0];
+            const payload = first.payload as TipPayload;
+            const asset = payload.assetId ? assetBy.get(payload.assetId) : undefined;
+            const name = first.unit
+              ? named(first.unit)
+              : asset
+                ? named(asset)
+                : payload.assetName ?? payload.unitName ?? null;
             return (
-              <div key={alert.id} className="card tip-card">
-                <span className="tip-card__ico" data-sev={alertSeverity(alert.type)}>
-                  {alertGlyph(alert.type, 19)}
+              <div key={tip.key} className="card tip-card">
+                <span className="tip-card__ico" data-sev={alertSeverity(tip.type)}>
+                  {alertGlyph(tip.type, 19)}
                 </span>
                 <div style={{ minWidth: 0 }}>
                   <b className="t">
-                    {t(
-                      locale,
-                      property
-                        ? "alert_repossession_right_property"
-                        : contracts
-                          ? "alert_overlap_contract"
-                          : (`alert_${alert.type}` as StringKey),
-                    )}
+                    {t(locale, `alert_${tip.type}` as StringKey)}
                     {name ? ` — ${name}` : ""}
                   </b>
+                  <span className="tip-card__when">
+                    {detail(tip.type, payload, first.unit?.currency ?? "GEL", tip.alerts.length - 1)}
+                  </span>
                   <p>
-                    {t(
-                      locale,
-                      property
-                        ? "action_repossession_right_property"
-                        : contracts
-                          ? "action_overlap_contract"
-                          : (`action_${alert.type}` as StringKey),
-                    )}{" "}
-                    <Link
-                      href={alert.type === "vacancy_gap" && alert.unit ? `/calendar?unit=${alert.unit.id}` : "/alerts"}
-                      className="link icon-text"
-                      style={{ gap: 4 }}
-                    >
+                    {t(locale, `action_${tip.type}` as StringKey)}{" "}
+                    <Link href={alertHref(first, deskOf)} className="link icon-text" style={{ gap: 4 }}>
                       {t(locale, "tips_open")} <IconArrowRight size={14} />
                     </Link>
                     <span className="tip-card__src">
-                      {t(locale, "tips_source")}:{" "}
-                      {t(locale, contracts ? "tips_src_contract" : TIP_SOURCE[alert.type] ?? "tips_src_contract")}
+                      {t(locale, "tips_source")}: {t(locale, TIP_SOURCE[tip.type] ?? "tips_src_contract")}
                     </span>
                   </p>
                 </div>
@@ -321,6 +335,13 @@ export async function MarketTips({
             );
           })}
         </div>
+      )}
+      {tips.length > TIPS_SHOWN && (
+        <p style={{ margin: "12px 0 0", fontSize: 13 }}>
+          <Link href="/alerts" className="link icon-text" style={{ gap: 4 }}>
+            {t(locale, "tips_all").replace("{n}", String(tips.length))} <IconArrowRight size={14} />
+          </Link>
+        </p>
       )}
     </section>
   );
@@ -362,104 +383,6 @@ export async function PortfolioRing({
     select: { category: true, estimatedValue: true },
   });
   return <CompositionRing locale={locale} parts={ringPartsFromAssets(locale, assets)} />;
-}
-
-/** "To decide today": due and late rent, answered with a flick. */
-export async function DecideToday({
-  locale,
-  operatorId,
-}: {
-  locale: Locale;
-  operatorId: string;
-}) {
-  const today = startOfTodayTbilisi();
-  // Running contracts by their dates, priced exactly as the rental page
-  // and the WhatsApp message price them (weekend and holiday days too) —
-  // and recently finished ones that still have rent owed, so the money
-  // can be recorded when the renter pays.
-  const contracts = await prisma.rentalContract.findMany({
-    where: {
-      OR: [
-        activeContractWhere(today),
-        recentlyEndedWhere(today, SETTLEMENT_WINDOW_DAYS),
-      ],
-      paidThrough: { not: null },
-      asset: { operatorId },
-    },
-    include: {
-      asset: {
-        select: {
-          id: true, name: true, nameKa: true,
-          dailyRate: true, weekendPct: true, holidayPct: true,
-        },
-      },
-    },
-  });
-
-  const items: DecideItem[] = [];
-  for (const contract of contracts) {
-    const status = statusFor(contract, today, contract.asset);
-    if (!["due", "grace", "repossess"].includes(status.state)) continue;
-    const ended = contractPhase(contract, today) === "ended";
-    const name =
-      locale === "ka" && contract.asset.nameKa
-        ? contract.asset.nameKa
-        : contract.asset.name;
-    items.push({
-      contractId: contract.id,
-      assetId: contract.asset.id,
-      name,
-      title: `${name} — ${t(locale, "decide_rent")}`,
-      sub: `${contract.tenantName ?? "—"}${ended ? ` · ${t(locale, "cstatus_ended")}` : ""}${
-        status.daysOverdue > 0
-          ? ` · ${t(locale, "decide_late")}: ${status.daysOverdue} ${t(locale, "decide_days")}`
-          : ""
-      }`,
-      amount: status.amountDue || periodAmount(contract),
-      currency: contract.currency,
-      periodsOwed: status.periodsOwed,
-      severe: status.state === "repossess",
-    });
-  }
-  // Most urgent first: past the grace period, then the longest late.
-  items.sort(
-    (a, b) =>
-      Number(b.severe) - Number(a.severe) || b.periodsOwed - a.periodsOwed,
-  );
-
-  const errorKeys: StringKey[] = [
-    "error_required",
-    "error_invalid_number",
-    "error_untracked",
-    "error_payment_locked",
-    "error_demo_readonly",
-  ];
-  return (
-    <section>
-      <h2>{t(locale, "decide_title")}</h2>
-      <p className="decide-hint">{t(locale, "decide_sub")}</p>
-      {/* Every late rent is listed — the first few, then "show all". */}
-      <DecideCards
-        items={items}
-        labels={{
-          paid: t(locale, "decide_paid"),
-          open: t(locale, "decide_open"),
-          empty: t(locale, "decide_empty"),
-          confirm: t(locale, "decide_confirm"),
-          confirmYes: t(locale, "decide_confirm_yes"),
-          confirmNo: t(locale, "decide_confirm_no"),
-          recorded: t(locale, "decide_recorded"),
-          undo: t(locale, "decide_undo"),
-          undone: t(locale, "decide_undone"),
-          error: t(locale, "decide_error"),
-          showAll: t(locale, "decide_show_all"),
-          showLess: t(locale, "decide_show_less"),
-          close: t(locale, "bot_close"),
-          errors: Object.fromEntries(errorKeys.map((key) => [key, t(locale, key)])),
-        }}
-      />
-    </section>
-  );
 }
 
 const DAY_MS = 86_400_000;
@@ -718,6 +641,9 @@ export async function IncomeBars({
 
   const max = Math.max(...months.map((m) => m.total));
   const fmtMonth = tbilisiFormat(locale, { month: "short" });
+  // Six empty months say nothing: the section only shows with income, or
+  // with its one action (adding an income source).
+  if (max <= 0 && !action) return null;
 
   return (
     <section className="card bars-card">
@@ -777,122 +703,3 @@ export async function IncomeBars({
     </section>
   );
 }
-
-/**
- * The daily question: for every asset let by the day, was it rented today
- * and for how much. The suggestion is the day's tariff — base rate plus
- * the weekend or holiday premium — so a public holiday proposes the
- * holiday price rather than the ordinary one.
- */
-export async function DailyCheck({
-  locale,
-  operatorId,
-}: {
-  locale: Locale;
-  operatorId: string;
-}) {
-  // Tbilisi's today: an answer given at 01:30 belongs to the new day,
-  // at that day's tariff.
-  const today = startOfTodayTbilisi();
-
-  const assets = await prisma.asset.findMany({
-    where: { operatorId, rentalMode: "daily" },
-    include: { days: { where: { date: today } } },
-    orderBy: { name: "asc" },
-  });
-  if (assets.length === 0) return null;
-
-  // Today's stays — a booking on the linked unit, a lease, a contract. A
-  // night one of them holds is not asked about: it is already on record
-  // (the same rule as every calendar and total, lib/property/stays.ts).
-  const tomorrow = new Date(today.getTime() + 86_400_000);
-  const sourcesOf = await loadAssetSources(
-    operatorId,
-    assets.map((asset) => asset.id),
-    { start: today, end: tomorrow },
-  );
-  const coverOf = (assetId: string): DayAsset["covered"] => {
-    const src = sourcesOf.get(assetId);
-    const stay = src
-      ? placeStays(src).find((s) => s.start <= today && s.end > today)
-      : undefined;
-    if (!src || !stay) return null;
-    if (stay.record === "booking") {
-      const booking = src.bookings.find((b) => b.id === stay.id);
-      return {
-        label:
-          stay.kind === "airbnb"
-            ? "Airbnb"
-            : stay.kind === "booking"
-              ? "Booking.com"
-              : t(locale, stay.kind === "direct" ? "source_direct" : "source_manual"),
-        amount:
-          booking?.amount != null && booking.nights > 0 ? booking.amount / booking.nights : null,
-      };
-    }
-    if (stay.record === "contract") {
-      const contract = src.contracts.find((c) => c.id === stay.id);
-      return {
-        label: t(locale, "overlap_src_contract"),
-        amount: contract && src.dailyMode ? contractNightValue(contract, today.getTime(), src) : null,
-      };
-    }
-    return { label: t(locale, "overlap_src_lease"), amount: null };
-  };
-
-  const iso = dayKey(today);
-  const rows: DayAsset[] = assets.map((asset) => {
-    const base = asset.dailyRate ?? 0;
-    const entry = asset.days[0];
-    return {
-      covered: coverOf(asset.id),
-      id: asset.id,
-      name: locale === "ka" && asset.nameKa ? asset.nameKa : asset.name,
-      place: [districtLabel(locale, asset.district), asset.address].filter(Boolean).join(" · "),
-      date: iso,
-      suggested: dayPrice(today, base, asset.weekendPct ?? 0, asset.holidayPct ?? 0),
-      currency: asset.currency,
-      kind: dayKind(today),
-      answered: entry ? { rented: entry.rented, amount: entry.amount } : null,
-    };
-  });
-
-  const earned = rows.reduce(
-    (sum, row) =>
-      sum +
-      (row.covered
-        ? row.covered.amount ?? 0
-        : row.answered?.rented
-          ? row.answered.amount
-          : 0),
-    0,
-  );
-  const currency = rows[0]?.currency ?? "GEL";
-
-  const labelKeys: StringKey[] = [
-    "day_amount", "day_yes", "day_no", "day_edit",
-    "day_holiday", "day_weekend", "day_base",
-    "error_required", "error_invalid_number",
-  ];
-  const labels = Object.fromEntries(
-    labelKeys.map((key) => [key, t(locale, key)]),
-  );
-
-  return (
-    <section>
-      <div className="deck-head">
-        <div>
-          <h2>{t(locale, "day_title")}</h2>
-          <p>{t(locale, "day_sub")}</p>
-        </div>
-        {earned > 0 && (
-          <span className="daily-total">
-            {t(locale, "day_earned")}: <b>{formatMoney(earned, currency)}</b>
-          </span>
-        )}
-      </div>
-      <DailyCheckClient assets={rows} labels={labels} />
-    </section>
-  );
-}
-

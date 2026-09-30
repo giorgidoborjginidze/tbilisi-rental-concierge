@@ -10,7 +10,7 @@ import AccountMenu from "./account-menu";
 import NavMenu from "./nav-menu";
 import NavLinks from "./nav-links";
 import DemoRibbon from "./demo-ribbon";
-import { workspaceNav } from "@/lib/nav/facts";
+import { alertBadge, workspaceNav } from "@/lib/nav/facts";
 import type { NavEntry } from "@/lib/nav/model";
 import { effectivePlan, planById, planStanding, trialDaysLeft, type AccountType } from "@/lib/billing/plans";
 
@@ -33,7 +33,21 @@ export default async function Nav() {
   // more than five entries. Help (lessons, tour, support, about, contact)
   // lives in the account menu.
   const model = operator ? await workspaceNav(operator.id, operator.profile) : null;
+  const badge = operator ? await alertBadge(operator.id) : null;
   const entry = (item: NavEntry) => ({ href: item.href, label: t(locale, item.labelKey) });
+  // The top nav's Alerts carries the same count as the phone's bell.
+  const withBadge = (item: NavEntry) => {
+    const plain = entry(item);
+    if (item.key !== "alerts" || badge == null) return plain;
+    return {
+      ...plain,
+      badge,
+      badgeLabel:
+        badge === "dot"
+          ? t(locale, "nav_alerts_dot").replace("{label}", plain.label)
+          : t(locale, "nav_alerts_badge").replace("{label}", plain.label).replace("{n}", String(badge)),
+    };
+  };
 
   // Signed out: informational only — the free calculator and the info pages.
   const infoLinks = [
@@ -42,7 +56,7 @@ export default async function Nav() {
     { href: "/contact", label: t(locale, "footer_contact") },
   ];
   const links = model
-    ? model.top.map(entry)
+    ? model.top.map(withBadge)
     : [{ href: "/invest", label: t(locale, "nav_invest") }, ...infoLinks];
 
   return (

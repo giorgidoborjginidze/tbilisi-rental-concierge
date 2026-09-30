@@ -8,9 +8,8 @@ import { getMarketDataSource } from "@/lib/market/source";
 import { suggestRate, type PricingResult } from "./engine";
 import { generateRationales } from "@/lib/ai/rationale";
 import type { Locale } from "@/lib/i18n/strings";
-import { benchmarkMonth, occupancyShare } from "./nightly";
+import { benchmarkMonth, placeOccupancy } from "./nightly";
 import { loadRentalPlaces } from "@/lib/property/places";
-import { occupiedIntervals } from "@/lib/property/stays";
 
 const DAY_MS = 86_400_000;
 
@@ -45,11 +44,7 @@ export async function computeSuggestionsForUnit(
     { start, end: next30End },
     { unitId },
   );
-  const upcomingOccupancy = occupancyShare(
-    place ? occupiedIntervals(place.sources) : [],
-    start,
-    30,
-  );
+  const upcomingOccupancy = place ? placeOccupancy(place.sources, start, 30) : 0;
 
   const market = getMarketDataSource();
   const benchmarkCache = new Map<string, number | null>();

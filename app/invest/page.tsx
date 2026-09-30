@@ -11,6 +11,8 @@ import InvestTabs from "./invest-tabs";
 import InvestSubnav from "../invest-subnav";
 import { districtLabel } from "@/lib/places";
 import { titled } from "@/lib/i18n/metadata";
+import { getSessionOperator } from "@/lib/auth/session";
+import { firstParam, type QueryValue } from "@/lib/params";
 
 export const dynamic = "force-dynamic";
 
@@ -50,8 +52,24 @@ const LABEL_KEYS: StringKey[] = [
   "flip_res_breakeven_hint",
 ];
 
-export default async function InvestPage() {
+const TABS = ["re", "car", "flip"] as const;
+type InvestTab = (typeof TABS)[number];
+
+export default async function InvestPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: QueryValue }>;
+}) {
   const locale = await getLocale();
+  // ?tab=car opens a calculator directly; a car rental's own "Invest" opens
+  // on the car calculator (its tab bar seat and top-nav entry lead here).
+  const requested = firstParam((await searchParams).tab);
+  const operator = await getSessionOperator();
+  const initialTab: InvestTab = TABS.includes(requested as InvestTab)
+    ? (requested as InvestTab)
+    : operator?.profile === "car_rental"
+      ? "car"
+      : "re";
   const monthKey = monthKeyTbilisi();
 
   // District rent benchmarks for the current month (estimated averages).
@@ -76,21 +94,26 @@ export default async function InvestPage() {
     <main>
       <h1>{t(locale, "invest_title")}</h1>
       <InvestSubnav active="calc" />
-      <p className="mb-5" style={{ color: "var(--color-text-muted)", fontSize: 13, maxWidth: 640 }}>
-        {t(locale, "invest_intro")}
-      </p>
 
       <InvestTabs
+        initial={initialTab}
         reLabel={t(locale, "invest_tab_re")}
         carLabel={t(locale, "invest_tab_car")}
         flipLabel={t(locale, "invest_tab_flip")}
         realEstate={
-          <Calculator
-            districts={KNOWN_DISTRICTS.map((value) => ({ value, label: districtLabel(locale, value) }))}
-            rentPerSqm={rentPerSqm}
-            pricePerSqm={PRICE_PER_SQM}
-            labels={labels}
-          />
+          <>
+            {/* The buy-to-let intro belongs to its own tab; the car and flip
+                calculators carry their own. */}
+            <p className="mb-5" style={{ color: "var(--color-text-muted)", fontSize: 13, maxWidth: 640 }}>
+              {t(locale, "invest_intro")}
+            </p>
+            <Calculator
+              districts={KNOWN_DISTRICTS.map((value) => ({ value, label: districtLabel(locale, value) }))}
+              rentPerSqm={rentPerSqm}
+              pricePerSqm={PRICE_PER_SQM}
+              labels={labels}
+            />
+          </>
         }
         car={<CarCalculator labels={labels} />}
         flip={<FlipCalculator labels={labels} />}

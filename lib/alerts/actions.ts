@@ -7,34 +7,54 @@ import { requireWriter } from "@/lib/auth/session";
 import { flushOutbox } from "@/lib/notify/whatsapp";
 import { scanAlerts } from "./scan";
 
-export async function setAlertStatus(formData: FormData) {
-  const id = String(formData.get("alertId") ?? "");
-  const status = String(formData.get("status") ?? "");
-  if (id && (status === "dismissed" || status === "resolved")) {
-    const operator = await requireWriter();
-    await prisma.alert.updateMany({
-      where: { id, operatorId: operator.id },
-      data: { status, resolvedAt: new Date() },
-    });
-    revalidatePath("/alerts");
-    // Marking done takes you to the completed list, as confirmation.
-    if (status === "resolved") redirect("/alerts?view=done");
-  }
-}
+/** At most this many alerts are closed or reopened by one tap. */
+const MAX_IDS = 400;
+const ID = /^[a-z0-9]{8,40}$/i;
+/** A group's key on /alerts (lib/alerts/groups.ts): "u-…", "a-…" or "x-…". */
+const GROUP = /^[uax]-[a-z0-9]{8,40}$/i;
+
+const idsOf = (formData: FormData) =>
+  [...new Set(formData.getAll("alertId").map(String))].filter((id) => ID.test(id)).slice(0, MAX_IDS);
+
+const groupOf = (formData: FormData) => {
+  const group = String(formData.get("group") ?? "");
+  return GROUP.test(group) ? group : null;
+};
+
+/** Back to the active list, on the group the owner was working in. */
+const activeList = (query: string, group: string | null) =>
+  `/alerts${query ? `?${query}` : ""}${group ? `${query ? "&" : "?"}g=${group}#g-${group}` : ""}`;
 
 /**
- * Close every open free-window alert at once. Free windows live on the
- * calendar (with a suggested price); the alerts page shows them as one
- * summary card instead of one card per window.
+ * "Done" (resolved) or "Hide" (dismissed) — one alert, or every alert of a
+ * group at once. The owner stays on the active list, where the next one
+ * waits, with an undo for what was just closed.
  */
-export async function dismissVacancyAlerts() {
+export async function setAlertStatus(formData: FormData) {
+  const ids = idsOf(formData);
+  const status = String(formData.get("status") ?? "");
+  if (ids.length === 0 || (status !== "dismissed" && status !== "resolved")) return;
   const operator = await requireWriter();
   await prisma.alert.updateMany({
-    where: { operatorId: operator.id, status: "open", type: "vacancy_gap" },
-    data: { status: "dismissed", resolvedAt: new Date() },
+    where: { id: { in: ids }, operatorId: operator.id, status: "open" },
+    data: { status, resolvedAt: new Date() },
   });
-  revalidatePath("/alerts");
-  revalidatePath("/");
+  // The bell's count lives in the layout.
+  revalidatePath("/", "layout");
+  redirect(activeList(`closed=${ids.join(",")}`, groupOf(formData)));
+}
+
+/** Undo: the alerts just closed are open again. */
+export async function reopenAlerts(formData: FormData) {
+  const ids = idsOf(formData);
+  if (ids.length === 0) return;
+  const operator = await requireWriter();
+  await prisma.alert.updateMany({
+    where: { id: { in: ids }, operatorId: operator.id, status: { in: ["resolved", "dismissed"] } },
+    data: { status: "open", resolvedAt: null },
+  });
+  revalidatePath("/", "layout");
+  redirect(activeList("", groupOf(formData)));
 }
 
 /**
@@ -46,6 +66,5 @@ export async function runAlertScan() {
   const operator = await requireWriter();
   await scanAlerts(new Date(), operator.id);
   await flushOutbox(operator.id).catch(() => undefined);
-  revalidatePath("/alerts");
-  revalidatePath("/");
+  revalidatePath("/", "layout");
 }

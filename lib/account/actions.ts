@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import {
   attemptCounts,
@@ -43,6 +44,8 @@ export async function updateWorkspaceProfile(formData: FormData) {
     prisma.operator.updateMany({ where: { companyId: operator.id }, data: { profile } }),
   ]);
   revalidatePath("/", "layout");
+  // Back on Settings with a line saying it took (the menu changes too).
+  redirect("/settings?saved=profile");
 }
 
 /**

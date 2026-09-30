@@ -45,6 +45,7 @@ import FenceForm from "./fence-form";
 import TemplatesForm, { type TemplateField } from "./templates-form";
 import ConfirmSubmit from "./confirm-submit";
 import OutboxList, { type OutboxItem } from "@/app/outbox-list";
+import { outboxView, PENDING_STATUSES } from "@/lib/notify/outbox-view";
 import { titled } from "@/lib/i18n/metadata";
 
 export const dynamic = "force-dynamic";
@@ -197,10 +198,18 @@ export default async function RentalServicePage({
     select: { notifyPhone: true },
   });
 
+  // Everything still to go out (however old), and the latest handled ones.
   const messages = await prisma.notifyMessage.findMany({
-    where: { operatorId: operator.id, assetId: asset.id },
+    where: {
+      operatorId: operator.id,
+      assetId: asset.id,
+      OR: [
+        { status: { in: ["queued", "failed", "sending"] } },
+        { createdAt: { gte: new Date(today.getTime() - 60 * 86_400_000) } },
+      ],
+    },
     orderBy: { createdAt: "desc" },
-    take: 20,
+    take: 100,
   });
   // Never for the shared demo: its messages only get the manual send link.
   const autoSend = await autoSendFor(operator.id);
@@ -219,9 +228,15 @@ export default async function RentalServicePage({
     stale: staleReason(message),
     property: !isVehicle,
   }));
-  const waiting = outboxItems.filter(
-    (item) => (item.status === "queued" || item.status === "failed") && !item.stale,
-  ).length;
+  // The same rule as the workspace outbox (lib/notify/outbox-view.ts): sent
+  // by hand, a note to the owner would go from the owner's WhatsApp to the
+  // owner's own number, so it is not offered here either — and not counted.
+  const deskOutbox = outboxView(outboxItems, autoSend, new Date());
+  const waitingIds = new Set(deskOutbox.waiting.map((item) => item.id));
+  const history = outboxItems
+    .filter((item) => !waitingIds.has(item.id) && (!PENDING_STATUSES.has(item.status) || item.stale))
+    .slice(0, 20);
+  const waiting = deskOutbox.waiting.length;
 
   // Every date and time in Tbilisi time: a ping at 06:38 UTC is 10:38.
   const fmtDate = tbilisiFormat(locale, {
@@ -694,13 +709,28 @@ export default async function RentalServicePage({
           </span>
         </p>
 
-        {outboxItems.length === 0 ? (
+        {deskOutbox.waiting.length === 0 && history.length === 0 ? (
           <p style={{ color: "var(--color-text-muted)" }}>{t(locale, "outbox_empty")}</p>
         ) : (
-          <OutboxList locale={locale} items={outboxItems} autoSend={autoSend} />
+          <>
+            {deskOutbox.waiting.length > 0 && (
+              <OutboxList locale={locale} items={deskOutbox.waiting} autoSend={autoSend} />
+            )}
+            {history.length > 0 && (
+              <details className="desk-fold" open={deskOutbox.waiting.length === 0}>
+                <summary>{t(locale, "desk_outbox_history").replace("{n}", String(history.length))}</summary>
+                <OutboxList locale={locale} items={history} autoSend={autoSend} />
+              </details>
+            )}
+          </>
+        )}
+        {deskOutbox.hiddenOwner > 0 && (
+          <p className="field-hint" style={{ marginTop: 10 }}>
+            {t(locale, "alerts_outbox_owner_hidden").replace("{n}", String(deskOutbox.hiddenOwner))}
+          </p>
         )}
 
-        {messages.some((message) => message.status === "failed") && (
+        {deskOutbox.waiting.some((message) => message.status === "failed") && (
           <form action={retryOutbox} style={{ marginTop: 12 }}>
             <input type="hidden" name="assetId" value={asset.id} />
             <button type="submit" className="btn-secondary">

@@ -62,7 +62,20 @@ describe("navModel", () => {
   });
 });
 
+const TOUR_PAGES: Record<string, string> = {
+  s1: "/", s2: "/", s3: "/assets", s5: "/assets", s7: "/calendar", s8: "/units",
+  s9: "/invest", fleet: "/fleet", alerts: "/alerts",
+};
+
 describe("tourStops", () => {
+  it("never leaves a page and comes back to it (the last stop returns home)", () => {
+    for (const primary of ["rentals", "fleet", null] as const) {
+      const pages = tourStops(primary).slice(0, -1).map((id) => TOUR_PAGES[id]);
+      const runs = pages.filter((page, i) => i === 0 || page !== pages[i - 1]);
+      expect(new Set(runs).size).toBe(runs.length);
+    }
+  });
+
   it("has at most six stops and only for sections the workspace has", () => {
     for (const primary of ["rentals", "fleet", null] as const) {
       expect(tourStops(primary).length).toBeLessThanOrEqual(6);
@@ -70,6 +83,8 @@ describe("tourStops", () => {
     }
     expect(tourStops("fleet")).not.toContain("s7");
     expect(tourStops("fleet")).toContain("fleet");
+    // Both Assets stops together, then Fleet: no page is visited twice.
+    expect(tourStops("fleet")).toEqual(["s1", "s3", "s5", "fleet", "alerts", "s2"]);
     expect(tourStops(null)).not.toContain("s8");
     expect(tourStops("rentals")).toContain("s7");
   });

@@ -110,6 +110,6 @@ export function navModel(facts: NavFacts): NavModel {
  */
 export function tourStops(primary: PrimaryModule): string[] {
   if (primary === "rentals") return ["s1", "s5", "s7", "s8", "alerts", "s2"];
-  if (primary === "fleet") return ["s1", "s3", "fleet", "s5", "alerts", "s2"];
+  if (primary === "fleet") return ["s1", "s3", "s5", "fleet", "alerts", "s2"];
   return ["s1", "s3", "s5", "s9", "alerts", "s2"];
 }

@@ -18,7 +18,7 @@ import { Notice, SeverityIcon } from "../alert-icon";
 // inside Settings, so upgrading is one click from the account menu.
 export const dynamic = "force-dynamic";
 
-export const generateMetadata = titled("billing_title");
+export const generateMetadata = titled("nav_billing");
 
 const PLAN_LATIN: Record<string, string> = {
   starter: "Starter", standard: "Standard", pro: "Pro",
@@ -173,7 +173,8 @@ export default async function BillingPage({
 
   return (
     <main>
-      <h1>{t(locale, "billing_upgrade")}</h1>
+      {/* The page the menu's "Plan & billing" opens carries that name. */}
+      <h1>{t(locale, "nav_billing")}</h1>
 
       {returnBlock}
 

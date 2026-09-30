@@ -49,13 +49,17 @@ export default function AccountMenu({
   const router = useRouter();
   // Open for the page it was opened on: following a link closes it.
   const [openOn, setOpenOn] = useState<string | null>(null);
-  const [helpOpen, setHelpOpen] = useState(false);
+  // The Help group follows the page each time the menu opens (open on
+  // /learn, /about, /contact); a tap then opens or closes it either way.
+  const [helpToggled, setHelpToggled] = useState<boolean | null>(null);
   const open = openOn === pathname;
 
   useEffect(() => {
     // The tab bar's menu seat opens this same menu.
-    const openFromBar = () =>
+    const openFromBar = () => {
+      setHelpToggled(null);
       setOpenOn((was) => (was === window.location.pathname ? null : window.location.pathname));
+    };
     window.addEventListener(OPEN_ACCOUNT_MENU, openFromBar);
     return () => window.removeEventListener(OPEN_ACCOUNT_MENU, openFromBar);
   }, []);
@@ -92,6 +96,7 @@ export default function AccountMenu({
     </Link>
   );
   const helpCurrent = helpLinks.some((link) => link.href === current);
+  const helpOpen = helpToggled ?? helpCurrent;
   const phoneOnly = mobileLinks.filter(
     (link) => !moreLinks.some((more) => more.href === link.href),
   );
@@ -102,7 +107,10 @@ export default function AccountMenu({
         type="button"
         className="account-btn"
         data-tour="account"
-        onClick={() => setOpenOn(open ? null : pathname)}
+        onClick={() => {
+          setHelpToggled(null);
+          setOpenOn(open ? null : pathname);
+        }}
         aria-haspopup="menu"
         aria-expanded={open}
       >
@@ -134,18 +142,18 @@ export default function AccountMenu({
           <button
             type="button"
             className="account-menu__item account-menu__group"
-            aria-expanded={helpOpen || helpCurrent}
-            onClick={() => setHelpOpen((value) => !value)}
+            aria-expanded={helpOpen}
+            onClick={() => setHelpToggled(!helpOpen)}
           >
             {labels.help}
             <span
               className="account-menu__chevron"
-              data-open={helpOpen || helpCurrent ? "true" : undefined}
+              data-open={helpOpen ? "true" : undefined}
             >
               <IconChevronDown size={14} />
             </span>
           </button>
-          {(helpOpen || helpCurrent) && (
+          {helpOpen && (
             <div className="account-menu__sub">
               {helpLinks.slice(0, 1).map(item)}
               <button

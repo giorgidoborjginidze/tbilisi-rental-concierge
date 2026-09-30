@@ -3,7 +3,9 @@ import { prisma } from "@/lib/db";
 import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
-import { dismissVacancyAlerts, runAlertScan, setAlertStatus } from "@/lib/alerts/actions";
+import { reopenAlerts, runAlertScan, setAlertStatus } from "@/lib/alerts/actions";
+import { groupAlerts } from "@/lib/alerts/groups";
+import { alertHref } from "@/lib/alerts/links";
 import { alertCategories } from "@/lib/alerts/category";
 import { templateFamily } from "@/lib/notify/templates";
 import { periodWordKey } from "@/lib/rentals/display";
@@ -14,14 +16,14 @@ import { WITHDRAW_REASONS } from "@/lib/rentals/settle";
 import type { ScheduleStatus } from "@/lib/rentals/schedule";
 import { dayKey, startOfTodayTbilisi, tbilisiFormat } from "@/lib/time";
 import { lastRunFor } from "@/lib/automation/run";
-import { rankAlerts } from "@/lib/alerts/rank";
+import { alertRank, rankAlerts } from "@/lib/alerts/rank";
 import { firstParam, type QueryValue } from "@/lib/params";
 import { titled } from "@/lib/i18n/metadata";
 import { alertCardClass, badgeClass, endedAlertSeverity } from "@/lib/ui/tone";
 import { AlertTypeIcon } from "../alert-icon";
-import { IconArrowRight } from "../icons";
+import { IconArrowRight, IconChevronDown } from "../icons";
 import OutboxList, { type OutboxItem } from "../outbox-list";
-import { alertDeskTab, deskHref, rentalDesk } from "@/lib/rentals/desk";
+import { deskHref, rentalDesk } from "@/lib/rentals/desk";
 import { autoSendFor } from "@/lib/notify/whatsapp";
 import { outboxView } from "@/lib/notify/outbox-view";
 import { stalePaymentMessage } from "@/lib/rentals/settle";
@@ -87,12 +89,19 @@ const CONTRACT_ALERTS = ["rent_overdue", "repossession_right", "contract_ended"]
 export default async function AlertsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: QueryValue; tab?: QueryValue }>;
+  searchParams: Promise<{ view?: QueryValue; tab?: QueryValue; closed?: QueryValue; g?: QueryValue }>;
 }) {
   const operator = await requireOperator();
 
   const query = await searchParams;
   const view = firstParam(query.view);
+  // The group the owner was working in stays open after a tap.
+  const focusGroup = firstParam(query.g) ?? null;
+  // What was just closed, for the undo.
+  const closedIds = (firstParam(query.closed) ?? "")
+    .split(",")
+    .filter((id) => /^[a-z0-9]{8,40}$/i.test(id))
+    .slice(0, 400);
   // Three views: open alerts, the workspace-wide outbox, handled alerts.
   const outbox = firstParam(query.tab) === "outbox";
   const done = !outbox && view === "done";
@@ -105,11 +114,22 @@ export default async function AlertsPage({
   });
   // Open alerts: what costs money or the car today comes first.
   const alerts = done ? found : rankAlerts(found);
-  // Free windows are listed on the calendar (with a suggested price); the
-  // open view sums them up in one card.
-  const gapAlerts = done ? [] : alerts.filter((alert) => alert.type === "vacancy_gap");
-  const listed = done ? alerts : alerts.filter((alert) => alert.type !== "vacancy_gap");
   const lastRun = done ? null : await lastRunFor(operator.id);
+  // A unit and the asset linked to it are one place: one group.
+  const linkedAssets = done
+    ? []
+    : await prisma.asset.findMany({
+        where: { operatorId: operator.id, unitId: { not: null } },
+        select: { id: true, unitId: true },
+      });
+  const groups = done ? [] : groupAlerts(alerts, new Map(linkedAssets.map((a) => [a.id, a.unitId!])));
+  // Just closed (still closed): offered back with one tap.
+  const justClosed =
+    !done && !outbox && closedIds.length > 0
+      ? await prisma.alert.count({
+          where: { id: { in: closedIds }, operatorId: operator.id, status: { in: ["resolved", "dismissed"] } },
+        })
+      : 0;
 
   // ── The outbox: every message of every asset, one list ──
   const now0 = new Date();
@@ -181,7 +201,10 @@ export default async function AlertsPage({
   // Payloads carry the asset's name as it was when the alert was raised
   // (the Latin one); show the name the owner reads, as it is now.
   const assetIds = [
-    ...new Set(alerts.map((alert) => (alert.payload as AlertPayload).assetId).filter(Boolean)),
+    ...new Set([
+      ...alerts.map((alert) => (alert.payload as AlertPayload).assetId).filter(Boolean),
+      ...groups.map((group) => group.assetId).filter(Boolean),
+    ]),
   ] as string[];
   const alertAssets = assetIds.length
     ? await prisma.asset.findMany({
@@ -197,8 +220,9 @@ export default async function AlertsPage({
   const deskOf = new Map(
     alertAssets.map((asset) => [asset.id, rentalDesk(asset.category, asset._count.contracts)]),
   );
-  const assetLabel = (payload: AlertPayload) =>
+  const assetLabelOf = (payload: AlertPayload) =>
     (payload.assetId && assetNames.get(payload.assetId)) || payload.assetName;
+  const deskFor = (assetId: string) => deskOf.get(assetId) ?? null;
 
   // Stored days ("2026-10-27") written out like the calendar: "27 ოქტ".
   const dayFormat = tbilisiFormat(locale, { day: "numeric", month: "short" });
@@ -267,7 +291,9 @@ export default async function AlertsPage({
     }
   };
 
-  const detail = (type: string, payload: AlertPayload, currency: string) => {
+  // Inside a group the place is already named in its heading.
+  const detail = (type: string, payload: AlertPayload, currency: string, named = true) => {
+    const assetLabel = (p: AlertPayload) => (named ? assetLabelOf(p) : null);
     switch (type) {
       case "vacancy_gap":
         return payload.openEnd
@@ -288,11 +314,17 @@ export default async function AlertsPage({
       case "underpriced":
         return `${formatMoney(payload.baseNightlyRate, currency)} → ${formatMoney(payload.suggestedRate, currency)} · ${t(locale, "alert_market_adr")} ${formatMoney(payload.benchmarkAdr, currency)} (${monthLabel(payload.month)})`;
       case "contract_expiry":
-        return `${assetLabel(payload)} · ${payload.tenantName ?? "—"} · ${
+        return [
+          assetLabel(payload),
+          payload.tenantName ?? "—",
           payload.paymentAmount != null && payload.paymentPeriod
             ? `${formatMoney(payload.paymentAmount, currency, "auto")} / ${t(locale, periodWordKey(payload.paymentPeriod))}`
-            : formatMoney(payload.monthlyRent, currency, "auto")
-        } · ${day(payload.endDate)} · ${payload.daysLeft} ${t(locale, "days_left")}`;
+            : formatMoney(payload.monthlyRent, currency, "auto"),
+          day(payload.endDate),
+          `${payload.daysLeft} ${t(locale, "days_left")}`,
+        ]
+          .filter(Boolean)
+          .join(" · ");
       case "contract_ended": {
         const status = payload.contractId ? live.get(payload.contractId) : null;
         return [
@@ -373,6 +405,80 @@ export default async function AlertsPage({
       default:
         return "";
     }
+  };
+
+  type Row = (typeof alerts)[number];
+  // Late rent on a flat is not a vehicle to take back; two contracts on one
+  // asset are not two stays on a unit.
+  const variantOf = (alert: Row) => {
+    const payload = alert.payload as AlertPayload;
+    const category = categoryOf(payload);
+    if (alert.type === "repossession_right" && category != null && templateFamily(category) === "property") {
+      return "property" as const;
+    }
+    if (alert.type === "overlap" && !alert.unit) return "contracts" as const;
+    return null;
+  };
+  const titleOf = (alert: Row): string => {
+    const variant = variantOf(alert);
+    return t(
+      locale,
+      variant === "property"
+        ? "alert_repossession_right_property"
+        : variant === "contracts"
+          ? "alert_overlap_contract"
+          : (`alert_${alert.type}` as StringKey),
+    );
+  };
+  const actionKeyOf = (alert: Row): StringKey => {
+    const variant = variantOf(alert);
+    return variant === "property"
+      ? "action_repossession_right_property"
+      : variant === "contracts"
+        ? "action_overlap_contract"
+        : (`action_${alert.type}` as StringKey);
+  };
+  const severityOf = (alert: Row) => {
+    const payload = alert.payload as AlertPayload;
+    return endedAlertSeverity(
+      alert.type,
+      alert.type === "contract_ended" && payload.contractId != null && owes(live.get(payload.contractId)),
+    );
+  };
+  // The place's name as the owner reads it: the unit, else the asset.
+  const placeName = (alert: Row, assetId?: string | null): string | null => {
+    if (alert.unit) return displayName(alert.unit);
+    const id = assetId ?? (alert.payload as AlertPayload).assetId;
+    return (id && assetNames.get(id)) || assetLabelOf(alert.payload as AlertPayload) || null;
+  };
+  // What a group's link opens, named for where it goes.
+  const openLabel = (href: string): StringKey =>
+    href.startsWith("/calendar")
+      ? "alerts_open_calendar"
+      : href.startsWith("/pricing")
+        ? "alerts_open_pricing"
+        : href.includes("/rental")
+          ? "alerts_open_desk"
+          : "alerts_open_asset";
+  // The soonest real day a group is about (a month of advice is no day).
+  const shownDay = (list: Row[]): string | null =>
+    list
+      .map((alert) => {
+        const p = alert.payload as AlertPayload;
+        return p.start ?? p.dueDate ?? p.endDate ?? null;
+      })
+      .filter((value): value is string => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value))
+      .sort()[0] ?? null;
+  // "3 free windows (14 nights)", "Double booking", "Rent late (2)".
+  const kindPhrase = (kind: { type: string; alerts: Row[] }): string => {
+    const n = kind.alerts.length;
+    const title = titleOf(kind.alerts[0]);
+    if (n === 1) return title;
+    if (kind.type === "vacancy_gap") {
+      const nights = kind.alerts.reduce((sum, alert) => sum + ((alert.payload as AlertPayload).nights ?? 0), 0);
+      return t(locale, "alerts_n_vacancy_gap").replace("{n}", String(n)).replace("{nights}", String(nights));
+    }
+    return `${title} (${n})`;
   };
 
   return (
@@ -472,81 +578,22 @@ export default async function AlertsPage({
         <p style={{ color: "var(--color-text-muted)" }}>
           {t(locale, done ? "alerts_done_empty" : "alerts_empty")}
         </p>
-      ) : (
+      ) : done ? (
         <>
-        {listed.map((alert) => {
-          const payload = alert.payload as AlertPayload;
-          const currency = alert.unit?.currency ?? "GEL";
-          // Late rent on a flat is not a vehicle to take back.
-          const category = categoryOf(payload);
-          const property =
-            alert.type === "repossession_right" &&
-            category != null &&
-            templateFamily(category) === "property";
-          // Two contracts on one asset, rather than two stays on a unit.
-          const contracts = alert.type === "overlap" && !alert.unit;
-          const titleKey: StringKey = property
-            ? "alert_repossession_right_property"
-            : contracts
-              ? "alert_overlap_contract"
-              : (`alert_${alert.type}` as StringKey);
-          const desk = payload.assetId ? deskOf.get(payload.assetId) ?? null : null;
-          const deskLink =
-            desk && payload.assetId ? deskHref(payload.assetId, desk, alertDeskTab(alert.type)) : null;
-          const waitingHere = payload.assetId ? waitingByAsset.get(payload.assetId) ?? 0 : 0;
-          const actionKey: StringKey = property
-            ? "action_repossession_right_property"
-            : contracts
-              ? "action_overlap_contract"
-              : (`action_${alert.type}` as StringKey);
-          return (
-            <div
-              key={alert.id}
-              className={alertCardClass(
-                done
-                  ? "muted"
-                  : endedAlertSeverity(
-                      alert.type,
-                      alert.type === "contract_ended" &&
-                        payload.contractId != null &&
-                        owes(live.get(payload.contractId)),
-                    ),
-              )}
-            >
-              <div>
-                <div className="alert-card__title">
-                  <AlertTypeIcon type={alert.type} />
-                  {t(locale, titleKey)}
-                  {alert.unit && (
-                    <>
-                      {" "}
-                      <Link href={`/calendar?unit=${alert.unit.id}`} className="link">
-                        {displayName(alert.unit)}
-                      </Link>
-                    </>
-                  )}
-                </div>
-                {!done && deskLink && (
-                  <div className="alert-card__links">
-                    <Link href={deskLink} className="link icon-text">
-                      {assetLabel(payload) ?? t(locale, "alert_open_desk")}{" "}
-                      <IconArrowRight size={14} />
-                    </Link>
-                    {waitingHere > 0 && (
-                      <Link href={deskHref(payload.assetId!, desk!, "messages")} className="link">
-                        {t(locale, "alert_messages_waiting").replace("{n}", String(waitingHere))}
-                      </Link>
-                    )}
+          {alerts.map((alert) => {
+            const payload = alert.payload as AlertPayload;
+            return (
+              <div key={alert.id} className={alertCardClass("muted")}>
+                <div>
+                  <div className="alert-card__title">
+                    <AlertTypeIcon type={alert.type} />
+                    {titleOf(alert)}
+                    {placeName(alert) ? ` — ${placeName(alert)}` : ""}
                   </div>
-                )}
-                <div className="alert-card__detail">
-                  {detail(alert.type, payload, currency)}
+                  <div className="alert-card__detail">
+                    {detail(alert.type, payload, alert.unit?.currency ?? "GEL")}
+                  </div>
                 </div>
-                <div className="alert-card__action">
-                  <b>{t(locale, "alert_action")}:</b> {t(locale, actionKey)}
-                </div>
-              </div>
-              {done ? (
                 <div className="flex flex-col items-end gap-1">
                   <span className={badgeClass("good")}>
                     {t(locale, "alert_done_at")}
@@ -561,56 +608,128 @@ export default async function AlertsPage({
                       </span>
                     )}
                 </div>
-              ) : (
-                <div className="flex gap-2">
-                  <form action={setAlertStatus}>
-                    <input type="hidden" name="alertId" value={alert.id} />
-                    <input type="hidden" name="status" value="resolved" />
-                    <button type="submit" className="btn-chip">
-                      {t(locale, "alert_resolve")}
-                    </button>
-                  </form>
-                  <form action={setAlertStatus}>
-                    <input type="hidden" name="alertId" value={alert.id} />
-                    <input type="hidden" name="status" value="dismissed" />
-                    <button type="submit" className="btn-chip">
-                      {t(locale, "alert_dismiss")}
-                    </button>
-                  </form>
-                </div>
-              )}
-            </div>
-          );
-        })}
-        {/* Free windows live on the calendar, with a suggested price: here
-            they are one card, not one card per window. */}
-        {gapAlerts.length > 0 && (
-          <div className={alertCardClass("info")}>
-            <div>
-              <div className="alert-card__title">
-                <AlertTypeIcon type="vacancy_gap" />
-                {t(locale, "alerts_gaps_title").replace("{n}", String(gapAlerts.length))}
               </div>
-              <div className="alert-card__detail">
-                {t(locale, "alerts_gaps_detail").replace(
-                  "{units}",
-                  String(new Set(gapAlerts.map((alert) => alert.unitId)).size),
-                )}
-              </div>
-              <div className="alert-card__links">
-                <Link href="/calendar" className="link icon-text">
-                  {t(locale, "alerts_gaps_open")} <IconArrowRight size={14} />
-                </Link>
-              </div>
-            </div>
-            <form action={dismissVacancyAlerts}>
-              <button type="submit" className="btn-chip">
-                {t(locale, "alerts_gaps_dismiss")}
-              </button>
-            </form>
-          </div>
-        )}
+            );
+          })}
         </>
+      ) : (
+        // One group per flat, room or car, the most severe first; inside,
+        // one block per kind of alert with its advice said once.
+        <div className="alert-groups">
+          {groups.map((group) => {
+            const first = group.alerts[0];
+            const sev = severityOf(first);
+            const name = group.unitId || group.assetId ? placeName(first, group.assetId) : null;
+            // Something to do today (urgent, late rent) is open; advice —
+            // free windows, prices, contracts ending — waits folded.
+            const open =
+              group.key === focusGroup || groups.length <= 3 || group.rank <= alertRank("rent_overdue");
+            const summary = group.kinds.map((kind) => kindPhrase(kind)).join(" · ");
+            const waitingHere = group.assetId ? waitingByAsset.get(group.assetId) ?? 0 : 0;
+            const desk = group.assetId ? deskFor(group.assetId) : null;
+            return (
+              <details
+                key={group.key}
+                id={`g-${group.key}`}
+                className={`alert-group alert-group--${sev}`}
+                open={open}
+              >
+                <summary className="alert-group__head">
+                  <AlertTypeIcon type={first.type} />
+                  <span className="alert-group__title">
+                    <b>{name ?? titleOf(first)}</b>
+                    <span>{name ? summary : detail(first.type, first.payload as AlertPayload, first.unit?.currency ?? "GEL")}</span>
+                  </span>
+                  {shownDay(group.alerts) && <span className="alert-group__day">{day(shownDay(group.alerts)!)}</span>}
+                  <span className="alert-group__chev" aria-hidden>
+                    <IconChevronDown size={16} />
+                  </span>
+                </summary>
+                <div className="alert-group__body">
+                  {group.kinds.map((kind) => (
+                    <div key={kind.type} className="alert-kind">
+                      {name && group.kinds.length > 1 && (
+                        <div className="alert-kind__title">
+                          {titleOf(kind.alerts[0])}
+                          {kind.alerts.length > 1 && <span className="today-count">{kind.alerts.length}</span>}
+                        </div>
+                      )}
+                      <p className="alert-kind__action">
+                        <b>{t(locale, "alert_action")}:</b> {t(locale, actionKeyOf(kind.alerts[0]))}
+                      </p>
+                      <ul className="alert-rows">
+                        {kind.alerts.map((alert) => (
+                          <li key={alert.id} className="alert-row">
+                            <Link href={alertHref(alert, deskFor)} className="alert-row__detail link">
+                              {detail(alert.type, alert.payload as AlertPayload, alert.unit?.currency ?? "GEL", !name) ||
+                                t(locale, "alert_open_desk")}
+                            </Link>
+                            <span className="alert-row__acts">
+                              <form action={setAlertStatus}>
+                                <input type="hidden" name="alertId" value={alert.id} />
+                                <input type="hidden" name="group" value={group.key} />
+                                <input type="hidden" name="status" value="resolved" />
+                                <button type="submit" className="btn-chip" title={t(locale, "alert_resolve_hint")}>
+                                  {t(locale, "alert_resolve")}
+                                </button>
+                              </form>
+                              <form action={setAlertStatus}>
+                                <input type="hidden" name="alertId" value={alert.id} />
+                                <input type="hidden" name="group" value={group.key} />
+                                <input type="hidden" name="status" value="dismissed" />
+                                <button type="submit" className="btn-chip" title={t(locale, "alert_dismiss_hint")}>
+                                  {t(locale, "alert_dismiss")}
+                                </button>
+                              </form>
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                  <div className="alert-group__foot">
+                    <Link href={alertHref(first, deskFor)} className="link icon-text">
+                      {t(locale, openLabel(alertHref(first, deskFor)))} <IconArrowRight size={14} />
+                    </Link>
+                    {waitingHere > 0 && desk && (
+                      <Link href={deskHref(group.assetId!, desk, "messages")} className="link">
+                        {t(locale, "alert_messages_waiting").replace("{n}", String(waitingHere))}
+                      </Link>
+                    )}
+                    {group.alerts.length > 1 && (
+                      <form action={setAlertStatus} className="alert-group__all">
+                        {group.alerts.map((alert) => (
+                          <input key={alert.id} type="hidden" name="alertId" value={alert.id} />
+                        ))}
+                        <input type="hidden" name="group" value={group.key} />
+                        <input type="hidden" name="status" value="dismissed" />
+                        <button type="submit" className="btn-chip" title={t(locale, "alert_dismiss_hint")}>
+                          {t(locale, "alerts_hide_group").replace("{n}", String(group.alerts.length))}
+                        </button>
+                      </form>
+                    )}
+                  </div>
+                </div>
+              </details>
+            );
+          })}
+        </div>
+      )}
+
+      {justClosed > 0 && (
+        // What was just closed, with its way back.
+        <div className="alerts-toast" role="status">
+          <span>{t(locale, "alerts_closed").replace("{n}", String(justClosed))}</span>
+          <form action={reopenAlerts}>
+            {closedIds.map((id) => (
+              <input key={id} type="hidden" name="alertId" value={id} />
+            ))}
+            {focusGroup && <input type="hidden" name="group" value={focusGroup} />}
+            <button type="submit" className="btn-chip">
+              {t(locale, "alerts_undo")}
+            </button>
+          </form>
+        </div>
       )}
     </main>
   );

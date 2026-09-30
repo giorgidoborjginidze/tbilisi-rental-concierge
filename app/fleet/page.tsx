@@ -81,7 +81,13 @@ export default async function FleetPage() {
   const displayName = (a: { name: string; nameKa: string | null }) =>
     locale === "ka" && a.nameKa ? a.nameKa : a.name;
   const rented = rows.filter((row) => row.running).length;
-  const late = rows.filter((row) => row.rank <= 1).length;
+  // Late means money: past its due date (grace or repossession) or a
+  // finished rental still owing. A car outside its red line is counted on
+  // its own — it may be fully paid.
+  const late = rows.filter(
+    (row) => row.endedOwing || row.status?.state === "grace" || row.status?.state === "repossess",
+  ).length;
+  const outsideCount = rows.filter((row) => row.outside).length;
 
   return (
     <main>
@@ -106,6 +112,14 @@ export default async function FleetPage() {
                 {" · "}
                 <b style={{ color: "var(--status-danger-text)" }}>
                   {t(locale, "fleet_late_count").replace("{n}", String(late))}
+                </b>
+              </>
+            )}
+            {outsideCount > 0 && (
+              <>
+                {" · "}
+                <b style={{ color: "var(--status-danger-text)" }}>
+                  {t(locale, "fleet_outside_count").replace("{n}", String(outsideCount))}
                 </b>
               </>
             )}

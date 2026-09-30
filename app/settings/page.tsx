@@ -19,6 +19,9 @@ import TeamSection from "../billing/team-section";
 import { tbilisiFormat } from "@/lib/time";
 import { inviteUsable } from "@/lib/auth/invite";
 import { titled } from "@/lib/i18n/metadata";
+import { firstParam, type QueryValue } from "@/lib/params";
+import { IconCheck } from "../icons";
+import { badgeClass } from "@/lib/ui/tone";
 
 export const dynamic = "force-dynamic";
 
@@ -36,8 +39,13 @@ const PLAN_LATIN: Record<string, string> = {
   biz_s: "Business S", biz_m: "Business M",
 };
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ saved?: QueryValue }>;
+}) {
   const operator = await requireOperator();
+  const saved = firstParam((await searchParams).saved);
   const locale = await getLocale();
   const other = locale === "en" ? "ka" : "en";
   const context = await getBillingContext(operator);
@@ -135,6 +143,13 @@ export default async function SettingsPage() {
               <button type="submit" className="btn-secondary">{t(locale, "save")}</button>
             )}
           </form>
+          {saved === "profile" && (
+            <p role="status" style={{ margin: 0 }}>
+              <span className={`${badgeClass("good")} badge--icon`}>
+                <IconCheck size={14} /> {t(locale, "settings_profile_saved")}
+              </span>
+            </p>
+          )}
           <div className="flex items-center justify-between gap-3">
             <span style={row}>{t(locale, "operator_email")}</span>
             <strong>{operator.email}</strong>

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { benchmarkMonth, freeWindowRange, occupancyShare, windowPrice } from "./nightly";
+import { benchmarkMonth, freeWindowRange, occupancyShare, placeOccupancy, windowPrice } from "./nightly";
 import { suggestRate } from "./engine";
+import { emptySources } from "@/lib/property/stays";
 
 const d = (iso: string) => new Date(`${iso}T00:00:00Z`);
 
@@ -60,5 +61,43 @@ describe("freeWindowRange", () => {
     const november = { start: d("2026-11-01"), end: d("2026-12-01") };
     expect(freeWindowRange(november, today)).toEqual(november);
     expect(freeWindowRange({ start: d("2026-08-01"), end: d("2026-09-01") }, today)).toBeNull();
+  });
+});
+
+describe("placeOccupancy (calendar and /pricing)", () => {
+  it("a lease in the next 30 nights counts, so both screens suggest the same price", () => {
+    const today = d("2026-10-01");
+    const sources = {
+      ...emptySources(),
+      bookings: [
+        {
+          id: "b1",
+          source: "airbnb",
+          checkIn: d("2026-10-02"),
+          checkOut: d("2026-10-05"),
+          nights: 3,
+          amount: 450,
+        },
+      ],
+      leases: [{ id: "l1", startDate: d("2026-10-10"), endDate: d("2026-10-20") }],
+    };
+    // 3 booked + 10 leased nights of 30.
+    const occupancy = placeOccupancy(sources, today, 30);
+    expect(occupancy).toBeCloseTo(13 / 30);
+
+    // /pricing: suggestRate per night with that occupancy. The calendar:
+    // windowPrice over the free window with the same occupancy.
+    const unit = { baseNightlyRate: 150, city: "Tbilisi" };
+    const benchmarks = new Map([["2026-10", 170]]);
+    const window = { start: d("2026-10-06"), end: d("2026-10-07") };
+    const calendar = windowPrice(unit, window, placeOccupancy(sources, today, 30), benchmarks)!;
+    const pricing = suggestRate({
+      baseNightlyRate: 150,
+      city: "Tbilisi",
+      date: d("2026-10-06"),
+      upcomingOccupancy: occupancy,
+      benchmarkAdr: 170,
+    }).suggestedRate;
+    expect(calendar.perNight).toBe(pricing);
   });
 });

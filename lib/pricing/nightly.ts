@@ -3,6 +3,7 @@
 // ./run.ts, so the calendar can price every free window it shows. Pure.
 
 import { suggestRate } from "./engine";
+import { occupiedIntervals, type PlaceSources } from "@/lib/property/stays";
 
 const DAY_MS = 86_400_000;
 
@@ -24,6 +25,16 @@ export function occupancyShare(
     }
   }
   return taken.size / days;
+}
+
+/**
+ * The demand input of every suggested price — the calendar's free-window
+ * price and the /pricing table use this one function: the share of the
+ * next `days` nights that any stay holds (bookings, leases, contracts and
+ * daily answers of the place, one source per night).
+ */
+export function placeOccupancy(sources: PlaceSources, from: Date, days = 30): number {
+  return occupancyShare(occupiedIntervals(sources), from, days);
 }
 
 /** "YYYY-MM" of a night, the key market benchmarks are stored by. */

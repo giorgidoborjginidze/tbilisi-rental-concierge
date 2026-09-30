@@ -3355,8 +3355,10 @@ details.faq,
   font-weight: 500;
 }
 @media (max-width: 760px) {
-  .adeck-outer { margin: 14px -18px 0; }
-  .adeck { padding: 6px 18px 20px; }
+  /* Bleed exactly to the screen edge (main's side padding is 14 px on a
+     phone) — a wider bleed pushed the page 4 px sideways. */
+  .adeck-outer { margin: 14px -14px 0; }
+  .adeck { padding: 6px 14px 20px; }
   .adeck__card { flex-basis: 84%; }
 }
 
@@ -4203,9 +4205,26 @@ a.badge--link:hover { text-decoration: underline; }
 }
 .desk-head h2 { margin: 0; }
 @media (max-width: 440px) {
-  /* Four tabs on one line on a phone. */
-  .desk-tabs { gap: 4px; }
-  .desk-tabs .btn-chip { padding: 5px 8px; font-size: 12px; letter-spacing: -0.01em; }
+  /* Four tabs on one line on a phone — whichever is active: the row never
+     wraps; on the narrowest screens it scrolls sideways instead. */
+  .desk-tabs {
+    gap: 4px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin-inline: -4px;
+    padding: 2px 4px;
+  }
+  .desk-tabs::-webkit-scrollbar { display: none; }
+  .desk-tabs .btn-chip,
+  .desk-tabs .btn-chip.btn-chip--active {
+    flex: none;
+    padding: 5px 8px;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
 }
 
 /* ── Calendar: free windows per unit, each with a suggested price. ── */
@@ -4250,4 +4269,355 @@ a.badge--link:hover { text-decoration: underline; }
   gap: 10px;
   flex-wrap: wrap;
   font-size: 13.5px;
+}
+
+/* ── P11 · Dashboard "Today": one block under the hero — urgent rows,
+   the rent swipe cards, the day's moves and the daily question. ── */
+.card.today {
+  padding: 20px 20px 22px;
+  /* Swiped cards fly out of it; nothing inside scrolls sideways. */
+  overflow: visible;
+}
+.today__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.today__head h2 { margin: 0; }
+.today__date {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+.today__clear,
+.today__none {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+.today__none { margin-top: 6px; }
+.today-block {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
+}
+.today-block__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+.today-block h3,
+.today-moves h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.today-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-bg));
+  color: var(--color-primary);
+}
+.today .decide-hint { margin: 4px 0 10px; }
+.today .daily-zone { margin-top: 10px; }
+
+/* Urgent rows: one per place, the whole row is the link. */
+.today-rows {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.today-row {
+  --sev: var(--color-text-muted);
+  --sev-bg: transparent;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: 14px;
+  color: var(--color-text);
+  text-decoration: none;
+  background: color-mix(in srgb, var(--sev-bg) 60%, var(--color-bg));
+  box-shadow: inset 4px 0 0 var(--sev);
+}
+.today-row[data-sev="danger"] { --sev: var(--status-danger-text); --sev-bg: var(--status-danger-bg); }
+.today-row[data-sev="warn"] { --sev: var(--status-vacant-text); --sev-bg: var(--status-vacant-bg); }
+.today-row[data-sev="info"] { --sev: var(--status-str-text); --sev-bg: var(--status-str-bg); }
+.today-row:hover { box-shadow: inset 4px 0 0 var(--sev), 0 0 0 1px var(--sev); }
+.today-row > svg { flex: none; color: var(--color-text-muted); }
+.today-row__ico {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  color: var(--sev);
+  background: color-mix(in srgb, var(--sev-bg) 90%, var(--color-bg));
+}
+.today-row__txt { min-width: 0; flex: 1; }
+.today-row__txt b { display: block; font-size: 13.5px; }
+.today-row__txt span { display: block; font-size: 12.5px; color: var(--color-text-muted); }
+
+/* A rent card's other urgent facts (outside a red line, silent tracker). */
+.decide-flags {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+}
+.decide-flags .badge {
+  height: auto;
+  min-height: 20px;
+  white-space: normal;
+  line-height: 1.3;
+  padding: 2px 8px;
+  /* A flag long enough to wrap stays a tag, not a lozenge. */
+  border-radius: 7px;
+}
+.decide-flags .badge::before { display: none; }
+
+/* The day's moves: arrivals | departures (handovers | returns). */
+.today-moves {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 24px;
+}
+.today-moves__list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.today-moves__list li {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  padding: 6px 0;
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
+}
+.today-moves__list li:first-child { border-top: 0; }
+.today-moves__txt { min-width: 0; }
+.today-moves__txt .link { font-weight: 600; }
+.today-moves__txt span { display: block; font-size: 12px; color: var(--color-text-muted); }
+.today-moves__amount {
+  flex: none;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+  text-decoration: none;
+}
+.today-moves__amount.price-missing { font-weight: 600; }
+@media (max-width: 560px) {
+  .card.today { padding: 16px 14px 18px; }
+  .today-moves { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Hero: what the figure is made of, and a way to its breakdown. On a
+   phone the chips pair up instead of stacking one per line. */
+@media (max-width: 480px) {
+  .wealth-hero { padding: 24px 14px 20px; }
+  .wealth-hero__chips { gap: 6px; }
+  .wealth-hero__chips .chip { font-size: 11.5px; padding: 3px 9px; }
+}
+.wealth-hero__sub {
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+}
+.wealth-hero__chips .chip.chip--link {
+  text-decoration: none;
+  gap: 4px;
+  background: var(--color-bg);
+}
+.wealth-hero__chips .chip.chip--link:hover { border-color: var(--color-primary); }
+
+/* An account with nothing yet: one clear first step. */
+.card.empty-start {
+  padding: 34px 26px;
+  text-align: center;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+}
+.empty-start h2 {
+  margin: 0;
+  font-size: clamp(21px, 4.6vw, 26px);
+}
+.empty-start p {
+  margin: 0 0 6px;
+  max-width: 460px;
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+/* Market advice: the place and dates it is about. */
+.tip-card__when {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 1px 0 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── P11 · /alerts as a short inbox: one folding group per place. ── */
+.alert-groups { display: grid; gap: 10px; }
+.alert-group {
+  --sev: var(--color-text-muted);
+  --sev-bg: transparent;
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(color-mix(in srgb, var(--sev-bg) 45%, transparent), color-mix(in srgb, var(--sev-bg) 45%, transparent)),
+    var(--glass-fill);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-edge), inset 4px 0 0 var(--sev);
+}
+.alert-group--danger { --sev: var(--status-danger-text); --sev-bg: var(--status-danger-bg); }
+.alert-group--warn { --sev: var(--status-vacant-text); --sev-bg: var(--status-vacant-bg); }
+.alert-group--info { --sev: var(--status-str-text); --sev-bg: var(--status-str-bg); }
+.alert-group--good { --sev: var(--status-rented-text); --sev-bg: var(--status-rented-bg); }
+.alert-group--muted { --sev: var(--status-personal-text); --sev-bg: var(--status-personal-bg); }
+.alert-group__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px 14px 18px;
+  cursor: pointer;
+  list-style: none;
+}
+.alert-group__head::-webkit-details-marker { display: none; }
+.alert-group__head .alert-card__icon { margin: 0; flex: none; }
+.alert-group__title { min-width: 0; flex: 1; }
+.alert-group__title b { display: block; font-size: 14.5px; }
+.alert-group--danger .alert-group__title b { color: var(--status-danger-text); }
+.alert-group__title span { display: block; font-size: 12.5px; color: var(--color-text-muted); margin-top: 1px; }
+.alert-group__day {
+  flex: none;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+.alert-group__chev {
+  flex: none;
+  display: grid;
+  color: var(--color-text-muted);
+  transition: transform 0.18s ease;
+}
+.alert-group[open] > .alert-group__head .alert-group__chev { transform: rotate(180deg); }
+.alert-group__body { padding: 0 16px 14px 18px; }
+.alert-kind { padding-top: 10px; border-top: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent); }
+.alert-kind + .alert-kind { margin-top: 10px; }
+.alert-kind__title {
+  font-weight: 600;
+  font-size: 13.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.alert-kind__action {
+  margin: 3px 0 6px;
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+}
+.alert-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.alert-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  padding: 6px 0;
+}
+.alert-row + .alert-row { border-top: 1px dashed color-mix(in srgb, var(--color-border) 80%, transparent); }
+.alert-row__detail { font-size: 13px; min-width: 0; flex: 1 1 220px; }
+.alert-row__acts { display: inline-flex; gap: 6px; flex: none; }
+.alert-group__foot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 12px;
+  font-size: 13px;
+}
+.alert-group__all { margin-left: auto; }
+@media (max-width: 560px) {
+  .alert-group__head { padding: 12px 12px 12px 14px; }
+  .alert-group__body { padding: 0 12px 12px 14px; }
+  .alert-group__all { margin-left: 0; }
+}
+
+/* What was just closed, with its way back — in view wherever the page
+   was scrolled (under the nav, clear of the tab bar). */
+.alerts-toast {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 78px;
+  width: min(460px, calc(100% - 32px));
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 10px 10px 16px;
+  border-radius: var(--radius-lg);
+  background: var(--color-bg);
+  box-shadow: var(--glass-edge), var(--shadow-card);
+  font-size: 13.5px;
+  animation: decide-toast-in 0.22s ease;
+}
+
+/* ── P11 · The bell's count: tab bar and top nav. ── */
+.tabbar__item { position: relative; }
+.nav-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  background: var(--status-danger-text);
+  color: #fff;
+  box-shadow: 0 0 0 2px var(--color-bg);
+}
+.nav-badge--dot {
+  min-width: 9px;
+  width: 9px;
+  height: 9px;
+  padding: 0;
+  background: var(--color-primary);
+}
+.tabbar__item .nav-badge {
+  position: absolute;
+  top: 3px;
+  right: 8px;
+}
+.nav__links .nav-badge { margin-left: 5px; vertical-align: 1px; }
+@media (prefers-reduced-motion: reduce) {
+  .alerts-toast { animation: none; }
+  .alert-group__chev { transition: none; }
 }

@@ -11,7 +11,7 @@ export default function NavLinks({
   links,
   className,
 }: {
-  links: { href: string; label: string }[];
+  links: { href: string; label: string; badge?: number | "dot" | null; badgeLabel?: string }[];
   className: string;
 }) {
   const pathname = usePathname();
@@ -23,8 +23,14 @@ export default function NavLinks({
           key={link.href}
           href={link.href}
           aria-current={link.href === current ? "page" : undefined}
+          aria-label={link.badgeLabel}
         >
           {link.label}
+          {link.badge != null && (
+            <span className={link.badge === "dot" ? "nav-badge nav-badge--dot" : "nav-badge"} aria-hidden>
+              {link.badge === "dot" ? "" : link.badge > 99 ? "99+" : link.badge}
+            </span>
+          )}
         </Link>
       ))}
     </div>

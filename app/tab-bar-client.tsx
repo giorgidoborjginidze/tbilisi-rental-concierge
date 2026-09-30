@@ -66,7 +66,15 @@ export default function TabBarClient({
   items,
   navLabel,
 }: {
-  items: { href: string; label: string; icon: string; center?: boolean; action?: "menu" }[];
+  items: {
+    href: string;
+    label: string;
+    icon: string;
+    center?: boolean;
+    action?: "menu";
+    /** A count (or a dot) on the icon — the bell's alerts. */
+    badge?: number | "dot" | null;
+  }[];
   /** The bar's name for screen readers, in the owner's language. */
   navLabel: string;
 }) {
@@ -127,6 +135,11 @@ export default function TabBarClient({
             }
           >
             {item.center ? <span className="tabbar__bubble">{icon}</span> : icon}
+            {item.badge != null && (
+              <span className={item.badge === "dot" ? "nav-badge nav-badge--dot" : "nav-badge"} aria-hidden>
+                {item.badge === "dot" ? "" : item.badge > 99 ? "99+" : item.badge}
+              </span>
+            )}
           </Link>
         );
       })}

@@ -1,7 +1,7 @@
 import { getSessionOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
-import { workspaceNav } from "@/lib/nav/facts";
+import { alertBadge, workspaceNav } from "@/lib/nav/facts";
 import TabBarClient from "./tab-bar-client";
 
 // The mobile bottom navigation — liquid glass, thumb territory. Signed-out
@@ -14,17 +14,31 @@ export default async function TabBar() {
   if (!operator) return null;
 
   const locale = await getLocale();
-  const model = await workspaceNav(operator.id, operator.profile);
+  const [model, badge] = await Promise.all([
+    workspaceNav(operator.id, operator.profile),
+    alertBadge(operator.id),
+  ]);
   return (
     <TabBarClient
       navLabel={t(locale, "aria_main_nav")}
-      items={model.tabs.map((seat) => ({
-        href: seat.href,
-        label: t(locale, seat.labelKey),
-        icon: seat.icon,
-        center: seat.center,
-        action: seat.action,
-      }))}
+      items={model.tabs.map((seat) => {
+        const label = t(locale, seat.labelKey);
+        // The bell carries how many alerts need the owner (a dot: advice only).
+        const count = seat.key === "alerts" ? badge : null;
+        return {
+          href: seat.href,
+          label:
+            count === "dot"
+              ? t(locale, "nav_alerts_dot").replace("{label}", label)
+              : count
+                ? t(locale, "nav_alerts_badge").replace("{label}", label).replace("{n}", String(count))
+                : label,
+          icon: seat.icon,
+          center: seat.center,
+          action: seat.action,
+          badge: count,
+        };
+      })}
     />
   );
 }
