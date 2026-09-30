@@ -13,6 +13,8 @@ import { silenceSpan } from "@/lib/geo/silence";
 import { WITHDRAW_REASONS } from "@/lib/rentals/settle";
 import type { ScheduleStatus } from "@/lib/rentals/schedule";
 import { dayKey, startOfTodayTbilisi, tbilisiFormat } from "@/lib/time";
+import { lastRunFor } from "@/lib/automation/run";
+import { rankAlerts } from "@/lib/alerts/rank";
 
 export const dynamic = "force-dynamic";
 
@@ -22,16 +24,28 @@ const TYPE_STYLE: Record<string, string> = {
   underpriced: "alert-card--underpriced",
   contract_expiry: "alert-card--contract",
   contract_ended: "alert-card--contract",
+  overlap: "alert-card--overlap",
   rent_overdue: "alert-card--overdue",
   repossession_right: "alert-card--repossess",
   geofence_breach: "alert-card--geofence",
   tracker_silent: "alert-card--geofence",
 };
 
+interface OverlapStay {
+  source?: string;
+  start?: string;
+  end?: string;
+  tenantName?: string | null;
+}
+
 interface AlertPayload {
   start?: string;
   end?: string;
   nights?: number;
+  /** Free window with nothing booked after it (within the horizon). */
+  openEnd?: boolean;
+  /** Double booking: the two stays or contracts. */
+  stays?: OverlapStay[];
   endDate?: string;
   tenantName?: string | null;
   daysLeft?: number;
@@ -80,12 +94,15 @@ export default async function AlertsPage({
   const { view } = await searchParams;
   const done = view === "done";
   const locale = await getLocale();
-  const alerts = await prisma.alert.findMany({
+  const found = await prisma.alert.findMany({
     where: { operatorId: operator.id, status: done ? "resolved" : "open" },
     include: { unit: { select: { id: true, name: true, nameKa: true, currency: true } } },
     orderBy: done ? { resolvedAt: "desc" } : { createdAt: "desc" },
     take: done ? 50 : undefined,
   });
+  // Open alerts: what costs money or the car today comes first.
+  const alerts = done ? found : rankAlerts(found);
+  const lastRun = done ? null : await lastRunFor(operator.id);
 
   // Older alerts carry no category — it is looked up from the asset.
   const categoryOf = await alertCategories(operator.id, alerts);
@@ -130,10 +147,42 @@ export default async function AlertsPage({
   const owes = (status: ScheduleStatus | null | undefined) =>
     status != null && status.periodsOwed > 0 && status.amountDue > 0;
 
+  // Where each of two overlapping stays comes from.
+  const sourceLabel = (stay: OverlapStay) => {
+    switch (stay.source) {
+      case "airbnb":
+        return "Airbnb";
+      case "booking":
+        return "Booking.com";
+      case "direct":
+        return t(locale, "source_direct");
+      case "manual":
+        return t(locale, "source_manual");
+      case "lease":
+        return t(locale, "overlap_src_lease");
+      case "contract":
+        return stay.tenantName || t(locale, "overlap_src_contract");
+      default:
+        return stay.source ?? "—";
+    }
+  };
+
   const detail = (type: string, payload: AlertPayload, currency: string) => {
     switch (type) {
       case "vacancy_gap":
-        return `${payload.start} → ${payload.end} · ${payload.nights} ${t(locale, "nights_short")}`;
+        return payload.openEnd
+          ? `${payload.start} → · ${payload.nights}+ ${t(locale, "nights_short")} · ${t(locale, "gap_open_end")}`
+          : `${payload.start} → ${payload.end} · ${payload.nights} ${t(locale, "nights_short")}`;
+      case "overlap":
+        return [
+          payload.assetName,
+          `${payload.start} → ${payload.end} · ${payload.nights} ${t(locale, "nights_short")}`,
+          (payload.stays ?? [])
+            .map((stay) => `${sourceLabel(stay)} ${stay.start} → ${stay.end}`)
+            .join(" + "),
+        ]
+          .filter(Boolean)
+          .join(" · ");
       case "lease_expiry":
         return `${payload.tenantName ?? "—"} · ${payload.endDate} · ${payload.daysLeft} ${t(locale, "days_left")}`;
       case "underpriced":
@@ -239,6 +288,28 @@ export default async function AlertsPage({
         )}
       </div>
 
+      {!done && (
+        // When the platform last looked by itself — so "all clear" is never
+        // a guess, and a stopped schedule is noticed.
+        <p
+          className="alerts-run"
+          data-state={!lastRun ? "never" : !lastRun.ok || lastRun.late ? "warn" : "ok"}
+        >
+          {lastRun ? (
+            <>
+              {t(locale, "alerts_last_run").replace("{at}", fmtStamp.format(lastRun.at))}
+              {!lastRun.ok
+                ? ` — ${t(locale, "alerts_last_run_failed")}`
+                : lastRun.late
+                  ? ` — ${t(locale, "alerts_last_run_late")}`
+                  : `. ${t(locale, "alerts_schedule_hint")}`}
+            </>
+          ) : (
+            t(locale, "alerts_last_run_never")
+          )}
+        </p>
+      )}
+
       <div className="mb-5 flex flex-wrap gap-1.5">
         <Link href="/alerts" className={`btn-chip ${done ? "" : "btn-chip--active"}`}>
           {t(locale, "alerts_active_tab")}
@@ -262,16 +333,23 @@ export default async function AlertsPage({
             alert.type === "repossession_right" &&
             category != null &&
             templateFamily(category) === "property";
+          // Two contracts on one asset, rather than two stays on a unit.
+          const contracts = alert.type === "overlap" && !alert.unit;
+          const titleKey: StringKey = property
+            ? "alert_repossession_right_property"
+            : contracts
+              ? "alert_overlap_contract"
+              : (`alert_${alert.type}` as StringKey);
+          const actionKey: StringKey = property
+            ? "action_repossession_right_property"
+            : contracts
+              ? "action_overlap_contract"
+              : (`action_${alert.type}` as StringKey);
           return (
             <div key={alert.id} className={`alert-card ${TYPE_STYLE[alert.type] ?? ""}`}>
               <div>
                 <div className="alert-card__title">
-                  {t(
-                    locale,
-                    property
-                      ? "alert_repossession_right_property"
-                      : (`alert_${alert.type}` as StringKey),
-                  )}
+                  {t(locale, titleKey)}
                   {alert.unit && (
                     <>
                       {" "}
@@ -285,13 +363,7 @@ export default async function AlertsPage({
                   {detail(alert.type, payload, currency)}
                 </div>
                 <div className="alert-card__action">
-                  <b>{t(locale, "alert_action")}:</b>{" "}
-                  {t(
-                    locale,
-                    property
-                      ? "action_repossession_right_property"
-                      : (`action_${alert.type}` as StringKey),
-                  )}
+                  <b>{t(locale, "alert_action")}:</b> {t(locale, actionKey)}
                 </div>
               </div>
               {done ? (

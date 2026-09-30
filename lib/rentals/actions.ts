@@ -8,13 +8,14 @@ import type { FormState } from "@/lib/units/actions";
 import type { StringKey } from "@/lib/i18n/strings";
 import { TEMPLATE_KEYS, type TemplateKey } from "@/lib/notify/templates";
 import { flushOutbox } from "@/lib/notify/whatsapp";
+import { MAX_TEMPLATE_CHARS } from "@/lib/notify/limits";
 import { parsePolygon } from "@/lib/geo/fence";
 import { startOfTodayTbilisi } from "@/lib/time";
 import { PAYMENT_PERIODS, snapToBoundary, type PaymentPeriod } from "./schedule";
 import { monthlyEquivalent } from "./amount";
 import { alignPaidThrough, applyPayment, replayLedger, restatesBalance } from "./ledger";
 import { contractTerms, periodAmount } from "./terms";
-import { restoreAfterUndo, settlePaidRent } from "./settle";
+import { restoreAfterUndo, settlePaidRent, sweepStaleRentAlerts, withdrawFenceMessages } from "./settle";
 
 const str = (formData: FormData, key: string) =>
   String(formData.get(key) ?? "").trim();
@@ -164,13 +165,18 @@ export async function saveSchedule(
     Math.round(graceRaw) !== contract.graceDays ||
     remindersEnabled !== contract.remindersEnabled;
   if (changed) {
+    const now = new Date();
     await settlePaidRent(
       prisma,
       contractId,
       ledger ? ledger.paidThrough : contract.paidThrough,
-      new Date(),
+      now,
       { cause: "changed", withdrawOwed: true },
     );
+    // A new period moves the due dates onto a new grid: an open alert about
+    // a date of the old grid would stand next to the one the next scan
+    // raises. Only the current first unpaid due date keeps its alert.
+    await sweepStaleRentAlerts(prisma, startOfTodayTbilisi(now), { contractId }, now);
   }
 
   refresh(assetId);
@@ -263,7 +269,7 @@ async function receivePayment(formData: FormData): Promise<ReceiveResult> {
  * restated are part of that statement and are not deleted here.
  */
 export async function deletePayment(formData: FormData) {
-  await removePayment(str(formData, "assetId"), str(formData, "paymentId"));
+  await removePayment(str(formData, "assetId"), str(formData, "paymentId"), false);
 }
 
 /**
@@ -273,11 +279,20 @@ export async function deletePayment(formData: FormData) {
 export async function undoPayment(
   formData: FormData,
 ): Promise<{ ok: true } | { error: StringKey }> {
-  const error = await removePayment(str(formData, "assetId"), str(formData, "paymentId"));
+  const error = await removePayment(str(formData, "assetId"), str(formData, "paymentId"), true);
   return error ? { error } : { ok: true };
 }
 
-async function removePayment(assetId: string, paymentId: string): Promise<StringKey | null> {
+/**
+ * `requeue`: the immediate undo puts back the reminders this payment
+ * withdrew (they were written minutes ago). Deleting an older payment only
+ * reopens its alerts — the next scan writes fresh reminders.
+ */
+async function removePayment(
+  assetId: string,
+  paymentId: string,
+  requeue: boolean,
+): Promise<StringKey | null> {
   const owned = assetId ? await ownAsset(assetId) : null;
   if (!owned || !paymentId) return "error_required";
 
@@ -335,7 +350,15 @@ async function removePayment(assetId: string, paymentId: string): Promise<String
     ),
   ]);
   // What this payment withdrew comes back if its due date is unpaid again.
-  await restoreAfterUndo(prisma, contract.id, replay.state.paidThrough, payment.createdAt);
+  const restored = await restoreAfterUndo(
+    prisma,
+    contract.id,
+    replay.state.paidThrough,
+    payment.createdAt,
+    { requeue },
+  );
+  // Back in the queue: with automatic sending on, it goes out now.
+  if (restored.requeued > 0) await flushOutbox(owned.operator.id).catch(() => undefined);
   refresh(assetId);
   return null;
 }
@@ -467,6 +490,8 @@ export async function toggleGeofence(formData: FormData) {
   if (!owned || !fenceId) return;
   const fence = await prisma.geofence.findFirst({ where: { id: fenceId, assetId } });
   if (!fence) return;
+  // Switched off: its warnings still waiting to go out are withdrawn.
+  if (fence.active) await withdrawFenceMessages(prisma, [fence.id], "fence_off");
   await prisma.geofence.update({
     where: { id: fenceId },
     data: { active: !fence.active },
@@ -479,6 +504,11 @@ export async function deleteGeofence(formData: FormData) {
   const fenceId = str(formData, "fenceId");
   const owned = assetId ? await ownAsset(assetId) : null;
   if (!owned || !fenceId) return;
+  const fence = await prisma.geofence.findFirst({ where: { id: fenceId, assetId } });
+  if (!fence) return;
+  // Before the events go with it: the dedupe keys of its unsent warnings
+  // point at them.
+  await withdrawFenceMessages(prisma, [fence.id], "fence_removed");
   await prisma.geofence.deleteMany({ where: { id: fenceId, assetId } });
   refresh(assetId);
 }
@@ -491,6 +521,13 @@ export async function saveNotifySetup(
 ): Promise<FormState> {
   const operator = await requireOperator();
   const assetId = str(formData, "assetId");
+
+  // Messages go out on one line and are kept short (lib/notify/limits.ts).
+  for (const key of TEMPLATE_KEYS) {
+    if ([...str(formData, `tpl_${key}`)].length > MAX_TEMPLATE_CHARS) {
+      return { error: "error_template_too_long" };
+    }
+  }
 
   await prisma.operator.update({
     where: { id: operator.id },

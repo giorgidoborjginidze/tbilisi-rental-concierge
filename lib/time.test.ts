@@ -4,11 +4,25 @@ import {
   monthStartTbilisi,
   sameTbilisiDay,
   startOfTodayTbilisi,
+  tbilisiDayStartInstant,
   tbilisiFormat,
   todayKey,
 } from "./time";
 
 describe("Tbilisi today", () => {
+  it("began at local midnight, 20:00 UTC the evening before", () => {
+    expect(tbilisiDayStartInstant(new Date("2026-09-30T06:38:12Z"))).toEqual(
+      new Date("2026-09-29T20:00:00Z"),
+    );
+    // 23:30 local on the 30th is still the 30th; 00:10 local is the 1st.
+    expect(tbilisiDayStartInstant(new Date("2026-09-30T19:30:00Z"))).toEqual(
+      new Date("2026-09-29T20:00:00Z"),
+    );
+    expect(tbilisiDayStartInstant(new Date("2026-09-30T20:10:00Z"))).toEqual(
+      new Date("2026-09-30T20:00:00Z"),
+    );
+  });
+
   it("has already moved on at 01:30 local time while UTC is still yesterday", () => {
     // Saturday 3 October, 01:30 in Tbilisi = Friday 21:30 UTC.
     const now = new Date("2026-10-02T21:30:00Z");

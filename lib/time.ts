@@ -52,6 +52,37 @@ export function startOfTodayTbilisi(now: Date = new Date()): Date {
   return dayFromKey(todayKey(now));
 }
 
+const clockFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hourCycle: "h23",
+});
+
+/**
+ * The instant the current Tbilisi day began (local midnight, 20:00 UTC the
+ * evening before) — for counting what happened "today" by timestamp, e.g.
+ * how many messages a number has been sent since midnight.
+ */
+export function tbilisiDayStartInstant(now: Date = new Date()): Date {
+  const parts = clockFormatter.formatToParts(now);
+  const part = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0);
+  const wallClock = Date.UTC(
+    part("year"),
+    part("month") - 1,
+    part("day"),
+    part("hour"),
+    part("minute"),
+    part("second"),
+  );
+  const offset = wallClock - Math.floor(now.getTime() / 1000) * 1000;
+  return new Date(dayFromKey(todayKey(now)).getTime() - offset);
+}
+
 /** Tomorrow in Tbilisi, in the stored form. */
 export function startOfTomorrowTbilisi(now: Date = new Date()): Date {
   return new Date(startOfTodayTbilisi(now).getTime() + DAY_MS);

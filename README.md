@@ -33,8 +33,9 @@ npm run dev                 # http://localhost:3000
 > copy), or upgrade to PowerShell 7+.
 
 Useful scripts: `npm run db:migrate`, `npm run db:seed`, `npm run db:studio`,
-`npm test` (vitest), `npm run scheduler` (recurring iCal sync + alert scan,
-interval set by `SYNC_INTERVAL_MINUTES`).
+`npm test` (vitest), `npm run scheduler` (local stand-in for the production
+cron: iCal sync every `SYNC_INTERVAL_MINUTES`, and once a day from 08:00
+Tbilisi time the full daily job — see **Automatic jobs** below).
 
 ## Authentication & multi-user
 
@@ -44,9 +45,9 @@ bookings, assets, alerts, and income. Passwords are hashed with Node's
 built-in scrypt (no native dependencies); sessions are 30-day httpOnly
 cookies backed by a `Session` table storing only the token's SHA-256.
 Every page, server action, and API route is scoped to the signed-in
-operator — cross-tenant record access returns 404, and the cron routes
-return 401 without a session (the local scheduler still processes all
-operators directly). The seeded demo account is
+operator — cross-tenant record access returns 404, and the manual
+scan/sync routes return 401 without a session. The only route that works
+for every operator is `/api/cron`, and it requires `CRON_SECRET`. The seeded demo account is
 **ops@kolkhetistays.ge / demo1234** (shown on the login page).
 
 ## Deployment (Vercel + Neon Postgres)
@@ -63,6 +64,26 @@ Postgres database (e.g. Neon), and set two environment variables —
 automatically (`@prisma/adapter-pg` vs better-sqlite3). Note: the seed
 script is for local SQLite demo data; production starts empty and users
 register their own accounts.
+
+### Automatic jobs (Vercel Cron)
+
+`vercel.json` schedules `GET /api/cron` once a day at 04:00 UTC (08:00 in
+Tbilisi — the Hobby plan allows one cron run a day, fired within that
+hour). Set **`CRON_SECRET`** (a random string of 16+ characters) in the
+Vercel project: Vercel then sends it as `Authorization: Bearer …`, and the
+route refuses every call without it (503 while the variable is missing).
+Each run, for every workspace in turn: pulls the iCal calendars, runs the
+alert scan (vacancies, double bookings, expiring and finished contracts,
+silent trackers, late rent — which also queues the WhatsApp reminders),
+then delivers that workspace's own outbox (sent through the WhatsApp Cloud
+API when `WHATSAPP_TOKEN` / `WHATSAPP_PHONE_NUMBER_ID` are set; otherwise
+the messages wait with a one-tap send link). Every run is recorded in the
+`SystemRun` table and `/alerts` shows "last automatic check", warning when
+it failed for that account or has not run for over a day.
+
+For fresher calendars, an external scheduler (cron-job.org, GitHub
+Actions, Upstash QStash…) can call `GET /api/cron?only=sync` hourly with the
+same header — that pulls the calendars only and sends nothing.
 
 ## Plans & teams
 
@@ -116,12 +137,24 @@ single-currency return ratios).
 
 ## Alerts
 
-The scan job (`POST /api/alerts/scan`, the **Scan now** button on `/alerts`,
-or the scheduler) creates three alert types, each with a suggested action:
-vacancy gaps of 2+ nights in the next 30 days, active leases and asset
-rental contracts expiring within 30 days, and units priced materially below
-their district benchmark. Alerts
-dedupe on a stable key — dismissed or resolved alerts never reappear.
+The scan job (the daily cron, the **Scan now** button on `/alerts`,
+`POST /api/alerts/scan`, or the local scheduler) creates alerts with a
+suggested action: double bookings (two stays, or two contracts on one
+asset, sharing nights in the next 90 days), free windows of 2+ nights
+starting within 14 days, leases and contracts expiring within 30 days,
+finished contracts (and any rent left unpaid under them), silent GPS
+trackers, late rent and the repossession right, and units priced below
+their district benchmark. Alerts dedupe on a stable key — a free window is
+identified by the stays around it, so the same vacancy is one alert until
+it is booked or over. Open alerts whose situation has ended close
+themselves (the reason shows under **Completed**); alerts the owner closed
+never reappear. `/alerts` and the dashboard's Market Advice list the most
+severe first.
+
+WhatsApp messages are limited per recipient: 3 a day to a renter's
+number, 3 per asset (20 in all) to the owner's own number, and one per red
+line and event kind a day; texts are kept on one line and under 600
+characters (templates: 500).
 
 ## iCal sync
 
@@ -154,7 +187,7 @@ lib/db.ts             Prisma client singleton (SQLite adapter)
 lib/i18n/             EN default / KA toggle string map
 lib/calendar/         Vacancy-gap + overlap interval math (pure, tested)
 lib/ical/             iCal parse + sync → Bookings (pure core, tested)
-scripts/scheduler.ts  Local recurring job runner (iCal sync)
+scripts/scheduler.ts  Local stand-in for the cron (lib/automation/run.ts)
 lib/analytics/        Occupancy, ADR, RevPAR, revenue math (pure, tested)
 lib/pricing/          Rule-based pricing engine (pure, tested)
 lib/market/           MarketDataSource interface + Db/Mock sources

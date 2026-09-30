@@ -2,9 +2,8 @@ import { NextResponse } from "next/server";
 import { getSessionOperator } from "@/lib/auth/session";
 import { syncAllUnits } from "@/lib/ical/run-sync";
 
-// Cron-style endpoint: runs the iCal sync for the logged-in operator's
-// units and reports per-feed results. (The local scheduler syncs all
-// operators directly via the module, without HTTP.)
+// Runs the iCal sync for the signed-in workspace's units and reports
+// per-feed results. The scheduled sync for every workspace is /api/cron.
 async function handle() {
   const operator = await getSessionOperator();
   if (!operator) {

@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
@@ -21,7 +20,7 @@ export default async function NewBookingPage() {
     "booking_unit", "booking_source", "source_manual", "source_direct",
     "booking_guest", "booking_check_in", "booking_check_out", "booking_amount",
     "save", "cancel", "error_required", "error_invalid_number", "error_dates",
-    "error_email_taken",
+    "error_email_taken", "error_booking_overlap",
   ];
   const labels = Object.fromEntries(labelKeys.map((key) => [key, t(locale, key)]));
 

@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/db";
 import type { Locale } from "@/lib/i18n/strings";
 import { sweepStaleMessages } from "@/lib/rentals/settle";
-import { startOfTodayTbilisi } from "@/lib/time";
+import { startOfTodayTbilisi, tbilisiDayStartInstant } from "@/lib/time";
+import { clampMessage, withinDailyLimits, type SentToday } from "./limits";
 import { normalizePhone } from "./phone";
 import {
   defaultTemplate,
@@ -71,32 +72,94 @@ export interface QueueInput {
   vars: TemplateVars;
   assetId?: string | null;
   contractId?: string | null;
+  /** Red-line messages: the fence, for the once-a-day-per-fence limit. */
+  fenceId?: string | null;
+  /** Defaults to now; the scan and the tests pass their own clock. */
+  now?: Date;
 }
 
+const LIVE = ["queued", "sent", "failed"];
+
+/** What this recipient has already been sent today (lib/notify/limits.ts). */
+async function sentToday(input: QueueInput, phone: string, now: Date): Promise<SentToday> {
+  const since = tbilisiDayStartInstant(now);
+  const today = { status: { in: LIVE }, createdAt: { gte: since } };
+  const [toPhone, toPhoneForAsset] = await Promise.all([
+    prisma.notifyMessage.count({ where: { toPhone: phone, ...today } }),
+    input.assetId
+      ? prisma.notifyMessage.count({ where: { toPhone: phone, assetId: input.assetId, ...today } })
+      : Promise.resolve(0),
+  ]);
+  let sameFenceKind: number | undefined;
+  if (input.fenceId) {
+    const events = await prisma.geoEvent.findMany({
+      where: { geofenceId: input.fenceId, createdAt: { gte: since } },
+      select: { id: true },
+    });
+    sameFenceKind = events.length
+      ? await prisma.notifyMessage.count({
+          where: {
+            kind: input.key,
+            dedupeKey: { in: events.map((event) => `geo|${event.id}|${roleSuffix(input.key)}`) },
+            ...today,
+          },
+        })
+      : 0;
+  }
+  return { toPhone, toPhoneForAsset, sameFenceKind };
+}
+
+/** "driver" | "owner" — the last part of a red-line message's dedupe key. */
+const roleSuffix = (key: TemplateKey) => (TEMPLATE_ROLE[key] === "owner" ? "owner" : "driver");
+
 /**
- * Put one message in the outbox. Returns null when it was already there
- * (deduped) or when there is no usable phone number for the recipient.
+ * Put one message in the outbox. Returns the row when a message has
+ * (re-)entered the queue, null when it was already there (deduped), when
+ * there is no usable phone number, or when the daily limit for this
+ * recipient is reached — then the message is kept as withdrawn with the
+ * reason "limit", so the owner sees why it did not go out.
  *
- * A message that was withdrawn (status "cancelled" — the rent was paid,
- * the terms changed) and is now called for again because the situation is
- * back comes back to the queue with a freshly rendered body, so it quotes
- * today's amount rather than the one it was first written with.
+ * A message still waiting keeps its figures current: its text is
+ * re-rendered on every call. A message that was withdrawn (the rent was
+ * paid, the terms changed) and is now called for again because the
+ * situation is back returns to the queue with a freshly rendered body, so
+ * it quotes today's amount rather than the one it was first written with.
  */
 export async function queueMessage(input: QueueInput) {
   const phone = normalizePhone(input.phone);
   if (!phone) return null;
+  const now = input.now ?? new Date();
 
   const existing = await prisma.notifyMessage.findUnique({
     where: { dedupeKey: input.dedupeKey },
   });
-  if (existing && existing.status !== "cancelled") return null;
+  if (existing?.status === "sent") return null;
 
-  const body = render(
-    await resolveTemplate(input.operatorId, input.locale, input.key),
-    input.vars,
+  const body = clampMessage(
+    render(await resolveTemplate(input.operatorId, input.locale, input.key), input.vars),
   );
 
+  if (existing && existing.status !== "cancelled") {
+    if (existing.body !== body || existing.toPhone !== phone) {
+      await prisma.notifyMessage.update({
+        where: { id: existing.id },
+        data: { body, toPhone: phone },
+      });
+    }
+    return null;
+  }
+
+  const allowed = withinDailyLimits(TEMPLATE_ROLE[input.key], await sentToday(input, phone, now));
   if (existing) {
+    // Withdrawn earlier: back in the queue only while today's limit allows.
+    if (!allowed) {
+      if (existing.cancelReason === "limit") return null;
+      await prisma.notifyMessage.update({
+        where: { id: existing.id },
+        data: { toPhone: phone, body, cancelReason: "limit", cancelledAt: now },
+      });
+      return null;
+    }
     return prisma.notifyMessage.update({
       where: { id: existing.id },
       data: {
@@ -106,12 +169,12 @@ export async function queueMessage(input: QueueInput) {
         cancelReason: null,
         cancelledAt: null,
         error: null,
-        createdAt: new Date(),
+        createdAt: now,
       },
     });
   }
 
-  return prisma.notifyMessage.create({
+  const row = await prisma.notifyMessage.create({
     data: {
       operatorId: input.operatorId,
       assetId: input.assetId ?? null,
@@ -121,8 +184,11 @@ export async function queueMessage(input: QueueInput) {
       kind: input.key,
       body,
       dedupeKey: input.dedupeKey,
+      createdAt: now,
+      ...(allowed ? {} : { status: "cancelled", cancelReason: "limit", cancelledAt: now }),
     },
   });
+  return allowed ? row : null;
 }
 
 /** Send one body over the Cloud API. Throws on a non-2xx response. */
@@ -174,17 +240,32 @@ export interface FlushResult {
 }
 
 /**
- * Try to deliver everything queued. Without credentials nothing is sent and
- * the messages stay queued for click-to-send — that is a normal state, not
- * an error.
+ * Deliver one workspace's queued messages. Always per workspace: one
+ * owner's action (a scan, a ping, a retry) never sends another owner's
+ * queue. Without credentials nothing is sent and the messages stay queued
+ * for click-to-send — that is a normal state, not an error.
  */
-export async function flushOutbox(operatorId?: string): Promise<FlushResult> {
+/** A claimed message whose send never reported back within this is given up on. */
+const SENDING_TIMEOUT_MS = 10 * 60_000;
+
+export async function flushOutbox(operatorId: string): Promise<FlushResult> {
   const config = whatsappConfig();
+  // A send that was cut off (the function timed out mid-request) may or may
+  // not have reached the phone: it is marked failed, never sent again on
+  // its own — the owner decides.
+  await prisma.notifyMessage.updateMany({
+    where: {
+      operatorId,
+      status: "sending",
+      claimedAt: { lt: new Date(Date.now() - SENDING_TIMEOUT_MS) },
+    },
+    data: { status: "failed", error: "interrupted" },
+  });
   // Last check before anything leaves: a reminder about rent that has been
   // paid, or a red-line text for a car that is back inside, is withdrawn.
   await sweepStaleMessages(prisma, startOfTodayTbilisi(), operatorId);
   const queued = await prisma.notifyMessage.findMany({
-    where: { status: "queued", ...(operatorId ? { operatorId } : {}) },
+    where: { status: "queued", operatorId },
     orderBy: { createdAt: "asc" },
     take: 50,
   });
@@ -192,8 +273,15 @@ export async function flushOutbox(operatorId?: string): Promise<FlushResult> {
 
   const result: FlushResult = { sent: 0, failed: 0, pending: 0 };
   for (const message of queued) {
+    // Claim it first: two flushes running at once (the cron and a scan
+    // button) must not both send the same message.
+    const claimed = await prisma.notifyMessage.updateMany({
+      where: { id: message.id, status: "queued" },
+      data: { status: "sending", claimedAt: new Date() },
+    });
+    if (claimed.count === 0) continue;
     try {
-      const providerRef = await sendViaCloudApi(config, message.toPhone, message.body);
+      const providerRef = await sendViaCloudApi(config, message.toPhone, clampMessage(message.body));
       await prisma.notifyMessage.update({
         where: { id: message.id },
         data: { status: "sent", sentAt: new Date(), providerRef, error: null },

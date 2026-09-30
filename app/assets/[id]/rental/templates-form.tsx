@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { saveNotifySetup } from "@/lib/rentals/actions";
 import type { FormState } from "@/lib/units/actions";
+import { MAX_TEMPLATE_CHARS } from "@/lib/notify/limits";
 
 export interface TemplateField {
   key: string;
@@ -61,6 +62,7 @@ export default function TemplatesForm({
             <textarea
               name={`tpl_${field.key}`}
               rows={6}
+              maxLength={MAX_TEMPLATE_CHARS}
               defaultValue={field.isDefault ? "" : field.body}
               placeholder={field.body}
             />

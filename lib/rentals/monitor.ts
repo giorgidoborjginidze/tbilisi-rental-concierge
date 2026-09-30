@@ -68,7 +68,7 @@ export async function monitorRentPayments(
   // that has been paid, about contracts that have ended or were deleted,
   // red-line texts for a vehicle that is back inside.
   await sweepStaleMessages(prisma, today, operatorId, now);
-  await sweepStaleRentAlerts(prisma, today, operatorId, now);
+  await sweepStaleRentAlerts(prisma, today, { operatorId }, now);
 
   // Dedupe alerts the same way the main scan does: on type + payload key.
   const existing = await prisma.alert.findMany({
@@ -173,6 +173,7 @@ export async function monitorRentPayments(
         vars,
         assetId: contract.assetId,
         contractId: contract.id,
+        now,
       });
       if (message) result.messages += 1;
     };
@@ -214,6 +215,20 @@ export async function monitorRentPayments(
       );
     } else if (status.state === "repossess") {
       await push("repossession_right", `${contract.id}|${dueKey}`, alertPayload);
+      // One alert per late due date: the "rent late" one for the same date
+      // has been overtaken by the repossession right.
+      const earlier = known.get(`rent_overdue|${contract.id}|${dueKey}`);
+      if (earlier && earlier.status === "open") {
+        await prisma.alert.update({
+          where: { id: earlier.id },
+          data: {
+            status: "resolved",
+            resolvedAt: now,
+            payload: { ...(earlier.payload as object), autoResolved: "escalated" },
+          },
+        });
+        earlier.status = "resolved";
+      }
       // Said once, not every day: the window has already run out.
       await queue(
         keys.late,

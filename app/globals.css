@@ -3563,3 +3563,33 @@ main > section > h2:first-child {
   .daily-row__actions { flex: 1 1 100%; }
   .daily-row__actions button { flex: 1; }
 }
+
+/* ── Alerts: when the platform last checked by itself, and the alerts
+   that need action today. Placed after the liquid-glass block, which
+   otherwise flattens every alert card to the same glass. ── */
+.alerts-run {
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+  margin: -6px 0 14px;
+  max-width: 640px;
+}
+.alerts-run[data-state="warn"],
+.alerts-run[data-state="never"] {
+  color: var(--status-danger-text);
+}
+.alert-card.alert-card--overlap,
+.alert-card.alert-card--repossess,
+.alert-card.alert-card--geofence {
+  background:
+    linear-gradient(
+      color-mix(in srgb, var(--status-danger-bg) 55%, transparent),
+      color-mix(in srgb, var(--status-danger-bg) 55%, transparent)
+    ),
+    var(--glass-fill);
+  box-shadow: var(--glass-edge), inset 3px 0 0 var(--status-danger-text);
+}
+.alert-card.alert-card--overlap .alert-card__title,
+.alert-card.alert-card--repossess .alert-card__title,
+.alert-card.alert-card--geofence .alert-card__title {
+  color: var(--status-danger-text);
+}

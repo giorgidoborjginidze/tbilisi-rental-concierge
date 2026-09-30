@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireOperator } from "@/lib/auth/session";
+import { flushOutbox } from "@/lib/notify/whatsapp";
 import { scanAlerts } from "./scan";
 
 export async function setAlertStatus(formData: FormData) {
@@ -21,8 +22,15 @@ export async function setAlertStatus(formData: FormData) {
   }
 }
 
+/**
+ * "Scan now": the same scan the daily job runs, for this workspace only,
+ * then its own outbox is delivered (sent at once when the WhatsApp Cloud
+ * API is configured; otherwise the messages wait with a send link).
+ */
 export async function runAlertScan() {
   const operator = await requireOperator();
   await scanAlerts(new Date(), operator.id);
+  await flushOutbox(operator.id).catch(() => undefined);
   revalidatePath("/alerts");
+  revalidatePath("/");
 }

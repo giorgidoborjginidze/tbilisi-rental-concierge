@@ -9,6 +9,7 @@ import {
 } from "@/lib/rentals/terms";
 import { formatDue } from "@/lib/rentals/money";
 import { alertCategories } from "@/lib/alerts/category";
+import { rankAlerts } from "@/lib/alerts/rank";
 import {
   activeContract as runningContract,
   activeContractWhere,
@@ -169,6 +170,7 @@ const TIP_TINTS: Record<string, string> = {
   repossession_right: "linear-gradient(140deg,#f5cdd9,#e08ba4)",
   geofence_breach: "linear-gradient(140deg,#f5cdd9,#e08ba4)",
   tracker_silent: "linear-gradient(140deg,#dfe6ee,#9fb0c4)",
+  overlap: "linear-gradient(140deg,#f5cdd9,#e08ba4)",
 };
 const TIP_GLYPHS: Record<string, string> = {
   underpriced: "↑",
@@ -180,6 +182,7 @@ const TIP_GLYPHS: Record<string, string> = {
   repossession_right: "!",
   geofence_breach: "⚑",
   tracker_silent: "◌",
+  overlap: "!",
 };
 
 /** Where each kind of advice actually comes from — stated, not implied. */
@@ -193,6 +196,7 @@ const TIP_SOURCE: Record<string, StringKey> = {
   repossession_right: "tips_src_contract",
   geofence_breach: "tips_src_gps",
   tracker_silent: "tips_src_gps",
+  overlap: "tips_src_calendar",
 };
 
 export async function MarketTips({
@@ -202,11 +206,17 @@ export async function MarketTips({
   locale: Locale;
   operatorId: string;
 }) {
-  const alerts = await prisma.alert.findMany({
-    where: { operatorId, status: "open" },
-    orderBy: { createdAt: "desc" },
-    take: 3,
-  });
+  // The three that matter most — a double booking or the repossession
+  // right before any "free window" advice — each named after its unit or
+  // asset.
+  const alerts = rankAlerts(
+    await prisma.alert.findMany({
+      where: { operatorId, status: "open" },
+      include: { unit: { select: { name: true, nameKa: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+    }),
+  ).slice(0, 3);
   // Older alerts carry no category — it is looked up from the asset.
   const categoryOf = await alertCategories(operatorId, alerts);
 
@@ -234,6 +244,12 @@ export async function MarketTips({
               alert.type === "repossession_right" &&
               category != null &&
               templateFamily(category) === "property";
+            const contracts = alert.type === "overlap" && !alert.unit;
+            const name = alert.unit
+              ? locale === "ka" && alert.unit.nameKa
+                ? alert.unit.nameKa
+                : alert.unit.name
+              : payload.assetName;
             return (
               <div key={alert.id} className="card tip-card">
                 <span
@@ -248,22 +264,27 @@ export async function MarketTips({
                       locale,
                       property
                         ? "alert_repossession_right_property"
-                        : (`alert_${alert.type}` as StringKey),
+                        : contracts
+                          ? "alert_overlap_contract"
+                          : (`alert_${alert.type}` as StringKey),
                     )}
-                    {payload.assetName ? ` — ${payload.assetName}` : ""}
+                    {name ? ` — ${name}` : ""}
                   </b>
                   <p>
                     {t(
                       locale,
                       property
                         ? "action_repossession_right_property"
-                        : (`action_${alert.type}` as StringKey),
+                        : contracts
+                          ? "action_overlap_contract"
+                          : (`action_${alert.type}` as StringKey),
                     )}{" "}
                     <Link href="/alerts" className="link">
                       {t(locale, "tips_open")} →
                     </Link>
                     <span className="tip-card__src">
-                      {t(locale, "tips_source")}: {t(locale, TIP_SOURCE[alert.type] ?? "tips_src_contract")}
+                      {t(locale, "tips_source")}:{" "}
+                      {t(locale, contracts ? "tips_src_contract" : TIP_SOURCE[alert.type] ?? "tips_src_contract")}
                     </span>
                   </p>
                 </div>

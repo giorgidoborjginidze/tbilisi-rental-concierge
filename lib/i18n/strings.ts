@@ -222,11 +222,7 @@ const en = {
     "Just paste the listing URL — we detect the platform (myhome.ge, ss.ge, myauto.ge, Airbnb, Booking) automatically. Add more than one if it's listed in several places.",
 
   assets_total_value: "Total Value",
-  assets_monthly_income: "Monthly Income",
   assets_rented_count: "Rented",
-  income_rent_derived: "Long-Term Rent",
-  income_str_derived: "Short-Term Rent (This Month)",
-  income_manual: "Other Income (This Month)",
 
   contracts_title: "Rental Contracts",
   contracts_col: "Contract",
@@ -248,7 +244,7 @@ const en = {
   // ── Rental service: payment schedule, GPS red lines, notifications ──
   rental_service: "Rental Service",
   rental_service_intro:
-    "Payment schedule, GPS red lines and the messages sent automatically over WhatsApp.",
+    "Payment schedule, GPS red lines and the WhatsApp messages. Activo checks every morning and sends them automatically once WhatsApp Business is connected — until then each one waits here with a one-tap send link.",
   rental_open_service: "Rental service →",
   asset_plate: "State Plate",
   asset_plate_hint: "Quoted verbatim in the notifications, e.g. AA-123-BB.",
@@ -366,7 +362,7 @@ const en = {
 
   tpl_title: "Messages",
   tpl_intro:
-    "These go out automatically over WhatsApp when an event fires. Edit any of them — clear a field to restore the default wording.",
+    "Activo prepares these when an event fires — the rent check runs every morning, the red lines at every GPS position — and sends them over WhatsApp, automatically once WhatsApp Business is connected. One number receives at most 3 messages a day, and a text can be up to 500 characters. Edit any of them — clear a field to restore the default wording.",
   tpl_disclaimer:
     "Activo cannot contact 112 itself. The default wording therefore speaks about your contractual right to hand the plate over, not about a report already made — you decide whether to actually call.",
   tpl_notify_phone: "Your WhatsApp Number",
@@ -403,6 +399,7 @@ const en = {
 
   error_device_taken: "That device ID is already bound to another vehicle.",
   error_fence_points: "A polygon needs at least three valid points.",
+  error_template_too_long: "A message can be at most 500 characters.",
 
   alert_rent_overdue: "Rent Late",
   action_rent_overdue:
@@ -578,7 +575,6 @@ const en = {
   dash_status_title: "Status Overview",
   dash_expiring_30: "Contracts Expiring Within 30 Days",
   dash_no_expiring: "No contracts expire in the next 30 days.",
-  dash_rent_month: "Monthly Rent Income",
   dash_quick: "Quick Actions",
   dash_wealth: "My property today",
   dash_comp_title: "Property value",
@@ -820,7 +816,6 @@ const en = {
 
   nav_pricing: "Pricing",
   nav_rentals: "Rentals",
-  income_str_short: "Short-term",
   alerts_active_tab: "Active",
   alerts_done_tab: "Completed",
   alerts_done_empty: "Nothing completed yet.",
@@ -916,7 +911,6 @@ const en = {
   pricing_rationale: "Rationale",
 
   kpi_occupancy: "Occupancy",
-  kpi_revenue: "Revenue",
   this_month: "This Month",
   next_30_occupancy: "Next 30 Days Occupancy",
   monthly_title: "By Month",
@@ -1026,11 +1020,9 @@ const en = {
   metal_footnote: "Metal prices are the live USD spot price per troy ounce, converted to GEL at the current rate.",
 
   // One income definition (lib/analytics/income.ts) and its two scopes.
-  income_all: "All income",
   income_all_month: "All income · this month",
   income_all_hint: "Rent, daily lets, bookings and other income — each night counted once.",
   kpi_booking_revenue: "Booking revenue",
-  income_bookings_month: "Booking revenue · this month",
   income_daily_short: "Daily",
   income_bookings_short: "Bookings",
   analytics_leased: "Leased",
@@ -1050,9 +1042,38 @@ const en = {
   withdraw_moved_away: "The vehicle moved away from the line",
   withdraw_signal_back: "The tracker is sending again",
   withdraw_superseded: "A later contract took its place",
+  withdraw_newer_reminder: "Today's reminder replaced it, with today's figures",
+  withdraw_fence_removed: "The red line was deleted",
+  withdraw_fence_off: "The red line was switched off",
+  withdraw_asset_deleted: "The asset was deleted",
+  withdraw_limit: "Daily limit for this number reached (3 messages a day)",
+  withdraw_filled: "The free window was booked",
+  withdraw_passed: "Its dates are over",
+  withdraw_replaced: "Replaced by an updated alert",
+  withdraw_overlap_cleared: "The stays no longer overlap",
+  withdraw_escalated: "The grace period ran out — see the repossession-right alert",
+
+  // Automatic runs, double bookings, outbox delivery.
+  alerts_last_run: "Last automatic check: {at}",
+  alerts_last_run_never: "The automatic daily check has not run yet — press “Scan Now” to check today.",
+  alerts_last_run_failed: "it did not finish for your account — press “Scan Now”.",
+  alerts_last_run_late: "more than a day ago — the daily check may have stopped; press “Scan Now”.",
+  alerts_schedule_hint: "It runs every morning around 08:00.",
+  alert_overlap: "Double Booking",
+  action_overlap:
+    "Two stays take the same nights. Cancel or move one of them, and close those dates on the other channel.",
+  alert_overlap_contract: "Contracts Overlap",
+  action_overlap_contract:
+    "Two contracts cover the same days. If the earlier one ended early, set its real end date — otherwise its renter keeps getting reminders.",
+  overlap_src_lease: "Lease",
+  overlap_src_contract: "Contract",
+  gap_open_end: "nothing booked after",
+  error_booking_overlap: "These dates overlap another stay on this unit:",
+  outbox_status_sending: "Sending",
+  outbox_auto_waiting: "Goes out automatically.",
+  outbox_interrupted: "Sending was cut off — check on WhatsApp whether it arrived before sending it again.",
   alert_auto: "Closed automatically",
   alert_unpaid: "Unpaid",
-  alert_live_note: "Figures as of today",
 
   // Decide today: confirm, undo, errors, show all.
   decide_confirm: "{n} periods owed — did you receive the full {amount}?",
@@ -1286,11 +1307,7 @@ const ka: Record<StringKey, string> = {
     "უბრალოდ ჩასვი განცხადების ბმული — პლატფორმას (myhome.ge, ss.ge, myauto.ge, Airbnb, Booking) თავად ამოვიცნობთ. დაამატე რამდენიმე, თუ რამდენიმე საიტზეა განთავსებული.",
 
   assets_total_value: "ჯამური ღირებულება",
-  assets_monthly_income: "თვიური შემოსავალი",
   assets_rented_count: "გაქირავებული",
-  income_rent_derived: "გრძელვადიანი ქირა",
-  income_str_derived: "მოკლევადიანი ქირა (მიმდინარე თვე)",
-  income_manual: "სხვა შემოსავალი (მიმდინარე თვე)",
 
   contracts_title: "ქირავნობის ხელშეკრულებები",
   contracts_col: "ხელშეკრულება",
@@ -1312,7 +1329,7 @@ const ka: Record<StringKey, string> = {
   // ── გაქირავების სერვისი: გადახდები, GPS წითელი ხაზები, შეტყობინებები ──
   rental_service: "გაქირავების სერვისი",
   rental_service_intro:
-    "გადახდის გრაფიკი, GPS წითელი ხაზები და შეტყობინებები, რომლებიც ავტომატურად იგზავნება WhatsApp-ით.",
+    "გადახდის გრაფიკი, GPS წითელი ხაზები და WhatsApp შეტყობინებები. Activo ყოველ დილით ამოწმებს და, WhatsApp Business-ის მიერთების შემდეგ, თავად აგზავნის — მანამდე თითოეული აქ გელოდება, ერთი შეხებით გასაგზავნად.",
   rental_open_service: "გაქირავების სერვისი →",
   asset_plate: "სახელმწიფო ნომერი",
   asset_plate_hint: "შეტყობინებებში ზუსტად ასე დაიწერება, მაგ. AA-123-BB.",
@@ -1430,7 +1447,7 @@ const ka: Record<StringKey, string> = {
 
   tpl_title: "შეტყობინებები",
   tpl_intro:
-    "ეს ტექსტები ავტომატურად იგზავნება WhatsApp-ით, როცა შესაბამისი მოვლენა დადგება. ნებისმიერი მათგანი შეგიძლია შეცვალო — ველის გასუფთავება ნაგულისხმევ ტექსტს აბრუნებს.",
+    "Activo ამ ტექსტებს მოვლენისას ამზადებს — ქირას ყოველ დილით ამოწმებს, წითელ ხაზებს GPS-ის ყოველ სიგნალზე — და WhatsApp-ით აგზავნის, ავტომატურად, როცა WhatsApp Business მიერთებულია. ერთ ნომერზე დღეში მაქსიმუმ 3 შეტყობინება მიდის, ტექსტი კი 500 სიმბოლომდე შეიძლება იყოს. ნებისმიერი მათგანი შეგიძლია შეცვალო — ველის გასუფთავება ნაგულისხმევ ტექსტს აბრუნებს.",
   tpl_disclaimer:
     "Activo თავად 112-ს ვერ დაუკავშირდება. ამიტომ ნაგულისხმევი ტექსტი ლაპარაკობს შენს კონტრაქტისეულ უფლებაზე, გადასცე ნომერი — და არა უკვე გაკეთებულ განცხადებაზე. დარეკვა შენი გადასაწყვეტია.",
   tpl_notify_phone: "შენი WhatsApp ნომერი",
@@ -1467,6 +1484,7 @@ const ka: Record<StringKey, string> = {
 
   error_device_taken: "ეს მოწყობილობის ID უკვე მიბმულია სხვა ავტომობილზე.",
   error_fence_points: "მრავალკუთხედს მინიმუმ სამი სწორი წერტილი სჭირდება.",
+  error_template_too_long: "შეტყობინება მაქსიმუმ 500 სიმბოლო შეიძლება იყოს.",
 
   alert_rent_overdue: "ქირა დაგვიანებულია",
   action_rent_overdue:
@@ -1642,7 +1660,6 @@ const ka: Record<StringKey, string> = {
   dash_status_title: "სტატუსების მიმოხილვა",
   dash_expiring_30: "ხელშეკრულებები, რომელთა ვადა 30 დღეში იწურება",
   dash_no_expiring: "მომდევნო 30 დღეში არცერთი ხელშეკრულების ვადა არ იწურება.",
-  dash_rent_month: "თვიური ქირის შემოსავალი",
   dash_quick: "სწრაფი მოქმედებები",
   dash_wealth: "ჩემი ქონება დღეს",
   dash_comp_title: "ქონების ღირებულება",
@@ -1883,7 +1900,6 @@ const ka: Record<StringKey, string> = {
 
   nav_pricing: "ფასები",
   nav_rentals: "გაქირავება",
-  income_str_short: "მოკლევადიანი",
   alerts_active_tab: "აქტიური",
   alerts_done_tab: "შესრულებული",
   alerts_done_empty: "შესრულებული ჯერ არ არის.",
@@ -1979,7 +1995,6 @@ const ka: Record<StringKey, string> = {
   pricing_rationale: "დასაბუთება",
 
   kpi_occupancy: "დატვირთულობა",
-  kpi_revenue: "შემოსავალი",
   this_month: "მიმდინარე თვე",
   next_30_occupancy: "მომდევნო 30 დღის დატვირთულობა",
   monthly_title: "თვეების მიხედვით",
@@ -2090,11 +2105,9 @@ const ka: Record<StringKey, string> = {
   metal_footnote: "ლითონის ფასი — ცოცხალი USD spot ფასი troy უნცია-ზე, გადაყვანილი ლარში მიმდინარე კურსით.",
 
   // One income definition (lib/analytics/income.ts) and its two scopes.
-  income_all: "ყველა შემოსავალი",
   income_all_month: "ყველა შემოსავალი · ამ თვეში",
   income_all_hint: "ქირა, დღიური, ჯავშნები და სხვა შემოსავალი — ყოველი ღამე ერთხელ ითვლება.",
   kpi_booking_revenue: "ჯავშნების შემოსავალი",
-  income_bookings_month: "ჯავშნების შემოსავალი · ამ თვეში",
   income_daily_short: "დღიური",
   income_bookings_short: "ჯავშნები",
   analytics_leased: "იჯარით",
@@ -2114,9 +2127,38 @@ const ka: Record<StringKey, string> = {
   withdraw_moved_away: "მანქანა ხაზს დაშორდა",
   withdraw_signal_back: "ტრეკერი ისევ აგზავნის სიგნალს",
   withdraw_superseded: "მის ადგილას უფრო ახალი კონტრაქტია",
+  withdraw_newer_reminder: "ჩაანაცვლა დღევანდელმა შეხსენებამ, დღევანდელი თანხით",
+  withdraw_fence_removed: "წითელი ხაზი წაიშალა",
+  withdraw_fence_off: "წითელი ხაზი გამოირთო",
+  withdraw_asset_deleted: "აქტივი წაიშალა",
+  withdraw_limit: "ამ ნომრის დღიური ლიმიტი ამოიწურა (დღეში 3 შეტყობინება)",
+  withdraw_filled: "თავისუფალი ფანჯარა დაიჯავშნა",
+  withdraw_passed: "მისი თარიღები გავიდა",
+  withdraw_replaced: "ჩაანაცვლა განახლებულმა გაფრთხილებამ",
+  withdraw_overlap_cleared: "ჯავშნები აღარ ემთხვევა ერთმანეთს",
+  withdraw_escalated: "შეღავათიანი ვადა ამოიწურა — იხილე გაფრთხილება დაბრუნების უფლებაზე",
+
+  // Automatic runs, double bookings, outbox delivery.
+  alerts_last_run: "ბოლოს ავტომატურად გაეშვა: {at}",
+  alerts_last_run_never: "ყოველდღიური ავტომატური შემოწმება ჯერ არ გაშვებულა — დღევანდელი შემოწმებისთვის დააჭირე „სკანირება ახლა“.",
+  alerts_last_run_failed: "შენს ანგარიშზე ბოლომდე ვერ შესრულდა — დააჭირე „სკანირება ახლა“.",
+  alerts_last_run_late: "ერთ დღეზე მეტი ხნის წინ — ყოველდღიური შემოწმება შესაძლოა შეჩერდა; დააჭირე „სკანირება ახლა“.",
+  alerts_schedule_hint: "ეშვება ყოველ დილით, დაახლოებით 08:00-ზე.",
+  alert_overlap: "ორმაგი ჯავშანი",
+  action_overlap:
+    "ორი ჯავშანი ერთსა და იმავე ღამეებს იკავებს. გააუქმე ან გადაიტანე ერთ-ერთი და ეს თარიღები მეორე არხზეც დახურე.",
+  alert_overlap_contract: "კონტრაქტები ერთმანეთს ფარავს",
+  action_overlap_contract:
+    "ორი კონტრაქტი ერთსა და იმავე დღეებს მოიცავს. თუ პირველი ადრე დასრულდა, მიუთითე მისი რეალური დასრულების თარიღი — თორემ მის დამქირავებელს შეხსენებები კვლავ მიუვა.",
+  overlap_src_lease: "იჯარა",
+  overlap_src_contract: "კონტრაქტი",
+  gap_open_end: "შემდეგი ჯავშანი ჯერ არაა",
+  error_booking_overlap: "ეს თარიღები ამ ობიექტზე სხვა ჯავშანს ემთხვევა:",
+  outbox_status_sending: "იგზავნება",
+  outbox_auto_waiting: "ავტომატურად გაიგზავნება.",
+  outbox_interrupted: "გაგზავნა შეწყდა — სანამ ხელახლა გაგზავნი, WhatsApp-ში შეამოწმე, მივიდა თუ არა.",
   alert_auto: "ავტომატურად დაიხურა",
   alert_unpaid: "გადაუხდელი",
-  alert_live_note: "მონაცემები დღევანდელი მდგომარეობით",
 
   // Decide today: confirm, undo, errors, show all.
   decide_confirm: "{n} პერიოდია გადასახდელი — სრულად მიიღე {amount}?",

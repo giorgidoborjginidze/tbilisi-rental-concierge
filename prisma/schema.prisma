@@ -447,21 +447,26 @@ model NotifyMessage {
   // holds — the rent was paid, the contract changed or ended, the vehicle
   // came back inside the red line. It is kept (not deleted) so the owner
   // sees why, and so the dedupe key still stops a repeat.
-  status     String  @default("queued") // "queued" | "sent" | "failed" | "cancelled"
+  // "sending": claimed by one delivery run, so two runs never send it twice.
+  status     String  @default("queued") // "queued" | "sending" | "sent" | "failed" | "cancelled"
   // Stable key so a repeated scan or ping never queues the same message twice.
   dedupeKey   String   @unique
   providerRef String?
   error       String?
   createdAt   DateTime @default(now())
   sentAt      DateTime?
+  // When a delivery run claimed it (status "sending").
+  claimedAt   DateTime?
   cancelledAt  DateTime?
   // "paid" | "changed" | "contract_ended" | "contract_deleted" | "returned"
-  // | "moved_away" (lib/rentals/settle.ts WithdrawReason)
+  // | "moved_away" | "newer_reminder" | "fence_removed" | "fence_off"
+  // | "asset_deleted" | "limit" (lib/rentals/settle.ts WithdrawReason)
   cancelReason String?
 
   operator Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
 
   @@index([operatorId, status])
+  @@index([toPhone, createdAt])
 }
 
 // One day of a daily-let asset: was it rented, and for how much. The
@@ -524,7 +529,7 @@ model Alert {
   unitId     String?
   // "vacancy_gap" | "lease_expiry" | "underpriced" | "contract_expiry"
   // | "contract_ended" | "rent_overdue" | "repossession_right"
-  // | "geofence_breach" | "tracker_silent"
+  // | "geofence_breach" | "tracker_silent" | "overlap"
   type       String
   payload    Json // type-specific details + { suggestedAction: string }
   status     String    @default("open") // "open" | "dismissed" | "resolved"
@@ -535,4 +540,19 @@ model Alert {
   unit     Unit?    @relation(fields: [unitId], references: [id], onDelete: Cascade)
 
   @@index([operatorId, status])
+}
+
+// One run of the automatic jobs (Vercel Cron → /api/cron, or the local
+// scheduler): iCal sync, the alert scan and WhatsApp delivery for every
+// workspace. /alerts shows when it last ran, so a silent failure is seen.
+model SystemRun {
+  id         String    @id @default(cuid())
+  kind       String // "daily" (sync + scan + send) | "sync" (iCal only)
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  ok         Boolean   @default(false)
+  // Counts, plus the ids of workspaces whose part failed (no personal data).
+  summary    Json?
+
+  @@index([kind, startedAt])
 }

@@ -7,9 +7,12 @@ import {
   settlePaidRent,
   staleGeoMessage,
   stalePaymentMessage,
+  staleRentAlert,
   sweepStaleMessages,
   sweepStaleRentAlerts,
+  withdrawAsset,
   withdrawContract,
+  withdrawFenceMessages,
 } from "./settle";
 
 const d = (iso: string) => new Date(`${iso}T00:00:00Z`);
@@ -20,8 +23,10 @@ type Row = Record<string, unknown> & { id: string };
 function matches(row: Row, where: Record<string, unknown> = {}): boolean {
   return Object.entries(where).every(([field, cond]) => {
     const value = row[field];
-    if (cond && typeof cond === "object" && !(cond instanceof Date)) {
+    if (cond instanceof Date) return value instanceof Date && value.getTime() === cond.getTime();
+    if (cond && typeof cond === "object") {
       const c = cond as { in?: unknown[]; gte?: Date; lte?: Date; not?: unknown };
+      if (!("in" in c || "gte" in c || "lte" in c || "not" in c)) return true; // relation filters
       if (c.in && !c.in.includes(value)) return false;
       if (c.gte && !(value instanceof Date && value >= c.gte)) return false;
       if (c.lte && !(value instanceof Date && value <= c.lte)) return false;
@@ -182,7 +187,7 @@ describe("recording a payment withdraws what it settles — and undo brings it b
   it("undo reopens the alert and re-queues the reminder the payment withdrew", async () => {
     const db = fakeDb([alert("a1", "2026-09-22")], [message("m1", "pay|c1|2026-09-22|repossess")]);
     await settlePaidRent(db, "c1", d("2026-10-01"), paidAt, { withdrawOwed: true });
-    const restored = await restoreAfterUndo(db, "c1", d("2026-09-22"), paidAt);
+    const restored = await restoreAfterUndo(db, "c1", d("2026-09-22"), new Date(paidAt), { requeue: true });
     expect(restored).toEqual({ reopened: 1, requeued: 1 });
     expect(db.alert.rows[0]).toMatchObject({ status: "open", resolvedAt: null });
     expect((db.alert.rows[0].payload as { autoResolved?: string }).autoResolved).toBeUndefined();
@@ -195,8 +200,29 @@ describe("recording a payment withdraws what it settles — and undo brings it b
       [alert("a1", "2026-09-22", { status: "resolved", resolvedAt: paidAt })], // by hand
       [message("m1", "pay|c1|2026-09-22|late7", { status: "cancelled", cancelReason: "paid", cancelledAt: earlier })],
     );
-    const restored = await restoreAfterUndo(db, "c1", d("2026-09-22"), paidAt);
+    const restored = await restoreAfterUndo(db, "c1", d("2026-09-22"), paidAt, { requeue: true });
     expect(restored).toEqual({ reopened: 0, requeued: 0 });
+  });
+
+  it("deleting an older payment restores only what that payment withdrew, and re-queues nothing", async () => {
+    const paymentA = new Date("2026-09-10T10:00:00Z");
+    const paymentB = new Date("2026-09-20T10:00:00Z");
+    const db = fakeDb(
+      [
+        alert("a1", "2026-09-22", { status: "resolved", resolvedAt: paymentA, payload: { contractId: "c1", dueDate: "2026-09-22", autoResolved: "paid" } }),
+        alert("a2", "2026-09-29", { status: "resolved", resolvedAt: paymentB, payload: { contractId: "c1", dueDate: "2026-09-29", autoResolved: "paid" } }),
+      ],
+      [
+        message("m1", "pay|c1|2026-09-22|late3", { status: "cancelled", cancelReason: "paid", cancelledAt: paymentA }),
+        message("m2", "pay|c1|2026-09-29|late3", { status: "cancelled", cancelReason: "changed", cancelledAt: paymentB }),
+      ],
+    );
+    // Payment A is deleted two weeks later: only its own alert reopens.
+    const restored = await restoreAfterUndo(db, "c1", d("2026-09-22"), new Date(paymentA));
+    expect(restored).toEqual({ reopened: 1, requeued: 0 });
+    expect(db.alert.rows.map((r) => r.status)).toEqual(["open", "resolved"]);
+    // The stale texts stay withdrawn; the next scan writes fresh ones.
+    expect(db.notifyMessage.rows.map((r) => r.status)).toEqual(["cancelled", "cancelled"]);
   });
 });
 
@@ -257,7 +283,16 @@ describe("the sweep before every send and at every scan", () => {
     expect(reason("m6")).toBeNull(); // still outside that other line
   });
 
-  it("closes late-rent alerts whose due date is paid or whose contract is over", async () => {
+  const terms = {
+    paymentPeriod: "monthly",
+    paymentAmount: 540,
+    monthlyRent: 540,
+    graceDays: 3,
+    creditBalance: 0,
+    asset: { dailyRate: null, weekendPct: null, holidayPct: null },
+  };
+
+  it("closes late-rent alerts whose due date is paid or whose contract is over and settled", async () => {
     const db = fakeDb(
       [
         alert("a1", "2026-09-22"), // paid
@@ -265,13 +300,133 @@ describe("the sweep before every send and at every scan", () => {
         alert("a3", "2026-08-01", { payload: { contractId: "c2", dueDate: "2026-08-01" } }),
       ],
       [],
-      [running, { id: "c2", startDate: d("2026-01-01"), endDate: d("2026-09-01"), paidThrough: d("2026-08-01") }],
+      [
+        { ...running, ...terms },
+        // Ended on 1 September, paid in full.
+        { id: "c2", startDate: d("2026-01-01"), endDate: d("2026-09-01"), paidThrough: d("2026-09-01"), ...terms },
+      ],
     );
     expect(await sweepStaleRentAlerts(db, today)).toBe(2);
     const auto = (id: string) =>
       (db.alert.rows.find((r) => r.id === id)!.payload as { autoResolved?: string }).autoResolved;
     expect(auto("a1")).toBe("paid");
     expect(auto("a2")).toBeUndefined();
-    expect(auto("a3")).toBe("contract_ended");
+    expect(auto("a3")).toBe("paid");
+  });
+
+  it("keeps the alert of a finished contract that still owes rent, even with a new renter after it", async () => {
+    // Driver A's contract ended on 1 September owing August (540 GEL); the
+    // car went straight to driver B.
+    const driverA = { id: "cA", startDate: d("2026-01-01"), endDate: d("2026-09-01"), paidThrough: d("2026-08-01"), ...terms };
+    const driverB = { id: "cB", startDate: d("2026-09-01"), endDate: d("2027-09-01"), paidThrough: d("2026-10-01"), ...terms };
+    const db = fakeDb(
+      [alert("a1", "2026-08-01", { payload: { contractId: "cA", dueDate: "2026-08-01" } })],
+      [],
+      [driverA, driverB],
+    );
+    expect(await sweepStaleRentAlerts(db, today)).toBe(0);
+    expect(db.alert.rows[0].status).toBe("open");
+    // Once A pays, it closes.
+    driverA.paidThrough = d("2026-09-01");
+    expect(await sweepStaleRentAlerts(db, today)).toBe(1);
+    expect((db.alert.rows[0].payload as { autoResolved?: string }).autoResolved).toBe("paid");
+  });
+
+  it("closes an alert for a due date of an earlier schedule (the period was changed)", () => {
+    // Weekly from 1 September, paid up to 8 September: the first unpaid due
+    // date is the 8th. An alert keyed on the 15th belongs to another grid.
+    const weekly = {
+      startDate: d("2026-09-01"),
+      endDate: d("2027-09-01"),
+      paidThrough: d("2026-09-08"),
+      ...terms,
+      paymentPeriod: "weekly",
+      paymentAmount: 140,
+    };
+    expect(staleRentAlert({ contractId: "c1", dueDate: "2026-09-15" }, weekly, today)).toBe("changed");
+    expect(staleRentAlert({ contractId: "c1", dueDate: "2026-09-08" }, weekly, today)).toBeNull();
+    expect(staleRentAlert({ contractId: "c1", dueDate: "2026-09-01" }, weekly, today)).toBe("paid");
+    expect(staleRentAlert({ contractId: "gone" }, null, today)).toBe("contract_deleted");
+  });
+
+  it("limits the sweep to one contract when asked", async () => {
+    const db = fakeDb(
+      [alert("a1", "2026-09-22"), alert("b1", "2026-09-22", { payload: { contractId: "c3", dueDate: "2026-09-22" } })],
+      [],
+      [{ ...running, ...terms }, { ...running, id: "c3", ...terms }],
+    );
+    expect(await sweepStaleRentAlerts(db, today, { contractId: "c1" })).toBe(1);
+    expect(db.alert.rows[1].status).toBe("open");
+  });
+});
+
+describe("daily nudges hold only on the day they count", () => {
+  const contract = {
+    startDate: d("2026-09-01"),
+    endDate: d("2027-09-01"),
+    paidThrough: d("2026-09-28"),
+    remindersEnabled: true,
+  };
+  const on = (key: string, today: string) =>
+    stalePaymentMessage({ dedupeKey: key, kind: "pay_overdue_driver", toRole: "driver" }, contract, d(today));
+
+  it("withdraws yesterday's 'late 1 day' once it is day 3", () => {
+    expect(on("pay|c1|2026-09-28|late1", "2026-09-29")).toBeNull();
+    expect(on("pay|c1|2026-09-28|late1", "2026-10-01")).toBe("newer_reminder");
+    expect(on("pay|c1|2026-09-28|late3", "2026-10-01")).toBeNull();
+  });
+
+  it("withdraws the due-day reminder once the day has passed; the once-only texts stay", () => {
+    expect(on("pay|c1|2026-09-28|due", "2026-09-28")).toBeNull();
+    expect(on("pay|c1|2026-09-28|due", "2026-09-29")).toBe("newer_reminder");
+    expect(on("pay|c1|2026-09-28|repossess", "2026-10-10")).toBeNull();
+  });
+});
+
+describe("red lines that are gone", () => {
+  const m = { dedupeKey: "geo|e1|driver", kind: "geo_breach_driver" };
+
+  it("a warning about a deleted or switched-off fence is never sent", () => {
+    expect(staleGeoMessage(m, null, null)).toBe("fence_removed");
+    expect(staleGeoMessage(m, { createdAt: new Date(), fenceActive: false }, null)).toBe("fence_off");
+    expect(staleGeoMessage(m, { createdAt: new Date(), fenceActive: true }, null)).toBeNull();
+  });
+
+  it("withdraws the fence's unsent texts before its events are deleted", async () => {
+    const db = fakeDb(
+      [],
+      [
+        message("m1", "geo|e1|driver", { kind: "geo_breach_driver" }),
+        message("m2", "geo|e1|owner", { kind: "geo_breach_owner", toRole: "owner" }),
+        message("m3", "geo|e2|driver", { kind: "geo_breach_driver" }), // another fence
+        message("m4", "geo|e1|driver-old", { kind: "geo_breach_driver", status: "sent" }),
+      ],
+      [],
+      [
+        { id: "e1", geofenceId: "f1", kind: "breach", createdAt: new Date() },
+        { id: "e2", geofenceId: "f2", kind: "breach", createdAt: new Date() },
+      ],
+    );
+    expect(await withdrawFenceMessages(db, ["f1"], "fence_removed")).toBe(2);
+    const reason = (id: string) => db.notifyMessage.rows.find((r) => r.id === id)!.cancelReason;
+    expect(reason("m1")).toBe("fence_removed");
+    expect(reason("m2")).toBe("fence_removed");
+    expect(reason("m3")).toBeNull();
+  });
+
+  it("an asset being deleted takes its unsent messages and open alerts with it", async () => {
+    const db = fakeDb(
+      [
+        { ...alert("a1", "2026-09-22"), operatorId: "op", payload: { assetId: "car", contractId: "c1" } },
+        { ...alert("a2", "2026-09-22"), operatorId: "op", payload: { assetId: "other" } },
+      ],
+      [
+        message("m1", "pay|c1|2026-09-22|late2", { operatorId: "op", assetId: "car" }),
+        message("m2", "pay|c9|2026-09-22|late2", { operatorId: "op", assetId: "other" }),
+      ],
+    );
+    expect(await withdrawAsset(db, "op", "car")).toEqual({ resolved: 1, cancelled: 1 });
+    expect(db.notifyMessage.rows[0].cancelReason).toBe("asset_deleted");
+    expect(db.alert.rows[1].status).toBe("open");
   });
 });

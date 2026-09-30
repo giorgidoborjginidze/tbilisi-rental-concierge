@@ -7,7 +7,10 @@ import { requireOperator } from "@/lib/auth/session";
 import { UNIT_TYPES } from "@/lib/types";
 import type { StringKey } from "@/lib/i18n/strings";
 
-export type FormState = { error: StringKey; ok?: never } | { ok: true; error?: never } | null;
+export type FormState =
+  | { error: StringKey; /** Shown after the message, e.g. the clashing stay. */ detail?: string; ok?: never }
+  | { ok: true; error?: never }
+  | null;
 
 const str = (formData: FormData, key: string) =>
   String(formData.get(key) ?? "").trim();

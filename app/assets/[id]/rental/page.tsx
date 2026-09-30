@@ -67,7 +67,7 @@ const ZONE_BADGE: Record<string, string> = {
 const LABEL_KEYS: StringKey[] = [
   "save", "cancel", "delete",
   "error_required", "error_invalid_number", "error_dates",
-  "error_device_taken", "error_fence_points",
+  "error_device_taken", "error_fence_points", "error_template_too_long",
   "pay_period", "period_daily", "period_weekly", "period_monthly",
   "pay_amount", "pay_amount_hint", "pay_grace", "pay_grace_hint",
   "pay_paid_through", "pay_paid_through_hint", "contract_reminders",
@@ -663,7 +663,7 @@ export default async function RentalServicePage({
                     </span>
                     <span
                       className={`badge ${
-                        message.status === "sent"
+                        message.status === "sent" || message.status === "sending"
                           ? "badge--vacant"
                           : message.status === "failed"
                             ? "badge--danger"
@@ -705,12 +705,20 @@ export default async function RentalServicePage({
                   )}
                   {message.error && message.status !== "cancelled" && (
                     <p style={{ margin: "4px 0 0", color: "var(--status-danger-text)" }}>
-                      {message.error}
+                      {message.error === "interrupted" ? t(locale, "outbox_interrupted") : message.error}
+                    </p>
+                  )}
+                  {autoSend && message.status === "queued" && !staleReason(message) && (
+                    <p style={{ margin: "4px 0 0", color: "var(--color-text-muted)" }}>
+                      {t(locale, "outbox_auto_waiting")}
                     </p>
                   )}
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  {(message.status === "queued" || message.status === "failed") &&
+                  {/* With automatic sending on, a queued message goes out by
+                      itself: a manual link beside it could send it twice.
+                      Only a failed one is offered for sending by hand. */}
+                  {(message.status === "failed" || (message.status === "queued" && !autoSend)) &&
                     !staleReason(message) && (
                     <>
                       <a

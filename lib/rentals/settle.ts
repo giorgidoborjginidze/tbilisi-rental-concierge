@@ -22,6 +22,7 @@ import type { PrismaClient } from "../../app/generated/prisma/client";
 import { PAYMENT_TEMPLATES, type TemplateKey } from "../notify/templates";
 import { dayKey } from "../time";
 import { contractPhase } from "./phase";
+import { hasBalance, statusFor, type ContractTermsInput, type DailyPricing } from "./terms";
 
 export type WithdrawReason =
   | "paid"
@@ -31,7 +32,23 @@ export type WithdrawReason =
   | "returned"
   | "moved_away"
   | "signal_back"
-  | "superseded";
+  | "superseded"
+  // A later daily nudge about the same due date quotes today's figures.
+  | "newer_reminder"
+  // Red lines: the fence was deleted or switched off, or its asset deleted.
+  | "fence_removed"
+  | "fence_off"
+  | "asset_deleted"
+  // The per-recipient daily limit was reached.
+  | "limit"
+  // Calendar alerts: the free window got booked, its dates are over, the
+  // double booking no longer exists, or the grace period ran out and a
+  // repossession-right alert took over.
+  | "filled"
+  | "passed"
+  | "replaced"
+  | "overlap_cleared"
+  | "escalated";
 
 export const WITHDRAW_REASONS: WithdrawReason[] = [
   "paid",
@@ -42,6 +59,16 @@ export const WITHDRAW_REASONS: WithdrawReason[] = [
   "moved_away",
   "signal_back",
   "superseded",
+  "newer_reminder",
+  "fence_removed",
+  "fence_off",
+  "asset_deleted",
+  "limit",
+  "filled",
+  "passed",
+  "replaced",
+  "overlap_cleared",
+  "escalated",
 ];
 
 /** Late-rent alerts; each carries payload.contractId and payload.dueDate. */
@@ -67,6 +94,20 @@ export function dueDateOfDedupeKey(dedupeKey: string): string | null {
   const match = /^pay\|[^|]+\|(\d{4}-\d{2}-\d{2})\|/.exec(dedupeKey);
   return match ? match[1] : null;
 }
+
+/**
+ * Which daily nudge a payment reminder is: "due" (the due day itself),
+ * "late" with its day count, or null for the once-only messages.
+ */
+export function nudgeOfDedupeKey(
+  dedupeKey: string,
+): { kind: "due" } | { kind: "late"; days: number } | null {
+  const match = /^pay\|[^|]+\|\d{4}-\d{2}-\d{2}\|(due|late(\d+))$/.exec(dedupeKey);
+  if (!match) return null;
+  return match[1] === "due" ? { kind: "due" } : { kind: "late", days: Number(match[2]) };
+}
+
+const DAY_MS = 86_400_000;
 
 /** The GeoEvent id a red-line message's dedupe key refers to. */
 export function geoEventOfDedupeKey(dedupeKey: string): string | null {
@@ -99,20 +140,34 @@ export function stalePaymentMessage(
   // Reminders switched off: the renter hears nothing more (the owner's own
   // copy is still useful to them).
   if (contract.remindersEnabled === false && message.toRole !== "owner") return "changed";
+  // Yesterday's "1 day late, 60 GEL" must not go out on day 3, when every
+  // screen and today's nudge say "3 days, 180 GEL": a daily nudge holds
+  // only on the day it counts.
+  const nudge = nudgeOfDedupeKey(message.dedupeKey);
+  if (due && nudge) {
+    const daysLate = Math.round(
+      (Date.parse(`${dayKey(today)}T00:00:00Z`) - Date.parse(`${due}T00:00:00Z`)) / DAY_MS,
+    );
+    if (daysLate > (nudge.kind === "due" ? 0 : nudge.days)) return "newer_reminder";
+  }
   return null;
 }
 
 /**
  * Should this unsent red-line message be withdrawn? It is stale once the
- * vehicle has come back inside that fence after the event it announces.
+ * vehicle has come back inside that fence after the event it announces —
+ * and once the fence itself is gone (deleted with its events, or with its
+ * asset) or switched off: a "suspected theft" text about a line the owner
+ * no longer draws must never go out.
  */
 export function staleGeoMessage(
   message: { dedupeKey: string; kind: string },
-  event: { createdAt: Date } | null,
+  event: { createdAt: Date; fenceActive?: boolean } | null,
   lastReturnAt: Date | null,
 ): WithdrawReason | null {
   if (!GEO_KINDS.includes(message.kind as TemplateKey)) return null;
-  if (!event) return null;
+  if (!event) return "fence_removed";
+  if (event.fenceActive === false) return "fence_off";
   return lastReturnAt && lastReturnAt >= event.createdAt ? "returned" : null;
 }
 
@@ -157,6 +212,20 @@ async function autoResolve(
     });
   }
   return alerts.length;
+}
+
+/**
+ * Close alerts on the system's behalf (the scan's calendar alerts use it):
+ * they carry `autoResolved`, so the scan reopens one whose condition comes
+ * back — never one the owner closed.
+ */
+export async function resolveAlerts(
+  db: PrismaClient,
+  alerts: AlertRow[],
+  reason: WithdrawReason,
+  now: Date = new Date(),
+): Promise<number> {
+  return autoResolve(db, alerts, reason, now);
 }
 
 const contractIdOf = (payload: unknown) =>
@@ -262,20 +331,28 @@ export async function withdrawContract(
 }
 
 /**
- * Undo of a payment: what that payment withdrew comes back, as long as
- * the due date it is about is unpaid again. `since` is when the payment
- * was recorded — only what was withdrawn at or after it is restored.
+ * A payment was removed: what exactly that payment withdrew comes back, as
+ * long as the due date it is about is unpaid again. `since` is when the
+ * payment was recorded — settlePaidRent stamps what it withdraws with that
+ * very time, so rows withdrawn later (by another payment, a restated
+ * balance, the sweep) are left alone.
+ *
+ * Only the immediate undo re-queues the withdrawn reminders: they were
+ * written minutes ago and still quote the right figures. Deleting an older
+ * payment only reopens the alerts; the next scan writes fresh reminders
+ * (queueMessage revives a withdrawn one with a newly rendered body).
  */
 export async function restoreAfterUndo(
   db: PrismaClient,
   contractId: string,
   paidThrough: Date | null,
   since: Date,
+  { requeue = false }: { requeue?: boolean } = {},
 ): Promise<{ reopened: number; requeued: number }> {
   const paidKey = paidThrough ? dayKey(paidThrough) : "";
 
   const alerts = await db.alert.findMany({
-    where: { type: { in: RENT_ALERTS }, status: "resolved", resolvedAt: { gte: since } },
+    where: { type: { in: RENT_ALERTS }, status: "resolved", resolvedAt: since },
     select: { id: true, payload: true },
   });
   let reopened = 0;
@@ -293,12 +370,14 @@ export async function restoreAfterUndo(
     reopened += 1;
   }
 
+  if (!requeue) return { reopened, requeued: 0 };
+
   const messages = await db.notifyMessage.findMany({
     where: {
       contractId,
       status: "cancelled",
       cancelReason: { in: ["paid", "changed"] },
-      cancelledAt: { gte: since },
+      cancelledAt: since,
     },
     select: { id: true, dedupeKey: true },
   });
@@ -447,9 +526,12 @@ export async function sweepStaleMessages(
     (
       await db.geoEvent.findMany({
         where: { id: { in: eventIds } },
-        select: { id: true, geofenceId: true, createdAt: true },
+        select: { id: true, geofenceId: true, createdAt: true, geofence: { select: { active: true } } },
       })
-    ).map((event) => [event.id, event]),
+    ).map((event) => [
+      event.id,
+      { ...event, fenceActive: event.geofence ? event.geofence.active : undefined },
+    ]),
   );
   const fenceIds = [...new Set([...events.values()].map((event) => event.geofenceId))];
   const lastReturn = new Map<string, Date>();
@@ -485,33 +567,83 @@ export async function sweepStaleMessages(
   return cancelled;
 }
 
+export interface RentAlertContract extends ContractTermsInput {
+  graceDays: number;
+  paidThrough: Date | null;
+  creditBalance?: number | null;
+  /** The asset's daily pricing, so a finished contract's debt is priced as every screen prices it. */
+  asset?: DailyPricing | null;
+}
+
 /**
- * Late-rent alerts that no longer hold: the due date they are about has
- * been paid, or their contract has ended or been deleted. The scan closes
- * them (nothing can be demanded under a contract that is over; the
- * "contract ended" alert and /alerts still show any rent left unpaid).
+ * Should this open late-rent alert be closed — and why? Pure.
+ *
+ * The monitor only ever raises an alert for the contract's first unpaid due
+ * date (= its paid-up-to date), so an alert for an earlier date is paid and
+ * one for a later date belongs to an earlier schedule (the period or amount
+ * was changed since). A contract that has ended keeps its alert while rent
+ * is still owed under it: that debt must stay in sight even when the asset
+ * went straight to the next renter.
+ */
+export function staleRentAlert(
+  payload: unknown,
+  contract: RentAlertContract | null,
+  today: Date,
+): WithdrawReason | null {
+  if (!contract) return "contract_deleted";
+  const due = dueDateOf(payload);
+  if (due && contract.paidThrough) {
+    if (due < dayKey(contract.paidThrough)) return "paid";
+    // The first unpaid due date as the schedule now counts it.
+    const next = dayKey(statusFor(contract, today, contract.asset ?? null).nextDueDate);
+    if (due > next) return "changed";
+  }
+  if (contractPhase(contract, today) === "ended" && !hasBalance(contract, today, contract.asset ?? null)) {
+    return "contract_ended";
+  }
+  return null;
+}
+
+/**
+ * Late-rent alerts that no longer hold (staleRentAlert): the due date is
+ * paid, the schedule it was about was changed, the contract was deleted,
+ * or it has ended with nothing left to pay. Runs at every scan, and for a
+ * single contract right after its terms are saved.
  */
 export async function sweepStaleRentAlerts(
   db: PrismaClient,
   today: Date,
-  operatorId?: string,
+  scope: { operatorId?: string; contractId?: string } = {},
   now: Date = new Date(),
 ): Promise<number> {
-  const alerts = await db.alert.findMany({
-    where: {
-      type: { in: RENT_ALERTS },
-      status: "open",
-      ...(operatorId ? { operatorId } : {}),
-    },
-    select: { id: true, payload: true },
-  });
+  const alerts = (
+    await db.alert.findMany({
+      where: {
+        type: { in: RENT_ALERTS },
+        status: "open",
+        ...(scope.operatorId ? { operatorId: scope.operatorId } : {}),
+      },
+      select: { id: true, payload: true },
+    })
+  ).filter((alert) => !scope.contractId || contractIdOf(alert.payload) === scope.contractId);
   if (alerts.length === 0) return 0;
   const ids = [...new Set(alerts.map((alert) => contractIdOf(alert.payload)).filter(Boolean))] as string[];
   const contracts = new Map(
     (
       await db.rentalContract.findMany({
         where: { id: { in: ids } },
-        select: { id: true, startDate: true, endDate: true, paidThrough: true },
+        select: {
+          id: true,
+          startDate: true,
+          endDate: true,
+          paidThrough: true,
+          paymentPeriod: true,
+          paymentAmount: true,
+          monthlyRent: true,
+          graceDays: true,
+          creditBalance: true,
+          asset: { select: { dailyRate: true, weekendPct: true, holidayPct: true } },
+        },
       })
     ).map((contract) => [contract.id, contract]),
   );
@@ -519,15 +651,7 @@ export async function sweepStaleRentAlerts(
   for (const alert of alerts) {
     const id = contractIdOf(alert.payload);
     if (!id) continue;
-    const contract = contracts.get(id);
-    const due = dueDateOf(alert.payload);
-    const reason: WithdrawReason | null = !contract
-      ? "contract_deleted"
-      : contractPhase(contract, today) === "ended"
-        ? "contract_ended"
-        : due && contract.paidThrough && due < dayKey(contract.paidThrough)
-          ? "paid"
-          : null;
+    const reason = staleRentAlert(alert.payload, contracts.get(id) ?? null, today);
     if (reason) byReason.set(reason, [...(byReason.get(reason) ?? []), alert]);
   }
   let resolved = 0;
@@ -535,4 +659,70 @@ export async function sweepStaleRentAlerts(
     resolved += await autoResolve(db, rows, reason, now);
   }
   return resolved;
+}
+
+/**
+ * A red line is being deleted or switched off (or its asset deleted): the
+ * warnings still waiting to go out about it are withdrawn now, while its
+ * events — which the dedupe keys point at — still exist.
+ */
+export async function withdrawFenceMessages(
+  db: PrismaClient,
+  fenceIds: string[],
+  reason: "fence_removed" | "fence_off" | "asset_deleted",
+  now: Date = new Date(),
+): Promise<number> {
+  if (fenceIds.length === 0) return 0;
+  const events = await db.geoEvent.findMany({
+    where: { geofenceId: { in: fenceIds } },
+    select: { id: true },
+  });
+  if (events.length === 0) return 0;
+  const messages = await db.notifyMessage.findMany({
+    where: {
+      status: { in: UNSENT },
+      kind: { in: GEO_KINDS },
+      dedupeKey: { in: events.flatMap((event) => [`geo|${event.id}|driver`, `geo|${event.id}|owner`]) },
+    },
+    select: { id: true },
+  });
+  return cancelMessages(
+    db,
+    messages.map((message) => message.id),
+    reason,
+    now,
+  );
+}
+
+/**
+ * An asset is being deleted: nothing more goes out about it, and the open
+ * alerts that point at it (late rent, contract, red line, tracker) close.
+ */
+export async function withdrawAsset(
+  db: PrismaClient,
+  operatorId: string,
+  assetId: string,
+  now: Date = new Date(),
+): Promise<SettleResult> {
+  const messages = await db.notifyMessage.findMany({
+    where: { operatorId, assetId, status: { in: UNSENT } },
+    select: { id: true },
+  });
+  const cancelled = await cancelMessages(
+    db,
+    messages.map((message) => message.id),
+    "asset_deleted",
+    now,
+  );
+  const alerts = await db.alert.findMany({
+    where: { operatorId, status: "open" },
+    select: { id: true, payload: true },
+  });
+  const resolved = await autoResolve(
+    db,
+    alerts.filter((alert) => (alert.payload as { assetId?: string } | null)?.assetId === assetId),
+    "asset_deleted",
+    now,
+  );
+  return { resolved, cancelled };
 }

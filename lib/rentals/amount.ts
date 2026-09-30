@@ -17,8 +17,6 @@ export const DAYS_PER_MONTH = 30.44;
 /** Average weeks in a month (52.14 / 12). */
 export const WEEKS_PER_MONTH = 4.345;
 
-const DAY_MS = 86_400_000;
-
 export const asPeriod = (value: string | null | undefined): PaymentPeriod =>
   value === "daily" || value === "weekly" ? value : "monthly";
 
@@ -56,46 +54,4 @@ export function perDayAmount(contract: ContractAmounts): number {
   if (period === "daily") return amount;
   if (period === "weekly") return Math.round((amount / 7) * 100) / 100;
   return Math.round((contract.monthlyRent / DAYS_PER_MONTH) * 100) / 100;
-}
-
-const overlapDays = (aStart: Date, aEnd: Date, bStart: Date, bEnd: Date): number => {
-  const from = Math.max(aStart.getTime(), bStart.getTime());
-  const to = Math.min(aEnd.getTime(), bEnd.getTime());
-  return to > from ? Math.round((to - from) / DAY_MS) : 0;
-};
-
-/**
- * Rent a contract earns inside a window (e.g. one calendar month): the
- * days it covers there, priced by its own period. A one-night stay counts
- * one night, a lease that starts mid-month counts part of that month.
- */
-export function contractIncomeInWindow(
-  contract: ContractAmounts & { startDate: Date; endDate: Date },
-  window: { start: Date; end: Date },
-): number {
-  const days = overlapDays(contract.startDate, contract.endDate, window.start, window.end);
-  if (days === 0) return 0;
-  const period = asPeriod(contract.paymentPeriod);
-  if (period === "daily") return days * perPeriodAmount(contract);
-  if (period === "weekly") return (days * perPeriodAmount(contract)) / 7;
-
-  // Monthly rent is prorated by calendar month, so a whole month counts
-  // exactly one month's rent however long the month is.
-  let total = 0;
-  let cursor = new Date(
-    Date.UTC(window.start.getUTCFullYear(), window.start.getUTCMonth(), 1),
-  );
-  while (cursor < window.end) {
-    const next = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 1));
-    const inMonth = overlapDays(
-      contract.startDate,
-      contract.endDate,
-      new Date(Math.max(cursor.getTime(), window.start.getTime())),
-      new Date(Math.min(next.getTime(), window.end.getTime())),
-    );
-    const monthDays = Math.round((next.getTime() - cursor.getTime()) / DAY_MS);
-    total += (contract.monthlyRent * inMonth) / monthDays;
-    cursor = next;
-  }
-  return total;
 }

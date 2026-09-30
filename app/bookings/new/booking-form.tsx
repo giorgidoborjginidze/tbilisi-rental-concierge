@@ -59,7 +59,10 @@ export default function BookingForm({
       </label>
 
       {state?.error && (
-        <p style={{ color: "var(--status-danger-text)", fontSize: 13 }}>{labels[state.error]}</p>
+        <p style={{ color: "var(--status-danger-text)", fontSize: 13 }}>
+          {labels[state.error]}
+          {state.detail ? ` ${state.detail}` : ""}
+        </p>
       )}
 
       <div className="flex items-center gap-3">

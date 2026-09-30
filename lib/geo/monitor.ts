@@ -164,6 +164,8 @@ export async function processPing(
           vars: eventVars,
           assetId,
           contractId: contract?.id ?? null,
+          // Once per fence and kind a day, however often the car weaves.
+          fenceId: fence.id,
         });
         const queuedOwner = await queueMessage({
           operatorId: asset.operator.id,
@@ -174,6 +176,8 @@ export async function processPing(
           vars: eventVars,
           assetId,
           contractId: contract?.id ?? null,
+          // Once per fence and kind a day, however often the car weaves.
+          fenceId: fence.id,
         });
         queued = (queuedDriver ? 1 : 0) + (queuedOwner ? 1 : 0);
       }

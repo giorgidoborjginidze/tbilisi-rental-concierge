@@ -283,9 +283,21 @@ function Card({
   const finish = () => {
     const state = drag.current;
     drag.current = null;
-    if (!state?.captured) return;
+    if (!state?.captured) {
+      // Never leave the card displaced by a press that did not become a swipe.
+      if (topRef.current?.style.transform) reset();
+      return;
+    }
     if (Math.abs(state.dx) > 90) decide(state.dx > 0 ? "yes" : "no");
     else reset();
+  };
+
+  /** Forget a press that never turned into a swipe (released elsewhere). */
+  const abandon = () => {
+    const state = drag.current;
+    if (!state || state.captured) return;
+    drag.current = null;
+    if (topRef.current?.style.transform) reset();
   };
 
   return (
@@ -302,13 +314,26 @@ function Card({
         onPointerDown={(e) => {
           // A press on a button is a click, not the start of a swipe:
           // capturing the pointer here would steal the button's click.
-          if ((e.target as HTMLElement).closest("button, a")) return;
+          if ((e.target as HTMLElement).closest("button, a")) {
+            drag.current = null;
+            return;
+          }
           drag.current = { x0: e.clientX, dx: 0, captured: false };
           e.currentTarget.style.transition = "";
         }}
         onPointerMove={(e) => {
           const state = drag.current;
           if (!state || !topRef.current) return;
+          // No button held: the press ended somewhere we did not see (it
+          // left the card before becoming a swipe). A hover is not a drag.
+          if (e.buttons === 0) {
+            if (state.captured) {
+              // Never decide on a release we did not see: just put it back.
+              drag.current = null;
+              reset();
+            } else abandon();
+            return;
+          }
           state.dx = e.clientX - state.x0;
           // Only a real sideways drag takes the pointer.
           if (!state.captured) {
@@ -319,6 +344,7 @@ function Card({
           topRef.current.style.transform = `translateX(${state.dx}px) rotate(${state.dx / 40}deg)`;
         }}
         onPointerUp={finish}
+        onPointerLeave={abandon}
         onPointerCancel={() => {
           drag.current = null;
           reset();

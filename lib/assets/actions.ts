@@ -15,7 +15,7 @@ import type { SessionOperator } from "@/lib/auth/session";
 import { startOfTodayTbilisi } from "@/lib/time";
 import { asPeriod, monthlyEquivalent } from "@/lib/rentals/amount";
 import { contractPhase } from "@/lib/rentals/phase";
-import { settlePaidRent, withdrawContract } from "@/lib/rentals/settle";
+import { settlePaidRent, withdrawAsset, withdrawContract } from "@/lib/rentals/settle";
 import { defaultPaidThrough, snapToBoundary } from "@/lib/rentals/schedule";
 
 const str = (formData: FormData, key: string) =>
@@ -247,6 +247,12 @@ export async function deleteAsset(formData: FormData) {
   const operator = await requireOperator();
   const assetId = str(formData, "assetId");
   if (assetId) {
+    const owned = await prisma.asset.findFirst({
+      where: { id: assetId, operatorId: operator.id },
+      select: { id: true },
+    });
+    // Nothing more goes out about it, and its open alerts close.
+    if (owned) await withdrawAsset(prisma, operator.id, owned.id);
     await prisma.asset.deleteMany({
       where: { id: assetId, operatorId: operator.id },
     });
