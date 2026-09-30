@@ -15,10 +15,11 @@ import {
 } from "@/lib/geo/ping";
 import { flushOutbox } from "@/lib/notify/whatsapp";
 
-// GPS ingest. Trackers do not call this by themselves: the installer or the
-// tracking provider (usually a Traccar server forwarding positions) is set
-// up with this address. The device authenticates with the token issued when
-// it was bound to the vehicle — no login session is involved.
+// GPS ingest. Trackers do not call this by themselves: a gateway (a Wialon
+// retranslator per unit, or a small relay behind Traccar that maps each IMEI
+// to its token — Traccar's own forward URL is global) posts here. The device
+// authenticates with the token issued when it was bound to the vehicle — no
+// login session is involved. See docs/gps-setup.md.
 //
 //   POST /api/gps/ping                      (preferred)
 //   Authorization: Bearer <token>           (or X-Device-Token, or "token" in the body)

@@ -52,6 +52,12 @@ export const PING_ERROR_STATUS: Record<PingError, number> = {
 
 /** How far ahead of the server clock a fix may be stamped. */
 export const MAX_FUTURE_MS = 5 * 60_000;
+/**
+ * The oldest fix accepted. Anything older is a broken clock (a tracker
+ * sending 1970, a GPS week-rollover date ~19.6 years back), not a position
+ * worth recording as "last seen".
+ */
+export const MAX_FIX_AGE_MS = 7 * 24 * 60 * 60_000;
 /** At most one accepted ping per device in this window. */
 export const MIN_PING_INTERVAL_MS = 5_000;
 
@@ -89,15 +95,30 @@ function coordinate(
   return Number.isFinite(value) ? { value } : { error: "invalid_position" };
 }
 
-/** A fix time: ISO text, or a Unix time in seconds or milliseconds. */
+/**
+ * A fix time: ISO text, a compact YYYYMMDDhhmmss stamp, or a Unix time in
+ * seconds or milliseconds. Trackers report UTC: a date-time without an
+ * offset is read as UTC, never as the server's own time zone.
+ */
 export function parseFixTime(raw: string): Date | null {
   if (raw === "") return null;
+  const compact = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/.exec(raw);
+  if (compact) {
+    const [, y, mo, d, h, mi, se] = compact.map(Number);
+    const date = new Date(Date.UTC(y, mo - 1, d, h, mi, se));
+    // Reject impossible stamps (month 13, hour 25…) that Date.UTC rolls over.
+    return date.getUTCMonth() === mo - 1 && date.getUTCDate() === d && date.getUTCHours() === h
+      ? date
+      : null;
+  }
   if (/^\d+(\.\d+)?$/.test(raw)) {
     const n = Number(raw);
     // Seconds until the year 2286, milliseconds after.
     return new Date(n < 1e10 ? n * 1000 : n);
   }
-  const date = new Date(raw);
+  // "2026-09-30T10:00:00" or "2026-09-30 10:00:00" with no zone: UTC.
+  const naive = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(raw);
+  const date = new Date(naive ? `${raw.replace(" ", "T")}Z` : raw);
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
@@ -166,8 +187,9 @@ export function parsePing(
 
 /**
  * Is the fix time acceptable? A fix from the future (beyond a small clock
- * drift) is refused, and so is one no newer than the last accepted fix — a
- * buffered old point must not replace a newer position.
+ * drift) is refused; so is one older than a week (a broken tracker clock),
+ * and one no newer than the last accepted fix — a buffered old point must
+ * not replace a newer position.
  */
 export function checkFixTime(
   at: Date,
@@ -175,6 +197,7 @@ export function checkFixTime(
   now: Date,
 ): PingError | null {
   if (at.getTime() > now.getTime() + MAX_FUTURE_MS) return "future_timestamp";
+  if (at.getTime() < now.getTime() - MAX_FIX_AGE_MS) return "invalid_timestamp";
   if (lastPingAt && at.getTime() <= lastPingAt.getTime()) return "stale_ping";
   return null;
 }

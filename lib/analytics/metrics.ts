@@ -3,8 +3,13 @@
 // Definitions (industry-standard):
 //   occupancy  = occupied nights / available nights (overlaps merged, so a
 //                double-booked night counts once and occupancy caps at 100%)
-//   ADR        = room revenue / booked nights (nights actually sold)
+//   ADR        = room revenue / PRICED booked nights (nights actually sold
+//                whose price is known)
 //   RevPAR     = room revenue / available nights
+// Stays imported over iCal carry no price (channels do not send it) until
+// the owner adds one. Their nights still count for occupancy, but not in
+// ADR's denominator — an unknown price is not a price of 0 — and the
+// revenue is flagged partial (unpricedNights > 0) wherever it is shown.
 // Revenue is prorated by night when a stay straddles the window edge.
 // Cancelled bookings are excluded by the caller. Nights a unit is let on a
 // long lease are not for sale, so they are taken out of the available
@@ -25,10 +30,12 @@ export interface WindowMetrics {
   /** Nights let on a long lease — not for sale, not in availableNights. */
   leasedNights: number;
   occupiedNights: number; // merged — no double counting
-  bookedNights: number; // sum over bookings — basis for ADR
+  bookedNights: number; // sum over bookings
+  /** Booked nights of stays with no price yet (excluded from ADR). */
+  unpricedNights: number;
   revenue: number;
   occupancyRate: number; // 0..1
-  adr: number | null; // null when nothing was sold
+  adr: number | null; // null when no priced night was sold
   revpar: number | null; // null when no available nights
 }
 
@@ -104,19 +111,25 @@ export function unitWindowMetrics(
     (sum, b) => sum + clippedNights(b, window),
     0,
   );
+  const unpricedNights = bookings.reduce(
+    (sum, b) => sum + (b.amount == null ? clippedNights(b, window) : 0),
+    0,
+  );
   const revenue = bookings.reduce(
     (sum, b) => sum + proratedRevenue(b, window),
     0,
   );
+  const pricedNights = bookedNights - unpricedNights;
 
   return {
     availableNights,
     leasedNights,
     occupiedNights,
     bookedNights,
+    unpricedNights,
     revenue,
     occupancyRate: availableNights > 0 ? occupiedNights / availableNights : 0,
-    adr: bookedNights > 0 ? revenue / bookedNights : null,
+    adr: pricedNights > 0 ? revenue / pricedNights : null,
     revpar: availableNights > 0 ? revenue / availableNights : null,
   };
 }
@@ -127,15 +140,18 @@ export function aggregateMetrics(units: WindowMetrics[]): WindowMetrics {
   const leasedNights = units.reduce((s, m) => s + m.leasedNights, 0);
   const occupiedNights = units.reduce((s, m) => s + m.occupiedNights, 0);
   const bookedNights = units.reduce((s, m) => s + m.bookedNights, 0);
+  const unpricedNights = units.reduce((s, m) => s + m.unpricedNights, 0);
   const revenue = units.reduce((s, m) => s + m.revenue, 0);
+  const pricedNights = bookedNights - unpricedNights;
   return {
     availableNights,
     leasedNights,
     occupiedNights,
     bookedNights,
+    unpricedNights,
     revenue,
     occupancyRate: availableNights > 0 ? occupiedNights / availableNights : 0,
-    adr: bookedNights > 0 ? revenue / bookedNights : null,
+    adr: pricedNights > 0 ? revenue / pricedNights : null,
     revpar: availableNights > 0 ? revenue / availableNights : null,
   };
 }

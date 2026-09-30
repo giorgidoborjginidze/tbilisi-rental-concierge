@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessionOperator } from "@/lib/auth/session";
-import { syncAllUnits } from "@/lib/ical/run-sync";
+import { summarizeSync, syncAllUnits } from "@/lib/ical/run-sync";
 
 // Runs the iCal sync for the signed-in workspace's units and reports
 // per-feed results. The scheduled sync for every workspace is /api/cron.
@@ -10,13 +10,9 @@ async function handle() {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const results = await syncAllUnits(undefined, operator.id);
-  const summary = {
-    feeds: results.length,
-    created: results.reduce((sum, r) => sum + r.created, 0),
-    updated: results.reduce((sum, r) => sum + r.updated, 0),
-    errors: results.filter((r) => r.error).length,
-  };
-  return NextResponse.json({ summary, results });
+  // Errors are short codes ("gone", "blocked_host"…) — never the raw
+  // network error, which could describe hosts behind the server.
+  return NextResponse.json({ summary: summarizeSync(results), results });
 }
 
 export async function POST() {

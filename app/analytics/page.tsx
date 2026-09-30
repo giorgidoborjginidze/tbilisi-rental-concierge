@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { monthStartTbilisi, startOfTodayTbilisi } from "@/lib/time";
 import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
-import { t } from "@/lib/i18n/strings";
+import { t, type Locale } from "@/lib/i18n/strings";
 import {
   aggregateMetrics,
   monthWindows,
@@ -12,6 +12,7 @@ import {
   type WindowMetrics,
 } from "@/lib/analytics/metrics";
 import RentalsSubnav from "../rentals-subnav";
+import RevenuePartial from "../revenue-partial";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,19 @@ function Kpi({ label, value }: { label: string; value: string }) {
       <div className="kpi__label">{label}</div>
       <div className="kpi__value">{value}</div>
     </div>
+  );
+}
+
+function Revenue({ locale, metrics }: { locale: Locale; metrics: WindowMetrics }) {
+  return (
+    <>
+      {Math.round(metrics.revenue)}
+      {metrics.unpricedNights > 0 && (
+        <div className="cell-sub price-missing" title={t(locale, "revenue_partial").replace("{n}", String(metrics.unpricedNights))}>
+          {t(locale, "revenue_partial_short")}
+        </div>
+      )}
+    </>
   );
 }
 
@@ -137,6 +151,7 @@ export default async function AnalyticsPage() {
             value={pct(portfolioNext30.occupancyRate)}
           />
         </div>
+        <RevenuePartial locale={locale} nights={portfolioThisMonth.unpricedNights} />
       </section>
 
       <section>
@@ -168,7 +183,9 @@ export default async function AnalyticsPage() {
                     <td className="num">{row.metrics.bookedNights}</td>
                     <td className="num">{money(row.metrics.adr, "")}</td>
                     <td className="num">{money(row.metrics.revpar, "")}</td>
-                    <td className="num">{Math.round(row.metrics.revenue)}</td>
+                    <td className="num">
+                      <Revenue locale={locale} metrics={row.metrics} />
+                    </td>
                   </tr>
                 );
               })}
@@ -214,7 +231,9 @@ export default async function AnalyticsPage() {
                   </td>
                   <td className="num">{money(metrics.adr, "")}</td>
                   <td className="num">{money(metrics.revpar, "")}</td>
-                  <td className="num">{Math.round(metrics.revenue)}</td>
+                  <td className="num">
+                    <Revenue locale={locale} metrics={metrics} />
+                  </td>
                 </tr>
               ))}
             </tbody>

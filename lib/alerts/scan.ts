@@ -19,7 +19,13 @@ import {
   recentlyEndedWhere,
 } from "@/lib/rentals/phase";
 import { hasBalance } from "@/lib/rentals/terms";
-import { closeSupersededEndings, RENT_ALERTS, resolveAlerts, type WithdrawReason } from "@/lib/rentals/settle";
+import {
+  closeSupersededEndings,
+  RENT_ALERTS,
+  resolveAlerts,
+  resolveUnmonitoredSilence,
+  type WithdrawReason,
+} from "@/lib/rentals/settle";
 import { isTrackerSilent, silenceKey, TRACKER_SILENT_MINUTES } from "@/lib/geo/silence";
 import { dayKey, startOfTodayTbilisi } from "@/lib/time";
 import {
@@ -545,6 +551,26 @@ export async function scanAlerts(
       },
     );
   }
+
+  // A silence alert for a vehicle nobody watches any more (tracker
+  // disconnected, red lines paused or deleted, rental over) will never be
+  // closed by a ping — close it here.
+  const monitored = await prisma.gpsDevice.findMany({
+    where: {
+      asset: {
+        ...scope,
+        geofences: { some: { active: true } },
+        contracts: { some: activeContractWhere(start) },
+      },
+    },
+    select: { assetId: true },
+  });
+  result.resolved += await resolveUnmonitoredSilence(
+    prisma,
+    operatorId,
+    new Set(monitored.map((device) => device.assetId)),
+    now,
+  );
 
   // 9. Late rent on active contracts — and the day the repossession right
   //    kicks in. This also queues the WhatsApp reminders.

@@ -159,15 +159,36 @@ characters (templates: 500).
 ## iCal sync
 
 Each unit stores its channels' iCal export URLs (`/units` → edit). Sync runs
-three ways: the **Sync calendars** button on the units page, `POST /api/sync`
-(cron-friendly; GET works too), or the local scheduler (`npm run scheduler`).
-Feeds are parsed with a dependency-free RFC 5545 parser
-(`lib/ical/parse.ts`), availability blocks ("Not available"/"Blocked"/
-"CLOSED") are skipped, and bookings are deduped by
-`unitId + source + externalId` (feed UID, or the stay window when a feed has
-no UIDs) — re-syncing updates instead of duplicating. Feed errors are
-reported per-feed and never abort the run. Manual/direct bookings can be
-added at `/bookings/new`.
+on the Automatic jobs above, the **Sync calendars** button on the units page
+(it reports what changed and what failed), and `POST /api/sync` for the
+signed-in workspace. Feeds are parsed with a dependency-free RFC 5545 parser
+(`lib/ical/parse.ts`) and deduped by `unitId + source + externalId` (feed UID,
+or the stay window when a feed has no UIDs).
+
+- **What counts as a stay:** Airbnb's own "Airbnb (Not available)" blocks are
+  skipped; every Booking.com event is a stay (Booking.com exports each sold
+  night as "CLOSED - Not available"), and so is every event of other feeds.
+- **Cancellations:** after a successful fetch, a not-yet-ended stay imported
+  from that feed whose UID is gone is marked cancelled (`cancelReason
+  "missing"`); explicit `STATUS:CANCELLED` is kept as `"channel"`; a stay the
+  owner cancelled in Activo (`"owner"`) is never revived by a feed.
+- **Status per link:** `UnitFeed` stores `lastSyncedAt`, `lastError` (a short
+  code), `lastStatus`, `lastCount`, `lastCancelled`; `/units` and the unit edit
+  page show it.
+- **Fetching safely** (`lib/ical/fetch.ts`): https only, default port, no
+  credentials; every resolved address must be public (checked inside the
+  socket's DNS lookup — no rebinding gap); redirects are followed by hand and
+  re-checked (max 3); 5 MB cap; the body must be a VCALENDAR; errors are
+  short codes, never raw network errors.
+- **Prices:** channels do not send prices over iCal. Imported stays show "no
+  price" until the owner adds one at `/bookings` (edit: amount, guest name,
+  cancel/restore; dates only for manual bookings). ADR counts priced nights
+  only and revenue is flagged partial while any sold night has no price.
+- Manual/direct bookings (`/bookings/new`) and date edits are refused when
+  they overlap a non-cancelled booking, a lease, or a rental contract on the
+  linked asset.
+- The demo workspace's placeholder links (`?s=demo`, `…-demo`) are never
+  fetched and are labelled as demo links.
 
 ## Seed data
 

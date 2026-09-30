@@ -165,6 +165,43 @@ describe("stepFence — the zone is stored at every ping", () => {
     expect(steps[3].relief).toBe("returned");
   });
 
+  /** As `drive`, but with the reading — the way the monitor calls it. */
+  const driveHeld = (points: { lat: number; lng: number }[], stored: string | null = null) =>
+    points.map((point) => {
+      const reading = evaluateFence(fence, 1, point);
+      const step = stepFence(stored, undefined, reading.zone, {
+        distanceKm: reading.distanceKm,
+        approachKm: 1,
+      });
+      stored = step.lastZone;
+      return step;
+    });
+  /** A point `km` from the line, inside the 30 km circle. */
+  const fromLine = (km: number) => ({ lat: TBILISI.lat + (30 - km) / 111.2, lng: TBILISI.lng });
+
+  it("warns once when the car hovers at the edge of the approach band", () => {
+    // ±10 m around the 1 km band edge, ping after ping.
+    const jitter = [0.99, 1.01, 0.99, 1.01, 0.99, 1.01].map(fromLine);
+    const steps = driveHeld(jitter, "safe");
+    expect(steps.filter((step) => step.event === "approach")).toHaveLength(1);
+    expect(steps.some((step) => step.relief === "moved_away")).toBe(false);
+    // Clearly away from the line again: the warning re-arms.
+    const away = driveHeld([fromLine(0.9), fromLine(1.5), fromLine(0.9)], "safe");
+    expect(away.map((step) => step.event)).toEqual(["approach", null, "approach"]);
+    expect(away[1].relief).toBe("moved_away");
+  });
+
+  it("reports one crossing when the car hovers right on the line", () => {
+    const onLine = [0.005, -0.005, 0.005, -0.005, 0.005].map(fromLine);
+    const steps = driveHeld(onLine, "approach");
+    expect(steps.map((step) => step.event)).toEqual([null, "breach", null, null, null]);
+    // Back well inside counts as the return.
+    expect(driveHeld([fromLine(0.3)], "outside")[0]).toMatchObject({
+      event: "return",
+      relief: "returned",
+    });
+  });
+
   it("falls back to the last event for a fence saved before zones were stored", () => {
     expect(stepFence(null, "breach", "safe")).toMatchObject({ event: "return", lastZone: "safe" });
     expect(stepFence(null, "approach", "approach").event).toBeNull();

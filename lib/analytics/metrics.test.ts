@@ -68,6 +68,27 @@ describe("unitWindowMetrics", () => {
     expect(metrics.adr).toBe(100);
   });
 
+  it("keeps unpriced (imported) nights out of ADR and reports them", () => {
+    // 20 imported nights with no price, 5 manual nights at 500 GEL.
+    const metrics = unitWindowMetrics(
+      [booking("2026-08-01", "2026-08-21", null), booking("2026-08-21", "2026-08-26", 500)],
+      AUG,
+    );
+    expect(metrics.occupiedNights).toBe(25);
+    expect(metrics.bookedNights).toBe(25);
+    expect(metrics.unpricedNights).toBe(20);
+    expect(metrics.revenue).toBe(500);
+    // 100 a night, not 20: an unknown price is not a price of 0.
+    expect(metrics.adr).toBe(100);
+  });
+
+  it("has no ADR when no sold night has a price", () => {
+    const metrics = unitWindowMetrics([booking("2026-08-01", "2026-08-05", null)], AUG);
+    expect(metrics.adr).toBeNull();
+    expect(metrics.unpricedNights).toBe(4);
+    expect(metrics.occupancyRate).toBeCloseTo(4 / 31);
+  });
+
   it("returns null ADR/RevPAR when nothing is sold in an empty window", () => {
     const metrics = unitWindowMetrics([], {
       start: d("2026-08-01"),

@@ -1,6 +1,5 @@
 import { Fragment } from "react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { startOfTodayTbilisi } from "@/lib/time";
 import { requireOperator } from "@/lib/auth/session";
@@ -26,6 +25,7 @@ const KIND_CLASS: Record<string, string> = {
   lease: "cal-cell--lease",
 };
 const OVERLAP_CLASS = "cal-cell--overlap";
+const SOURCE_NAME: Record<string, string> = { airbnb: "Airbnb", booking: "Booking.com" };
 
 function parseMonth(value: string | undefined): { year: number; month: number } {
   const match = value?.match(/^(\d{4})-(\d{2})$/);
@@ -267,6 +267,55 @@ export default async function CalendarPage({
           )}
         </section>
       </div>
+
+      {/* One unit picked: its stays this month, with the price (or "no
+          price" for iCal imports) and a way to add it. */}
+      {unitQuery && rows[0] && (
+        <section>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 style={{ marginBottom: 0 }}>{t(locale, "nav_bookings")}</h2>
+            <Link href={`/bookings/new?unit=${unitQuery}`} className="btn-chip">
+              {t(locale, "bookings_add")}
+            </Link>
+          </div>
+          {rows[0].unit.bookings.length === 0 ? (
+            <p style={{ color: "var(--color-text-muted)" }}>{t(locale, "bookings_empty")}</p>
+          ) : (
+            <div className="card card--stack" style={{ marginTop: 12 }}>
+              <table>
+                <tbody>
+                  {[...rows[0].unit.bookings]
+                    .sort((a, b) => a.checkIn.getTime() - b.checkIn.getTime())
+                    .map((booking) => (
+                      <tr key={booking.id}>
+                        <td>
+                          {fmtDay.format(booking.checkIn)} – {fmtDay.format(booking.checkOut)}
+                          <div className="cell-sub">
+                            {SOURCE_NAME[booking.source] ??
+                              t(locale, booking.source === "direct" ? "source_direct" : "source_manual")}
+                            {booking.guestName ? ` · ${booking.guestName}` : ""}
+                          </div>
+                        </td>
+                        <td className="num" data-label={t(locale, "booking_price")}>
+                          {booking.amount != null ? (
+                            `${Math.round(booking.amount).toLocaleString("en-US")} ${booking.currency}`
+                          ) : (
+                            <span className="price-missing">{t(locale, "booking_no_price")}</span>
+                          )}
+                        </td>
+                        <td className="num">
+                          <Link href={`/bookings/${booking.id}/edit?back=calendar`} className="link">
+                            {booking.amount == null ? t(locale, "booking_add_price") : t(locale, "edit")}
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
     </main>
   );
 }

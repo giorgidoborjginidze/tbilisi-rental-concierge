@@ -15,7 +15,13 @@ import { PAYMENT_PERIODS, snapToBoundary, type PaymentPeriod } from "./schedule"
 import { monthlyEquivalent } from "./amount";
 import { alignPaidThrough, applyPayment, replayLedger, restatesBalance } from "./ledger";
 import { contractTerms, periodAmount } from "./terms";
-import { restoreAfterUndo, settlePaidRent, sweepStaleRentAlerts, withdrawFenceMessages } from "./settle";
+import {
+  resolveTrackerSilence,
+  restoreAfterUndo,
+  settlePaidRent,
+  sweepStaleRentAlerts,
+  withdrawFenceMessages,
+} from "./settle";
 
 const str = (formData: FormData, key: string) =>
   String(formData.get(key) ?? "").trim();
@@ -416,7 +422,17 @@ export async function deleteGpsDevice(formData: FormData) {
   const owned = assetId ? await ownAsset(assetId) : null;
   if (!owned) return;
   await prisma.gpsDevice.deleteMany({ where: { assetId } });
+  // No tracker, no ping to close a "tracker silent" alert: close it now.
+  await resolveTrackerSilence(prisma, owned.operator.id, assetId, new Date(), "not_monitored");
   refresh(assetId);
+}
+
+/** With no active red line left, a "tracker silent" alert no longer applies. */
+async function closeSilenceIfUnwatched(operatorId: string, assetId: string) {
+  const active = await prisma.geofence.count({ where: { assetId, active: true } });
+  if (active === 0) {
+    await resolveTrackerSilence(prisma, operatorId, assetId, new Date(), "not_monitored");
+  }
 }
 
 // ── Red lines ───────────────────────────────────────────────────────────
@@ -435,7 +451,7 @@ export async function saveGeofence(
   const kind = str(formData, "kind") === "polygon" ? "polygon" : "circle";
   const approachRaw = optionalNumber(formData, "approachKm");
   if (Number.isNaN(approachRaw) || (approachRaw != null && approachRaw <= 0)) {
-    return { error: "error_invalid_number" };
+    return { error: "error_fence_approach" };
   }
   const approachKm = approachRaw ?? 1;
 
@@ -457,12 +473,12 @@ export async function saveGeofence(
     if (
       centerLat == null || Number.isNaN(centerLat) ||
       centerLng == null || Number.isNaN(centerLng) ||
-      radiusKm == null || Number.isNaN(radiusKm) || radiusKm <= 0
+      centerLat < -90 || centerLat > 90 || centerLng < -180 || centerLng > 180
     ) {
-      return { error: "error_invalid_number" };
+      return { error: "error_fence_center" };
     }
-    if (centerLat < -90 || centerLat > 90 || centerLng < -180 || centerLng > 180) {
-      return { error: "error_invalid_number" };
+    if (radiusKm == null || Number.isNaN(radiusKm) || radiusKm <= 0) {
+      return { error: "error_fence_radius" };
     }
     data = { kind, centerLat, centerLng, radiusKm, points: undefined };
   }
@@ -496,6 +512,7 @@ export async function toggleGeofence(formData: FormData) {
     where: { id: fenceId },
     data: { active: !fence.active },
   });
+  if (fence.active) await closeSilenceIfUnwatched(owned.operator.id, assetId);
   refresh(assetId);
 }
 
@@ -510,6 +527,7 @@ export async function deleteGeofence(formData: FormData) {
   // point at them.
   await withdrawFenceMessages(prisma, [fence.id], "fence_removed");
   await prisma.geofence.deleteMany({ where: { id: fenceId, assetId } });
+  await closeSilenceIfUnwatched(owned.operator.id, assetId);
   refresh(assetId);
 }
 

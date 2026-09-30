@@ -29,17 +29,24 @@ export default function UnitForm({
   districts,
   types,
   labels,
+  feedStatus,
 }: {
   unit?: UnitFormValues;
   cities: readonly string[];
   districts: readonly string[];
   types: { value: string; label: string }[];
   labels: Record<string, string>;
+  /** How each saved iCal link last synced (rendered on the server). */
+  feedStatus?: React.ReactNode;
 }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     saveUnit,
     null,
   );
+  // After an error the form shows what was submitted, not the saved unit.
+  const sent = state && "values" in state ? state.values : undefined;
+  const val = (name: keyof UnitFormValues) =>
+    sent ? (sent[name] ?? "") : unit?.[name] === undefined ? undefined : String(unit[name]);
 
   return (
     <form action={formAction} className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -47,16 +54,16 @@ export default function UnitForm({
 
       <label className="field">
         {labels.unit_name}
-        <input name="name" required defaultValue={unit?.name} />
+        <input name="name" required defaultValue={val("name")} />
       </label>
       <label className="field">
         {labels.unit_name_ka}
-        <input name="nameKa" defaultValue={unit?.nameKa} />
+        <input name="nameKa" defaultValue={val("nameKa")} />
       </label>
 
       <label className="field">
         {labels.unit_city}
-        <select name="city" defaultValue={unit?.city ?? cities[0]}>
+        <select name="city" defaultValue={val("city") ?? cities[0]}>
           {cities.map((city) => (
             <option key={city} value={city}>{city}</option>
           ))}
@@ -68,7 +75,7 @@ export default function UnitForm({
           name="district"
           required
           list="district-options"
-          defaultValue={unit?.district}
+          defaultValue={val("district")}
          
         />
         <datalist id="district-options">
@@ -80,12 +87,12 @@ export default function UnitForm({
 
       <label className="field sm:col-span-2">
         {labels.unit_address}
-        <input name="address" required defaultValue={unit?.address} />
+        <input name="address" required defaultValue={val("address")} />
       </label>
 
       <label className="field">
         {labels.unit_type}
-        <select name="type" defaultValue={unit?.type ?? types[0]?.value}>
+        <select name="type" defaultValue={val("type") ?? types[0]?.value}>
           {types.map((type) => (
             <option key={type.value} value={type.value}>{type.label}</option>
           ))}
@@ -93,7 +100,7 @@ export default function UnitForm({
       </label>
       <label className="field">
         {labels.unit_currency}
-        <select name="currency" defaultValue={unit?.currency ?? "GEL"}>
+        <select name="currency" defaultValue={val("currency") ?? "GEL"}>
           {["GEL", "USD", "EUR"].map((currency) => (
             <option key={currency} value={currency}>{currency}</option>
           ))}
@@ -104,14 +111,14 @@ export default function UnitForm({
         {labels.unit_capacity}
         <input
           name="capacity" type="number" min={1} required
-          defaultValue={unit?.capacity ?? 2}
+          defaultValue={val("capacity") ?? 2}
         />
       </label>
       <label className="field">
         {labels.unit_bedrooms}
         <input
           name="bedrooms" type="number" min={0} required
-          defaultValue={unit?.bedrooms ?? 1}
+          defaultValue={val("bedrooms") ?? 1}
         />
       </label>
 
@@ -119,37 +126,42 @@ export default function UnitForm({
         {labels.unit_base_rate}
         <input
           name="baseNightlyRate" type="number" min={1} step="0.01" required
-          defaultValue={unit?.baseNightlyRate}
+          defaultValue={val("baseNightlyRate")}
         />
       </label>
       <label className="field">
         {labels.unit_amenities}
         <input
           name="amenities" placeholder="wifi, ac, washer"
-          defaultValue={unit?.amenities}
+          defaultValue={val("amenities")}
         />
       </label>
 
       <label className="field">
         {labels.unit_airbnb_url}
-        <input name="airbnbUrl" type="url" defaultValue={unit?.airbnbUrl} />
+        <input name="airbnbUrl" type="url" defaultValue={val("airbnbUrl")} />
       </label>
       <label className="field">
         {labels.unit_booking_url}
-        <input name="bookingUrl" type="url" defaultValue={unit?.bookingUrl} />
+        <input name="bookingUrl" type="url" defaultValue={val("bookingUrl")} />
       </label>
 
       <label className="field sm:col-span-2">
         {labels.unit_ical_urls}
         <textarea
-          name="icalUrls" rows={3} defaultValue={unit?.icalUrls}
+          name="icalUrls" rows={3} defaultValue={val("icalUrls")}
           className="font-mono text-xs"
         />
         <span className="hint">{labels.unit_ical_hint}</span>
       </label>
 
+      {feedStatus && <div className="sm:col-span-2">{feedStatus}</div>}
+
       {state?.error && (
-        <p className="sm:col-span-2" style={{ color: "var(--status-danger-text)", fontSize: 13 }}>{labels[state.error]}</p>
+        <p className="sm:col-span-2" style={{ color: "var(--status-danger-text)", fontSize: 13, overflowWrap: "anywhere" }}>
+          {labels[state.error]}
+          {state.detail ? ` ${state.detail}` : ""}
+        </p>
       )}
 
       <div className="flex items-center gap-3 sm:col-span-2">

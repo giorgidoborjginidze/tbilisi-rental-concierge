@@ -129,9 +129,32 @@ model Unit {
   pricingSuggestions PricingSuggestion[]
   alerts             Alert[]
   asset              Asset?
+  feeds              UnitFeed[]
 
   @@index([operatorId])
   @@index([district])
+}
+
+// How the last sync of ONE iCal feed of a unit went. The list of feed URLs
+// itself stays in Unit.channelLinks.icalUrls; a row is written for each URL
+// at every sync (and removed when the owner deletes the URL).
+model UnitFeed {
+  id            String    @id @default(cuid())
+  unitId        String
+  url           String
+  source        String // "airbnb" | "booking" | "direct"
+  lastAttemptAt DateTime?
+  lastSyncedAt  DateTime? // last successful fetch
+  lastError     String? // FeedError code (lib/ical/fetch.ts); null after a success
+  lastStatus    Int? // HTTP status of a failed fetch, when the channel answered
+  lastCount     Int? // stays the feed held at the last success
+  lastCancelled Int? // stays marked cancelled at the last success (gone from the feed)
+  createdAt     DateTime  @default(now())
+
+  unit     Unit      @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+
+  @@unique([unitId, url])
 }
 
 // A short-term booking, imported from an iCal feed or entered manually.
@@ -149,11 +172,18 @@ model Booking {
   status     String   @default("confirmed") // "confirmed" | "cancelled" | "tentative"
   externalId String? // UID from the iCal event, used for dedupe
   importedAt DateTime @default(now())
+  // The feed that imported it (null: entered by hand, or imported before
+  // feeds were tracked). A stay that vanishes from its feed is cancelled.
+  feedId       String?
+  cancelledAt  DateTime?
+  cancelReason String? // "owner" | "channel" (STATUS:CANCELLED) | "missing" (gone from the feed)
 
-  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  unit Unit      @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  feed UnitFeed? @relation(fields: [feedId], references: [id], onDelete: SetNull)
 
   @@unique([unitId, source, externalId])
   @@index([unitId, checkIn])
+  @@index([feedId])
 }
 
 // A long-stay contract (aparthotel monthly stays / leases).

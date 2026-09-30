@@ -1,0 +1,116 @@
+"use client";
+
+import Link from "next/link";
+import { useActionState } from "react";
+import { cancelBooking, restoreBooking, updateBooking } from "@/lib/bookings/actions";
+import type { FormState } from "@/lib/units/actions";
+
+export interface EditableBooking {
+  id: string;
+  guestName: string;
+  amount: string;
+  checkIn: string;
+  checkOut: string;
+  currency: string;
+}
+
+export default function BookingEditForm({
+  booking,
+  labels,
+  datesEditable,
+  cancelled,
+  backHref,
+}: {
+  booking: EditableBooking;
+  labels: Record<string, string>;
+  datesEditable: boolean;
+  cancelled: boolean;
+  /** Where Save and Cancel lead: the bookings list or the unit's calendar. */
+  backHref: string;
+}) {
+  const [state, formAction, pending] = useActionState<FormState, FormData>(updateBooking, null);
+  const [restoreState, restoreAction, restoring] = useActionState<FormState, FormData>(
+    restoreBooking,
+    null,
+  );
+  // After an error the fields show what was submitted (React resets the form).
+  const sent = state && "values" in state ? state.values : undefined;
+  const val = (name: keyof EditableBooking) => (sent ? (sent[name] ?? "") : booking[name]);
+  const error = state?.error ? state : restoreState?.error ? restoreState : null;
+
+  return (
+    <>
+      <form action={formAction} className="mt-6 flex flex-col gap-4">
+        <input type="hidden" name="bookingId" value={booking.id} />
+        <input type="hidden" name="back" value={backHref} />
+        <label className="field">
+          {labels.booking_amount_total} ({booking.currency})
+          <input
+            name="amount"
+            type="number"
+            min={0}
+            step="0.01"
+            inputMode="decimal"
+            defaultValue={val("amount")}
+            autoFocus={booking.amount === ""}
+          />
+        </label>
+        <label className="field">
+          {labels.booking_guest}
+          <input name="guestName" defaultValue={val("guestName")} />
+        </label>
+        {datesEditable && (
+          <div className="grid grid-cols-2 gap-4">
+            <label className="field">
+              {labels.booking_check_in}
+              <input name="checkIn" type="date" required defaultValue={val("checkIn")} />
+            </label>
+            <label className="field">
+              {labels.booking_check_out}
+              <input name="checkOut" type="date" required defaultValue={val("checkOut")} />
+            </label>
+          </div>
+        )}
+
+        {error?.error && (
+          <p className="form-error" role="alert">
+            {labels[error.error]}
+            {error.detail ? ` ${error.detail}` : ""}
+          </p>
+        )}
+
+        <div className="flex items-center gap-3">
+          <button type="submit" disabled={pending} className="btn-primary">
+            {labels.save}
+          </button>
+          <Link href={backHref} className="link">
+            {labels.cancel}
+          </Link>
+        </div>
+      </form>
+
+      <div className="mt-6" style={{ borderTop: "1px solid var(--color-border)", paddingTop: 14 }}>
+        {cancelled ? (
+          <form action={restoreAction}>
+            <input type="hidden" name="bookingId" value={booking.id} />
+            <button type="submit" className="btn-secondary" disabled={restoring}>
+              {labels.booking_restore}
+            </button>
+          </form>
+        ) : (
+          <form
+            action={cancelBooking}
+            onSubmit={(event) => {
+              if (!confirm(labels.booking_cancel_confirm)) event.preventDefault();
+            }}
+          >
+            <input type="hidden" name="bookingId" value={booking.id} />
+            <button type="submit" className="btn-danger">
+              {labels.booking_cancel_stay}
+            </button>
+          </form>
+        )}
+      </div>
+    </>
+  );
+}

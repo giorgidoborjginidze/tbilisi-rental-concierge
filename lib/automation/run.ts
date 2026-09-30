@@ -23,6 +23,8 @@ export interface RunSummary {
   feeds: number;
   bookingsCreated: number;
   bookingsUpdated: number;
+  /** Stays cancelled because they vanished from their channel feed. */
+  bookingsCancelled: number;
   feedErrors: number;
   alertsCreated: number;
   alertsResolved: number;
@@ -57,6 +59,7 @@ export async function runAutomation(
     feeds: 0,
     bookingsCreated: 0,
     bookingsUpdated: 0,
+    bookingsCancelled: 0,
     feedErrors: 0,
     alertsCreated: 0,
     alertsResolved: 0,
@@ -74,9 +77,10 @@ export async function runAutomation(
     try {
       // Calendars first, so the scan sees today's bookings.
       const feeds = await deps.sync(undefined, id);
-      summary.feeds += feeds.length;
+      summary.feeds += feeds.filter((feed) => !feed.demo).length;
       summary.bookingsCreated += feeds.reduce((sum, feed) => sum + feed.created, 0);
       summary.bookingsUpdated += feeds.reduce((sum, feed) => sum + feed.updated, 0);
+      summary.bookingsCancelled += feeds.reduce((sum, feed) => sum + feed.cancelled, 0);
       // A broken feed URL is the owner's setting, not a failed run.
       summary.feedErrors += feeds.filter((feed) => feed.error).length;
 

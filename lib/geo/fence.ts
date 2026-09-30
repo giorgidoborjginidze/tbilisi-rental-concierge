@@ -175,23 +175,75 @@ export interface FenceStep {
 }
 
 /**
+ * How far past the approach band a car must drive before the approach
+ * warning re-arms: at least 200 m, or a quarter of the band. GPS fixes
+ * wander by tens of metres, so without this a car parked right at the edge
+ * of the band would flip safe ⇄ approach on alternate pings and send a
+ * fresh warning each time.
+ */
+export function approachReleaseKm(approachKm: number): number {
+  return Math.max(0.2, 0.25 * Math.max(0, approachKm));
+}
+
+/**
+ * How far back inside the line a car must be before a crossing counts as
+ * over. Same reason: jitter right on the line must not turn into breach,
+ * return, breach…
+ */
+export const RETURN_MARGIN_KM = 0.1;
+
+/** The reading behind a zone, so a step can hold a zone within its margin. */
+export interface StepReading {
+  distanceKm: number;
+  approachKm: number;
+}
+
+/**
+ * The zone to act on, with hysteresis: leaving the approach band for safe
+ * needs `approachReleaseKm` beyond the band, and coming back inside after a
+ * crossing needs `RETURN_MARGIN_KM` inside the line. Without a reading the
+ * raw zone is used (no hysteresis).
+ */
+export function settledZone(
+  previous: Zone | null,
+  next: Zone,
+  reading?: StepReading,
+): Zone {
+  if (!reading || previous == null) return next;
+  const { distanceKm, approachKm } = reading;
+  if (previous === "approach" && next === "safe") {
+    return distanceKm > approachKm + approachReleaseKm(approachKm) ? "safe" : "approach";
+  }
+  if (previous === "outside" && next !== "outside") {
+    return distanceKm >= RETURN_MARGIN_KM ? next : "outside";
+  }
+  return next;
+}
+
+/**
  * One ping against one fence. The previous zone is the one stored on the
  * fence at the last ping — every ping, including the quiet move from the
  * approach band back to safe, so the approach warning re-arms. A fence
  * saved before the zone was stored falls back to its last event, once.
+ *
+ * Pass the reading (distance to the line and the approach band) so a car
+ * hovering at a boundary does not flip zones on GPS noise: see
+ * `settledZone`.
  */
 export function stepFence(
   storedZone: string | null | undefined,
   lastEventKind: string | null | undefined,
   next: Zone,
+  reading?: StepReading,
 ): FenceStep {
   const previous = ZONES.includes(storedZone as Zone)
     ? (storedZone as Zone)
     : zoneFromEvent(lastEventKind);
+  const zone = settledZone(previous, next, reading);
   return {
-    event: transition(previous, next),
-    relief: relief(previous, next),
-    lastZone: next,
+    event: transition(previous, zone),
+    relief: relief(previous, zone),
+    lastZone: zone,
   };
 }
 

@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
-import { parseChannelLinks } from "@/lib/types";
-import { syncNow } from "@/lib/bookings/actions";
+import { feedUrlsOf } from "@/lib/ical/run-sync";
 import RentalsSubnav from "../rentals-subnav";
+import FeedStatus from "./feed-status";
+import SyncButton from "./sync-button";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +16,10 @@ export default async function UnitsPage() {
   const locale = await getLocale();
   const units = await prisma.unit.findMany({
     where: { operatorId: operator.id },
-    include: { _count: { select: { bookings: true, leases: true } } },
+    include: {
+      _count: { select: { bookings: true, leases: true } },
+      feeds: true,
+    },
     orderBy: [{ city: "asc" }, { district: "asc" }, { name: "asc" }],
   });
 
@@ -26,11 +29,16 @@ export default async function UnitsPage() {
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <h1 style={{ marginBottom: 0 }}>{t(locale, "units_title")}</h1>
         <div className="flex flex-wrap items-center gap-2">
-          <form action={syncNow}>
-            <button type="submit" className="btn-secondary">
-              {t(locale, "sync_now")}
-            </button>
-          </form>
+          <SyncButton
+            labels={{
+              sync_now: t(locale, "sync_now"),
+              sync_running: t(locale, "sync_running"),
+              sync_done: t(locale, "sync_done"),
+              sync_done_errors: t(locale, "sync_done_errors"),
+              sync_none: t(locale, "sync_none"),
+              sync_demo: t(locale, "sync_demo"),
+            }}
+          />
           <Link href="/bookings/new" className="btn-secondary">
             {t(locale, "bookings_add")}
           </Link>
@@ -58,7 +66,7 @@ export default async function UnitsPage() {
             </thead>
             <tbody>
               {units.map((unit) => {
-                const links = parseChannelLinks(unit.channelLinks);
+                const urls = feedUrlsOf(unit.channelLinks);
                 const displayName =
                   locale === "ka" && unit.nameKa ? unit.nameKa : unit.name;
                 return (
@@ -76,7 +84,11 @@ export default async function UnitsPage() {
                     </td>
                     <td className="num" data-label={t(locale, "bookings")}>{unit._count.bookings}</td>
                     <td data-label="iCal" className="ical-cell">
-                      {links.icalUrls.length > 0 ? links.icalUrls.length : "—"}
+                      {urls.length > 0 ? (
+                        <FeedStatus locale={locale} urls={urls} feeds={unit.feeds} compact />
+                      ) : (
+                        "—"
+                      )}
                     </td>
                     <td className="num">
                       <Link href={`/units/${unit.id}/edit`} className="link">

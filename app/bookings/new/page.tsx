@@ -6,8 +6,13 @@ import BookingForm from "./booking-form";
 
 export const dynamic = "force-dynamic";
 
-export default async function NewBookingPage() {
+export default async function NewBookingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ unit?: string }>;
+}) {
   const operator = await requireOperator();
+  const { unit: unitParam } = await searchParams;
 
   const locale = await getLocale();
   const units = await prisma.unit.findMany({
@@ -20,7 +25,7 @@ export default async function NewBookingPage() {
     "booking_unit", "booking_source", "source_manual", "source_direct",
     "booking_guest", "booking_check_in", "booking_check_out", "booking_amount",
     "save", "cancel", "error_required", "error_invalid_number", "error_dates",
-    "error_email_taken", "error_booking_overlap",
+    "error_booking_overlap",
   ];
   const labels = Object.fromEntries(labelKeys.map((key) => [key, t(locale, key)]));
 
@@ -30,6 +35,7 @@ export default async function NewBookingPage() {
       <h1>{t(locale, "booking_new_title")}</h1>
       <BookingForm
         labels={labels}
+        defaultUnitId={units.some((unit) => unit.id === unitParam) ? unitParam : undefined}
         units={units.map((unit) => ({
           id: unit.id,
           label: `${locale === "ka" && unit.nameKa ? unit.nameKa : unit.name} (${unit.city})`,

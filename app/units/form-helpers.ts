@@ -10,7 +10,7 @@ export function unitFormProps(locale: Locale) {
     "unit_currency", "unit_amenities", "unit_airbnb_url", "unit_booking_url",
     "unit_ical_urls", "unit_ical_hint", "save", "cancel", "delete",
     "delete_confirm", "error_required", "error_invalid_number",
-    "error_email_taken",
+    "error_email_taken", "error_ical_url",
   ];
   const labels = Object.fromEntries(labelKeys.map((key) => [key, t(locale, key)]));
 

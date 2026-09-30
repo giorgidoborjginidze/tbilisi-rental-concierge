@@ -48,7 +48,10 @@ export type WithdrawReason =
   | "passed"
   | "replaced"
   | "overlap_cleared"
-  | "escalated";
+  | "escalated"
+  // A tracker-silence alert whose vehicle is no longer watched: the tracker
+  // was disconnected, its red lines paused or removed, or the rental ended.
+  | "not_monitored";
 
 export const WITHDRAW_REASONS: WithdrawReason[] = [
   "paid",
@@ -69,6 +72,7 @@ export const WITHDRAW_REASONS: WithdrawReason[] = [
   "replaced",
   "overlap_cleared",
   "escalated",
+  "not_monitored",
 ];
 
 /** Late-rent alerts; each carries payload.contractId and payload.dueDate. */
@@ -455,6 +459,7 @@ export async function resolveTrackerSilence(
   operatorId: string,
   assetId: string,
   now: Date = new Date(),
+  reason: "signal_back" | "not_monitored" = "signal_back",
 ): Promise<number> {
   const alerts = await db.alert.findMany({
     where: { operatorId, type: "tracker_silent", status: "open" },
@@ -463,7 +468,35 @@ export async function resolveTrackerSilence(
   return autoResolve(
     db,
     alerts.filter((alert) => (alert.payload as { assetId?: string } | null)?.assetId === assetId),
-    "signal_back",
+    reason,
+    now,
+  );
+}
+
+/**
+ * Open "tracker silent" alerts for vehicles that are no longer watched —
+ * the tracker was disconnected, every red line is paused or deleted, or no
+ * rental runs today. No ping will ever close them, so the scan (and the
+ * disconnect action) close them here. `monitored` holds the asset ids that
+ * still have a tracker, an active red line and a running contract.
+ */
+export async function resolveUnmonitoredSilence(
+  db: PrismaClient,
+  operatorId: string | undefined,
+  monitored: Set<string>,
+  now: Date = new Date(),
+): Promise<number> {
+  const alerts = await db.alert.findMany({
+    where: { ...(operatorId ? { operatorId } : {}), type: "tracker_silent", status: "open" },
+    select: { id: true, payload: true },
+  });
+  return autoResolve(
+    db,
+    alerts.filter((alert) => {
+      const assetId = (alert.payload as { assetId?: string } | null)?.assetId;
+      return !assetId || !monitored.has(assetId);
+    }),
+    "not_monitored",
     now,
   );
 }

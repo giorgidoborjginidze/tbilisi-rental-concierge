@@ -68,6 +68,7 @@ const LABEL_KEYS: StringKey[] = [
   "save", "cancel", "delete",
   "error_required", "error_invalid_number", "error_dates",
   "error_device_taken", "error_fence_points", "error_template_too_long",
+  "error_fence_center", "error_fence_radius", "error_fence_approach",
   "pay_period", "period_daily", "period_weekly", "period_monthly",
   "pay_amount", "pay_amount_hint", "pay_grace", "pay_grace_hint",
   "pay_paid_through", "pay_paid_through_hint", "contract_reminders",
@@ -550,14 +551,33 @@ export default async function RentalServicePage({
                   </span>
                   {reading && silent && (
                     // The last fix is too old to say which side of the line
-                    // the car is on now.
-                    <span
-                      className="badge badge--personal"
-                      style={{ marginLeft: 6 }}
-                      title={t(locale, "gps_silent_hint")}
-                    >
-                      {t(locale, "fence_status_unknown")}
-                    </span>
+                    // the car is on now — but where it was last seen still
+                    // matters (a car that crossed the line and then went
+                    // quiet is the theft pattern).
+                    <>
+                      <span
+                        className="badge badge--personal"
+                        style={{ marginLeft: 6 }}
+                        title={t(locale, "gps_silent_hint")}
+                      >
+                        {t(locale, "fence_status_unknown")}
+                      </span>
+                      <span
+                        style={{
+                          marginLeft: 6,
+                          fontSize: 12,
+                          color:
+                            reading.zone === "outside"
+                              ? "var(--status-danger-text)"
+                              : "var(--color-text-muted)",
+                          fontWeight: reading.zone === "outside" ? 600 : undefined,
+                        }}
+                      >
+                        {t(locale, "fence_last_seen")
+                          .replace("{zone}", t(locale, `fence_status_${reading.zone}` as StringKey))
+                          .replace("{km}", reading.distanceKm.toFixed(1))}
+                      </span>
+                    </>
                   )}
                   {reading && !silent && (
                     <span className={`badge ${ZONE_BADGE[reading.zone]}`} style={{ marginLeft: 6 }}>

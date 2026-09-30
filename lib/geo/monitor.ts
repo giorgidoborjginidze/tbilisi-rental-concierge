@@ -120,7 +120,12 @@ export async function processPing(
             select: { kind: true },
           })
         : null;
-    const step = stepFence(fence.lastZone, last?.kind, reading.zone);
+    // With hysteresis: a car hovering at the edge of the approach band or
+    // right on the line does not flip zones (and re-warn) on GPS noise.
+    const step = stepFence(fence.lastZone, last?.kind, reading.zone, {
+      distanceKm: reading.distanceKm,
+      approachKm: fence.approachKm,
+    });
     const event = step.event;
     if (fence.lastZone !== step.lastZone) {
       await prisma.geofence.update({

@@ -119,6 +119,13 @@ describe("parsePing — only one real fix is accepted", () => {
     expect(parseFixTime("1790762400")).toEqual(new Date(1790762400 * 1000));
     expect(parseFixTime("1790762400000")).toEqual(new Date(1790762400000));
     expect(parseFixTime("nonsense")).toBeNull();
+    // No offset: UTC, whatever the server's own zone.
+    expect(parseFixTime("2026-09-30T10:00:00")).toEqual(new Date("2026-09-30T10:00:00Z"));
+    expect(parseFixTime("2026-09-30 10:00:00")).toEqual(new Date("2026-09-30T10:00:00Z"));
+    expect(parseFixTime("2026-09-30T14:00:00+04:00")).toEqual(new Date("2026-09-30T10:00:00Z"));
+    // The compact tracker stamp, not milliseconds in the year 2612.
+    expect(parseFixTime("20260930100000")).toEqual(new Date("2026-09-30T10:00:00Z"));
+    expect(parseFixTime("20261330100000")).toBeNull();
     expect(parsePing(query(`${auth}&lat=41.64&lng=41.63&at=nonsense`))).toEqual({
       ok: false,
       error: "invalid_timestamp",
@@ -138,6 +145,15 @@ describe("checkFixTime", () => {
 
   it("refuses a fix from the future", () => {
     expect(checkFixTime(new Date("2026-09-30T10:06:00Z"), last, now)).toBe("future_timestamp");
+  });
+
+  it("refuses a fix from a broken clock long in the past", () => {
+    // at=0 → 1970; a GPS week rollover lands ~19.6 years back.
+    expect(checkFixTime(parseFixTime("0")!, null, now)).toBe("invalid_timestamp");
+    expect(checkFixTime(new Date("2007-02-14T10:00:00Z"), null, now)).toBe("invalid_timestamp");
+    expect(checkFixTime(new Date("2026-09-22T10:00:00Z"), null, now)).toBe("invalid_timestamp");
+    // A few days of buffered points are still fine.
+    expect(checkFixTime(new Date("2026-09-25T10:00:00Z"), null, now)).toBeNull();
   });
 
   it("refuses a buffered fix no newer than the last one", () => {

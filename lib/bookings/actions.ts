@@ -4,77 +4,182 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireOperator } from "@/lib/auth/session";
-import { syncAllUnits } from "@/lib/ical/run-sync";
+import { summarizeSync, syncAllUnits } from "@/lib/ical/run-sync";
 import type { FormState } from "@/lib/units/actions";
 import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
+import { submittedValues } from "@/lib/forms";
+import { parseStayDates } from "./dates";
 
 const str = (formData: FormData, key: string) =>
   String(formData.get(key) ?? "").trim();
+
+/** The amount field: empty is "no price", anything else a sum ≥ 0. */
+function parseAmount(raw: string): { amount: number | null } | { error: true } {
+  if (!raw) return { amount: null };
+  const amount = Number(raw.replace(",", "."));
+  if (!Number.isFinite(amount) || amount < 0) return { error: true };
+  return { amount: Math.round(amount * 100) / 100 };
+}
+
+/** Where to go after saving: only our own bookings list or calendar. */
+function safeBack(back: string): string {
+  return /^\/(bookings|calendar)(\?[\w=&%-]*)?$/.test(back) ? back : "/bookings";
+}
+
+const refresh = () => {
+  for (const path of ["/units", "/bookings", "/calendar", "/analytics", "/"]) revalidatePath(path);
+};
 
 export async function createBooking(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  const values = submittedValues(formData);
   const unitId = str(formData, "unitId");
   const source = str(formData, "source") === "direct" ? "direct" : "manual";
   const guestName = str(formData, "guestName") || null;
-  const checkInRaw = str(formData, "checkIn");
-  const checkOutRaw = str(formData, "checkOut");
 
-  if (!unitId || !checkInRaw || !checkOutRaw) return { error: "error_required" };
+  if (!unitId || !str(formData, "checkIn") || !str(formData, "checkOut")) {
+    return { error: "error_required", values };
+  }
 
   const operator = await requireOperator();
   const unit = await prisma.unit.findFirst({
     where: { id: unitId, operatorId: operator.id },
   });
-  if (!unit) return { error: "error_required" };
+  if (!unit) return { error: "error_required", values };
 
-  const checkIn = new Date(`${checkInRaw}T00:00:00Z`);
-  const checkOut = new Date(`${checkOutRaw}T00:00:00Z`);
-  if (Number.isNaN(checkIn.getTime()) || Number.isNaN(checkOut.getTime())) {
-    return { error: "error_dates" };
-  }
-  const nights = Math.round(
-    (checkOut.getTime() - checkIn.getTime()) / 86_400_000,
-  );
-  if (nights <= 0) return { error: "error_dates" };
+  const dates = parseStayDates(str(formData, "checkIn"), str(formData, "checkOut"));
+  if (!dates) return { error: "error_dates", values };
 
-  const amountRaw = str(formData, "amount");
-  let amount: number | null = null;
-  if (amountRaw) {
-    amount = Number(amountRaw);
-    if (!Number.isFinite(amount) || amount < 0) {
-      return { error: "error_invalid_number" };
-    }
-  }
+  const parsed = parseAmount(str(formData, "amount"));
+  if ("error" in parsed) return { error: "error_invalid_number", values };
 
   // A direct booking must never land on nights already sold on a channel
   // or let on a lease: that is the double booking the owner pays for.
-  const clash = await firstClash(unitId, checkIn, checkOut);
-  if (clash) return { error: "error_booking_overlap", detail: clash };
+  const clash = await firstClash(unitId, dates.checkIn, dates.checkOut);
+  if (clash) return { error: "error_booking_overlap", detail: clash, values };
 
   await prisma.booking.create({
     data: {
       unitId,
       source,
       guestName,
-      checkIn,
-      checkOut,
-      nights,
-      amount,
+      checkIn: dates.checkIn,
+      checkOut: dates.checkOut,
+      nights: dates.nights,
+      amount: parsed.amount,
       currency: unit.currency,
       status: "confirmed",
     },
   });
 
-  revalidatePath("/units");
-  revalidatePath("/");
-  redirect("/units");
+  refresh();
+  // Straight to the unit's calendar, where the new stay now shows.
+  redirect(`/calendar?unit=${unitId}&month=${dates.checkIn.toISOString().slice(0, 7)}`);
 }
 
-/** The first stay on the unit sharing a night with [checkIn, checkOut), described. */
-async function firstClash(unitId: string, checkIn: Date, checkOut: Date): Promise<string | null> {
+/**
+ * Edit a booking: its price and guest name always; its dates only when it
+ * was entered by hand (an imported stay's dates follow its channel feed).
+ */
+export async function updateBooking(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const values = submittedValues(formData);
+  const operator = await requireOperator();
+  const booking = await prisma.booking.findFirst({
+    where: { id: str(formData, "bookingId"), unit: { operatorId: operator.id } },
+  });
+  if (!booking) return { error: "error_required", values };
+
+  const parsed = parseAmount(str(formData, "amount"));
+  if ("error" in parsed) return { error: "error_invalid_number", values };
+  const guestName = str(formData, "guestName") || null;
+
+  const data: {
+    amount: number | null;
+    guestName: string | null;
+    checkIn?: Date;
+    checkOut?: Date;
+    nights?: number;
+  } = { amount: parsed.amount, guestName };
+
+  const imported = booking.externalId != null;
+  if (!imported) {
+    const dates = parseStayDates(str(formData, "checkIn"), str(formData, "checkOut"));
+    if (!dates) return { error: "error_dates", values };
+    const moved =
+      dates.checkIn.getTime() !== booking.checkIn.getTime() ||
+      dates.checkOut.getTime() !== booking.checkOut.getTime();
+    // New nights must be free (the booking's own old nights do not count).
+    if (moved && booking.status !== "cancelled") {
+      const clash = await firstClash(booking.unitId, dates.checkIn, dates.checkOut, booking.id);
+      if (clash) return { error: "error_booking_overlap", detail: clash, values };
+    }
+    Object.assign(data, dates);
+  }
+
+  await prisma.booking.update({ where: { id: booking.id }, data });
+  refresh();
+  redirect(safeBack(str(formData, "back")));
+}
+
+/** Cancel a booking (imported ones too — a feed never revives it). */
+export async function cancelBooking(formData: FormData) {
+  const operator = await requireOperator();
+  const booking = await prisma.booking.findFirst({
+    where: { id: str(formData, "bookingId"), unit: { operatorId: operator.id } },
+  });
+  if (!booking) return;
+  if (booking.status !== "cancelled") {
+    await prisma.booking.update({
+      where: { id: booking.id },
+      data: { status: "cancelled", cancelledAt: new Date(), cancelReason: "owner" },
+    });
+  }
+  refresh();
+  redirect("/bookings");
+}
+
+/**
+ * Undo a cancellation — only while its nights are still free, so a
+ * restore can never create a double booking.
+ */
+export async function restoreBooking(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const operator = await requireOperator();
+  const booking = await prisma.booking.findFirst({
+    where: { id: str(formData, "bookingId"), unit: { operatorId: operator.id } },
+  });
+  if (!booking) return { error: "error_required" };
+  if (booking.status === "cancelled") {
+    const clash = await firstClash(booking.unitId, booking.checkIn, booking.checkOut, booking.id);
+    if (clash) return { error: "error_booking_overlap", detail: clash };
+    await prisma.booking.update({
+      where: { id: booking.id },
+      data: { status: "confirmed", cancelledAt: null, cancelReason: null },
+    });
+  }
+  refresh();
+  redirect("/bookings");
+}
+
+/**
+ * The first stay on the unit sharing a night with [checkIn, checkOut),
+ * described for the owner: a booking, a lease, or a rental contract on the
+ * asset linked to the unit (the same flat).
+ */
+async function firstClash(
+  unitId: string,
+  checkIn: Date,
+  checkOut: Date,
+  exceptBookingId?: string,
+): Promise<string | null> {
   const locale = await getLocale();
   const SOURCE_NAMES: Record<string, string> = {
     airbnb: "Airbnb",
@@ -89,6 +194,7 @@ async function firstClash(unitId: string, checkIn: Date, checkOut: Date): Promis
       status: { not: "cancelled" },
       checkIn: { lt: checkOut },
       checkOut: { gt: checkIn },
+      ...(exceptBookingId ? { id: { not: exceptBookingId } } : {}),
     },
     orderBy: { checkIn: "asc" },
   });
@@ -106,12 +212,24 @@ async function firstClash(unitId: string, checkIn: Date, checkOut: Date): Promis
       lease.tenantName ? ` (${lease.tenantName})` : ""
     }`;
   }
+  const contract = await prisma.rentalContract.findFirst({
+    where: { asset: { unitId }, startDate: { lt: checkOut }, endDate: { gt: checkIn } },
+    orderBy: { startDate: "asc" },
+  });
+  if (contract) {
+    return `${t(locale, "overlap_src_contract")} ${day(contract.startDate)} → ${day(contract.endDate)}${
+      contract.tenantName ? ` (${contract.tenantName})` : ""
+    }`;
+  }
   return null;
 }
 
-export async function syncNow() {
+export type SyncState = ReturnType<typeof summarizeSync> | null;
+
+/** "Sync Calendars": run every feed of this workspace and say how it went. */
+export async function syncCalendars(): Promise<SyncState> {
   const operator = await requireOperator();
-  await syncAllUnits(undefined, operator.id);
-  revalidatePath("/units");
-  revalidatePath("/");
+  const results = await syncAllUnits(undefined, operator.id);
+  refresh();
+  return summarizeSync(results);
 }

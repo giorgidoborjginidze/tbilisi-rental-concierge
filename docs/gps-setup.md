@@ -17,15 +17,17 @@ tracker  ──TCP (binary)──▶  gateway  ──HTTPS GET/POST──▶  ac
 The gateway is a small, standard piece of software. Two good options:
 
 * **Traccar** — open source, understands 200+ tracker protocols, runs on a
-  cheap VPS (2 GB RAM handles hundreds of vehicles). Its *Computed
-  attributes / Forward* feature posts every position to a URL, which is
-  exactly our endpoint.
+  cheap VPS (2 GB RAM handles hundreds of vehicles). Its position
+  *forward* posts every position to **one** URL for the whole server — it
+  cannot carry a different token per device, so on its own it cannot call
+  our endpoint (see step 4 below).
 * **Wialon (Gurtam)** — commercial, dominant in the region, and many
   Georgian telematics resellers already run it. If a customer already has
   trackers, they are probably on Wialon; it has a retranslator/API that can
   feed us.
 
-One gateway serves every customer — it is set up once, not per vehicle.
+One gateway serves every customer — it is set up once, not per vehicle
+(with Traccar, plus the small per-device relay described in step 4).
 
 ## Recommended hardware
 
@@ -70,9 +72,16 @@ once per vehicle, not per rental.
 2. Enter the vehicle's state plate — the notifications quote it verbatim.
 3. Under **GPS tracker**, enter the tracker's IMEI as the Device ID and save.
 4. Copy the **ping address** shown (it carries the device id and its token,
-   never a position) and hand it to whoever runs the gateway: they set it as
-   the forward URL in Traccar (or the retranslation target in Wialon) for
-   that device, adding the position fields from each record.
+   never a position) and hand it to whoever runs the gateway. It is a
+   per-device address, and that decides how the gateway is wired:
+   * **Wialon**: a retranslator can target one address per unit, so each
+     vehicle gets its own copied address.
+   * **Traccar**: its forward URL is global — one address for every device —
+     and cannot carry a per-device token. It needs a small relay between
+     Traccar and Activo that maps each IMEI to its token (or one
+     retranslator per unit). **Activo staff set this up**; until a
+     gateway-level credential exists, do not describe Traccar as
+     "paste the address and done".
 5. Draw the **red lines**, set how far ahead to warn, and check the message
    texts.
 
@@ -89,8 +98,9 @@ Authorization: Bearer <token>
 GET /api/gps/ping?deviceId=<IMEI>&token=<token>&lat=<latitude>&lng=<longitude>&speed=<km/h>&timestamp=<fix time>
 ```
 
-`lon` is read as `lng`, and `timestamp` (ISO, or Unix seconds / milliseconds)
-as `at`. A ping is refused unless it is one real, fresh fix:
+`lon` is read as `lng`, and `timestamp` (ISO, compact `YYYYMMDDhhmmss`, or
+Unix seconds / milliseconds) as `at`. A time without a zone offset is read
+as UTC. A ping is refused unless it is one real, fresh fix:
 
 | Refused | Response |
 |---|---|
@@ -100,6 +110,7 @@ as `at`. A ping is refused unless it is one real, fresh fix:
 | 0,0 or `valid=false` (no satellite fix) | 422 `no_fix` |
 | the example position shown on the rental page (41.7151, 44.8271) | 422 `example_position` |
 | a fix time more than 5 minutes in the future | 400 `future_timestamp` |
+| a fix time more than 7 days old (a broken tracker clock, e.g. 1970) | 400 `invalid_timestamp` |
 | a fix no newer than the last accepted one | 409 `stale_ping` |
 | more than one accepted ping per device every 5 seconds | 429 `rate_limited` |
 
@@ -142,13 +153,15 @@ Queclink და დანარჩენები **ბინარულ პა
 გეითვეი სტანდარტული პროგრამაა. ორი კარგი ვარიანტი:
 
 * **Traccar** — ღია კოდი, 200-ზე მეტი პროტოკოლი, იაფ VPS-ზე დგება (2 GB RAM
-  ასეულობით მანქანას წევს). მისი Forward ფუნქცია ყოველ კოორდინატს ჩვენს
-  მისამართზე აგზავნის.
+  ასეულობით მანქანას წევს). მისი Forward ფუნქცია ყოველ კოორდინატს **ერთ**
+  საერთო მისამართზე აგზავნის — თითო მოწყობილობის ტოკენს ვერ ატარებს, ამიტომ
+  პირდაპირ ჩვენს მისამართს ვერ გამოიძახებს (იხ. ქვემოთ, ნაბიჯი 4).
 * **Wialon (Gurtam)** — კომერციული, რეგიონში დომინანტი. ქართველი
   ტელემატიკის დილერების უმეტესობა სწორედ ამაზე ზის. თუ კლიენტს უკვე აქვს
   ტრეკერები, დიდი ალბათობით Wialon-ზეა და რეტრანსლატორით მოგვაწოდებს.
 
-ერთი გეითვეი ყველა კლიენტს ემსახურება — ერთხელ იდგმება, არა თითო მანქანაზე.
+ერთი გეითვეი ყველა კლიენტს ემსახურება — ერთხელ იდგმება, არა თითო მანქანაზე
+(Traccar-ის შემთხვევაში — ნაბიჯ 4-ში აღწერილ პატარა შუამავალთან ერთად).
 
 ## რეკომენდებული აპარატურა
 
@@ -190,9 +203,17 @@ Queclink და დანარჩენები **ბინარულ პა
 2. შეიყვანე სახელმწიფო ნომერი — შეტყობინებებში ზუსტად ეს ჩაიწერება.
 3. **GPS მოწყობილობაში** ჩაწერე ტრეკერის IMEI როგორც Device ID და შეინახე.
 4. დააკოპირე გამოჩენილი **მისამართი** (მასში მხოლოდ მოწყობილობის ID და
-   ტოკენია, კოორდინატი — არა) და გადაეცი მას, ვინც გეითვეის მართავს: ის
-   Traccar-ში (ან Wialon-ში) მიუთითებს მას იმ მოწყობილობის გადამისამართების
-   URL-ად და ყოველ ჩანაწერს კოორდინატის ველებს დაუმატებს.
+   ტოკენია, კოორდინატი — არა) და გადაეცი მას, ვინც გეითვეის მართავს. ეს
+   მისამართი თითო მოწყობილობისთვისაა, და ამაზეა დამოკიდებული, როგორ
+   დაუკავშირდება გეითვეი:
+   * **Wialon**: რეტრანსლატორს თითო ერთეულზე თავისი მისამართი შეიძლება
+     მიეთითოს — თითო მანქანას თავისი დაკოპირებული მისამართი.
+   * **Traccar**: მისი გადამისამართების URL საერთოა ყველა მოწყობილობისთვის
+     და თითო მოწყობილობის ტოკენს ვერ ატარებს. საჭიროა პატარა შუამავალი
+     (relay) Traccar-სა და Activo-ს შორის, რომელიც თითო IMEI-ს თავის ტოკენს
+     შეუსაბამებს (ან თითო ერთეულზე ცალკე რეტრანსლატორი). **ამას Activo-ს
+     გუნდი აწყობს**; სანამ გეითვეის დონის საერთო გასაღები არ არსებობს,
+     Traccar „ჩასვი მისამართი და მზადაა“ არ არის.
 5. დახაზე **წითელი ხაზები**, მიუთითე რამდენი კილომეტრით ადრე გააფრთხილოს და
    გადახედე შეტყობინებების ტექსტებს.
 
@@ -212,7 +233,7 @@ GET /api/gps/ping?deviceId=<IMEI>&token=<token>&lat=<განედი>&lng=<�
 არ მიიღება: ერთზე მეტჯერ მოცემული კოორდინატი (`lat` ორჯერ, ან `lng` და `lon` ერთად), ცარიელი ან
 არარიცხვითი კოორდინატი, 0,0 ან `valid=false` (სატელიტური სიგნალი არ არის),
 გაქირავების გვერდზე ნაჩვენები მაგალითის კოორდინატი, 5 წუთზე მეტით მომავალი
-დრო, ბოლო მიღებულზე არაახალი კოორდინატი და 5 წამში ერთზე მეტი კოორდინატი.
+ან 7 დღეზე ძველი დრო (მაგ. 1970 — ტრეკერის გაფუჭებული საათი), ბოლო მიღებულზე არაახალი კოორდინატი და 5 წამში ერთზე მეტი კოორდინატი.
 
 თითოეულ მოწყობილობას თავისი ტოკენი აქვს; სხვა ვერავინ ჩაწერს კოორდინატს მის
 ნაცვლად. გაჟონვის შემთხვევაში იმავე ეკრანიდან შეცვლი.

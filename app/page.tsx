@@ -13,6 +13,7 @@ import HeroLogo from "./hero-logo";
 import PortfolioDeck from "./portfolio-deck";
 import CountUp from "./count-up";
 import TourPrompt from "./tour-prompt";
+import RevenuePartial from "./revenue-partial";
 import {
   AssetDeck,
   CompositionRing,
@@ -450,6 +451,7 @@ async function HotelDashboard({
               <th>{t(locale, "unit_name")}</th>
               <th>{t(locale, "dash_guest")}</th>
               <th className="num">{t(locale, "nights_short")}</th>
+              <th className="num">{t(locale, "booking_price")}</th>
             </tr>
           </thead>
           <tbody>
@@ -467,6 +469,18 @@ async function HotelDashboard({
                 </td>
                 <td className="num" data-label={t(locale, "nights_short")}>
                   {booking.nights}
+                </td>
+                <td className="num" data-label={t(locale, "booking_price")}>
+                  {booking.amount != null ? (
+                    <Link href={`/bookings/${booking.id}/edit`} className="link">
+                      {money(booking.amount, booking.currency)}
+                    </Link>
+                  ) : (
+                    // Imported stays arrive without a price.
+                    <Link href={`/bookings/${booking.id}/edit`} className="price-missing">
+                      {t(locale, "booking_no_price")}
+                    </Link>
+                  )}
                 </td>
               </tr>
             ))}
@@ -524,6 +538,7 @@ async function HotelDashboard({
                 value={`${occupiedNow} / ${units.length}`}
               />
             </div>
+            <RevenuePartial locale={locale} nights={portfolio.unpricedNights} />
           </section>
 
           <section>
@@ -544,6 +559,9 @@ async function HotelDashboard({
               </Link>
               <Link href="/calendar" className="btn-chip">
                 {t(locale, "nav_calendar")}
+              </Link>
+              <Link href="/bookings" className="btn-chip">
+                {t(locale, "nav_bookings")}
               </Link>
               <Link href="/pricing" className="btn-chip">
                 {t(locale, "nav_pricing")}
