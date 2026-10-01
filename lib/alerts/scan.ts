@@ -10,7 +10,7 @@
 import { prisma } from "@/lib/db";
 import type { Stay } from "@/lib/calendar/occupancy";
 import { suggestRate } from "@/lib/pricing/engine";
-import { getMarketDataSource } from "@/lib/market/source";
+import { benchmarkAdrIn, getMarketDataSource } from "@/lib/market/source";
 import { monitorRentPayments } from "@/lib/rentals/monitor";
 import {
   activeContractWhere,
@@ -319,13 +319,15 @@ export async function scanAlerts(
         occupiedNights.add(t);
       }
     }
-    const benchmark = await market.getBenchmark(unit.district, month);
+    // The district average in the unit's own currency.
+    const benchmarkAdr = await benchmarkAdrIn(market, unit.district, month, unit.currency);
+    const benchmark = benchmarkAdr != null ? { adr: benchmarkAdr } : null;
     const pricing = suggestRate({
       baseNightlyRate: unit.baseNightlyRate,
       city: unit.city,
       date: start,
       upcomingOccupancy: occupiedNights.size / PRICING_WINDOW_DAYS,
-      benchmarkAdr: benchmark?.adr ?? null,
+      benchmarkAdr,
     });
     // A unit with no base rate yet (made for a flat with no day rate and no
     // district figure) has nothing to compare: 0 × anything is "under".

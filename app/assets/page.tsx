@@ -24,6 +24,8 @@ import RevenuePartial, { monthKeyOf } from "../revenue-partial";
 import { districtLabel } from "@/lib/places";
 import { titled } from "@/lib/i18n/metadata";
 import { formatMoney, formatNumber, formatQuantity, formatSignedPercent } from "@/lib/format";
+import { belowMarketPct } from "@/lib/fx/convert";
+import { loadGelRates } from "@/lib/fx/gel-rates";
 import { deskHref, rentalDesk } from "@/lib/rentals/desk";
 import { LIVE_CONTRACT } from "@/lib/rentals/live";
 import Kpi from "../kpi";
@@ -269,14 +271,15 @@ export default async function AssetsPage() {
 
   // Market-rent benchmarks per district (current month).
   const districts = [...new Set(assets.map((a) => a.district).filter(Boolean))] as string[];
-  const rentBenchmarks = new Map(
-    await Promise.all(
+  const [rentBenchmarks, rates] = await Promise.all([
+    Promise.all(
       districts.map(async (district) => {
         const benchmark = await getRentBenchmark(district, monthKey);
         return [district, benchmark] as const;
       }),
-    ),
-  );
+    ).then((rows) => new Map(rows)),
+    loadGelRates(),
+  ]);
 
   const fmtDate = tbilisiFormat(locale, { day: "numeric", month: "short", year: "numeric" });
   const displayName = (a: { name: string; nameKa: string | null }) =>
@@ -398,9 +401,9 @@ export default async function AssetsPage() {
                   contractUntil: contract ? fmtDate.format(contract.endDate) : null,
                   marketRent: marketRent ? `~${formatMoney(marketRent)}` : null,
                   belowMarket: Boolean(
-                    contract && marketRent && contract.monthlyRent < marketRent * 0.85,
+                    contract && belowMarketPct(contract.monthlyRent, contract.currency, marketRent, rates, 0.85) != null,
                   ),
-                  value: asset.estimatedValue ? formatMoney(asset.estimatedValue) : null,
+                  value: asset.estimatedValue ? formatMoney(asset.estimatedValue, asset.currency) : null,
                   daily: asset.rentalMode === "daily",
                   // The running contract when late, else a finished one
                   // that still has rent owed.
@@ -518,7 +521,7 @@ export default async function AssetsPage() {
                           </span>
                         </td>
                         <td className="num" data-label={t(locale, "income_monthly")} style={{ fontWeight: 600 }}>
-                          {formatMoney(asset.monthlyIncome ?? 0)} / {t(locale, "per_month_word")}
+                          {formatMoney(asset.monthlyIncome ?? 0, asset.currency)} / {t(locale, "per_month_word")}
                         </td>
                         <td className="num">
                           <Link href={`/assets/${asset.id}/edit`} className="link">

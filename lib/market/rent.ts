@@ -3,6 +3,7 @@
 // Same pluggable stance as MarketDataSource: swap for a real, compliant
 // source later without touching consumers.
 
+import { seededRentBenchmark } from "./seeded";
 import { prisma } from "@/lib/db";
 import { districtKey } from "@/lib/places";
 import { marketFigure } from "./figures";
@@ -32,9 +33,7 @@ export async function getRentBenchmark(
       source: "market",
     };
   }
-  const row = await prisma.rentBenchmark.findUnique({
-    where: { district_month: { district: key, month } },
-  });
+  const row = await seededRentBenchmark(key, month);
   return row
     ? {
         district: row.district,

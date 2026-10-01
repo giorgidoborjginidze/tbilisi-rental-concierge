@@ -128,8 +128,8 @@ export default async function AnalyticsPage() {
         {t(locale, "analytics_intro")}
       </p>
       {approx && (
-        <p className="mb-5 price-missing" style={{ fontSize: 13, maxWidth: 640 }} title={t(locale, "income_converted")}>
-          {t(locale, "income_converted_short")}
+        <p className="mb-5 price-missing" style={{ fontSize: 13, maxWidth: 640 }} title={t(locale, "amounts_converted")}>
+          {t(locale, "amounts_converted_short")}
         </p>
       )}
 

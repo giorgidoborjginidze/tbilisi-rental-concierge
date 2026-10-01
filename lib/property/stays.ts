@@ -46,6 +46,8 @@ export interface PlaceBooking {
   checkOut: Date;
   nights: number;
   amount: number | null;
+  /** The booking's own currency (the unit's when it was made). */
+  currency?: string;
 }
 
 export interface PlaceLease {

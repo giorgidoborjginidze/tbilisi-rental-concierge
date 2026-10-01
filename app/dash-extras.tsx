@@ -4,6 +4,8 @@ import { prisma } from "@/lib/db";
 import { t, type Locale, type StringKey } from "@/lib/i18n/strings";
 import { lateContract, periodAmount, statusFor } from "@/lib/rentals/terms";
 import { currencySign, formatDueMoney, formatMoney, formatNumber } from "@/lib/format";
+import { belowMarketPct } from "@/lib/fx/convert";
+import { loadGelRates } from "@/lib/fx/gel-rates";
 import { alertSeverity } from "@/lib/ui/tone";
 import { alertGlyph } from "./alert-icon";
 import { IconArrowRight } from "./icons";
@@ -502,19 +504,21 @@ async function rentBelowMarket(operatorId: string) {
     },
   });
   const monthKey = monthKeyTbilisi(now);
+  const rates = await loadGelRates();
   const out: { id: string; name: string; nameKa: string | null; rent: number; market: number; pct: number; currency: string }[] = [];
   for (const asset of assets) {
     const contract = runningContract(asset.contracts, today);
-    if (!contract || contract.currency !== "GEL") continue;
+    if (!contract) continue;
     const market = estimateMarketRent(asset.areaSqm, await getRentBenchmark(asset.district!, monthKey));
-    if (!market || contract.monthlyRent >= market * BELOW_MARKET_RATIO) continue;
+    const below = belowMarketPct(contract.monthlyRent, contract.currency, market, rates, BELOW_MARKET_RATIO);
+    if (below == null || !market) continue;
     out.push({
       id: asset.id,
       name: asset.name,
       nameKa: asset.nameKa,
       rent: contract.monthlyRent,
       market,
-      pct: Math.round((1 - contract.monthlyRent / market) * 100),
+      pct: below,
       currency: contract.currency,
     });
   }
@@ -636,9 +640,10 @@ export async function AssetDeck({
   // same count as /analytics (lib/property/stays.ts placeMetrics).
   const monthWindow = { start: monthStartTbilisi(0, now), end: monthStartTbilisi(1, now) };
   const roomIds = assets.filter((asset) => asset.unitId).map((asset) => asset.id);
-  const [roomSources, places] = await Promise.all([
+  const [roomSources, places, rates] = await Promise.all([
     loadAssetSources(operatorId, roomIds, monthWindow),
     loadRentalPlaces(operatorId, monthWindow),
+    loadGelRates(),
   ]);
   // Rentals units with no asset of their own (a hotel's rooms, typically)
   // get a card of their own, built from the unit — the deck is about the
@@ -689,7 +694,7 @@ export async function AssetDeck({
       kind: "metric",
       label: t(locale, "asset_value_col"),
       value: asset.estimatedValue ? fmtMoney(asset.estimatedValue) : "—",
-      unit: asset.estimatedValue ? "₾" : undefined,
+      unit: asset.estimatedValue ? currencySign(asset.currency) : undefined,
       note: marketRent
         ? `${t(locale, "market_rent_est")}: ~${fmtMoney(marketRent)} ₾ / ${t(locale, "per_month_word")}`
         : undefined,
@@ -710,7 +715,7 @@ export async function AssetDeck({
       unit: contract
         ? `${currencySign(contract.currency)} / ${t(locale, periodWordKey(contract.paymentPeriod))}`
         : dayRate
-          ? `₾ / ${t(locale, "per_day_word")}`
+          ? `${currencySign(asset.currency)} / ${t(locale, "per_day_word")}`
           : undefined,
       note: contract
         ? `${contract.tenantName ?? "—"} · ${t(locale, "contract_until")} ${fmtDate.format(contract.endDate)}`
@@ -785,8 +790,8 @@ export async function AssetDeck({
           .replace("{grace}", String(schedule.graceDays)),
         tone: "warn",
       };
-    } else if (contract && marketRent && contract.monthlyRent < marketRent * BELOW_MARKET_RATIO) {
-      const pct = Math.round((1 - contract.monthlyRent / marketRent) * 100);
+    } else if (contract && belowMarketPct(contract.monthlyRent, contract.currency, marketRent, rates, BELOW_MARKET_RATIO) != null) {
+      const pct = belowMarketPct(contract.monthlyRent, contract.currency, marketRent, rates, BELOW_MARKET_RATIO)!;
       advice = {
         kind: "advice",
         label: t(locale, "deck_advice"),

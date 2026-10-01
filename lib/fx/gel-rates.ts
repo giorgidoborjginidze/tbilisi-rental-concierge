@@ -11,7 +11,7 @@ import { prisma } from "@/lib/db";
 import { FALLBACK_USD_GEL, fetchNbgRate } from "@/lib/crypto/prices";
 import { dueForRefresh, FX_KEY, resolveQuote } from "@/lib/prices/freshness";
 import { PRICE_TIMEOUT_MS, settleWithin } from "@/lib/prices/timeout";
-import { inBackground } from "@/lib/prices/background";
+import { inBackgroundOnce } from "@/lib/prices/background";
 import type { GelRates } from "./convert";
 
 const KEYS = { USD: FX_KEY, EUR: "fx:EURGEL" } as const;
@@ -46,7 +46,7 @@ export const loadGelRates = cache(async (): Promise<GelRates> => {
       if (dueForRefresh("fx", row, now)) {
         // A known rate is used at once and refreshed after the page is
         // sent; only a first-ever rate is waited for.
-        if (known) inBackground(() => refresh(code));
+        if (known) inBackgroundOnce(KEYS[code], () => refresh(code));
         else {
           const fetched = await refresh(code);
           if (fetched != null) out[code] = fetched;

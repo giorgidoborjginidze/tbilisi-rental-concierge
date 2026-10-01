@@ -50,3 +50,16 @@ describe("one currency per place", () => {
     expect(inPlaceCurrency(same, "USD", rates)).toBe(same);
   });
 });
+
+describe("bookings in another currency", () => {
+  it("are counted in the place's currency and mark it converted", () => {
+    const booking = {
+      id: "b1", source: "manual", nights: 2, amount: 300, currency: "GEL",
+      checkIn: new Date("2026-07-10T00:00:00Z"), checkOut: new Date("2026-07-12T00:00:00Z"),
+    };
+    const out = inPlaceCurrency(place({ bookings: [booking] }, "USD"), "USD", rates);
+    expect(out.converted).toBe(true);
+    expect(out.sources.bookings[0].amount).toBeCloseTo(300 / 2.7);
+    expect(out.sources.bookings[0].currency).toBe("USD");
+  });
+});

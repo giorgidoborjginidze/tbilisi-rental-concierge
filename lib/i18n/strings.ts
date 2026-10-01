@@ -1337,6 +1337,8 @@ const en = {
   // One income definition (lib/analytics/income.ts) and its two scopes.
   income_all_month: "All income · this month",
   income_converted: "Includes dollar or euro amounts, counted in lari at today’s National Bank rate.",
+  amounts_converted: "Some amounts were entered in another currency and are counted in the one shown, at today’s National Bank rate.",
+  amounts_converted_short: "approximate — converted at the NBG rate",
   net_worth_converted: "Some values are in dollars or euros — counted in lari at today’s National Bank rate.",
   income_converted_short: "approximate — converted at the NBG rate",
   income_all_hint: "Rent, daily lets, bookings and other income — each night counted once.",
@@ -3111,6 +3113,8 @@ const ka: Record<StringKey, string> = {
   // One income definition (lib/analytics/income.ts) and its two scopes.
   income_all_month: "ყველა შემოსავალი · ამ თვეში",
   income_converted: "შეიცავს დოლარში ან ევროში მიღებულ თანხებს, ლარში გადაყვანილს ეროვნული ბანკის დღევანდელი კურსით.",
+  amounts_converted: "ზოგი თანხა სხვა ვალუტაშია შეყვანილი და აქ ნაჩვენებ ვალუტაშია გადაყვანილი ეროვნული ბანკის დღევანდელი კურსით.",
+  amounts_converted_short: "მიახლოებით — გადაყვანილია ეროვნული ბანკის კურსით",
   net_worth_converted: "ზოგი ღირებულება დოლარში ან ევროშია — ლარში გადაყვანილია ეროვნული ბანკის დღევანდელი კურსით.",
   income_converted_short: "მიახლოებით — გადაყვანილია ეროვნული ბანკის კურსით",
   income_all_hint: "ქირა, დღიური, ჯავშნები და სხვა შემოსავალი — ყოველი ღამე ერთხელ ითვლება.",

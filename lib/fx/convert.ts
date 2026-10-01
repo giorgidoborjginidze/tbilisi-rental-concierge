@@ -36,3 +36,26 @@ export function anyForeign(currencies: Iterable<string | null | undefined>): boo
   for (const currency of currencies) if (asCurrency(currency) !== "GEL") return true;
   return false;
 }
+
+/**
+ * How far a rent sits below a lari market estimate, in percent — or null
+ * when it is not below `ratio` of it. A rent in dollars or euros is put in
+ * lari first, so "$1,000 against 2,000 ₾" is not called half the market.
+ */
+export function belowMarketPct(
+  rent: number,
+  rentCurrency: string | null | undefined,
+  marketGel: number | null | undefined,
+  rates: GelRates,
+  ratio: number,
+): number | null {
+  if (!marketGel || marketGel <= 0) return null;
+  const rentGel = toGel(rent, rentCurrency, rates);
+  if (rentGel >= marketGel * ratio) return null;
+  return Math.round((1 - rentGel / marketGel) * 100);
+}
+
+/** `amountGel` lari in `currency` (the opposite of toGel). */
+export function fromGel(amountGel: number, currency: string | null | undefined, rates: GelRates): number {
+  return amountGel / gelPer(currency, rates);
+}

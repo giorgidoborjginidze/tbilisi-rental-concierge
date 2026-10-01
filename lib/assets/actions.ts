@@ -146,14 +146,11 @@ async function createHolding(
 }
 
 /** The district's average night — the starting base rate of a unit made for an asset. */
-async function districtNightRate(district: string | null): Promise<number | null> {
+/** The district's average night, in the asset's currency. */
+async function districtNightRate(district: string | null, currency: string | null | undefined): Promise<number | null> {
   if (!district) return null;
-  const { getMarketDataSource } = await import("@/lib/market/source");
-  const benchmark = await getMarketDataSource().getBenchmark(
-    district,
-    benchmarkMonth(startOfTodayTbilisi()),
-  );
-  return benchmark?.adr ?? null;
+  const { benchmarkAdrIn, getMarketDataSource } = await import("@/lib/market/source");
+  return benchmarkAdrIn(getMarketDataSource(), district, benchmarkMonth(startOfTodayTbilisi()), currency);
 }
 
 const optionalNumber = (formData: FormData, key: string): number | null => {
@@ -382,7 +379,7 @@ export async function saveAsset(
       operator.id,
       { ...(owned ?? {}), ...data, id: savedId },
       icalUrls,
-      await districtNightRate(data.district),
+      await districtNightRate(data.district, data.currency ?? owned?.currency),
     );
   } else if (unitId && icalField) {
     const unit = await prisma.unit.findFirst({
@@ -711,7 +708,7 @@ export async function addAssetToRentals(formData: FormData) {
   if (!(await getBillingContext(operator)).canAddUnit) {
     redirect("/billing?limit=units");
   }
-  await createUnitForAsset(prisma, operator.id, asset, [], await districtNightRate(asset.district));
+  await createUnitForAsset(prisma, operator.id, asset, [], await districtNightRate(asset.district, asset.currency));
   revalidatePath("/units");
   revalidatePath("/calendar");
   revalidatePath("/assets");

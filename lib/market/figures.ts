@@ -9,6 +9,7 @@ import { districtKey } from "@/lib/places";
 import { monthKeyTbilisi } from "@/lib/time";
 import { PRICE_PER_SQM } from "@/lib/invest/market";
 import { blendFigures, type BlendPart, type MarketMetric } from "./blend";
+import { seededMany, seededMarketBenchmark, seededRentBenchmark } from "./seeded";
 
 export interface MarketAnswer {
   value: number;
@@ -29,10 +30,10 @@ const figuresOf = cache(async (metric: MarketMetric) =>
 const estimateOf = cache(async (metric: MarketMetric, district: string, month: string): Promise<number | null> => {
   if (metric === "sale_sqm") return PRICE_PER_SQM[district] ?? null;
   if (metric === "rent_sqm") {
-    const row = await prisma.rentBenchmark.findUnique({ where: { district_month: { district, month } } }).catch(() => null);
+    const row = await seededRentBenchmark(district, month);
     return row?.avgRentPerSqm ?? null;
   }
-  const row = await prisma.marketBenchmark.findUnique({ where: { district_month: { district, month } } }).catch(() => null);
+  const row = await seededMarketBenchmark(district, month);
   return row ? (metric === "adr" ? row.adr : row.occupancyRate) : null;
 });
 
@@ -83,16 +84,12 @@ async function estimatesOf(metric: MarketMetric, districts: string[], month: str
     return out;
   }
   if (metric === "rent_sqm") {
-    const rows = await prisma.rentBenchmark
-      .findMany({ where: { month, district: { in: districts } } })
-      .catch(() => []);
-    for (const row of rows) out.set(row.district, row.avgRentPerSqm);
+    for (const [district, row] of await seededMany("rent", districts, month)) out.set(district, row.avgRentPerSqm);
     return out;
   }
-  const rows = await prisma.marketBenchmark
-    .findMany({ where: { month, district: { in: districts } } })
-    .catch(() => []);
-  for (const row of rows) out.set(row.district, metric === "adr" ? row.adr : row.occupancyRate);
+  for (const [district, row] of await seededMany("market", districts, month)) {
+    out.set(district, metric === "adr" ? row.adr : row.occupancyRate);
+  }
   return out;
 }
 

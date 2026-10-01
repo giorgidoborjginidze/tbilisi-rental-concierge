@@ -4,6 +4,9 @@
 // MarketBenchmark estimates fill in where there is nothing yet. Listings
 // are never republished — only district aggregates are kept.
 
+import { asCurrency, fromGel } from "@/lib/fx/convert";
+import { loadGelRates } from "@/lib/fx/gel-rates";
+import { seededMarketBenchmark } from "./seeded";
 import { prisma } from "@/lib/db";
 import { districtKey } from "@/lib/places";
 import { marketFigure } from "./figures";
@@ -34,7 +37,7 @@ export class DbMarketDataSource implements MarketDataSource {
     const [adr, occupancy, row] = await Promise.all([
       marketFigure(key, "adr", month),
       marketFigure(key, "occupancy", month),
-      prisma.marketBenchmark.findUnique({ where: { district_month: { district: key, month } } }),
+      seededMarketBenchmark(key, month),
     ]);
     const realAdr = adr && !adr.estimate ? adr : null;
     const realOcc = occupancy && !occupancy.estimate ? occupancy : null;
@@ -81,4 +84,20 @@ export class MockMarketDataSource implements MarketDataSource {
 
 export function getMarketDataSource(): MarketDataSource {
   return new DbMarketDataSource();
+}
+
+/**
+ * A district's average nightly price, in the currency the unit is priced
+ * in: market figures are in lari, a unit may be priced in dollars.
+ */
+export async function benchmarkAdrIn(
+  market: MarketDataSource,
+  district: string | null | undefined,
+  month: string,
+  currency: string | null | undefined,
+): Promise<number | null> {
+  if (!district) return null;
+  const adr = (await market.getBenchmark(district, month))?.adr ?? null;
+  if (adr == null || asCurrency(currency) === "GEL") return adr;
+  return fromGel(adr, currency, await loadGelRates());
 }

@@ -81,47 +81,62 @@ const assetSelect = (range: Range) => ({
   },
 });
 
-/** Amounts of the place not entered in its own currency. */
-const foreignParts = (place: RentalPlace, assetCurrency: string | null) => {
-  const own = asCurrency(place.currency);
-  return {
-    contracts: place.sources.contracts.some((c) => c.currency != null && asCurrency(c.currency) !== own),
-    days: place.sources.days.length > 0 && assetCurrency != null && asCurrency(assetCurrency) !== own,
-  };
-};
+/** Does anything here carry an amount in another currency than `own`? */
+export function mixesCurrency(src: PlaceSources, own: string, dayCurrency: string | null): boolean {
+  const mine = asCurrency(own);
+  const other = (currency: string | null | undefined) => currency != null && asCurrency(currency) !== mine;
+  return (
+    src.bookings.some((b) => b.amount != null && other(b.currency)) ||
+    src.contracts.some((c) => other(c.currency)) ||
+    (src.days.length > 0 && other(dayCurrency))
+  );
+}
 
 /**
- * One currency per place: a dollar contract or the linked asset's daily
- * answers in dollars, on a unit priced in lari, are counted in lari (via
- * the National Bank rate) and the place is marked `converted`. Pure.
+ * One currency per place: a booking, a contract or the asset's daily
+ * answers in dollars, on a place priced in lari, are counted in lari (via
+ * the National Bank rate). `converted` says the place's money is then
+ * approximate. Pure.
  */
-export function inPlaceCurrency(place: RentalPlace, assetCurrency: string | null, rates: GelRates): RentalPlace {
-  const foreign = foreignParts(place, assetCurrency);
-  if (!foreign.contracts && !foreign.days) return place;
-  const own = gelPer(place.currency, rates);
-  const factor = (currency: string | null | undefined) => gelPer(currency, rates) / own;
+export function sourcesInCurrency(
+  src: PlaceSources,
+  own: string,
+  dayCurrency: string | null,
+  rates: GelRates,
+): { sources: PlaceSources; converted: boolean } {
+  if (!mixesCurrency(src, own, dayCurrency)) return { sources: src, converted: false };
+  const per = gelPer(own, rates);
+  const factor = (currency: string | null | undefined) => (currency == null ? 1 : gelPer(currency, rates) / per);
   return {
-    ...place,
     converted: true,
     sources: {
-      ...place.sources,
-      contracts: place.sources.contracts.map((contract) => {
-        if (contract.currency == null) return contract;
+      ...src,
+      bookings: src.bookings.map((booking) => {
+        const f = factor(booking.currency);
+        return f === 1 || booking.amount == null ? booking : { ...booking, currency: own, amount: booking.amount * f };
+      }),
+      contracts: src.contracts.map((contract) => {
         const f = factor(contract.currency);
         return f === 1
           ? contract
           : {
               ...contract,
-              currency: place.currency,
+              currency: own,
               monthlyRent: contract.monthlyRent * f,
               paymentAmount: contract.paymentAmount == null ? null : contract.paymentAmount * f,
             };
       }),
-      days: foreign.days
-        ? place.sources.days.map((day) => ({ ...day, amount: day.amount * factor(assetCurrency) }))
-        : place.sources.days,
+      days: src.days.length && factor(dayCurrency) !== 1
+        ? src.days.map((day) => ({ ...day, amount: day.amount * factor(dayCurrency) }))
+        : src.days,
     },
   };
+}
+
+/** A rental place with its amounts in the place's own currency. */
+export function inPlaceCurrency(place: RentalPlace, assetCurrency: string | null, rates: GelRates): RentalPlace {
+  const { sources, converted } = sourcesInCurrency(place.sources, place.currency, assetCurrency, rates);
+  return converted ? { ...place, converted: true, sources } : place;
 }
 
 /** Only real estate joins the Rentals pages (cars have the fleet page). */
@@ -229,11 +244,7 @@ export async function loadRentalPlaces(
 
   // A rate is read only when some place really mixes currencies.
   const currencyOf = (place: RentalPlace) => place.asset?.currency ?? null;
-  const mixes = places.some((place) => {
-    const foreign = foreignParts(place, currencyOf(place));
-    return foreign.contracts || foreign.days;
-  });
-  if (!mixes) return places;
+  if (!places.some((place) => mixesCurrency(place.sources, place.currency, currencyOf(place)))) return places;
   const rates = await loadGelRates();
   return places.map((place) => inPlaceCurrency(place, currencyOf(place), rates));
 }
@@ -265,7 +276,7 @@ export async function loadAssetSources(
           operatorId: true,
           bookings: {
             where: { ...LIVE_STAY, checkIn: { lt: range.end }, checkOut: { gt: range.start } },
-            select: { id: true, source: true, checkIn: true, checkOut: true, nights: true, amount: true },
+            select: { id: true, source: true, checkIn: true, checkOut: true, nights: true, amount: true, currency: true },
           },
           leases: {
             where: overlapsWhere(range.start, range.end),
@@ -275,22 +286,29 @@ export async function loadAssetSources(
       },
     },
   });
+  const raw = assets.map((asset) => {
+    // Second safeguard: only this workspace's own unit's stays.
+    const unit = asset.unit && asset.unit.operatorId === operatorId ? asset.unit : null;
+    const sources: PlaceSources = {
+      bookings: unit?.bookings ?? [],
+      leases: unit?.leases ?? [],
+      contracts: asset.contracts,
+      days: asset.days,
+      dailyMode: asset.rentalMode === "daily",
+      weekendPct: asset.weekendPct ?? 0,
+      holidayPct: asset.holidayPct ?? 0,
+    };
+    return { asset, sources };
+  });
+  // Every amount in the asset's own currency: the linked unit's bookings
+  // or a contract may be in another.
+  const rates = raw.some(({ asset, sources }) => mixesCurrency(sources, asset.currency, asset.currency))
+    ? await loadGelRates()
+    : null;
   return new Map(
-    assets.map((asset) => {
-      // Second safeguard: only this workspace's own unit's stays.
-      const unit = asset.unit && asset.unit.operatorId === operatorId ? asset.unit : null;
-      return [
+    raw.map(({ asset, sources }) => [
       asset.id,
-      {
-        bookings: unit?.bookings ?? [],
-        leases: unit?.leases ?? [],
-        contracts: asset.contracts,
-        days: asset.days,
-        dailyMode: asset.rentalMode === "daily",
-        weekendPct: asset.weekendPct ?? 0,
-        holidayPct: asset.holidayPct ?? 0,
-      },
-    ] as const;
-    }),
+      rates ? sourcesInCurrency(sources, asset.currency, asset.currency, rates).sources : sources,
+    ] as const),
   );
 }

@@ -10,7 +10,7 @@ import { FALLBACK_USD_GEL, fetchUsdGelRate, fetchUsdPrices } from "@/lib/crypto/
 import { fetchStockPrices } from "@/lib/stocks/prices";
 import { fetchMetalPrices } from "@/lib/metals/prices";
 import { PRICE_TIMEOUT_MS, settleWithin } from "./timeout";
-import { inBackground } from "./background";
+import { inBackgroundOnce } from "./background";
 import {
   dueForRefresh,
   FX_KEY,
@@ -126,10 +126,15 @@ export async function loadQuotes(
     crypto: due("crypto", true),
     stock: due("stock", true),
     metal: due("metal", true),
-    rate: rateDue && rateKnown,
+    rate: false,
   };
-  if (later.crypto.length || later.stock.length || later.metal.length || later.rate) {
-    inBackground(() => fetchAndStore(later, now));
+  if (later.crypto.length || later.stock.length || later.metal.length) {
+    const key = `quotes:${[...later.crypto, ...later.stock, ...later.metal].sort().join(",")}`;
+    inBackgroundOnce(key, () => fetchAndStore(later, now));
+  }
+  // The dollar rate shares its row and its refresh with lib/fx/gel-rates.ts.
+  if (rateDue && rateKnown) {
+    inBackgroundOnce(FX_KEY, () => fetchAndStore({ crypto: [], stock: [], metal: [], rate: true }, now));
   }
   const fetched = await fetchAndStore(
     { crypto: due("crypto", false), stock: due("stock", false), metal: due("metal", false), rate: rateDue && !rateKnown },

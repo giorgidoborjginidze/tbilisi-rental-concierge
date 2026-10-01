@@ -17,7 +17,7 @@ import { formatMoney } from "@/lib/format";
 import { IconAlert, IconArrowRight, IconChevronLeft, IconChevronRight } from "../icons";
 import { CELL_CLASS, nightCells, nightIndex, OVERLAP_CODE, stripOpen, stripRange } from "@/lib/calendar/cells";
 import CalendarStrip, { type StripDay, type StripRow } from "./calendar-strip";
-import { getMarketDataSource } from "@/lib/market/source";
+import { benchmarkAdrIn, getMarketDataSource } from "@/lib/market/source";
 import { benchmarkMonth, freeWindowRange, placeOccupancy, windowPrice } from "@/lib/pricing/nightly";
 
 export const dynamic = "force-dynamic";
@@ -186,12 +186,12 @@ export default async function CalendarPage({
   );
   const market = getMarketDataSource();
   const benchmarkCache = new Map<string, number | null>();
-  const benchmarksFor = async (district: string | null, nights: Date[]) => {
+  const benchmarksFor = async (district: string | null, nights: Date[], currency: string) => {
     const byMonth = new Map<string, number | null>();
     for (const month of new Set(nights.map(benchmarkMonth))) {
-      const key = `${district ?? ""}|${month}`;
+      const key = `${district ?? ""}|${month}|${currency}`;
       if (!benchmarkCache.has(key)) {
-        benchmarkCache.set(key, district ? (await market.getBenchmark(district, month))?.adr ?? null : null);
+        benchmarkCache.set(key, await benchmarkAdrIn(market, district, month, currency));
       }
       byMonth.set(month, benchmarkCache.get(key) ?? null);
     }
@@ -208,7 +208,7 @@ export default async function CalendarPage({
       return Promise.all(
         (gapsOf.get(row.place.key) ?? []).map(async (gap) => {
           const nights = Array.from({ length: gap.nights }, (_, i) => new Date(gap.start.getTime() + i * DAY_MS));
-          const benchmarks = await benchmarksFor(unit.district, nights);
+          const benchmarks = await benchmarksFor(unit.district, nights, unit.currency);
           return windowPrice(unit, gap, occupancy, benchmarks);
         }),
       );

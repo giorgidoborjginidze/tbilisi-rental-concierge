@@ -214,10 +214,10 @@ export default async function EditAssetPage({
         const amount = rented ? nightAmount(covering[0], dayStart) : null;
         const priceText = rented
           ? amount != null
-            ? ` · ${formatMoney(amount)}`
+            ? ` · ${formatMoney(amount, asset.currency)}`
             : ""
           : hasDailyPricing
-            ? ` · ${formatMoney(dayPrice(dayStart, asset.dailyRate!, weekendPct, holidayPct))}`
+            ? ` · ${formatMoney(dayPrice(dayStart, asset.dailyRate!, weekendPct, holidayPct), asset.currency)}`
             : "";
         const statusText = rented
           ? t(locale, "status_rented")
@@ -414,7 +414,7 @@ export default async function EditAssetPage({
             <>
               <span className="badge badge--tag">{t(locale, "income_recurring")}</span>
               <span style={{ fontWeight: 600 }}>
-                {formatMoney(asset.monthlyIncome ?? 0)} / {t(locale, "per_month_word")}
+                {formatMoney(asset.monthlyIncome ?? 0, asset.currency)} / {t(locale, "per_month_word")}
               </span>
             </>
           ) : (
@@ -484,13 +484,13 @@ export default async function EditAssetPage({
           <h2>{t(locale, "nav_calendar")}</h2>
           {hasDailyPricing && (
             <p style={{ color: "var(--color-text-muted)", fontSize: 13, margin: "0 0 10px" }}>
-              {t(locale, "price_base")}: <b>{formatMoney(asset.dailyRate!)}</b>
+              {t(locale, "price_base")}: <b>{formatMoney(asset.dailyRate!, asset.currency)}</b>
               {" · "}
               {t(locale, "price_weekend")} (+{Math.round(weekendPct)}%):{" "}
-              <b>{formatMoney(asset.dailyRate! * (1 + weekendPct / 100))}</b>
+              <b>{formatMoney(asset.dailyRate! * (1 + weekendPct / 100), asset.currency)}</b>
               {" · "}
               {t(locale, "price_holiday")} (+{Math.round(holidayPct)}%):{" "}
-              <b>{formatMoney(asset.dailyRate! * (1 + holidayPct / 100))}</b>
+              <b>{formatMoney(asset.dailyRate! * (1 + holidayPct / 100), asset.currency)}</b>
             </p>
           )}
           <div className="legend">

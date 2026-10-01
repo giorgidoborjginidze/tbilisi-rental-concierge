@@ -14,7 +14,10 @@ vi.mock("@/lib/db", () => ({
     },
   },
 }));
-vi.mock("./background", () => ({ inBackground: (task: () => Promise<unknown>) => state.background.push(task) }));
+vi.mock("./background", () => ({
+  inBackground: (task: () => Promise<unknown>) => state.background.push(task),
+  inBackgroundOnce: (_key: string, task: () => Promise<unknown>) => state.background.push(task),
+}));
 vi.mock("@/lib/crypto/prices", () => ({
   FALLBACK_USD_GEL: 2.7,
   fetchUsdGelRate: async () => 2.65,
