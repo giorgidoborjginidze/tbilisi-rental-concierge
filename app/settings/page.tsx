@@ -26,6 +26,8 @@ import PushDevice from "./notify-section";
 import { pushConfig } from "@/lib/notify/owner";
 import { setNotifyEmail } from "@/lib/notify/push-actions";
 import { emailConfigured } from "@/lib/email";
+import WhatsAppSender from "./whatsapp-sender";
+import { secretsConfigured } from "@/lib/security/secret";
 
 export const dynamic = "force-dynamic";
 
@@ -126,9 +128,18 @@ export default async function SettingsPage({
   const company = isMember
     ? await prisma.operator.findUnique({ where: { id: operator.id }, select: { name: true, email: true } })
     : null;
-  const notifyEmail = await prisma.operator
-    .findUnique({ where: { id: operator.id }, select: { notifyEmail: true } })
-    .then((found) => found?.notifyEmail ?? true);
+  const workspace = await prisma.operator.findUnique({
+    where: { id: operator.id },
+    select: { notifyEmail: true, waPhoneNumberId: true, waTemplateName: true, waTemplateLocale: true, waDisplayPhone: true, waTokenSealed: true },
+  });
+  const notifyEmail = workspace?.notifyEmail ?? true;
+  const waKeys: StringKey[] = [
+    "wa_sender_connected", "wa_sender_none", "wa_sender_change", "wa_sender_connect", "wa_sender_id", "wa_sender_token",
+    "wa_sender_token_keep", "wa_sender_template", "wa_sender_template_lang", "wa_sender_how", "wa_sender_check_save",
+    "wa_sender_saved", "wa_sender_remove", "wa_sender_remove_q", "wa_sender_bad_id", "wa_sender_bad_template",
+    "wa_sender_no_token", "wa_sender_rejected", "wa_sender_unreachable", "wa_sender_not_ready", "error_owner_only", "cancel",
+  ];
+  const waLabels = Object.fromEntries(waKeys.map((k) => [k, t(locale, k)]));
 
   return (
     <main>
@@ -238,6 +249,31 @@ export default async function SettingsPage({
           )}
         </div>
       </section>
+
+      {/* ── The owner's own WhatsApp number for messages to renters ── */}
+      {!isMember && (
+        <section id="whatsapp" style={{ marginTop: 20 }}>
+          <h2>{t(locale, "wa_sender_title")}</h2>
+          <div className="card" style={{ marginTop: 12, padding: 18 }}>
+            <p className="field-hint" style={{ margin: "0 0 12px" }}>{t(locale, "wa_sender_what")}</p>
+            {operator.isDemo ? (
+              <p className="field-hint" style={{ margin: 0 }}>{t(locale, "error_demo_readonly")}</p>
+            ) : !secretsConfigured() ? (
+              <p className="field-hint" style={{ margin: 0 }}>{t(locale, "wa_sender_not_ready")}</p>
+            ) : (
+              <WhatsAppSender
+                connected={workspace?.waPhoneNumberId && workspace.waTokenSealed ? workspace.waDisplayPhone ?? "" : null}
+                values={{
+                  phoneNumberId: workspace?.waPhoneNumberId ?? "",
+                  templateName: workspace?.waTemplateName ?? "",
+                  templateLocale: workspace?.waTemplateLocale ?? "",
+                }}
+                labels={waLabels}
+              />
+            )}
+          </div>
+        </section>
+      )}
 
       {/* ── Sign-in and security ── */}
       <section style={{ marginTop: 20 }}>

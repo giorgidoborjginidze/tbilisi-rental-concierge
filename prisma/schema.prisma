@@ -56,6 +56,15 @@ model Operator {
   // The "from" block printed on the owner's invoices: name or company, ID
   // or tax code, address, bank account — free text, as the owner types it.
   invoiceIssuer String?
+  // The owner's own WhatsApp Business number (Meta Cloud API): messages to
+  // their tenants and drivers go out from it instead of the platform's.
+  // The access token is stored sealed (lib/security/secret.ts), never plain.
+  waPhoneNumberId  String?
+  waTokenSealed    String?
+  waTemplateName   String?
+  waTemplateLocale String?
+  // The number Meta reported for it when the owner saved it ("+995 …").
+  waDisplayPhone   String?
   // How renters pay (bank account, "cash to the office"…): the {pay_to}
   // placeholder of every payment reminder. Free text, shown as typed.
   payInstructions String?

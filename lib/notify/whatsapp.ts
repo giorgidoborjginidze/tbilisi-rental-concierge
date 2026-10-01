@@ -5,6 +5,7 @@ import { startOfTodayTbilisi, tbilisiDayStartInstant } from "@/lib/time";
 import { clampMessage, dailyLimitReason, type SentToday } from "./limits";
 import { normalizePhone } from "./phone";
 import { planStanding } from "@/lib/billing/plans";
+import { openSecret } from "@/lib/security/secret";
 import {
   defaultTemplate,
   isFixedTemplate,
@@ -276,18 +277,42 @@ export interface FlushResult {
 const SENDING_TIMEOUT_MS = 10 * 60_000;
 
 /**
- * Whether this workspace's messages go out over the Cloud API: only for a
- * paid plan. Never for the shared public demo (anyone can type a phone
- * number and a text there) nor a trial — their messages get the manual
- * wa.me link (sent, if at all, from the visitor's own WhatsApp).
+ * Whether this workspace's messages go out over the Cloud API: from the
+ * owner's own connected number, or the platform's on a paid plan. Never
+ * for the shared public demo (anyone can type a phone number and a text
+ * there) — its messages get the manual wa.me link.
  */
 export async function autoSendFor(operatorId: string): Promise<boolean> {
-  if (!whatsappConfig()) return false;
+  return (await senderFor(operatorId)) != null;
+}
+
+/**
+ * The number a workspace's messages go out from: the owner's own WhatsApp
+ * Business number when they connected one (Settings), else the platform's
+ * on a paid plan, else none (the outbox's one-tap wa.me links). Never for
+ * the demo.
+ */
+export async function senderFor(operatorId: string): Promise<WhatsAppConfig | null> {
   const operator = await prisma.operator.findUnique({
     where: { id: operatorId },
-    select: { isDemo: true, accountType: true, plan: true, trialEndsAt: true, paidUntil: true, companyId: true },
+    select: {
+      isDemo: true, accountType: true, plan: true, trialEndsAt: true, paidUntil: true, companyId: true,
+      waPhoneNumberId: true, waTokenSealed: true, waTemplateName: true, waTemplateLocale: true,
+    },
   });
-  if (!operator || operator.isDemo) return false;
+  if (!operator || operator.isDemo) return null;
+  // Their own number: their own Meta account and its costs, any plan.
+  const ownToken = operator.waPhoneNumberId ? openSecret(operator.waTokenSealed) : null;
+  if (operator.waPhoneNumberId && ownToken) {
+    return {
+      token: ownToken,
+      phoneNumberId: operator.waPhoneNumberId,
+      templateName: operator.waTemplateName || "activo_alert",
+      templateLocale: operator.waTemplateLocale || "ka",
+    };
+  }
+  const platform = whatsappConfig();
+  if (!platform) return null;
   // A team member's messages go out on the company's plan.
   const account = operator.companyId
     ? await prisma.operator.findUnique({
@@ -295,7 +320,7 @@ export async function autoSendFor(operatorId: string): Promise<boolean> {
         select: { accountType: true, plan: true, trialEndsAt: true, paidUntil: true },
       })
     : operator;
-  if (!account) return false;
+  if (!account) return null;
   // Sending from the platform's number is for paying accounts: a trial (or
   // an unpaid account) gets the one-tap wa.me link, sent from the owner's
   // own WhatsApp — a fresh sign-up cannot use Activo to message strangers.
@@ -308,7 +333,7 @@ export async function autoSendFor(operatorId: string): Promise<boolean> {
     },
     new Date(),
   );
-  return standing === "paid" || standing === "grace";
+  return standing === "paid" || standing === "grace" ? platform : null;
 }
 
 /**
@@ -318,7 +343,7 @@ export async function autoSendFor(operatorId: string): Promise<boolean> {
  * messages stay queued for click-to-send — a normal state, not an error.
  */
 export async function flushOutbox(operatorId: string): Promise<FlushResult> {
-  const config = (await autoSendFor(operatorId)) ? whatsappConfig() : null;
+  const config = await senderFor(operatorId);
   // A send that was cut off (the function timed out mid-request) may or may
   // not have reached the phone: it is marked failed, never sent again on
   // its own — the owner decides.
