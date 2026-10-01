@@ -181,38 +181,40 @@ export default async function AlertsPage({
   // A manual "scan now" just ran: said, with what it found.
   const scannedRaw = firstParam(query.scanned);
   const scanned = scannedRaw != null && /^\d{1,4}$/.test(scannedRaw) ? Number(scannedRaw) : null;
-  const lastRun = done ? null : await lastRunFor(operator.id);
-  // A unit and the asset linked to it are one place: one group.
-  const linkedAssets = done
-    ? []
-    : await prisma.asset.findMany({
-        where: { operatorId: operator.id, unitId: { not: null } },
-        select: { id: true, unitId: true },
-      });
-  const groups = done ? [] : groupAlerts(alerts, new Map(linkedAssets.map((a) => [a.id, a.unitId!])));
-  // Just closed (still closed): offered back with one tap.
-  const justClosed =
-    !done && !outbox && closedIds.length > 0
-      ? await prisma.alert.count({
-          where: { id: { in: closedIds }, operatorId: operator.id, status: { in: ["resolved", "dismissed"] } },
-        })
-      : 0;
-
-  // ── The outbox: every message of every asset, one list ──
   const now0 = new Date();
   const today0 = startOfTodayTbilisi(now0);
-  const autoSend = await autoSendFor(operator.id);
-  const messageRows = await prisma.notifyMessage.findMany({
-    where: {
-      operatorId: operator.id,
-      OR: [
-        { status: { in: ["queued", "failed", "sending"] } },
-        { createdAt: { gte: new Date(now0.getTime() - 8 * 86_400_000) } },
-      ],
-    },
-    orderBy: { createdAt: "desc" },
-    take: 300,
-  });
+  // Independent reads, asked together.
+  const [lastRun, linkedAssets, justClosed, autoSend, messageRows] = await Promise.all([
+    done ? null : lastRunFor(operator.id),
+    // A unit and the asset linked to it are one place: one group.
+    done
+      ? []
+      : prisma.asset.findMany({
+          where: { operatorId: operator.id, unitId: { not: null } },
+          select: { id: true, unitId: true },
+        }),
+    // Just closed (still closed): offered back with one tap.
+    !done && !outbox && closedIds.length > 0
+      ? prisma.alert.count({
+          where: { id: { in: closedIds }, operatorId: operator.id, status: { in: ["resolved", "dismissed"] } },
+        })
+      : 0,
+    // ── The outbox: every message of every asset, one list ──
+    autoSendFor(operator.id),
+    prisma.notifyMessage.findMany({
+      where: {
+        operatorId: operator.id,
+        OR: [
+          { status: { in: ["queued", "failed", "sending"] } },
+          { createdAt: { gte: new Date(now0.getTime() - 8 * 86_400_000) } },
+        ],
+      },
+      orderBy: { createdAt: "desc" },
+      take: 300,
+    }),
+  ]);
+  const groups = done ? [] : groupAlerts(alerts, new Map(linkedAssets.map((a) => [a.id, a.unitId!])));
+
   const messageAssetIds = [
     ...new Set(messageRows.map((message) => message.assetId).filter(Boolean)),
   ] as string[];

@@ -56,11 +56,43 @@ export async function marketFigures(
   metric: MarketMetric,
   month: string = monthKeyTbilisi(),
 ): Promise<Record<string, MarketAnswer>> {
+  const keys = [...new Set(districts.map((d) => districtKey(d)).filter((k): k is string => !!k))];
+  // Two reads in all, whatever the number of districts: every figure of the
+  // metric, and the built-in estimates of every district for the month.
+  const [rows, estimates] = await Promise.all([figuresOf(metric), estimatesOf(metric, keys, month)]);
   const out: Record<string, MarketAnswer> = {};
   for (const district of districts) {
-    const answer = await marketFigure(district, metric, month);
-    if (answer) out[district] = answer;
+    const key = districtKey(district);
+    if (!key) continue;
+    const blended = blendFigures(rows.filter((row) => row.district === key), month);
+    if (blended) {
+      out[district] = { value: blended.value, parts: blended.parts, estimate: false };
+      continue;
+    }
+    const estimate = estimates.get(key);
+    if (estimate != null) out[district] = { value: estimate, parts: [], estimate: true };
   }
+  return out;
+}
+
+/** The built-in estimates of many districts for one month, in one read. */
+async function estimatesOf(metric: MarketMetric, districts: string[], month: string): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  if (metric === "sale_sqm") {
+    for (const district of districts) if (PRICE_PER_SQM[district] != null) out.set(district, PRICE_PER_SQM[district]);
+    return out;
+  }
+  if (metric === "rent_sqm") {
+    const rows = await prisma.rentBenchmark
+      .findMany({ where: { month, district: { in: districts } } })
+      .catch(() => []);
+    for (const row of rows) out.set(row.district, row.avgRentPerSqm);
+    return out;
+  }
+  const rows = await prisma.marketBenchmark
+    .findMany({ where: { month, district: { in: districts } } })
+    .catch(() => []);
+  for (const row of rows) out.set(row.district, metric === "adr" ? row.adr : row.occupancyRate);
   return out;
 }
 

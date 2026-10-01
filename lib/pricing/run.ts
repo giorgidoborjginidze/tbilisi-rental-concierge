@@ -1,6 +1,7 @@
 // DB-bound orchestration: compute rule-based suggestions for a unit's
 // upcoming dates, attach rationales (Claude or local stub), and persist
-// them as PricingSuggestion rows (idempotent upsert per unit+date).
+// them as PricingSuggestion rows (idempotent upsert per unit+date, after
+// the response).
 
 import { prisma } from "@/lib/db";
 import { startOfTodayTbilisi } from "@/lib/time";
@@ -10,6 +11,7 @@ import { generateRationales } from "@/lib/ai/rationale";
 import type { Locale } from "@/lib/i18n/strings";
 import { benchmarkMonth, placeOccupancy } from "./nightly";
 import { loadRentalPlaces } from "@/lib/property/places";
+import { inBackground } from "@/lib/prices/background";
 
 const DAY_MS = 86_400_000;
 
@@ -47,27 +49,25 @@ export async function computeSuggestionsForUnit(
   const upcomingOccupancy = place ? placeOccupancy(place.sources, start, 30) : 0;
 
   const market = getMarketDataSource();
-  const benchmarkCache = new Map<string, number | null>();
+  const dates = Array.from({ length: days }, (_, i) => new Date(start.getTime() + i * DAY_MS));
+  // Each month's district benchmark, all months asked at once.
+  const months = [...new Set(dates.map(monthKey))];
+  const benchmarks = new Map(
+    await Promise.all(
+      months.map(async (month) => [month, (await market.getBenchmark(unit.district, month))?.adr ?? null] as const),
+    ),
+  );
 
-  const rows: { date: Date; result: PricingResult }[] = [];
-  for (let i = 0; i < days; i++) {
-    const date = new Date(start.getTime() + i * DAY_MS);
-    const month = monthKey(date);
-    if (!benchmarkCache.has(month)) {
-      const benchmark = await market.getBenchmark(unit.district, month);
-      benchmarkCache.set(month, benchmark?.adr ?? null);
-    }
-    rows.push({
+  const rows: { date: Date; result: PricingResult }[] = dates.map((date) => ({
+    date,
+    result: suggestRate({
+      baseNightlyRate: unit.baseNightlyRate,
+      city: unit.city,
       date,
-      result: suggestRate({
-        baseNightlyRate: unit.baseNightlyRate,
-        city: unit.city,
-        date,
-        upcomingOccupancy,
-        benchmarkAdr: benchmarkCache.get(month),
-      }),
-    });
-  }
+      upcomingOccupancy,
+      benchmarkAdr: benchmarks.get(monthKey(date)),
+    }),
+  }));
 
   const rationales = await generateRationales(
     rows.map((row) => ({ date: row.date, result: row.result, currency: unit.currency })),
@@ -85,30 +85,31 @@ export async function computeSuggestionsForUnit(
     rationale: rationales[i],
   }));
 
-  for (const suggestion of suggestions) {
-    await prisma.pricingSuggestion.upsert({
-      where: { unitId_date: { unitId, date: suggestion.date } },
-      create: {
-        unitId,
-        date: suggestion.date,
-        suggestedRate: suggestion.result.suggestedRate,
-        currency: unit.currency,
-        reasons: {
+  // A record of what was suggested — nothing on the page reads it back, so
+  // it is written after the response is sent instead of one upsert per day
+  // while the owner waits.
+  inBackground(() =>
+    Promise.all(
+      suggestions.map((suggestion) => {
+        const reasons = {
           factors: suggestion.result.factors,
           reasons: suggestion.result.reasons,
           rationale: suggestion.rationale,
-        },
-      },
-      update: {
-        suggestedRate: suggestion.result.suggestedRate,
-        reasons: {
-          factors: suggestion.result.factors,
-          reasons: suggestion.result.reasons,
-          rationale: suggestion.rationale,
-        },
-      },
-    });
-  }
+        };
+        return prisma.pricingSuggestion.upsert({
+          where: { unitId_date: { unitId, date: suggestion.date } },
+          create: {
+            unitId,
+            date: suggestion.date,
+            suggestedRate: suggestion.result.suggestedRate,
+            currency: unit.currency,
+            reasons,
+          },
+          update: { suggestedRate: suggestion.result.suggestedRate, reasons },
+        });
+      }),
+    ),
+  );
 
   return suggestions;
 }
