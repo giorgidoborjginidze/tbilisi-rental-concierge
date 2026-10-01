@@ -10,6 +10,7 @@ import { FALLBACK_USD_GEL, fetchUsdGelRate, fetchUsdPrices } from "@/lib/crypto/
 import { fetchStockPrices } from "@/lib/stocks/prices";
 import { fetchMetalPrices } from "@/lib/metals/prices";
 import { PRICE_TIMEOUT_MS, settleWithin } from "./timeout";
+import { inBackground } from "./background";
 import {
   dueForRefresh,
   FX_KEY,
@@ -42,10 +43,54 @@ const SOURCE: Record<QuoteKind, string> = {
 const DEADLINE_MS = PRICE_TIMEOUT_MS + 300;
 const none: Record<string, number> = {};
 
+interface FetchPlan {
+  crypto: string[];
+  stock: string[];
+  metal: string[];
+  rate: boolean;
+}
+
+/**
+ * Asks the sources for the planned prices, all in parallel, each within the
+ * time limit, and stores what they answer. Returns the answers by quote key.
+ */
+async function fetchAndStore(plan: FetchPlan, now: Date): Promise<Map<string, number>> {
+  const fetched = new Map<string, number>();
+  if (!plan.crypto.length && !plan.stock.length && !plan.metal.length && !plan.rate) return fetched;
+  const [crypto, stocks, metals, rate] = await Promise.all([
+    plan.crypto.length ? settleWithin(fetchUsdPrices(plan.crypto), DEADLINE_MS, none) : none,
+    plan.stock.length ? settleWithin(fetchStockPrices(plan.stock), DEADLINE_MS, none) : none,
+    plan.metal.length ? settleWithin(fetchMetalPrices(plan.metal), DEADLINE_MS, none) : none,
+    plan.rate ? settleWithin(fetchUsdGelRate(), DEADLINE_MS, null) : null,
+  ]);
+  const keep = (kind: QuoteKind, id: string, answer: number | null | undefined) => {
+    if (typeof answer === "number" && Number.isFinite(answer) && answer > 0) fetched.set(quoteKey(kind, id), answer);
+  };
+  for (const id of plan.crypto) keep("crypto", id, crypto[id]);
+  for (const id of plan.stock) keep("stock", id, stocks[id.trim().toUpperCase()]);
+  for (const id of plan.metal) keep("metal", id, metals[id.trim().toUpperCase()]);
+  if (rate != null && Number.isFinite(rate) && rate > 0) fetched.set(FX_KEY, rate);
+
+  // Remember them. A failed write costs nothing but the memory.
+  await Promise.all(
+    [...fetched.entries()].map(([key, price]) => {
+      const kind = key.slice(0, key.indexOf(":")) as QuoteKind;
+      return prisma.priceQuote
+        .upsert({
+          where: { key },
+          create: { key, price, source: SOURCE[kind], fetchedAt: now },
+          update: { price, source: SOURCE[kind], fetchedAt: now },
+        })
+        .catch(() => null);
+    }),
+  );
+  return fetched;
+}
+
 /**
  * Prices for the requested holdings (keyed by `quoteKey`) and the USD→GEL
- * rate. Asks only the sources whose stored price is due, all in parallel,
- * each within the time limit; stores what they answer.
+ * rate. A known price is used at once (refreshed after the page when due);
+ * only a price never seen before is asked for while the page waits.
  */
 export async function loadQuotes(
   requests: QuoteRequest[],
@@ -62,47 +107,33 @@ export async function loadQuotes(
     .catch(() => []);
   const stored = new Map(rows.map((row) => [row.key, row]));
 
-  const due = (kind: HoldingQuoteKind) =>
+  // A source is asked only for prices that are due. One with a known price
+  // is refreshed after the page is sent (the page shows the known price
+  // with its age); only a price never seen before is waited for.
+  const due = (kind: HoldingQuoteKind, known: boolean) =>
     [...wanted.entries()]
-      .filter(([key, request]) => request.kind === kind && dueForRefresh(kind, stored.get(key), now))
+      .filter(
+        ([key, request]) =>
+          request.kind === kind &&
+          dueForRefresh(kind, stored.get(key), now) &&
+          (resolveQuote(kind, stored.get(key), null, now) != null) === known,
+      )
       .map(([, request]) => request.id);
-  const cryptoIds = due("crypto");
-  const stockTickers = due("stock");
-  const metalSymbols = due("metal");
   const rateDue = dueForRefresh("fx", stored.get(FX_KEY), now);
+  const rateKnown = resolveQuote("fx", stored.get(FX_KEY), null, now) != null;
 
-  const [crypto, stocks, metals, rate] = await Promise.all([
-    cryptoIds.length ? settleWithin(fetchUsdPrices(cryptoIds), DEADLINE_MS, none) : none,
-    stockTickers.length ? settleWithin(fetchStockPrices(stockTickers), DEADLINE_MS, none) : none,
-    metalSymbols.length ? settleWithin(fetchMetalPrices(metalSymbols), DEADLINE_MS, none) : none,
-    rateDue ? settleWithin(fetchUsdGelRate(), DEADLINE_MS, null) : null,
-  ]);
-
-  // What the sources answered, by quote key.
-  const fetched = new Map<string, number>();
-  for (const [key, request] of wanted) {
-    const answer =
-      request.kind === "crypto"
-        ? crypto[request.id]
-        : request.kind === "stock"
-          ? stocks[request.id.trim().toUpperCase()]
-          : metals[request.id.trim().toUpperCase()];
-    if (typeof answer === "number" && Number.isFinite(answer) && answer > 0) fetched.set(key, answer);
+  const later: FetchPlan = {
+    crypto: due("crypto", true),
+    stock: due("stock", true),
+    metal: due("metal", true),
+    rate: rateDue && rateKnown,
+  };
+  if (later.crypto.length || later.stock.length || later.metal.length || later.rate) {
+    inBackground(() => fetchAndStore(later, now));
   }
-  if (rate != null && Number.isFinite(rate) && rate > 0) fetched.set(FX_KEY, rate);
-
-  // Remember them. A failed write costs nothing but the memory.
-  await Promise.all(
-    [...fetched.entries()].map(([key, price]) => {
-      const kind = key.slice(0, key.indexOf(":")) as QuoteKind;
-      return prisma.priceQuote
-        .upsert({
-          where: { key },
-          create: { key, price, source: SOURCE[kind], fetchedAt: now },
-          update: { price, source: SOURCE[kind], fetchedAt: now },
-        })
-        .catch(() => null);
-    }),
+  const fetched = await fetchAndStore(
+    { crypto: due("crypto", false), stock: due("stock", false), metal: due("metal", false), rate: rateDue && !rateKnown },
+    now,
   );
 
   const quotes = new Map<string, Quote>();
