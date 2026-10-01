@@ -7,6 +7,9 @@ import { exportWorkspace } from "@/lib/account/export";
 export async function GET() {
   const operator = await getSessionOperator();
   if (!operator) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  // A team member works in the company's workspace; its data (and the
+  // owner's billing) is the owner's to take away.
+  if (operator.companyId) return NextResponse.json({ error: "owner_only" }, { status: 403 });
   const data = await exportWorkspace(operator.id);
   const day = new Date().toISOString().slice(0, 10);
   return new NextResponse(JSON.stringify(data, null, 2), {

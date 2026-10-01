@@ -117,6 +117,7 @@ export async function createInvite(
 
 export async function revokeInvite(formData: FormData) {
   const operator = await requireWriter();
+  if (operator.companyId) return; // a member: the owner decides
   await prisma.invite.deleteMany({
     where: { id: str(formData, "inviteId"), companyId: operator.id, usedAt: null },
   });
@@ -142,6 +143,7 @@ export async function setMemberRole(formData: FormData) {
 // company's data in a tab still open.
 export async function removeMember(formData: FormData) {
   const operator = await requireWriter();
+  if (operator.companyId) return; // a member: the owner decides
   const memberId = str(formData, "memberId");
   const removed = await prisma.operator.updateMany({
     where: { id: memberId, companyId: operator.id },

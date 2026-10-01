@@ -317,6 +317,7 @@ export default async function SettingsPage({
       <section style={{ marginTop: 20 }}>
         <h2>{t(locale, "settings_data")}</h2>
         <div className="card" style={{ marginTop: 12, padding: 18, display: "grid", gap: 16 }}>
+          {!isMember && (
           <div className="flex flex-wrap items-center justify-between gap-3">
             <span style={row}>
               {t(locale, "data_export")}
@@ -328,6 +329,7 @@ export default async function SettingsPage({
               {t(locale, "data_export_button")}
             </a>
           </div>
+          )}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <span style={row}>
               {t(locale, "activity_title")}

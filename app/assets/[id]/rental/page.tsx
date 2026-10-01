@@ -171,7 +171,7 @@ export default async function RentalServicePage({
     }),
     prisma.operator.findUnique({
       where: { id: operator.id },
-      select: { notifyPhone: true, payInstructions: true },
+      select: { notifyPhone: true, payInstructions: true, locale: true },
     }),
     // Everything still to go out (however old), and the latest handled ones.
     prisma.notifyMessage.findMany({
@@ -222,7 +222,8 @@ export default async function RentalServicePage({
   const overrideBy = new Map(overrides.map((row) => [row.key, row.body]));
   // Messages are written in the ACCOUNT's language (what the monitors
   // send), not necessarily the language this page is being read in.
-  const messageLocale = asLocale(operator.locale);
+  // (A team member may read the app in another language than the owner's.)
+  const messageLocale = asLocale(me?.locale ?? operator.locale);
   const templateFields: TemplateField[] = templateKeysFor(asset.category).map((key) => {
     const override = overrideBy.get(key);
     return {

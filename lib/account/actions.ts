@@ -176,6 +176,19 @@ export async function deleteAccount(_prev: FormState, formData: FormData): Promi
   const check = await confirmPassword(operator, password);
   if (check !== "ok") return { error: check };
 
+  // An owner's team keeps their sign-ins, each with an empty workspace of
+  // their own that they can work in (not read-only, with a fresh trial).
+  if (!operator.companyId) {
+    await prisma.operator.updateMany({
+      where: { companyId: operator.userId },
+      data: {
+        companyId: null,
+        accountType: "personal",
+        role: "owner",
+        trialEndsAt: new Date(Date.now() + 30 * 86_400_000),
+      },
+    });
+  }
   await prisma.operator.delete({ where: { id: operator.userId } });
   await destroySession();
   redirect("/?deleted=1");
