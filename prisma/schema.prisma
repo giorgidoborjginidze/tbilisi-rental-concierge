@@ -146,7 +146,8 @@ model Session {
   expiresAt  DateTime
   createdAt  DateTime @default(now())
 
-  operator Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  operator          Operator           @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  pushSubscriptions PushSubscription[]
 
   @@index([operatorId])
 }
@@ -697,10 +698,17 @@ model PushSubscription {
   auth       String
   userAgent  String?
   createdAt  DateTime @default(now())
+  /// The person who turned it on (a team member's own id).
+  userId     String?
+  /// The sign-in it belongs to: signing out, being signed out elsewhere or
+  /// removed from a team ends the session and with it the notifications.
+  sessionId  String?
 
   operator Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  session  Session? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([operatorId])
+  @@index([sessionId])
 }
 
 // One run of the automatic jobs (Vercel Cron → /api/cron, or the local

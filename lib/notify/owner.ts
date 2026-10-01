@@ -16,6 +16,7 @@
 // Without the keys, push is "not configured": Settings hides the button and
 // only email is sent (when Resend is configured, lib/email.ts).
 
+import { isPushEndpoint } from "./push-endpoint";
 import webpush from "web-push";
 import { prisma } from "@/lib/db";
 import { NEEDS_YOU_TYPES } from "@/lib/alerts/rank";
@@ -163,6 +164,9 @@ export interface PushTarget {
 export type PushSender = (target: PushTarget, note: OwnerNote, cfg: PushConfig) => Promise<number>;
 
 export const webPushSender: PushSender = async (target, note, cfg) => {
+  // A device saved before the push-service check: forgotten (410), never
+  // written to.
+  if (!isPushEndpoint(target.endpoint)) return 410;
   try {
     const result = await webpush.sendNotification(
       { endpoint: target.endpoint, keys: { p256dh: target.p256dh, auth: target.auth } },

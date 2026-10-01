@@ -112,10 +112,15 @@ export async function setInvoiceStatus(formData: FormData) {
 /** The "from" block printed on every invoice. */
 export async function saveInvoiceIssuer(formData: FormData) {
   const operator = await requireWriter();
+  // The owner's: it prints on every invoice link already sent.
+  if (operator.companyId) return;
+  const invoiceIssuer = str(formData, "invoiceIssuer", 600) || null;
+  const before = await prisma.operator.findUnique({ where: { id: operator.id }, select: { invoiceIssuer: true } });
   await prisma.operator.update({
     where: { id: operator.id },
-    data: { invoiceIssuer: str(formData, "invoiceIssuer", 600) || null },
+    data: { invoiceIssuer },
   });
+  if (before && before.invoiceIssuer !== invoiceIssuer) await logActivity(operator, "settings.invoice_issuer", {});
   revalidatePath("/invoices", "layout");
   const back = str(formData, "back", 200);
   if (back.startsWith("/invoices")) redirect(back);

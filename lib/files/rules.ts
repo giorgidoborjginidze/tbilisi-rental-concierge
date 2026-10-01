@@ -42,8 +42,23 @@ export function sniffType(bytes: Uint8Array): string | null {
   if (bytes[0] === 0x89 && ascii(bytes, 1, 4) === "PNG") return "image/png";
   if (ascii(bytes, 0, 4) === "RIFF" && ascii(bytes, 8, 12) === "WEBP") return "image/webp";
   if (ascii(bytes, 0, 5) === "%PDF-") return "application/pdf";
-  if (ascii(bytes, 4, 8) === "ftyp" && /^(heic|heix|hevc|mif1|msf1)$/.test(ascii(bytes, 8, 12))) return "image/heic";
+  if (ascii(bytes, 4, 8) === "ftyp" && /^(heic|heix|hevc|mif1|msf1)$/.test(ascii(bytes, 8, 12))) {
+    // The first box's own size, a small big-endian number in a real HEIC —
+    // never text such as "<!--" put in front of something else.
+    const box = ((bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3]) >>> 0;
+    return box >= 16 && box <= 4096 ? "image/heic" : null;
+  }
   return null;
+}
+
+/** The only types ever kept and served. */
+export const KEPT_TYPES: readonly string[] = Object.keys(EXTENSION);
+export const isKeptType = (contentType: string) => KEPT_TYPES.includes(contentType);
+
+/** The type a stored file has, read from its own path (storePath). */
+export function typeOfPath(pathname: string): string | null {
+  const ext = pathname.slice(pathname.lastIndexOf("."));
+  return Object.entries(EXTENSION).find(([, e]) => e === ext)?.[0] ?? null;
 }
 
 export const isImage = (contentType: string) => contentType.startsWith("image/");

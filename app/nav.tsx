@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { getSessionOperator } from "@/lib/auth/session";
+import { currentSessionId, getSessionOperator } from "@/lib/auth/session";
+import PushRelink from "./push-relink";
 import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 import { toggleLocale } from "@/lib/i18n/actions";
@@ -148,6 +149,7 @@ export default async function Nav() {
         />
       )}
     </nav>
+    {operator && !operator.isDemo && <PushRelink tag={((await currentSessionId()) ?? "").slice(0, 8)} />}
     {operator?.role === "viewer" && !operator.isDemo && (
       <Suspense fallback={null}>
         <ViewerNotice text={t(locale, "team_viewer_note")} close={t(locale, "bot_close")} />

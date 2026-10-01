@@ -27,7 +27,7 @@ import { pushConfig } from "@/lib/notify/owner";
 import { setNotifyEmail } from "@/lib/notify/push-actions";
 import { emailConfigured } from "@/lib/email";
 import WhatsAppSender from "./whatsapp-sender";
-import { secretsConfigured } from "@/lib/security/secret";
+import { openSecret, secretsConfigured } from "@/lib/security/secret";
 
 export const dynamic = "force-dynamic";
 
@@ -142,7 +142,7 @@ export default async function SettingsPage({
     "wa_sender_connected", "wa_sender_none", "wa_sender_change", "wa_sender_connect", "wa_sender_id", "wa_sender_token",
     "wa_sender_token_keep", "wa_sender_template", "wa_sender_template_lang", "wa_sender_how", "wa_sender_check_save",
     "wa_sender_saved", "wa_sender_remove", "wa_sender_remove_q", "wa_sender_bad_id", "wa_sender_bad_template",
-    "wa_sender_no_token", "wa_sender_rejected", "wa_sender_unreachable", "wa_sender_not_ready", "error_owner_only", "cancel",
+    "wa_sender_no_token", "wa_sender_broken", "wa_sender_rejected", "wa_sender_unreachable", "wa_sender_not_ready", "error_owner_only", "cancel",
   ];
   const waLabels = Object.fromEntries(waKeys.map((k) => [k, t(locale, k)]));
 
@@ -282,6 +282,7 @@ export default async function SettingsPage({
             ) : (
               <WhatsAppSender
                 connected={workspace?.waPhoneNumberId && workspace.waTokenSealed ? workspace.waDisplayPhone ?? "" : null}
+                broken={!!(workspace?.waPhoneNumberId && workspace.waTokenSealed && !openSecret(workspace.waTokenSealed))}
                 values={{
                   phoneNumberId: workspace?.waPhoneNumberId ?? "",
                   templateName: workspace?.waTemplateName ?? "",

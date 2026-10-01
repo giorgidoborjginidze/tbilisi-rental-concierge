@@ -138,11 +138,13 @@ export default async function InvoicesPage({
               rows={4}
               defaultValue={me?.invoiceIssuer ?? ""}
               placeholder={t(locale, "invoice_issuer_placeholder")}
-              disabled={readOnlyOperator(operator)}
+              disabled={readOnlyOperator(operator) || !!operator.companyId}
             />
-            <span className="field-hint">{t(locale, "invoice_issuer_hint")}</span>
+            <span className="field-hint">
+              {t(locale, operator.companyId ? "owner_sets_this" : "invoice_issuer_hint")}
+            </span>
           </label>
-          {!readOnlyOperator(operator) && (
+          {!readOnlyOperator(operator) && !operator.companyId && (
             <div>
               <button type="submit" className="btn-secondary">{t(locale, "save")}</button>
             </div>

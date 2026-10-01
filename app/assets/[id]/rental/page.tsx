@@ -83,7 +83,7 @@ const LABEL_KEYS: StringKey[] = [
   "fence_preset_hint", "fence_map_aria", "fence_map_hint_circle", "fence_map_hint_polygon",
   "fence_map_undo", "fence_map_clear", "fence_map_car",
   "tpl_notify_phone", "tpl_notify_phone_hint", "tpl_vars_hint", "tpl_save", "tpl_edited",
-  "tpl_pay_to", "tpl_pay_to_hint", "tpl_pay_to_placeholder", "tpl_fixed_hint", "error_template_112",
+  "tpl_pay_to", "tpl_pay_to_hint", "owner_sets_this", "tpl_pay_to_placeholder", "tpl_fixed_hint", "error_template_112",
 ];
 
 // The rental service for one asset — only for what is actually rented out
@@ -703,7 +703,14 @@ export default async function RentalServicePage({
       </section>
 
       {/* One-time setup: plate, tracker, the address it sends to. Open
-          until a tracker is connected. */}
+          until a tracker is connected. The tracker's token lets anyone who
+          has it send positions, so only those who may change the car see
+          it (not a view-only member, not the demo). */}
+      {readOnlyOperator(operator) ? (
+        <p className="section-hint" style={{ maxWidth: 640 }}>
+          {t(locale, device ? "gps_settings_owner_only" : "gps_settings_none_readonly")}
+        </p>
+      ) : (
       <details className="desk-fold desk-fold--settings" open={device == null}>
         <summary>
           {t(locale, "desk_settings")}
@@ -756,6 +763,7 @@ export default async function RentalServicePage({
           </div>
         )}
       </details>
+      )}
     </>
   );
 
@@ -834,6 +842,7 @@ export default async function RentalServicePage({
           assetId={asset.id}
           notifyPhone={me?.notifyPhone ?? ""}
           payInstructions={me?.payInstructions ?? ""}
+          ownerFieldsLocked={!!operator.companyId}
           fields={templateFields}
           labels={labels}
         />

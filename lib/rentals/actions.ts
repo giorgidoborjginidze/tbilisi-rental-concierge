@@ -667,15 +667,25 @@ export async function saveNotifySetup(
     }
   }
 
-  await prisma.operator.update({
-    where: { id: operator.id },
-    data: {
-      notifyPhone: str(formData, "notifyPhone") || null,
-      ...(formData.has("payInstructions")
-        ? { payInstructions: str(formData, "payInstructions").slice(0, 160) || null }
-        : {}),
-    },
-  });
+  // Where the owner's alerts arrive and how renters pay are the owner's to
+  // set: a team member saves the texts, never these two (a changed bank
+  // account would show at once on every reminder and invoice link).
+  if (!operator.companyId) {
+    const before = await prisma.operator.findUnique({
+      where: { id: operator.id },
+      select: { notifyPhone: true, payInstructions: true },
+    });
+    const notifyPhone = str(formData, "notifyPhone") || null;
+    const payInstructions = formData.has("payInstructions")
+      ? str(formData, "payInstructions").slice(0, 160) || null
+      : (before?.payInstructions ?? null);
+    await prisma.operator.update({
+      where: { id: operator.id },
+      data: { notifyPhone, payInstructions },
+    });
+    if (before && before.notifyPhone !== notifyPhone) await logActivity(operator, "settings.alert_phone", {});
+    if (before && before.payInstructions !== payInstructions) await logActivity(operator, "settings.payment", {});
+  }
 
   // A template row exists only while it differs from the default, so
   // clearing a field restores the built-in wording. Only the templates the

@@ -311,6 +311,13 @@ export async function senderFor(operatorId: string): Promise<WhatsAppConfig | nu
       templateLocale: operator.waTemplateLocale || "ka",
     };
   }
+  // Their own number is connected but its key no longer opens (SECRETS_KEY
+  // changed): nothing is sent — never from Activo's number instead — and
+  // Settings asks them to connect it again.
+  if (operator.waPhoneNumberId && operator.waTokenSealed) {
+    console.error("[whatsapp] the workspace's own sender token cannot be opened; reconnect needed");
+    return null;
+  }
   const platform = whatsappConfig();
   if (!platform) return null;
   // A team member's messages go out on the company's plan.

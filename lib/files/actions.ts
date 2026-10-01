@@ -8,7 +8,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { logActivity } from "@/lib/activity/log";
 import { requireWriter } from "@/lib/auth/session";
-import { asFileKind, cleanName } from "./rules";
+import { asFileKind, cleanName, MAX_FILE_BYTES, typeOfPath } from "./rules";
 
 const pageOf = (row: { assetId: string | null; unitId: string | null }) =>
   row.assetId ? `/assets/${row.assetId}` : `/units/${row.unitId}/edit`;
@@ -51,7 +51,11 @@ export async function restoreAttachment(formData: FormData): Promise<boolean> {
       ? await prisma.unit.count({ where: { id: unitId, operatorId: operator.id } })
       : 0;
   if (!owned) return false;
-  const contentType = String(snap.contentType ?? "application/octet-stream");
+  // The type and size come from what was stored, never from the snapshot
+  // the browser sends back: a restored file cannot be re-labelled as
+  // something that would run as a page (an SVG, HTML).
+  const contentType = typeOfPath(pathname);
+  if (!contentType) return false;
   await prisma.attachment.create({
     data: {
       operatorId: operator.id,
@@ -60,7 +64,7 @@ export async function restoreAttachment(formData: FormData): Promise<boolean> {
       kind: asFileKind(snap.kind, "document"),
       name: cleanName(String(snap.name ?? ""), contentType),
       contentType,
-      size: Math.max(0, Math.round(Number(snap.size) || 0)),
+      size: Math.min(MAX_FILE_BYTES, Math.max(0, Math.round(Number(snap.size) || 0))),
       pathname,
     },
   });

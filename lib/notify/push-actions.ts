@@ -5,9 +5,10 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requirePerson, requireWriter } from "@/lib/auth/session";
+import { currentSessionId, requirePerson, requireWriter } from "@/lib/auth/session";
 import { asLocale, t } from "@/lib/i18n/strings";
 import { pushConfig, webPushSender } from "./owner";
+import { isPushEndpoint } from "./push-endpoint";
 
 export interface DeviceSubscription {
   endpoint: string;
@@ -16,31 +17,35 @@ export interface DeviceSubscription {
   userAgent?: string;
 }
 
-/** Push services hand out https addresses; anything else is refused. */
-const validEndpoint = (value: string) => {
-  try {
-    return new URL(value).protocol === "https:" && value.length <= 1000;
-  } catch {
-    return false;
-  }
-};
 const KEY = /^[A-Za-z0-9_-]{8,200}={0,2}$/;
+/** Devices one workspace keeps; the oldest goes when a new one comes. */
+const MAX_DEVICES = 30;
 
 // Every person of a team may get the workspace's notifications, a
-// view-only member too: the device is kept under the workspace.
+// view-only member too: the device is kept under the workspace, tied to
+// the person and to this sign-in (prisma/schema.prisma PushSubscription).
 export async function savePushSubscription(device: DeviceSubscription): Promise<{ ok: boolean }> {
   const operator = await requirePerson();
   const endpoint = String(device?.endpoint ?? "");
   const p256dh = String(device?.p256dh ?? "");
   const auth = String(device?.auth ?? "");
-  if (!validEndpoint(endpoint) || !KEY.test(p256dh) || !KEY.test(auth)) return { ok: false };
+  if (!isPushEndpoint(endpoint) || !KEY.test(p256dh) || !KEY.test(auth)) return { ok: false };
   const userAgent = String(device?.userAgent ?? "").slice(0, 200) || null;
+  const sessionId = await currentSessionId();
+  const link = { operatorId: operator.id, userId: operator.userId, sessionId, p256dh, auth, userAgent };
   // A device signed in to another account before now belongs to this one.
   await prisma.pushSubscription.upsert({
     where: { endpoint },
-    create: { operatorId: operator.id, endpoint, p256dh, auth, userAgent },
-    update: { operatorId: operator.id, p256dh, auth, userAgent },
+    create: { endpoint, ...link },
+    update: link,
   });
+  const extra = await prisma.pushSubscription.findMany({
+    where: { operatorId: operator.id },
+    orderBy: { createdAt: "desc" },
+    skip: MAX_DEVICES,
+    select: { id: true },
+  });
+  if (extra.length) await prisma.pushSubscription.deleteMany({ where: { id: { in: extra.map((row) => row.id) } } });
   revalidatePath("/settings");
   return { ok: true };
 }
@@ -53,13 +58,21 @@ export async function removePushSubscription(endpoint: string): Promise<{ ok: bo
 }
 
 /** One notification to every device of this account; how many took it. */
+const lastTest = new Map<string, number>();
+const TEST_GAP_MS = 20_000;
+
 export async function sendTestPush(): Promise<{ sent: number }> {
   const operator = await requirePerson();
   const cfg = pushConfig();
   if (!cfg) return { sent: 0 };
+  // One test at a time per person.
+  const now = Date.now();
+  if (now - (lastTest.get(operator.userId) ?? 0) < TEST_GAP_MS) return { sent: 0 };
+  lastTest.set(operator.userId, now);
   const locale = asLocale(operator.locale);
+  // The person's own devices.
   const targets = await prisma.pushSubscription.findMany({
-    where: { operatorId: operator.id },
+    where: { operatorId: operator.id, OR: [{ userId: operator.userId }, { userId: null }] },
     select: { id: true, endpoint: true, p256dh: true, auth: true },
   });
   let sent = 0;

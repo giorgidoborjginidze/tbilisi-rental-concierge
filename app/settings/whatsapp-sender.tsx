@@ -10,11 +10,14 @@ import ConfirmAction from "../confirm-action";
 // field blank keeps it.
 export default function WhatsAppSender({
   connected,
+  broken = false,
   values,
   labels,
 }: {
   /** The number Meta named when it was saved, or null when none is connected. */
   connected: string | null;
+  /** Connected, but its key no longer opens: nothing is sent until it is saved again. */
+  broken?: boolean;
   values: { phoneNumberId: string; templateName: string; templateLocale: string };
   labels: Record<string, string>;
 }) {
@@ -24,7 +27,12 @@ export default function WhatsAppSender({
       <p className="field-hint" style={{ margin: 0 }}>
         {connected != null ? labels.wa_sender_connected.replace("{phone}", connected || "—") : labels.wa_sender_none}
       </p>
-      <details className="form-fold" open={state?.error != null}>
+      {broken && (
+        <p className="field-hint price-missing" role="alert" style={{ margin: 0 }}>
+          {labels.wa_sender_broken}
+        </p>
+      )}
+      <details className="form-fold" open={state?.error != null || broken}>
         <summary>{connected != null ? labels.wa_sender_change : labels.wa_sender_connect}</summary>
         <form action={save} className="form-grid" style={{ marginTop: 10 }} autoComplete="off">
           <label className="field">

@@ -15,6 +15,7 @@ export const ACTIVITY_ACTIONS = [
   "file.upload", "file.delete",
   "team.invite", "team.role", "team.remove",
   "whatsapp.connect", "whatsapp.disconnect",
+  "settings.payment", "settings.alert_phone", "settings.invoice_issuer",
 ] as const;
 export type ActivityAction = (typeof ACTIVITY_ACTIONS)[number];
 

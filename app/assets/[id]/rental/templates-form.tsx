@@ -29,8 +29,11 @@ export default function TemplatesForm({
   payInstructions,
   fields,
   labels,
+  ownerFieldsLocked = false,
 }: {
   assetId: string;
+  /** A team member: the alert phone and payment details are the owner's. */
+  ownerFieldsLocked?: boolean;
   notifyPhone: string;
   /** How renters pay: the {pay_to} of the payment reminders. */
   payInstructions: string;
@@ -55,8 +58,9 @@ export default function TemplatesForm({
           type="tel"
           defaultValue={sent?.notifyPhone ?? notifyPhone}
           placeholder="+995 5XX XX XX XX"
+          disabled={ownerFieldsLocked}
         />
-        <span className="field-hint">{labels.tpl_notify_phone_hint}</span>
+        <span className="field-hint">{ownerFieldsLocked ? labels.owner_sets_this : labels.tpl_notify_phone_hint}</span>
       </label>
 
       <label className="field" style={{ marginTop: 12 }}>
@@ -66,8 +70,9 @@ export default function TemplatesForm({
           maxLength={160}
           defaultValue={sent?.payInstructions ?? payInstructions}
           placeholder={labels.tpl_pay_to_placeholder}
+          disabled={ownerFieldsLocked}
         />
-        <span className="field-hint">{labels.tpl_pay_to_hint}</span>
+        <span className="field-hint">{ownerFieldsLocked ? labels.owner_sets_this : labels.tpl_pay_to_hint}</span>
       </label>
 
       <p className="field-hint" style={{ marginTop: 14 }}>

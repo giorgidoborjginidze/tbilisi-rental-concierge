@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { asFileKind, cleanName, disposition, formatBytes, sniffType, storePath } from "./rules";
+import { asFileKind, cleanName, disposition, formatBytes, sniffType, storePath, typeOfPath } from "./rules";
 
 const bytes = (...parts: (number[] | string)[]) =>
   new Uint8Array(parts.flatMap((p) => (typeof p === "string" ? [...p].map((c) => c.charCodeAt(0)) : p)).concat(Array(16).fill(0)));
@@ -14,6 +14,8 @@ describe("file rules", () => {
     // An HTML page or an SVG named .jpg is not kept.
     expect(sniffType(bytes("<html><script>"))).toBeNull();
     expect(sniffType(bytes("<svg xmlns="))).toBeNull();
+    // An SVG dressed up with a HEIC brand is not a HEIC.
+    expect(sniffType(bytes("<!--ftypheic--><svg><script>"))).toBeNull();
   });
 
   it("keeps names safe to show and to send in a header", () => {
@@ -30,5 +32,14 @@ describe("file rules", () => {
     expect(asFileKind("exe", "photo")).toBe("photo");
     expect(formatBytes(1536 * 1024, "en")).toBe("1.5 MB");
     expect(formatBytes(800, "ka")).toBe("1 კბ");
+  });
+});
+
+describe("typeOfPath", () => {
+  it("reads a stored file's type from its own path, never from the browser", () => {
+    expect(typeOfPath("op/a/1.jpg")).toBe("image/jpeg");
+    expect(typeOfPath("op/a/1.pdf")).toBe("application/pdf");
+    expect(typeOfPath("op/a/1.svg")).toBeNull();
+    expect(typeOfPath("op/a/1")).toBeNull();
   });
 });

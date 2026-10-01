@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { getSessionOperator } from "@/lib/auth/session";
 import { fileStore } from "@/lib/files/store";
-import { disposition, isViewableImage } from "@/lib/files/rules";
+import { disposition, isKeptType, isViewableImage } from "@/lib/files/rules";
 
 // Opens one of the owner's files — only for the account that keeps it.
 // ?download=1 saves it instead of showing it.
@@ -17,11 +17,17 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const file = await store.get(row.pathname).catch(() => null);
   if (!file) return new Response("Not found", { status: 404 });
 
+  // Only the kept types are ever served as themselves; anything else (a
+  // row written before the checks) only downloads, as plain bytes.
+  const kept = isKeptType(row.contentType);
+  const contentType = kept ? row.contentType : "application/octet-stream";
   const download = new URL(request.url).searchParams.get("download") === "1";
-  const inline = !download && (isViewableImage(row.contentType) || row.contentType === "application/pdf");
+  const inline = kept && !download && (isViewableImage(contentType) || contentType === "application/pdf");
   return new Response(file.stream, {
     headers: {
-      "Content-Type": row.contentType,
+      "Content-Type": contentType,
+      // A shown photo can run nothing on activo.world.
+      ...(isViewableImage(contentType) ? { "Content-Security-Policy": "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox" } : {}),
       "Content-Length": String(file.size),
       "Content-Disposition": disposition(row.name, inline),
       "X-Content-Type-Options": "nosniff",
