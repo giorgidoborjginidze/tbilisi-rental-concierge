@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
+import { logActivity } from "@/lib/activity/log";
 import { requireWriter } from "@/lib/auth/session";
 import { UNIT_TYPES } from "@/lib/types";
 import type { StringKey } from "@/lib/i18n/strings";
@@ -154,7 +155,7 @@ export async function saveUnit(
     }
   }
 
-  await prisma.$transaction(async (tx) => {
+  const savedUnitId = await prisma.$transaction(async (tx) => {
     const unit = unitId
       ? await tx.unit.update({ where: { id: unitId }, data })
       : await tx.unit.create({ data: { ...data, operatorId: operator.id } });
@@ -167,7 +168,9 @@ export async function saveUnit(
     } else if (createAsset) {
       await createAssetForUnit(tx, unit);
     }
+    return unit.id;
   });
+  await logActivity(operator, unitId ? "unit.update" : "unit.create", { id: savedUnitId, label: name });
 
   revalidatePath("/units");
   revalidatePath("/assets");
@@ -220,9 +223,11 @@ export async function deleteUnit(formData: FormData) {
     // The asset made for this unit goes with it while it holds nothing of
     // its own; one with a value, contracts or daily answers stays (unlinked).
     const dropAsset = linked ? await assetHoldsNothing(prisma, linked.id) : false;
+    const doomed = await prisma.unit.findFirst({ where: { id: unitId, operatorId: operator.id }, select: { name: true } });
     const { count } = await prisma.unit.deleteMany({
       where: { id: unitId, operatorId: operator.id },
     });
+    if (count > 0) await logActivity(operator, "unit.delete", { id: unitId, label: doomed?.name });
     if (count > 0 && linked && dropAsset) {
       await prisma.asset.deleteMany({ where: { id: linked.id, operatorId: operator.id } });
     }

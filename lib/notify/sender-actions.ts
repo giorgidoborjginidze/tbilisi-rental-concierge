@@ -7,6 +7,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
+import { logActivity } from "@/lib/activity/log";
 import { requireWriter } from "@/lib/auth/session";
 import { openSecret, sealSecret } from "@/lib/security/secret";
 import type { FormState } from "@/lib/units/actions";
@@ -46,6 +47,7 @@ export async function saveWhatsAppSender(_prev: FormState, formData: FormData): 
       waDisplayPhone: check.displayPhone,
     },
   });
+  await logActivity(operator, "whatsapp.connect", { label: check.displayPhone });
   revalidatePath("/settings");
   return { ok: true };
 }
@@ -57,5 +59,6 @@ export async function removeWhatsAppSender() {
     where: { id: operator.id },
     data: { waPhoneNumberId: null, waTokenSealed: null, waTemplateName: null, waTemplateLocale: null, waDisplayPhone: null },
   });
+  await logActivity(operator, "whatsapp.disconnect");
   revalidatePath("/settings");
 }

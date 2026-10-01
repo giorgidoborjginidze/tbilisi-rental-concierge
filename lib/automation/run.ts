@@ -26,6 +26,7 @@ import { checkTrackerSilence } from "@/lib/geo/silence-check";
 import { snapshotDatabase, type SnapshotOutcome } from "@/lib/backup/neon-snapshot";
 import { notifyOwner } from "@/lib/notify/owner";
 import { sweepOrphanFiles } from "@/lib/files/sweep";
+import { ACTIVITY_RETENTION_MS } from "@/lib/activity/log";
 
 export type RunKind = "daily" | "sync";
 
@@ -67,6 +68,8 @@ export interface RunDeps {
   silence?: (now: Date, operatorId: string) => Promise<number>;
   /** Tells the owner about fresh urgent alerts (lib/notify/owner.ts); tests leave it out. */
   notify?: (operatorId: string, now: Date) => Promise<{ alerts: number }>;
+  /** Drops activity lines older than a year; tests leave it out. */
+  pruneActivity?: (now: Date) => Promise<unknown>;
   /** Removes files whose record is gone (lib/files/sweep.ts); tests leave it out. */
   sweepFiles?: (now: Date) => Promise<number>;
   /** The morning snapshot; tests leave it out. */
@@ -83,6 +86,8 @@ const DEFAULT_DEPS: RunDeps = {
   silence: checkTrackerSilence,
   notify: (operatorId, now) => notifyOwner(operatorId, now),
   sweepFiles: (now) => sweepOrphanFiles(now),
+  pruneActivity: (now) =>
+    prisma.activityLog.deleteMany({ where: { createdAt: { lt: new Date(now.getTime() - ACTIVITY_RETENTION_MS) } } }),
   backup: (now) => snapshotDatabase("daily", now),
 };
 
@@ -193,6 +198,11 @@ export async function runAutomation(
       summary.errors.push(`prune: ${message(error)}`);
       console.error(`[automation] pruning sign-in records failed:`, error);
     }
+  }
+
+  if (kind === "daily" && deps.pruneActivity) {
+    // The activity log keeps a year (lib/activity/log.ts).
+    await deps.pruneActivity(now).catch((error) => console.error("[automation] activity pruning failed:", error));
   }
 
   if (kind === "daily" && deps.sweepFiles) {

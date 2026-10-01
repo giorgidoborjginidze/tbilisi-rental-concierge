@@ -3,6 +3,8 @@
 import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
+import { logActivity } from "@/lib/activity/log";
+import { formatMoney } from "@/lib/format";
 import { LIVE_CONTRACT } from "@/lib/rentals/live";
 import { getWriter, requireWriter } from "@/lib/auth/session";
 import type { FormState } from "@/lib/units/actions";
@@ -277,6 +279,10 @@ async function receivePayment(formData: FormData): Promise<ReceiveResult> {
   await settlePaidRent(prisma, contractId, step.state.paidThrough, payment.createdAt, {
     withdrawOwed: true,
   });
+  await logActivity(owned.operator, "payment.record", {
+    id: payment.id,
+    label: `${formatMoney(amount, contract.currency, "auto")} — ${owned.asset.name}${contract.tenantName ? `, ${contract.tenantName}` : ""}`,
+  });
 
   refresh(assetId);
   return { paymentId: payment.id };
@@ -440,6 +446,10 @@ async function removePayment(
     remaining.map((row) => row.amount),
   );
 
+  await logActivity(owned.operator, "payment.delete", {
+    id: paymentId,
+    label: `${formatMoney(payment.amount, payment.currency, "auto")} — ${owned.asset.name}`,
+  });
   await prisma.$transaction([
     prisma.rentPayment.delete({ where: { id: paymentId } }),
     prisma.rentalContract.update({

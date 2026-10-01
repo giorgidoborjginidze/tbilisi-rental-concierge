@@ -6,6 +6,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
+import { logActivity } from "@/lib/activity/log";
 import { requireWriter } from "@/lib/auth/session";
 import { asFileKind, cleanName } from "./rules";
 
@@ -18,6 +19,7 @@ export async function deleteAttachment(formData: FormData): Promise<{ undo: Reco
   const row = await prisma.attachment.findFirst({ where: { id, operatorId: operator.id } });
   if (!row) return null;
   await prisma.attachment.delete({ where: { id: row.id } });
+  await logActivity(operator, "file.delete", { id: row.id, label: row.name });
   revalidatePath(pageOf(row), "layout");
   return {
     undo: {

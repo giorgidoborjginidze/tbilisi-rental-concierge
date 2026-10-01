@@ -5,6 +5,7 @@ import { randomInt } from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
+import { logActivity } from "@/lib/activity/log";
 import type { Prisma } from "@/app/generated/prisma/client";
 import { asCurrency } from "@/lib/fx/convert";
 import { requireWriter } from "@/lib/auth/session";
@@ -403,6 +404,10 @@ export async function saveAsset(
   if (contractInput) {
     await createContract({ id: savedId, currency: data.currency, status }, contractInput);
   }
+  await logActivity(operator, owned ? "asset.update" : "asset.create", { id: savedId, label: data.name });
+  if (contractInput) {
+    await logActivity(operator, "contract.create", { id: savedId, label: `${data.name} — ${contractInput.tenantName ?? ""}` });
+  }
 
   revalidatePath("/assets");
   revalidatePath(`/assets/${savedId}/edit`);
@@ -521,6 +526,7 @@ export async function saveContract(
   if (!asset) return fail("error_required");
 
   const id = await createContract(asset, parsed.value);
+  await logActivity(operator, "contract.create", { id, label: parsed.value.tenantName });
   refreshContract(assetId);
   return { ok: true, id };
 }
@@ -615,6 +621,7 @@ export async function updateContract(
     await prisma.asset.update({ where: { id: assetId }, data: { status: "rented" } });
   }
 
+  await logActivity(operator, "contract.update", { id: contractId, label: input.tenantName ?? contract.tenantName });
   refreshContract(assetId);
   return { ok: true, id: contractId };
 }
@@ -644,6 +651,7 @@ export async function deleteContract(formData: FormData) {
   if (contract) {
     const now = new Date();
     await prisma.rentalContract.update({ where: { id: contractId }, data: { deletedAt: now } });
+    await logActivity(operator, "contract.delete", { id: contractId, label: contract.tenantName });
     // Nothing more may go out about it, and its alerts (late rent,
     // repossession right, expiry) are closed — stamped with `now`, so an
     // undo brings back exactly these.
@@ -676,6 +684,7 @@ export async function restoreContract(formData: FormData) {
   if (contract?.deletedAt && now.getTime() - contract.deletedAt.getTime() <= CONTRACT_UNDO_MS) {
     await prisma.rentalContract.update({ where: { id: contractId }, data: { deletedAt: null } });
     await restoreDeletedContract(prisma, contractId, contract.deletedAt);
+    await logActivity(operator, "contract.restore", { id: contractId, label: contract.tenantName });
     if (contractPhase(contract, startOfTodayTbilisi(now)) === "active" && contract.asset.status !== "rented") {
       await prisma.asset.update({ where: { id: assetId }, data: { status: "rented" } });
     }
@@ -748,8 +757,9 @@ export async function deleteAsset(formData: FormData) {
   if (assetId) {
     const owned = await prisma.asset.findFirst({
       where: { id: assetId, operatorId: operator.id },
-      select: { id: true, unitId: true },
+      select: { id: true, unitId: true, name: true },
     });
+    if (owned) await logActivity(operator, "asset.delete", { id: owned.id, label: owned.name });
     // Nothing more goes out about it, and its open alerts close.
     if (owned) await withdrawAsset(prisma, operator.id, owned.id);
     // The calendar unit made for it goes too while it holds nothing of its
@@ -787,6 +797,7 @@ export async function deleteHolding(formData: FormData) {
   if (!asset) return null;
   const { trades, incomes, ...row } = asset;
   await prisma.asset.deleteMany({ where: { id: asset.id, operatorId: operator.id } });
+  await logActivity(operator, "asset.delete", { id: asset.id, label: asset.name });
   revalidatePath("/assets");
   revalidatePath("/invest");
   revalidatePath("/");

@@ -328,6 +328,15 @@ export default async function SettingsPage({
               {t(locale, "data_export_button")}
             </a>
           </div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span style={row}>
+              {t(locale, "activity_title")}
+              <span className="field-hint" style={{ display: "block", margin: "2px 0 0" }}>
+                {t(locale, "activity_lead")}
+              </span>
+            </span>
+            <Link href="/activity" className="btn-secondary">{t(locale, "activity_open")}</Link>
+          </div>
           {!operator.isDemo && <DeleteAccountForm labels={securityLabels} />}
         </div>
       </section>

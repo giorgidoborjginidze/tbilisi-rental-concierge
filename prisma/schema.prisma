@@ -93,6 +93,7 @@ model Operator {
   invoices          Invoice[]
   savedCalcs        SavedCalc[]
   emailChecks       EmailVerification[]
+  activity          ActivityLog[]
 
   @@index([companyId])
 }
@@ -821,4 +822,25 @@ model EmailVerification {
   operator Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
 
   @@index([operatorId])
+}
+
+// What was done in a workspace, by whom, when (lib/activity/log.ts) —
+// /activity lists it, so an owner with a team sees who changed a contract
+// or recorded a payment. The label (an asset's name, an amount) is kept
+// with the line, so it still reads after the thing itself is deleted.
+// Lines older than a year are pruned by the daily run.
+model ActivityLog {
+  id         String   @id @default(cuid())
+  operatorId String // the workspace
+  actorId    String? // the person (null: the system)
+  actorName  String?
+  action     String // "asset.create", "payment.record", …
+  targetType String?
+  targetId   String?
+  label      String?
+  createdAt  DateTime @default(now())
+
+  operator Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+
+  @@index([operatorId, createdAt])
 }

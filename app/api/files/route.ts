@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { logActivity } from "@/lib/activity/log";
 import { getSessionOperator, readOnlyOperator } from "@/lib/auth/session";
 import { fileStore } from "@/lib/files/store";
 import {
@@ -76,7 +77,8 @@ export async function POST(request: Request) {
       size: bytes.length,
       pathname,
     },
-    select: { id: true },
+    select: { id: true, name: true },
   });
+  await logActivity(operator, "file.upload", { id: row.id, label: row.name });
   return NextResponse.json({ ok: true, id: row.id });
 }

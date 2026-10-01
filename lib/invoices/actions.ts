@@ -4,6 +4,7 @@ import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { logActivity } from "@/lib/activity/log";
 import { requireWriter } from "@/lib/auth/session";
 import { asCurrency } from "@/lib/fx/convert";
 import { dayFromKey } from "@/lib/time";
@@ -87,6 +88,7 @@ export async function createInvoice(formData: FormData) {
     }
   }
   if (!id) back("invoice_error_retry");
+  await logActivity(operator, "invoice.issue", { id, label: `${billTo} · ${amount} ${data.currency}` });
   revalidatePath("/invoices");
   redirect(`/invoices/${id}?issued=1`);
 }
@@ -103,6 +105,7 @@ export async function setInvoiceStatus(formData: FormData) {
     where: { id },
     data: { status, paidAt: status === "paid" ? new Date() : null },
   });
+  await logActivity(operator, status === "paid" ? "invoice.paid" : status === "void" ? "invoice.void" : "invoice.unpaid", { id });
   revalidatePath("/invoices", "layout");
 }
 

@@ -4,6 +4,7 @@ import { randomBytes } from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
+import { logActivity } from "@/lib/activity/log";
 import { requireWriter } from "@/lib/auth/session";
 import { siteUrl } from "@/lib/site";
 import { createFlittCheckout, flittConfig } from "./flitt";
@@ -109,6 +110,7 @@ export async function createInvite(
       role: str(formData, "role") === "viewer" ? "viewer" : "member",
     },
   });
+  await logActivity(operator, "team.invite", { label: email });
   revalidatePath("/billing");
   return { ok: true };
 }
@@ -126,10 +128,11 @@ export async function setMemberRole(formData: FormData) {
   const operator = await requireWriter();
   if (operator.companyId) return;
   const role = str(formData, "role") === "viewer" ? "viewer" : "member";
-  await prisma.operator.updateMany({
+  const changed = await prisma.operator.updateMany({
     where: { id: str(formData, "memberId"), companyId: operator.id },
     data: { role },
   });
+  if (changed.count > 0) await logActivity(operator, "team.role", { id: str(formData, "memberId"), label: role });
   revalidatePath("/settings");
 }
 
@@ -145,7 +148,10 @@ export async function removeMember(formData: FormData) {
     data: { companyId: null, accountType: "personal", role: "owner" },
   });
   // Only someone who really was this company's member is signed out.
-  if (removed.count > 0) await prisma.session.deleteMany({ where: { operatorId: memberId } });
+  if (removed.count > 0) {
+    await prisma.session.deleteMany({ where: { operatorId: memberId } });
+    await logActivity(operator, "team.remove", { id: memberId });
+  }
   revalidatePath("/billing");
   revalidatePath("/settings");
 }

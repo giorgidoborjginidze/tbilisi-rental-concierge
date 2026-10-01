@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
+import { logActivity } from "@/lib/activity/log";
 import { LIVE_CONTRACT } from "@/lib/rentals/live";
 import { requireWriter } from "@/lib/auth/session";
 import { refreshUnitMirrors, summarizeSync, syncAllUnits } from "@/lib/ical/run-sync";
@@ -73,7 +74,7 @@ export async function createBooking(
     if (block) return { error: "error_booking_closed_block", detail: block, values };
   }
 
-  await prisma.booking.create({
+  const created = await prisma.booking.create({
     data: {
       unitId,
       source,
@@ -88,6 +89,10 @@ export async function createBooking(
   });
   // The Booking.com block closed for this stay is marked a copy right away.
   await refreshUnitMirrors(unitId);
+  await logActivity(operator, "booking.create", {
+    id: created.id,
+    label: `${unit.name} · ${dates.checkIn.toISOString().slice(0, 10)}–${dates.checkOut.toISOString().slice(0, 10)}${guestName ? ` · ${guestName}` : ""}`,
+  });
 
   refresh();
   // Straight to the unit's calendar, where the new stay now shows.
@@ -147,6 +152,7 @@ export async function updateBooking(
   }
 
   await prisma.booking.update({ where: { id: booking.id }, data });
+  await logActivity(operator, "booking.update", { id: booking.id, label: guestName ?? booking.guestName });
   // New dates (or a price given to / taken from a block) change which
   // Booking.com blocks are copies.
   await refreshUnitMirrors(booking.unitId);
@@ -165,6 +171,10 @@ export async function cancelBooking(formData: FormData) {
     await prisma.booking.update({
       where: { id: booking.id },
       data: { status: "cancelled", cancelledAt: new Date(), cancelReason: "owner" },
+    });
+    await logActivity(operator, "booking.cancel", {
+      id: booking.id,
+      label: `${booking.checkIn.toISOString().slice(0, 10)}–${booking.checkOut.toISOString().slice(0, 10)}${booking.guestName ? ` · ${booking.guestName}` : ""}`,
     });
     // A Booking.com copy of this stay now stands on its own.
     await refreshUnitMirrors(booking.unitId);
