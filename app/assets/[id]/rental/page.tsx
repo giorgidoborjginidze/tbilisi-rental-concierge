@@ -15,6 +15,7 @@ import {
   unsettledContracts,
 } from "@/lib/rentals/terms";
 import { activeContract, contractPhase } from "@/lib/rentals/phase";
+import FilesSection from "@/app/files/files-section";
 import { DESK_TABS, deskTab, rentalDesk, type DeskTab } from "@/lib/rentals/desk";
 import { rentLabel } from "@/lib/rentals/display";
 import { firstParam, type QueryValue } from "@/lib/params";
@@ -983,6 +984,8 @@ export default async function RentalServicePage({
             <>
               <p className="page-lead">{t(locale, "rental_service_intro")}</p>
               {overviewSection}
+              {/* Handover photos, the technical passport, the driver's ID copy. */}
+              <FilesSection place={{ assetId: asset.id }} locale={locale} operatorId={operator.id} readOnly={operator.isDemo} />
             </>
           )}
           {tab === "payments" && paymentsSection}
@@ -995,6 +998,14 @@ export default async function RentalServicePage({
           <p className="page-lead">{t(locale, "rental_service_intro_property")}</p>
           {paymentsSection}
           {messagesSection}
+          {/* Receipts and the signed contract, next to the payments they prove. */}
+          <FilesSection
+            place={{ assetId: asset.id }}
+            locale={locale}
+            operatorId={operator.id}
+            readOnly={operator.isDemo}
+            defaultKind="receipt"
+          />
         </>
       )}
     </main>

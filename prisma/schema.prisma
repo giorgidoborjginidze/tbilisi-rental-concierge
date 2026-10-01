@@ -72,6 +72,7 @@ model Operator {
   messages  NotifyMessage[]
   resets    PasswordReset[]
   pushSubscriptions PushSubscription[]
+  attachments       Attachment[]
 
   @@index([companyId])
 }
@@ -182,6 +183,7 @@ model Unit {
   asset              Asset?
   feeds              UnitFeed[]
   calendarExport     CalendarExport?
+  attachments        Attachment[]
 
   @@index([operatorId])
   @@index([district])
@@ -359,6 +361,7 @@ model Asset {
   gpsDevice GpsDevice?
   geofences Geofence[]
   days      DayEntry[]
+  attachments Attachment[]
 
   @@index([operatorId])
 }
@@ -699,4 +702,30 @@ model PriceQuote {
   price     Float // USD per unit (fx: GEL per USD)
   source    String   @default("") // "coingecko" | "finnhub" | "stooq" | "gold-api" | "nbg"
   fetchedAt DateTime // when the source last answered with this price
+}
+
+// A file the owner keeps with an asset or a unit: a photo, a document (the
+// signed contract, a passport copy, the technical passport) or a receipt.
+// The bytes live in a private file store (Vercel Blob, lib/files/store.ts)
+// under `pathname`; only the owner's signed-in session can open them
+// (/api/files/<id>). A file whose row is gone is swept by the daily run.
+model Attachment {
+  id          String   @id @default(cuid())
+  operatorId  String
+  assetId     String?
+  unitId      String?
+  kind        String // "photo" | "document" | "receipt"
+  name        String // the file's own name, as uploaded
+  contentType String
+  size        Int // bytes
+  pathname    String   @unique
+  createdAt   DateTime @default(now())
+
+  operator Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  asset    Asset?   @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  unit     Unit?    @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@index([operatorId])
+  @@index([assetId])
+  @@index([unitId])
 }

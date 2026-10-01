@@ -25,6 +25,7 @@ import { pruneAuthRecords } from "@/lib/auth/prune";
 import { checkTrackerSilence } from "@/lib/geo/silence-check";
 import { snapshotDatabase, type SnapshotOutcome } from "@/lib/backup/neon-snapshot";
 import { notifyOwner } from "@/lib/notify/owner";
+import { sweepOrphanFiles } from "@/lib/files/sweep";
 
 export type RunKind = "daily" | "sync";
 
@@ -45,6 +46,8 @@ export interface RunSummary {
   authRowsPruned: number;
   /** The daily pruning threw (the workspaces' part may still be fine). */
   pruneFailed: boolean;
+  /** Stored files removed because their record was deleted. */
+  filesSwept?: number;
   /** Urgent alerts the owners were told about (phone notification / email). */
   ownerAlerts?: number;
   /** The morning database snapshot ("skipped" without NEON_API_KEY). */
@@ -64,6 +67,8 @@ export interface RunDeps {
   silence?: (now: Date, operatorId: string) => Promise<number>;
   /** Tells the owner about fresh urgent alerts (lib/notify/owner.ts); tests leave it out. */
   notify?: (operatorId: string, now: Date) => Promise<{ alerts: number }>;
+  /** Removes files whose record is gone (lib/files/sweep.ts); tests leave it out. */
+  sweepFiles?: (now: Date) => Promise<number>;
   /** The morning snapshot; tests leave it out. */
   backup?: (now: Date) => Promise<SnapshotOutcome>;
   /** Milliseconds since the run began (tests pass their own clock). */
@@ -77,6 +82,7 @@ const DEFAULT_DEPS: RunDeps = {
   prune: (now) => pruneAuthRecords(prisma, now),
   silence: checkTrackerSilence,
   notify: (operatorId, now) => notifyOwner(operatorId, now),
+  sweepFiles: (now) => sweepOrphanFiles(now),
   backup: (now) => snapshotDatabase("daily", now),
 };
 
@@ -187,6 +193,14 @@ export async function runAutomation(
       summary.errors.push(`prune: ${message(error)}`);
       console.error(`[automation] pruning sign-in records failed:`, error);
     }
+  }
+
+  if (kind === "daily" && deps.sweepFiles) {
+    // Housekeeping: a failure is logged and tried again tomorrow.
+    summary.filesSwept = await deps.sweepFiles(now).catch((error) => {
+      console.error(`[automation] file sweep failed:`, error);
+      return 0;
+    });
   }
 
   // A failed prune fails the run (the cron answers 500, so it is noticed),

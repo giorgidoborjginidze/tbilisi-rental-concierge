@@ -6,7 +6,7 @@
 import { prisma } from "@/lib/db";
 
 export async function exportWorkspace(operatorId: string) {
-  const [operator, assets, units, alerts, incomes, templates, messages, payments] = await Promise.all([
+  const [operator, assets, units, alerts, incomes, templates, messages, payments, files] = await Promise.all([
     prisma.operator.findUnique({
       where: { id: operatorId },
       select: {
@@ -44,6 +44,11 @@ export async function exportWorkspace(operatorId: string) {
       where: { operatorId },
       select: { plan: true, amountMinor: true, currency: true, status: true, createdAt: true, paidAt: true },
     }),
+    // The list of stored documents and photos; each opens from its page.
+    prisma.attachment.findMany({
+      where: { operatorId },
+      select: { id: true, assetId: true, unitId: true, kind: true, name: true, contentType: true, size: true, createdAt: true },
+    }),
   ]);
   return {
     exportedAt: new Date().toISOString(),
@@ -56,5 +61,6 @@ export async function exportWorkspace(operatorId: string) {
     messageTemplates: templates,
     messages,
     billingPayments: payments,
+    files,
   };
 }

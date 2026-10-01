@@ -62,11 +62,13 @@ export const PRIVACY: LegalText = {
           "მონაცემებს მხოლოდ იმ მომწოდებლებს ვანდობთ, რომლებიც სერვისის სამუშაოდ გვჭირდება, და მხოლოდ იმას, რაც მათ თავიანთი ნაწილისთვის სჭირდებათ:",
         ],
         list: [
-          "Vercel — ჰოსტინგი: ყველა მოთხოვნა მასზე გადის.",
+          "Vercel — ჰოსტინგი: ყველა მოთხოვნა მასზე გადის; ასევე დახურული საცავი, სადაც ინახება შენ მიერ ატვირთული დოკუმენტები და ფოტოები.",
           "Neon — მონაცემთა ბაზა: ყველა შენახული მონაცემი.",
           "Meta Platforms (WhatsApp Business) — მიმღების ტელეფონი და შეტყობინების ტექსტი, როცა შეტყობინება იგზავნება.",
           "Flitt — ბარათით გადახდა: ბარათის მონაცემებს თავად იღებს.",
-          "Resend — პაროლის აღდგენის წერილი: შენი ელფოსტა.",
+          "Resend — პაროლის აღდგენის და სასწრაფო შეტყობინებების წერილები: შენი ელფოსტა და შეტყობინების ტექსტი.",
+          "შენი ბრაუზერის push-სერვისი (Google, Apple, Mozilla) — დაშიფრული შეტყობინება ტელეფონზე, თუ ჩართავ.",
+          "Sentry — შეცდომების ანგარიშები: შეცდომის ტექნიკური დეტალები, სახელისა და ელფოსტის გარეშე.",
           "Anthropic — ფასის შეთავაზების ახსნის ტექსტი (ერთეულის სახელი, უბანი, ფასები), როცა ეს ფუნქცია ჩართულია.",
         ],
         after: [
@@ -189,11 +191,13 @@ export const PRIVACY: LegalText = {
           "We entrust data only to the providers the service needs to run, and only with what each needs for its part:",
         ],
         list: [
-          "Vercel — hosting: every request passes through it.",
+          "Vercel — hosting: every request passes through it; also the private store that keeps the documents and photos you upload.",
           "Neon — database: all stored data.",
           "Meta Platforms (WhatsApp Business) — the recipient's phone number and the message text when a message is sent.",
           "Flitt — card payments: it receives the card details itself.",
-          "Resend — password-reset email: your email address.",
+          "Resend — password-reset and urgent-alert emails: your email address and the alert text.",
+          "Your browser's push service (Google, Apple, Mozilla) — the encrypted notification to your phone, if you turn it on.",
+          "Sentry — error reports: the technical details of an error, without your name or email.",
           "Anthropic — the text of price-suggestion explanations (unit name, district, prices), when that feature is enabled.",
         ],
         after: [

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireOperator } from "@/lib/auth/session";
+import FilesSection from "@/app/files/files-section";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
 import { addAssetToRentals, restoreContract } from "@/lib/assets/actions";
@@ -532,6 +533,9 @@ export default async function EditAssetPage({
           />
         </section>
       )}
+
+      {/* ── Documents and photos ── */}
+      <FilesSection place={{ assetId: asset.id }} locale={locale} operatorId={operator.id} readOnly={operator.isDemo} />
 
       <h2>{t(locale, "asset_edit_title")}</h2>
       <AssetForm
