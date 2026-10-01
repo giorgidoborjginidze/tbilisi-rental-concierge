@@ -232,3 +232,24 @@ export async function deleteUnit(formData: FormData) {
   }
   redirect("/units");
 }
+
+/**
+ * The unit's calendar export (app/api/ical/[token]): created on first ask,
+ * and "new link" replaces the token, so the old address stops answering
+ * (a channel that had it simply stops importing until it gets the new one).
+ */
+export async function makeCalendarExport(formData: FormData) {
+  const operator = await requireWriter();
+  const unitId = str(formData, "unitId");
+  const unit = await prisma.unit.findFirst({ where: { id: unitId, operatorId: operator.id }, select: { id: true } });
+  if (!unit) return null;
+  const { randomBytes } = await import("node:crypto");
+  const token = randomBytes(24).toString("base64url");
+  await prisma.calendarExport.upsert({
+    where: { unitId: unit.id },
+    create: { unitId: unit.id, token },
+    update: { token, createdAt: new Date() },
+  });
+  revalidatePath(`/units/${unit.id}/edit`);
+  return { ok: true };
+}

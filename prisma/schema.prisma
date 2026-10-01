@@ -177,6 +177,7 @@ model Unit {
   alerts             Alert[]
   asset              Asset?
   feeds              UnitFeed[]
+  calendarExport     CalendarExport?
 
   @@index([operatorId])
   @@index([district])
@@ -185,6 +186,18 @@ model Unit {
 // How the last sync of ONE iCal feed of a unit went. The list of feed URLs
 // itself stays in Unit.channelLinks.icalUrls; a row is written for each URL
 // at every sync (and removed when the owner deletes the URL).
+// The unit's own calendar, published for Airbnb / Booking.com to read
+// (app/api/ical/[token]): a secret token in the URL, no names in it. A new
+// token ("new link") retires the old address at once.
+model CalendarExport {
+  id        String   @id @default(cuid())
+  unitId    String   @unique
+  token     String   @unique
+  createdAt DateTime @default(now())
+
+  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+}
+
 model UnitFeed {
   id            String    @id @default(cuid())
   unitId        String

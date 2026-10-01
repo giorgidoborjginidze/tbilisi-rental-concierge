@@ -10,6 +10,9 @@ import FeedStatus from "../../feed-status";
 import { feedUrlsOf } from "@/lib/ical/run-sync";
 import { cityKey, districtLabel } from "@/lib/places";
 import { titled } from "@/lib/i18n/metadata";
+import { headers } from "next/headers";
+import { shownOrigin } from "@/lib/site";
+import CalendarExport from "../../calendar-export";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +28,11 @@ export default async function EditUnitPage({
   const { id } = await params;
   const unit = await prisma.unit.findFirst({
     where: { id, operatorId: operator.id },
-    include: { feeds: true, asset: { select: { id: true, name: true, nameKa: true } } },
+    include: {
+      feeds: true,
+      asset: { select: { id: true, name: true, nameKa: true } },
+      calendarExport: { select: { token: true } },
+    },
   });
   if (!unit) notFound();
 
@@ -72,6 +79,28 @@ export default async function EditUnitPage({
           icalUrls: links.icalUrls.join("\n"),
         }}
       />
+
+      {/* Activo's nights, for the channels to block (lib/ical/export.ts). */}
+      <section id="calendar-export" style={{ marginTop: 28 }}>
+        <h2>{t(locale, "cal_export_title")}</h2>
+        <p className="field-hint">{t(locale, "cal_export_sub")}</p>
+        <CalendarExport
+          unitId={unit.id}
+          base={
+            unit.calendarExport
+              ? `${shownOrigin(await headers())}/api/ical/${unit.calendarExport.token}.ics`
+              : null
+          }
+          labels={Object.fromEntries(
+            (
+              [
+                "cal_export_make", "cal_export_for_airbnb", "cal_export_for_booking", "cal_export_how",
+                "cal_export_new", "cal_export_new_q", "cancel",
+              ] as const
+            ).map((key) => [key, t(locale, key)]),
+          )}
+        />
+      </section>
     </main>
   );
 }
