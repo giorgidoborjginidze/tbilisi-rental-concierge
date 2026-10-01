@@ -5787,3 +5787,15 @@ main.legal { max-width: 780px; }
   position: relative;
 }
 @media (max-width: 560px) { .fence-map__box { height: 260px; } }
+
+/* ── Saved PRO scenarios (app/invest/pro) ── */
+.calc-save {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-border);
+}
+#kept tr[aria-current="true"] td { background: var(--color-surface-muted, rgba(79, 124, 255, 0.06)); }

@@ -87,6 +87,7 @@ model Operator {
   pushSubscriptions PushSubscription[]
   attachments       Attachment[]
   invoices          Invoice[]
+  savedCalcs        SavedCalc[]
 
   @@index([companyId])
 }
@@ -781,4 +782,22 @@ model Invoice {
 
   @@unique([operatorId, number])
   @@index([contractId])
+}
+
+// A calculation the owner kept from the PRO analysis (lib/invest/saved.ts):
+// the figures they typed and the currency, under a name of their choosing,
+// to open again and to compare side by side. The results are recomputed
+// from the figures every time, so a kept scenario never shows stale maths.
+model SavedCalc {
+  id         String   @id @default(cuid())
+  operatorId String
+  kind       String   @default("pro")
+  name       String
+  data       Json // { inputs: WorthinessInputs, currency: "GEL" | "USD" }
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  operator Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+
+  @@index([operatorId, kind])
 }

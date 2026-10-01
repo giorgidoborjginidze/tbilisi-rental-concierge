@@ -1,6 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { saveScenario } from "@/lib/invest/saved-actions";
+import type { SavedScenario } from "@/lib/invest/saved";
 import {
   analyzeWorthiness,
   isWorthinessExample,
@@ -17,12 +20,39 @@ import Kpi from "../../kpi";
 
 export default function ProCalculator({
   labels,
+  initial = null,
+  canSave = true,
+  justSaved = false,
 }: {
   labels: Record<string, string>;
+  /** A kept scenario opened from the list (?calc=…). */
+  initial?: { id: string; name: string; scenario: SavedScenario } | null;
+  /** False for the demo / view-only: the figures can be tried, not kept. */
+  canSave?: boolean;
+  /** Just kept (?saved=1): the confirmation survives the reload to the kept scenario. */
+  justSaved?: boolean;
 }) {
   // Lari first, like the free calculator; dollars stay one click away.
-  const [inputs, setInputs] = useState<WorthinessInputs>(WORTHINESS_DEFAULTS_GEL);
-  const [currency, setCurrency] = useState<WorthinessCurrency>("GEL");
+  const [inputs, setInputs] = useState<WorthinessInputs>(initial?.scenario.inputs ?? WORTHINESS_DEFAULTS_GEL);
+  const [currency, setCurrency] = useState<WorthinessCurrency>(initial?.scenario.currency ?? "GEL");
+  // Keeping the scenario: its name, and the kept row it updates.
+  const router = useRouter();
+  const [name, setName] = useState(initial?.name ?? "");
+  const [savedId, setSavedId] = useState<string | null>(initial?.id ?? null);
+  const [saveNote, setSaveNote] = useState<string | null>(justSaved ? labels.calc_saved : null);
+  const [saving, startSaving] = useTransition();
+  const save = (asNew: boolean) =>
+    startSaving(async () => {
+      const result = await saveScenario({ id: asNew ? null : savedId, name, data: { inputs, currency } });
+      if ("id" in result) {
+        setSavedId(result.id);
+        setSaveNote(labels.calc_saved);
+        router.replace(`/invest/pro?calc=${result.id}&saved=1`, { scroll: false });
+        router.refresh();
+      } else {
+        setSaveNote(labels[result.error] ?? labels.error_required);
+      }
+    });
   // The owner's own figures were kept through a currency switch.
   const [notConverted, setNotConverted] = useState(false);
   const [showMore, setShowMore] = useState(false);
@@ -137,6 +167,23 @@ export default function ProCalculator({
                 {field("depreciationYears", labels.wor_depr_years, 0.5)}
               </>
             )}
+          </div>
+        )}
+        {canSave && (
+          <div className="calc-save">
+            <label className="field" style={{ flex: "1 1 200px" }}>
+              {labels.calc_name}
+              <input value={name} onChange={(event) => setName(event.target.value)} placeholder={labels.calc_name_ph} maxLength={80} />
+            </label>
+            <button type="button" className="btn-primary" disabled={saving || !name.trim()} onClick={() => save(false)}>
+              {savedId ? labels.calc_save_changes : labels.calc_save}
+            </button>
+            {savedId && (
+              <button type="button" className="btn-secondary" disabled={saving || !name.trim()} onClick={() => save(true)}>
+                {labels.calc_save_new}
+              </button>
+            )}
+            {saveNote && <p role="status" className="field-hint" style={{ flexBasis: "100%", margin: 0 }}>{saveNote}</p>}
           </div>
         )}
       </div>
