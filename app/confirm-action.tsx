@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
+import { announceUndo } from "./undo-toast";
 
 // A destructive action that asks first — inside the page, never with the
 // browser's confirm() box. The first tap only opens a short question next
@@ -33,8 +34,10 @@ export default function ConfirmAction({
   cancelLabel,
   confirmClassName = "btn-danger btn-compact",
   inline = false,
+  undo,
 }: {
-  action: (formData: FormData) => void | Promise<void>;
+  /** May return `{ undo: fields }`: what `undo.action` needs to put it back. */
+  action: (formData: FormData) => unknown;
   /** Hidden fields posted with the action (ids). */
   fields: Record<string, string>;
   /** What the trigger shows: an icon or a word. */
@@ -49,6 +52,8 @@ export default function ConfirmAction({
   confirmClassName?: string;
   /** Keep the question on the trigger's line (tables, chip rows). */
   inline?: boolean;
+  /** An undo offer after the action ("Deleted. — Undo"), for 10 seconds. */
+  undo?: { action: (formData: FormData) => Promise<unknown>; label: string; done: string };
 }) {
   const [open, setOpen] = useState(false);
   const cancelRef = useRef<HTMLButtonElement>(null);
@@ -85,8 +90,20 @@ export default function ConfirmAction({
       // this component mounted (rotating a tracker key) must not leave a
       // second "confirm" on screen that would run it again.
       action={async (formData: FormData) => {
-        await action(formData);
+        const result = await action(formData);
         setOpen(false);
+        const fields = (result as { undo?: Record<string, string> } | null | undefined)?.undo;
+        if (undo && fields) {
+          announceUndo({
+            message: undo.done,
+            undoLabel: undo.label,
+            run: () => {
+              const data = new FormData();
+              for (const [name, value] of Object.entries(fields)) data.set(name, value);
+              return undo.action(data);
+            },
+          });
+        }
       }}
       className={`confirm-inline${inline ? " confirm-inline--row" : ""}`}
       role="alertdialog"

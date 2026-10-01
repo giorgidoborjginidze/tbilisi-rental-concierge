@@ -66,7 +66,7 @@ export async function processPing(
   const asset = await prisma.asset.findUnique({
     where: { id: assetId },
     include: {
-      operator: { select: { id: true, locale: true, notifyPhone: true, name: true } },
+      operator: { select: { id: true, locale: true, notifyPhone: true, name: true, payInstructions: true } },
       geofences: { where: { active: true } },
       // The driver is whoever's contract runs on the day of the ping — by
       // its dates, so a contract booked ahead is covered from its first

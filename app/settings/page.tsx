@@ -11,7 +11,7 @@ import {
 } from "@/lib/account/actions";
 import { WORKSPACE_PROFILES } from "@/lib/nav/model";
 import { currentSessionId } from "@/lib/auth/session";
-import { ChangeEmailForm, ChangePasswordForm } from "./security-forms";
+import { ChangeEmailForm, ChangePasswordForm, DeleteAccountForm } from "./security-forms";
 import { getBillingContext } from "@/lib/billing/context";
 import { planById, type AccountType } from "@/lib/billing/plans";
 import ThemeToggle from "../theme-toggle";
@@ -65,6 +65,7 @@ export default async function SettingsPage({
     "error_required", "error_password_short", "error_password_mismatch",
     "error_password_wrong", "error_too_many_attempts", "error_email_invalid",
     "error_email_unavailable", "error_demo_readonly",
+    "account_delete", "account_delete_hint", "account_delete_word", "account_delete_yes", "error_delete_word",
   ];
   const securityLabels = Object.fromEntries(securityKeys.map((k) => [k, t(locale, k)]));
 
@@ -190,6 +191,25 @@ export default async function SettingsPage({
               </button>
             </div>
           </form>
+        </div>
+      </section>
+
+      {/* ── Your data: a copy of it, and the way out ── */}
+      <section style={{ marginTop: 20 }}>
+        <h2>{t(locale, "settings_data")}</h2>
+        <div className="card" style={{ marginTop: 12, padding: 18, display: "grid", gap: 16 }}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span style={row}>
+              {t(locale, "data_export")}
+              <span className="field-hint" style={{ display: "block", margin: "2px 0 0" }}>
+                {t(locale, "data_export_hint")}
+              </span>
+            </span>
+            <a href="/settings/export" className="btn-secondary" download>
+              {t(locale, "data_export_button")}
+            </a>
+          </div>
+          {!operator.isDemo && <DeleteAccountForm labels={securityLabels} />}
         </div>
       </section>
 

@@ -26,3 +26,14 @@ describe("supportLauncherHidden", () => {
     }
   });
 });
+
+describe("supportLauncherPhoneHidden", () => {
+  it("leaves the phone's working pages free of the floating button", async () => {
+    const { supportLauncherPhoneHidden } = await import("./support");
+    expect(supportLauncherPhoneHidden("/invest/pro")).toBe(true);
+    expect(supportLauncherPhoneHidden("/assets/abc/rental")).toBe(true);
+    expect(supportLauncherPhoneHidden("/calendar")).toBe(true);
+    expect(supportLauncherPhoneHidden("/")).toBe(false);
+    expect(supportLauncherPhoneHidden("/assets")).toBe(false);
+  });
+});

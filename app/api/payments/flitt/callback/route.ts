@@ -87,7 +87,7 @@ export async function POST(request: Request) {
 
       const operator = await tx.operator.findUnique({
         where: { id: payment.operatorId },
-        select: { plan: true, paidUntil: true },
+        select: { plan: true, paidUntil: true, trialEndsAt: true },
       });
       if (!operator) return "done" as const;
 

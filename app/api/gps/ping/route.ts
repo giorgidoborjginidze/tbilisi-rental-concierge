@@ -14,6 +14,7 @@ import {
   type PingFields,
 } from "@/lib/geo/ping";
 import { flushOutbox } from "@/lib/notify/whatsapp";
+import { checkTrackerSilenceSoon } from "@/lib/geo/silence-check";
 
 // GPS ingest. Trackers do not call this by themselves: a gateway (a Wialon
 // retranslator per unit, or a small relay behind Traccar that maps each IMEI
@@ -109,6 +110,8 @@ async function handle(fields: PingFields, token: string | null) {
   // owner's outbox: a ping never sends another customer's messages.
   const queued = outcomes.some((outcome) => outcome.queued > 0);
   if (queued) await flushOutbox(device.asset.operatorId).catch(() => undefined);
+  // This car spoke; another of the workspace's cars may have gone quiet.
+  await checkTrackerSilenceSoon(device.asset.operatorId, now);
 
   return NextResponse.json({
     ok: true,

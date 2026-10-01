@@ -4,8 +4,11 @@ import { sweepStaleMessages } from "@/lib/rentals/settle";
 import { startOfTodayTbilisi, tbilisiDayStartInstant } from "@/lib/time";
 import { clampMessage, dailyLimitReason, type SentToday } from "./limits";
 import { normalizePhone } from "./phone";
+import { planStanding } from "@/lib/billing/plans";
 import {
   defaultTemplate,
+  isFixedTemplate,
+  optOutLine,
   render,
   TEMPLATE_ROLE,
   type TemplateKey,
@@ -56,6 +59,8 @@ export async function resolveTemplate(
   locale: Locale,
   key: TemplateKey,
 ): Promise<string> {
+  // The texts stating the owner's legal right are never replaced.
+  if (isFixedTemplate(key)) return defaultTemplate(locale, key);
   const row = await prisma.notifyTemplate.findUnique({
     where: { operatorId_key: { operatorId, key } },
   });
@@ -131,6 +136,24 @@ export async function queueMessage(input: QueueInput) {
   const phone = normalizePhone(input.phone);
   if (!phone) return null;
   const now = input.now ?? new Date();
+  const toRenter = TEMPLATE_ROLE[input.key] !== "owner";
+
+  // A renter who asked for no more messages gets none — whatever else the
+  // contract says; what still waits for them is withdrawn on the spot.
+  if (toRenter && input.contractId) {
+    // all-contracts: an opt-out holds even on a deleted contract.
+    const contract = await prisma.rentalContract.findUnique({
+      where: { id: input.contractId },
+      select: { messagesOptOutAt: true },
+    });
+    if (contract?.messagesOptOutAt) {
+      await prisma.notifyMessage.updateMany({
+        where: { dedupeKey: input.dedupeKey, status: { in: ["queued", "failed"] } },
+        data: { status: "cancelled", cancelReason: "opt_out", cancelledAt: now },
+      });
+      return null;
+    }
+  }
 
   const existing = await prisma.notifyMessage.findUnique({
     where: { dedupeKey: input.dedupeKey },
@@ -140,9 +163,9 @@ export async function queueMessage(input: QueueInput) {
   // can put it back from the outbox).
   if (existing?.status === "cancelled" && existing.cancelReason === "owner") return null;
 
-  const body = clampMessage(
-    render(await resolveTemplate(input.operatorId, input.locale, input.key), input.vars),
-  );
+  // Every message to a renter says how to stop them.
+  const rendered = render(await resolveTemplate(input.operatorId, input.locale, input.key), input.vars);
+  const body = clampMessage(toRenter ? `${rendered} ${optOutLine(input.locale)}` : rendered);
 
   if (existing && existing.status !== "cancelled") {
     if (existing.body !== body || existing.toPhone !== phone) {
@@ -249,15 +272,39 @@ export interface FlushResult {
 const SENDING_TIMEOUT_MS = 10 * 60_000;
 
 /**
- * Whether this workspace's messages go out over the Cloud API. Never for
- * the shared public demo: anyone can type a phone number and a text there,
- * so its messages only ever get the manual wa.me link (sent, if at all,
- * from the visitor's own WhatsApp).
+ * Whether this workspace's messages go out over the Cloud API: only for a
+ * paid plan. Never for the shared public demo (anyone can type a phone
+ * number and a text there) nor a trial — their messages get the manual
+ * wa.me link (sent, if at all, from the visitor's own WhatsApp).
  */
 export async function autoSendFor(operatorId: string): Promise<boolean> {
   if (!whatsappConfig()) return false;
-  const operator = await prisma.operator.findUnique({ where: { id: operatorId }, select: { isDemo: true } });
-  return operator != null && !operator.isDemo;
+  const operator = await prisma.operator.findUnique({
+    where: { id: operatorId },
+    select: { isDemo: true, accountType: true, plan: true, trialEndsAt: true, paidUntil: true, companyId: true },
+  });
+  if (!operator || operator.isDemo) return false;
+  // A team member's messages go out on the company's plan.
+  const account = operator.companyId
+    ? await prisma.operator.findUnique({
+        where: { id: operator.companyId },
+        select: { accountType: true, plan: true, trialEndsAt: true, paidUntil: true },
+      })
+    : operator;
+  if (!account) return false;
+  // Sending from the platform's number is for paying accounts: a trial (or
+  // an unpaid account) gets the one-tap wa.me link, sent from the owner's
+  // own WhatsApp — a fresh sign-up cannot use Activo to message strangers.
+  const standing = planStanding(
+    {
+      accountType: account.accountType === "business" ? "business" : "personal",
+      plan: account.plan,
+      trialEndsAt: account.trialEndsAt,
+      paidUntil: account.paidUntil,
+    },
+    new Date(),
+  );
+  return standing === "paid" || standing === "grace";
 }
 
 /**

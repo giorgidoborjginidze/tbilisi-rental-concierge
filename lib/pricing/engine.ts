@@ -1,13 +1,15 @@
 // Rule-based pricing engine v1 — pure and unit-testable, no I/O.
 //
-//   suggestedRate = baseNightlyRate × seasonalityFactor × demandFactor
+//   suggestedRate = baseNightlyRate × seasonality × demand × weekend
+//   (seasonality blends across month boundaries; Friday and Saturday
+//   nights carry the weekend factor)
 //   … nudged 25% toward the district benchmark ADR when one exists,
 //   clamped to [0.6×base, 1.8×base], rounded to whole currency units.
 //
 // If the benchmark ADR sits well above the suggestion, the unit is flagged
 // underpriced (feeds the `underpriced` alert).
 
-import { seasonalityFactor } from "./seasonality";
+import { seasonalityOn } from "./seasonality";
 import { cityKey } from "@/lib/places";
 
 export interface PricingInput {
@@ -24,6 +26,7 @@ export interface PricingInput {
 export type PricingFactors = {
   seasonality: number;
   demand: number;
+  weekend: number;
   benchmarkAdr: number | null;
   floor: number;
   ceiling: number;
@@ -50,7 +53,9 @@ export interface RateSteps {
   base: number;
   seasonality: number;
   demand: number;
-  /** base × seasonality × demand. */
+  /** Friday and Saturday nights (1 on other nights). */
+  weekend: number;
+  /** base × seasonality × demand × weekend. */
   raw: number;
   /** After the pull toward the district average (null without one). */
   nudged: number | null;
@@ -62,6 +67,14 @@ export interface RateSteps {
 }
 
 const BENCHMARK_NUDGE = 0.25; // pull 25% of the way toward benchmark ADR
+/** Friday and Saturday nights sell for more in Georgian city and resort markets. */
+export const WEEKEND_FACTOR = 1.1;
+
+/** The weekend factor of a night (Friday and Saturday). */
+export const weekendFactor = (date: Date): number => {
+  const day = date.getUTCDay();
+  return day === 5 || day === 6 ? WEEKEND_FACTOR : 1;
+};
 const FLOOR_RATIO = 0.6;
 const CEILING_RATIO = 1.8;
 const UNDERPRICED_RATIO = 1.25; // benchmark 25%+ above suggestion → underpriced
@@ -75,15 +88,16 @@ export function demandFactor(upcomingOccupancy: number): number {
 }
 
 export function suggestRate(input: PricingInput): PricingResult {
-  const month = input.date.getUTCMonth() + 1;
-  // Seasonality is keyed by the canonical city ("ბათუმი" → "Batumi").
-  const seasonality = seasonalityFactor(cityKey(input.city) ?? input.city, month);
+  // Seasonality is keyed by the canonical city ("ბათუმი" → "Batumi"),
+  // blended across month boundaries.
+  const seasonality = seasonalityOn(cityKey(input.city) ?? input.city, input.date);
   const demand = demandFactor(input.upcomingOccupancy);
+  const weekend = weekendFactor(input.date);
 
   const floor = input.baseNightlyRate * FLOOR_RATIO;
   const ceiling = input.baseNightlyRate * CEILING_RATIO;
 
-  const raw = input.baseNightlyRate * seasonality * demand;
+  const raw = input.baseNightlyRate * seasonality * demand * weekend;
   let rate = raw;
 
   const benchmarkAdr = input.benchmarkAdr ?? null;
@@ -104,6 +118,7 @@ export function suggestRate(input: PricingInput): PricingResult {
   else if (seasonality < 1) reasons.push("low_season");
   if (demand > 1) reasons.push("high_occupancy");
   else if (demand < 1) reasons.push("low_occupancy");
+  if (weekend > 1) reasons.push("weekend");
   if (pulls && capped == null) {
     if (benchmarkAdr > raw) reasons.push("below_benchmark");
     else if (benchmarkAdr < raw) reasons.push("above_benchmark");
@@ -113,7 +128,7 @@ export function suggestRate(input: PricingInput): PricingResult {
 
   return {
     suggestedRate,
-    factors: { seasonality, demand, benchmarkAdr, floor, ceiling },
+    factors: { seasonality, demand, weekend, benchmarkAdr, floor, ceiling },
     underpriced:
       benchmarkAdr != null && benchmarkAdr > suggestedRate * UNDERPRICED_RATIO,
     reasons,
@@ -121,6 +136,7 @@ export function suggestRate(input: PricingInput): PricingResult {
       base: input.baseNightlyRate,
       seasonality,
       demand,
+      weekend,
       raw,
       nudged,
       nudgeShare: BENCHMARK_NUDGE,

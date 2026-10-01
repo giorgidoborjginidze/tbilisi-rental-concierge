@@ -16,6 +16,8 @@ export interface TemplateField {
   body: string;
   /** True when `body` is still the built-in default. */
   isDefault: boolean;
+  /** Fixed wording (the owner's legal right towards the driver): shown, not edited. */
+  fixed?: boolean;
 }
 
 // The eight message bodies, editable in place. Clearing a field drops the
@@ -24,11 +26,14 @@ export interface TemplateField {
 export default function TemplatesForm({
   assetId,
   notifyPhone,
+  payInstructions,
   fields,
   labels,
 }: {
   assetId: string;
   notifyPhone: string;
+  /** How renters pay: the {pay_to} of the payment reminders. */
+  payInstructions: string;
   fields: TemplateField[];
   labels: Record<string, string>;
 }) {
@@ -54,12 +59,32 @@ export default function TemplatesForm({
         <span className="field-hint">{labels.tpl_notify_phone_hint}</span>
       </label>
 
+      <label className="field" style={{ marginTop: 12 }}>
+        {labels.tpl_pay_to}
+        <input
+          name="payInstructions"
+          maxLength={160}
+          defaultValue={sent?.payInstructions ?? payInstructions}
+          placeholder={labels.tpl_pay_to_placeholder}
+        />
+        <span className="field-hint">{labels.tpl_pay_to_hint}</span>
+      </label>
+
       <p className="field-hint" style={{ marginTop: 14 }}>
         {labels.tpl_vars_hint}
       </p>
 
       <div className="tpl-grid">
-        {fields.map((field) => (
+        {fields.map((field) =>
+          field.fixed ? (
+            // Read-only: the driver is told about the owner's right in one
+            // reviewed wording.
+            <div key={field.key} className="field">
+              <span className="tpl-grid__label">{field.label}</span>
+              <p className="tpl-fixed">{field.body}</p>
+              <span className="field-hint">{labels.tpl_fixed_hint}</span>
+            </div>
+          ) : (
           <label key={field.key} className="field">
             <span className="tpl-grid__label">
               {field.label}
@@ -82,7 +107,8 @@ export default function TemplatesForm({
               placeholder={field.body}
             />
           </label>
-        ))}
+          ),
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-3" style={{ marginTop: 14 }}>

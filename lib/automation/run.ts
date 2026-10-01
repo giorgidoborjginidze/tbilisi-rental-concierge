@@ -18,6 +18,7 @@ import { scanAlerts } from "@/lib/alerts/scan";
 import { syncAllUnits } from "@/lib/ical/run-sync";
 import { flushOutbox } from "@/lib/notify/whatsapp";
 import { pruneAuthRecords } from "@/lib/auth/prune";
+import { checkTrackerSilence } from "@/lib/geo/silence-check";
 
 export type RunKind = "daily" | "sync";
 
@@ -49,6 +50,10 @@ export interface RunDeps {
   scan: typeof scanAlerts;
   flush: typeof flushOutbox;
   prune: (now: Date) => ReturnType<typeof pruneAuthRecords>;
+  /** The silent-tracker check (lib/geo/silence-check.ts), run on every sync too. */
+  silence?: (now: Date, operatorId: string) => Promise<number>;
+  /** Milliseconds since the run began (tests pass their own clock). */
+  elapsed?: () => number;
 }
 
 const DEFAULT_DEPS: RunDeps = {
@@ -56,7 +61,18 @@ const DEFAULT_DEPS: RunDeps = {
   scan: scanAlerts,
   flush: flushOutbox,
   prune: (now) => pruneAuthRecords(prisma, now),
+  silence: checkTrackerSilence,
 };
+
+/**
+ * The function has 300 s (app/api/cron/route.ts). Past this point the
+ * remaining workspaces skip their calendar pull (each feed may take up to
+ * 15 s) and only get the scan and delivery, so a run with many slow feeds
+ * still reaches every workspace's late rent and messages.
+ */
+export const SYNC_BUDGET_MS = 150_000;
+/** Past this point the run stops starting workspaces, so it can record itself. */
+export const RUN_BUDGET_MS = 270_000;
 
 const message = (error: unknown) =>
   (error instanceof Error ? error.message : String(error)).slice(0, 200);
@@ -87,11 +103,20 @@ export async function runAutomation(
 
   const operators = await prisma.operator.findMany({ select: { id: true }, orderBy: { createdAt: "asc" } });
   summary.operators = operators.length;
+  const began = Date.now();
+  const elapsed = deps.elapsed ?? (() => Date.now() - began);
 
   for (const { id } of operators) {
+    if (elapsed() > RUN_BUDGET_MS) {
+      // Out of time: recorded as not done, so /alerts says so and the
+      // cron answers 500 — never a silently half-finished run.
+      summary.failedOperators.push(id);
+      continue;
+    }
     try {
-      // Calendars first, so the scan sees today's bookings.
-      const feeds = await deps.sync(undefined, id);
+      // Calendars first, so the scan sees today's bookings — while there is
+      // time for them.
+      const feeds = elapsed() > SYNC_BUDGET_MS ? [] : await deps.sync(undefined, id);
       summary.feeds += feeds.filter((feed) => !feed.demo).length;
       summary.bookingsCreated += feeds.reduce((sum, feed) => sum + feed.created, 0);
       summary.bookingsUpdated += feeds.reduce((sum, feed) => sum + feed.updated, 0);
@@ -108,6 +133,9 @@ export async function runAutomation(
         summary.sent += flushed.sent;
         summary.failed += flushed.failed;
         summary.pending += flushed.pending;
+      } else if (deps.silence) {
+        // Between the daily runs: a tracker that went quiet is still noticed.
+        summary.alertsCreated += await deps.silence(now, id);
       }
     } catch (error) {
       summary.failedOperators.push(id);

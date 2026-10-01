@@ -7,8 +7,9 @@ import { requireWriter } from "@/lib/auth/session";
 import type { FormState } from "@/lib/units/actions";
 import type { StringKey } from "@/lib/i18n/strings";
 import { submittedValues } from "@/lib/forms";
-import { parseTradeInput } from "@/lib/assets/trade-input";
-import { startOfTodayTbilisi } from "@/lib/time";
+import { parseTradeInput, toUsdTrade } from "@/lib/assets/trade-input";
+import { usdGelOn } from "@/lib/prices/usd-gel-on";
+import { tbilisiFormat, startOfTodayTbilisi } from "@/lib/time";
 import { removalShortfall, sellShortfall, type CryptoTradeLike } from "@/lib/crypto/holdings";
 import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
@@ -47,7 +48,12 @@ export async function addTrade(
     today: startOfTodayTbilisi(),
   });
   if ("error" in parsed) return fail(parsed.error);
-  const trade = parsed.value!;
+  // Bought in lari: stored in USD at the NBG rate of that day.
+  const trade = toUsdTrade(
+    parsed.value!,
+    parsed.value!.priceCurrency === "GEL" ? (await usdGelOn(parsed.value!.tradedAt))?.rate ?? null : null,
+  );
+  if (!trade) return fail("error_rate_unavailable");
 
   // Average cost only makes sense for what was actually held: a sell may
   // not exceed the quantity held on its date — nor leave a later sell
@@ -60,6 +66,20 @@ export async function addTrade(
       const metal = asset.category === "metal";
       const held = formatQuantity(short.held, asset.category);
       const unit = metal ? t(locale, "metal_unit_oz") : asset.symbol ?? "";
+      if (short.later) {
+        // It fits on its own date but uncovers a later sale: say which.
+        const at = short.later.tradedAt ? new Date(short.later.tradedAt as string | number | Date) : null;
+        return {
+          error: "error_sell_uncovers_later",
+          detail: [
+            at ? tbilisiFormat(locale, { day: "numeric", month: "short", year: "numeric" }).format(at) : null,
+            `${formatQuantity(short.later.quantity, asset.category)} ${unit}`.trim(),
+          ]
+            .filter(Boolean)
+            .join(" · ") + ".",
+          values: submittedValues(formData),
+        };
+      }
       return {
         error: "error_sell_exceeds",
         detail: `${held} ${unit}`.trim() + ".",
@@ -87,12 +107,12 @@ export async function deleteTrade(formData: FormData) {
   const operator = await requireWriter();
   const tradeId = str(formData, "tradeId");
   const assetId = str(formData, "assetId");
-  if (!tradeId) return;
+  if (!tradeId) return null;
   const trade = await prisma.cryptoTrade.findFirst({
     where: { id: tradeId, asset: { operatorId: operator.id } },
     select: { assetId: true },
   });
-  if (!trade) return;
+  if (!trade) return null;
 
   // A buy that a later sell depends on stays: deleting it would leave
   // that sell selling what was never held. The page says so.
@@ -102,8 +122,47 @@ export async function deleteTrade(formData: FormData) {
     redirect(`/assets/${trade.assetId}/edit?trade=blocked#trades`);
   }
 
-  await prisma.cryptoTrade.delete({ where: { id: tradeId } });
+  const gone = await prisma.cryptoTrade.delete({ where: { id: tradeId } });
   revalidatePath("/assets");
   revalidatePath("/");
   revalidatePath(`/assets/${assetId || trade.assetId}/edit`);
+  // What the undo puts back.
+  return {
+    undo: {
+      assetId: gone.assetId,
+      side: gone.side,
+      quantity: String(gone.quantity),
+      unitPrice: String(gone.unitPrice),
+      tradedAt: gone.tradedAt.toISOString(),
+      createdAt: gone.createdAt.toISOString(),
+    },
+  };
+}
+
+/** Undo of a deleted trade: the same trade, in its own place in the history. */
+export async function restoreTrade(formData: FormData): Promise<void> {
+  const operator = await requireWriter();
+  const assetId = str(formData, "assetId");
+  const asset = assetId
+    ? await prisma.asset.findFirst({ where: { id: assetId, operatorId: operator.id }, select: { id: true } })
+    : null;
+  if (!asset) return;
+  const quantity = Number(str(formData, "quantity"));
+  const unitPrice = Number(str(formData, "unitPrice"));
+  const tradedAt = new Date(str(formData, "tradedAt"));
+  const createdAt = new Date(str(formData, "createdAt"));
+  if (!(quantity > 0) || !(unitPrice >= 0) || Number.isNaN(tradedAt.getTime()) || Number.isNaN(createdAt.getTime())) return;
+  await prisma.cryptoTrade.create({
+    data: {
+      assetId,
+      side: str(formData, "side") === "sell" ? "sell" : "buy",
+      quantity,
+      unitPrice,
+      tradedAt,
+      createdAt: createdAt > new Date() ? new Date() : createdAt,
+    },
+  });
+  revalidatePath("/assets");
+  revalidatePath("/");
+  revalidatePath(`/assets/${assetId}/edit`);
 }

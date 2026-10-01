@@ -65,3 +65,12 @@ describe("fleetRank", () => {
     expect(fleetRank({ ...car, rented: true, silent: true })).toBe(2);
   });
 });
+
+describe("rentalDesk for personal use", () => {
+  it("a car kept for personal use with no contract gets no desk; with a contract it keeps one", () => {
+    expect(rentalDesk("vehicle", 0, "personal_use")).toBeNull();
+    expect(rentalDesk("real_estate", 0, "personal_use")).toBeNull();
+    expect(rentalDesk("vehicle", 1, "personal_use")).toBe("vehicle");
+    expect(rentalDesk("vehicle", 0, "rented")).toBe("vehicle");
+  });
+});

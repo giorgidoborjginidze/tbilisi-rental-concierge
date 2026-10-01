@@ -7,11 +7,14 @@ export default function UnitFilter({
   selected,
   allLabel,
   basePath = "/calendar",
+  label,
 }: {
   units: { id: string; label: string }[];
   selected: string;
   allLabel?: string;
   basePath?: string;
+  /** The select's accessible name ("Unit"). */
+  label: string;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -19,6 +22,7 @@ export default function UnitFilter({
   return (
     <span className="field">
       <select
+        aria-label={label}
         value={selected}
         onChange={(event) => {
           const params = new URLSearchParams(searchParams);

@@ -19,9 +19,11 @@ export interface TradeInput {
   side: "buy" | "sell";
   /** Coins, shares or troy ounces. */
   quantity: number;
-  /** USD per coin / share / troy ounce. */
+  /** Per coin / share / troy ounce, in `priceCurrency` (stored in USD). */
   unitPrice: number;
   tradedAt: Date;
+  /** The currency the price was typed in; GEL is converted at the NBG rate of the trade's date. */
+  priceCurrency: "USD" | "GEL";
 }
 
 const dateOf = (raw: string): Date | null => {
@@ -61,6 +63,17 @@ export function parseTradeInput(
       quantity: grams ? quantity / TROY_OUNCE_GRAMS : quantity,
       unitPrice: grams ? price * TROY_OUNCE_GRAMS : price,
       tradedAt,
+      priceCurrency: get("priceCurrency") === "GEL" ? "GEL" : "USD",
     },
   };
+}
+
+/**
+ * A trade priced in lari, in USD (what holdings are stored in): the GEL
+ * price divided by the GEL-per-USD rate of its date. USD trades pass as is.
+ */
+export function toUsdTrade(trade: TradeInput, gelPerUsd: number | null): TradeInput | null {
+  if (trade.priceCurrency === "USD") return trade;
+  if (!gelPerUsd || gelPerUsd <= 0) return null;
+  return { ...trade, unitPrice: trade.unitPrice / gelPerUsd, priceCurrency: "USD" };
 }

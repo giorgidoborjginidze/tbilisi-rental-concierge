@@ -8,6 +8,7 @@ import HeroLogo from "./hero-logo";
 import MotionPause from "./motion-pause";
 import PortfolioDeck from "./portfolio-deck";
 import CountUp from "./count-up";
+import { IconCar, IconChat, IconClock, IconPin } from "./icons";
 
 // Public, informational landing for signed-out visitors: what the
 // product is, four benefits, the free calculator, one price line.
@@ -212,6 +213,44 @@ export default function Landing({ locale }: { locale: Locale }) {
                 style={{ "--d": `${(i % 14) * 0.3 + Math.floor(i / 14) * 0.15}s` } as React.CSSProperties}
               />
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* For a car-rental owner: what the desk shows on the day a driver
+          is late — the late row, the red line on the map, and the formal
+          WhatsApp message ready to send. A static picture, not live data. */}
+      <section className="land-fleet">
+        <div>
+          <h2 style={{ marginBottom: 4 }}>{t(locale, "land_fleet_title")}</h2>
+          <p style={{ color: "var(--color-text-muted)", fontSize: 14, maxWidth: 460 }}>
+            {t(locale, "land_fleet_sub")}
+          </p>
+        </div>
+        <div className="lf" aria-hidden>
+          <div className="lf__row">
+            <span className="lf__icon"><IconCar size={18} /></span>
+            <span className="lf__main">
+              <strong>{t(locale, "land_fleet_car")}</strong>
+              <span className="lf__muted">{t(locale, "land_fleet_driver")}</span>
+            </span>
+            <span className="lf__late"><IconClock size={14} /> {t(locale, "land_fleet_late")}</span>
+          </div>
+          <div className="lf__row">
+            <span className="lf__icon lf__icon--alert"><IconPin size={18} /></span>
+            <span className="lf__main">
+              <strong>{t(locale, "land_fleet_line")}</strong>
+              <span className="lf__muted">{t(locale, "land_fleet_line_sub")}</span>
+            </span>
+            <svg className="lf__map" viewBox="0 0 64 40" width="64" height="40">
+              <circle cx="28" cy="20" r="14" fill="none" strokeDasharray="3 3" />
+              <path d="M28 20 C38 18 44 12 56 8" fill="none" />
+              <circle cx="56" cy="8" r="3" />
+            </svg>
+          </div>
+          <div className="lf__wa">
+            <span className="lf__wa-head"><IconChat size={14} /> WhatsApp</span>
+            <p>{t(locale, "land_fleet_msg")}</p>
           </div>
         </div>
       </section>

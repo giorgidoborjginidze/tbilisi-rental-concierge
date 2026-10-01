@@ -6,7 +6,7 @@
 
 import { t, type Locale, type StringKey } from "@/lib/i18n/strings";
 import { CONTACT_EMAIL, LEGAL_ENTITY } from "@/lib/contact";
-import { GRACE_DAYS, plansFor, TRIAL_DAYS, type AccountType } from "@/lib/billing/plans";
+import { FREE_LIMITS, GRACE_DAYS, plansFor, TRIAL_DAYS, type AccountType } from "@/lib/billing/plans";
 import { formatMoney } from "@/lib/format";
 import type { LegalValues } from "./doc";
 
@@ -42,6 +42,10 @@ export function legalValues(locale: Locale): LegalValues {
     trial: TRIAL_DAYS,
     grace: GRACE_DAYS,
     plans: planPrices(locale),
+    free:
+      locale === "ka"
+        ? `${FREE_LIMITS.maxAssets} აქტივი და ${FREE_LIMITS.maxUnits} ერთეული`
+        : `${FREE_LIMITS.maxAssets} assets and ${FREE_LIMITS.maxUnits} unit${FREE_LIMITS.maxUnits === 1 ? "" : "s"}`,
     updated: LEGAL_UPDATED,
   };
 }

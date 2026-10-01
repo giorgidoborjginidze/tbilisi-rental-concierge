@@ -6,6 +6,7 @@ import "./globals.css";
 import Nav from "./nav";
 import AppMark from "./app-mark";
 import SupportBot, { type BotLabels } from "./support-bot";
+import UndoToast from "./undo-toast";
 import TiltProvider from "./tilt-provider";
 import TourMount from "./tour-mount";
 import TabBar from "./tab-bar";
@@ -143,6 +144,7 @@ export default async function RootLayout({
         <SupportBot labels={botLabels(locale)} waUrl={whatsappUrl()} />
         <TourMount />
         <TabBar />
+        <UndoToast />
       </body>
     </html>
   );

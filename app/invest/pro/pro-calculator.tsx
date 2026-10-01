@@ -181,7 +181,10 @@ export default function ProCalculator({
           <Kpi label={labels.wor_equity5} value={fmt(y5.equityValue)} sub={pct(y5.equityPct)} />
         </div>
 
-        <div className="card" style={{ overflowX: "auto" }}>
+        {/* On a phone each year is a small card with its labels (no sideways
+            scroll, nothing cut at the edge); wider, a table whose figures
+            never break. Focusable, so a keyboard can scroll it if it must. */}
+        <div className="card table-stack pro-years" tabIndex={0} role="region" aria-label={labels.wor_year}>
           <table>
             <thead>
               <tr>
@@ -196,11 +199,12 @@ export default function ProCalculator({
             <tbody>
               {result.years.map((row) => (
                 <tr key={row.year}>
-                  <td>{row.year}</td>
-                  <td className="num" style={{ fontWeight: 400 }}>{fmt(row.monthlyRent)}</td>
-                  <td className="num" style={{ fontWeight: 400 }}>{fmt(row.noi)}</td>
+                  <td className="table-stack__title">{labels.wor_year} {row.year}</td>
+                  <td className="num" data-label={labels.wor_col_rent} style={{ fontWeight: 400 }}>{fmt(row.monthlyRent)}</td>
+                  <td className="num" data-label={labels.wor_col_noi} style={{ fontWeight: 400 }}>{fmt(row.noi)}</td>
                   <td
-                    className="num"
+                    className="num table-stack__key"
+                    data-label={labels.wor_col_cf}
                     style={{
                       fontWeight: 500,
                       color:
@@ -211,8 +215,8 @@ export default function ProCalculator({
                   >
                     {fmt(row.atCashFlow)}
                   </td>
-                  <td className="num" style={{ fontWeight: 400 }}>{pct(row.atCocPct)}</td>
-                  <td className="num" style={{ fontWeight: 400 }}>{pct(row.equityPct)}</td>
+                  <td className="num" data-label={labels.wor_col_coc} style={{ fontWeight: 400 }}>{pct(row.atCocPct)}</td>
+                  <td className="num" data-label={labels.wor_col_equity} style={{ fontWeight: 400 }}>{pct(row.equityPct)}</td>
                 </tr>
               ))}
             </tbody>

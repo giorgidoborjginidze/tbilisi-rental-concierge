@@ -16,3 +16,33 @@ export function seasonalityFactor(city: string, month: number): number {
   const profile = city === "Batumi" ? BATUMI_SEASONALITY : TBILISI_SEASONALITY;
   return profile[month] ?? 1.0;
 }
+
+/** Days on each side of a month boundary over which two months' factors blend. */
+export const SEASON_BLEND_DAYS = 7;
+
+/**
+ * The season factor of one day, blended across month boundaries: within a
+ * week of the 1st it moves linearly from the old month's factor to the new
+ * one's, so the price does not fall off a cliff overnight (Batumi 30 Sep
+ * 162 → 1 Oct 122 became a slope).
+ */
+export function seasonalityOn(city: string, date: Date): number {
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth(); // 0-based
+  const day = date.getUTCDate();
+  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const own = seasonalityFactor(city, month + 1);
+  // Nights before/after the nearest boundary (the boundary sits between the
+  // last night of a month and the first of the next).
+  if (day <= SEASON_BLEND_DAYS) {
+    const prev = seasonalityFactor(city, ((month + 11) % 12) + 1);
+    const w = 0.5 + (day - 0.5) / (2 * SEASON_BLEND_DAYS);
+    return Math.round((prev * (1 - w) + own * w) * 1000) / 1000;
+  }
+  if (day > daysInMonth - SEASON_BLEND_DAYS) {
+    const next = seasonalityFactor(city, ((month + 1) % 12) + 1);
+    const w = 0.5 - (daysInMonth - day + 0.5) / (2 * SEASON_BLEND_DAYS);
+    return Math.round((own * (1 - w) + next * w) * 1000) / 1000;
+  }
+  return own;
+}

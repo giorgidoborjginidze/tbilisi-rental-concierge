@@ -3,7 +3,8 @@
 // (lib/billing/flitt.ts); the verified payment callback sets the plan and
 // extends `paidUntil`. The plan applies while it is paid, plus GRACE_DAYS;
 // after that the account falls back to the trial (if still running) or the
-// bottom tier. Nothing is deleted — only adding past the limits stops.
+// free allowance (FREE_LIMITS, below the cheapest plan). Nothing is deleted
+// — only adding past the limits stops.
 
 export type AccountType = "personal" | "business";
 
@@ -39,8 +40,26 @@ export const plansFor = (kind: AccountType): PlanDef[] =>
 export const trialPlan = (kind: AccountType): PlanDef =>
   plansFor(kind)[plansFor(kind).length - 1];
 
-/** Bottom tier — the fallback when the trial ends with no plan chosen. */
-export const fallbackPlan = (kind: AccountType): PlanDef => plansFor(kind)[0];
+/**
+ * What an account without a paid plan keeps once the trial is over (or a
+ * plan lapsed): a small free allowance, below the cheapest plan — so a paid
+ * plan always buys more than not paying. Nothing is deleted; only adding
+ * past these limits stops, and the Pro analysis is off. Not for sale.
+ */
+export const FREE_LIMITS = { maxAssets: 2, maxUnits: 1 } as const;
+
+export const freePlan = (kind: AccountType): PlanDef => ({
+  id: "free",
+  kind,
+  priceGel: 0,
+  maxAssets: FREE_LIMITS.maxAssets,
+  maxUnits: FREE_LIMITS.maxUnits,
+  maxMembers: 1,
+  analysis: false,
+});
+
+/** The fallback when the trial ends with no plan paid for: the free allowance. */
+export const fallbackPlan = (kind: AccountType): PlanDef => freePlan(kind);
 
 export const trialDaysLeft = (
   trialEndsAt: Date | null | undefined,
@@ -96,10 +115,14 @@ export function planStanding(state: BillingState, now: Date): PlanStanding {
 export function effectivePlan(state: BillingState, now: Date): PlanDef {
   const standing = planStanding(state, now);
   const chosen = planById(state.plan);
+  const inTrial = trialDaysLeft(state.trialEndsAt, now) > 0;
   if (chosen && (standing === "paid" || standing === "grace" || standing === "complimentary")) {
-    return chosen;
+    // Paying during the trial never takes the trial's top tier away: the
+    // larger of the two applies until the trial ends.
+    const trial = trialPlan(state.accountType);
+    return inTrial && standing !== "complimentary" && trial.maxAssets > chosen.maxAssets ? trial : chosen;
   }
-  if (trialDaysLeft(state.trialEndsAt, now) > 0) return trialPlan(state.accountType);
+  if (inTrial) return trialPlan(state.accountType);
   return fallbackPlan(state.accountType);
 }
 
@@ -151,12 +174,17 @@ export function renewedUntil(paidUntil: Date | null, now: Date, months = 1): Dat
  *   counted from now.
  */
 export function paidUntilAfterPayment(
-  current: { plan: string | null; paidUntil: Date | null },
+  current: { plan: string | null; paidUntil: Date | null; trialEndsAt?: Date | null },
   newPlanId: string,
   now: Date,
   months = 1,
 ): Date {
   const { paidUntil } = current;
+  // Paid during the free trial: the month starts when the trial ends, so the
+  // free days already granted are not paid for twice.
+  if ((!paidUntil || paidUntil <= now) && current.trialEndsAt && current.trialEndsAt > now) {
+    return addMonthsUtc(current.trialEndsAt, months);
+  }
   // Same plan, or nothing paid ahead: a plain renewal.
   if (!paidUntil || paidUntil <= now || current.plan === newPlanId) {
     return renewedUntil(paidUntil, now, months);

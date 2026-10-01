@@ -37,4 +37,35 @@ export const onRequestError: Instrumentation.onRequestError = async (error, requ
     stack: err?.stack?.split("\n").slice(1, 6).map((line) => line.trim()),
   };
   console.error(JSON.stringify(entry));
+  await alertWebhook(entry);
 };
+
+// Alerting: with ERROR_WEBHOOK_URL set (a Slack / Discord / Teams incoming
+// webhook, or any endpoint taking JSON), the same line is posted there too,
+// so an error reaches a person instead of waiting in the logs. At most one
+// post per route a minute per instance; a webhook that is down never
+// breaks the request.
+const lastPosted = new Map<string, number>();
+
+async function alertWebhook(entry: { route?: string; path: string; name: string; message: string; digest?: string; at: string }) {
+  const url = process.env.ERROR_WEBHOOK_URL?.trim();
+  if (!url || !/^https:\/\//.test(url)) return;
+  const key = entry.route ?? entry.path;
+  const now = Date.now();
+  if (now - (lastPosted.get(key) ?? 0) < 60_000) return;
+  lastPosted.set(key, now);
+  const text = `Activo error on ${entry.route ?? entry.path}: ${entry.name}: ${entry.message}${
+    entry.digest ? ` (digest ${entry.digest})` : ""
+  } at ${entry.at}`;
+  try {
+    await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      // "text" for Slack, "content" for Discord; the full line for anything else.
+      body: JSON.stringify({ text, content: text.slice(0, 1900), entry }),
+      signal: AbortSignal.timeout(3000),
+    });
+  } catch {
+    // the log line above is the record
+  }
+}

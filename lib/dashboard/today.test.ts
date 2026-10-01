@@ -23,12 +23,13 @@ describe("rentCardRank", () => {
     ];
     const cards = ["carA", "carB", "carC", "carD", "carE"].map((assetId, i) => ({
       assetId,
+      contractId: `c-${assetId}`,
       severe: false,
       periodsOwed: assetId === "carA" ? 1 : 5 - i,
     }));
-    const { rows, flags } = foldIntoCards(groups, new Set(cards.map((c) => c.assetId)));
+    const { rows, flags } = foldIntoCards(groups, cards);
     const rankOf = (card: (typeof cards)[number]) =>
-      rentCardRank({ severe: card.severe, flags: flags.get(card.assetId) ?? [] });
+      rentCardRank({ severe: card.severe, flags: flags.get(card.contractId) ?? [] });
     const segments = todaySegments(rows, cards, rankOf);
     expect(segments[0].kind).toBe("cards");
     expect((segments[0].items[0] as { assetId: string }).assetId).toBe("carA");
@@ -45,9 +46,45 @@ describe("foldIntoCards", () => {
       { assetId: "camry", rank: 2, kinds: [{ type: "tracker_silent" }] },
       { assetId: null, rank: 0, kinds: [{ type: "overlap" }] },
     ];
-    const { rows, flags } = foldIntoCards(groups, new Set(["prius"]));
+    const { rows, flags } = foldIntoCards(groups, [{ assetId: "prius", contractId: "k1" }]);
     expect(rows.map((row) => row.assetId)).toEqual(["camry", null]);
-    expect(flags.get("prius")).toEqual(["geofence_breach", "repossession_right"]);
+    expect(flags.get("k1")).toEqual(["geofence_breach", "repossession_right"]);
+  });
+
+  it("a contract's alert flags only that contract's card; the car's own alert flags every card of it", () => {
+    const groups = [
+      {
+        assetId: "car",
+        rank: 1,
+        kinds: [
+          { type: "repossession_right", alerts: [{ payload: { assetId: "car", contractId: "second" } }] },
+          { type: "geofence_breach", alerts: [{ payload: { assetId: "car" } }] },
+        ],
+      },
+    ];
+    const { rows, flags } = foldIntoCards(groups, [
+      { assetId: "car", contractId: "first" },
+      { assetId: "car", contractId: "second" },
+    ]);
+    expect(rows).toEqual([]);
+    expect(flags.get("first")).toEqual(["geofence_breach"]);
+    expect(flags.get("second")).toEqual(["repossession_right", "geofence_breach"]);
+  });
+
+  it("an alert of a contract with no card today stays a row with only that kind", () => {
+    const alert = { payload: { assetId: "car", contractId: "paidUp" } };
+    const groups = [
+      {
+        assetId: "car",
+        rank: 1,
+        alerts: [alert],
+        kinds: [{ type: "repossession_right", alerts: [alert] }],
+      },
+    ];
+    const { rows, flags } = foldIntoCards(groups, [{ assetId: "car", contractId: "other" }]);
+    expect(flags.get("other")).toBeUndefined();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].kinds.map((k) => k.type)).toEqual(["repossession_right"]);
   });
 });
 

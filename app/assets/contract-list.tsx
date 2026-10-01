@@ -5,6 +5,7 @@ import { deleteContract } from "@/lib/assets/actions";
 import { IconClose, IconEdit } from "@/app/icons";
 import ConfirmAction from "@/app/confirm-action";
 import ContractForm from "./contract-form";
+import { FormMessage } from "@/app/form-bits";
 import type { ContractValues } from "./contract-fields";
 
 export interface ContractRow {
@@ -31,6 +32,8 @@ export default function ContractList({
   labels: Record<string, string>;
 }) {
   const [editing, setEditing] = useState<string | null>(null);
+  // The row just saved says so once its form has closed.
+  const [saved, setSaved] = useState<string | null>(null);
   if (rows.length === 0) return null;
   return (
     <ul className="mb-4 space-y-2">
@@ -40,13 +43,17 @@ export default function ContractList({
             <div className="contract-row__text">
               {row.summary}{" "}
               <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{row.phase}</span>
+              {saved === row.id && <FormMessage saved={labels.contract_saved} />}
             </div>
             <div className="contract-row__actions">
               <button
                 type="button"
                 className={`btn-chip btn-chip--icon-text${editing === row.id ? " btn-chip--active" : ""}`}
                 aria-expanded={editing === row.id}
-                onClick={() => setEditing(editing === row.id ? null : row.id)}
+                onClick={() => {
+                  setSaved(null);
+                  setEditing(editing === row.id ? null : row.id);
+                }}
               >
                 <IconEdit size={14} /> {labels.edit}
               </button>
@@ -71,6 +78,10 @@ export default function ContractList({
                 labels={labels}
                 contract={{ ...row.values, id: row.id }}
                 onDone={() => setEditing(null)}
+                onSaved={() => {
+                  setEditing(null);
+                  setSaved(row.id);
+                }}
               />
             </div>
           )}

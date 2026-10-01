@@ -169,7 +169,7 @@ function generateBookings(
     checkIn: Date;
     checkOut: Date;
     nights: number;
-    amount: number;
+    amount: number | null;
     currency: string;
     status: string;
     externalId: string | null;
@@ -219,7 +219,12 @@ function generateBookings(
       checkIn,
       checkOut,
       nights,
-      amount: Math.round(nightlyRate * nights),
+      // Channel feeds carry no price: some imported stays wait for the
+      // owner to type theirs in (the demo shows the "no price" flow).
+      amount:
+        (source === "airbnb" || source === "booking") && rand() < 0.12
+          ? null
+          : Math.round(nightlyRate * nights),
       currency: "GEL",
       status,
       externalId,

@@ -16,6 +16,7 @@ export default function ContractForm({
   labels,
   contract,
   onDone,
+  onSaved,
 }: {
   assetId: string;
   labels: Record<string, string>;
@@ -23,6 +24,8 @@ export default function ContractForm({
   contract?: ContractValues & { id: string };
   /** Edit mode: close the form (the row shows the saved contract). */
   onDone?: () => void;
+  /** Edit mode: the save went through — the row takes over (and says so). */
+  onSaved?: () => void;
 }) {
   const editing = contract != null;
   // A new form after each added contract (fresh fields, same page).
@@ -31,6 +34,7 @@ export default function ContractForm({
     async (previous, formData) => {
       const result = await (editing ? updateContract : saveContract)(previous, formData);
       if (result?.ok && !editing) setRound((n) => n + 1);
+      if (result?.ok && editing) onSaved?.();
       return result;
     },
     null,
@@ -51,6 +55,8 @@ export default function ContractForm({
         deposit: sent.deposit,
         notes: sent.notes,
         remindersEnabled: sent.remindersEnabled === "on",
+        waConsent: sent.waConsent === "on",
+        messagesOptOut: sent.messagesOptOut === "on",
       }
     : contract;
 

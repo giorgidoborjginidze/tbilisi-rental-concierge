@@ -75,13 +75,18 @@ describe("planFeedSync", () => {
       known("other-feed", "x", "2026-10-20", { feedId: "feed-2" }),
       known("legacy", "y", "2026-10-20", { feedId: null }),
     ];
-    expect(planFeedSync([], stays, context).cancel).toEqual(["legacy"]);
-    expect(planFeedSync([], stays, { ...context, ownsLegacy: false }).cancel).toEqual([]);
+    // (A second empty fetch in a row, so the emptiness is believed.)
+    expect(planFeedSync([], stays, { ...context, emptyBefore: true }).cancel).toEqual(["legacy"]);
+    expect(planFeedSync([], stays, { ...context, ownsLegacy: false, emptyBefore: true }).cancel).toEqual([]);
   });
 
-  it("an empty but valid calendar cancels every future stay of the feed", () => {
-    const plan = planFeedSync([], [known("s1", "a", "2026-10-05")], context);
-    expect(plan.cancel).toEqual(["s1"]);
+  it("one empty calendar is held back as suspect; a second empty one in a row cancels", () => {
+    const first = planFeedSync([], [known("s1", "a", "2026-10-05")], context);
+    expect(first.cancel).toEqual([]);
+    expect(first.suspectEmpty).toBe(true);
+    const second = planFeedSync([], [known("s1", "a", "2026-10-05")], { ...context, emptyBefore: true });
+    expect(second.cancel).toEqual(["s1"]);
+    expect(second.suspectEmpty).toBeUndefined();
   });
 
   it("revives a stay that comes back, but never one the owner cancelled", () => {

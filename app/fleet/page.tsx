@@ -11,6 +11,7 @@ import { rentLabel } from "@/lib/rentals/display";
 import { deskHref, fleetRank } from "@/lib/rentals/desk";
 import { evaluateFence, shapeFromRow } from "@/lib/geo/fence";
 import { isTrackerSilent } from "@/lib/geo/silence";
+import { checkTrackerSilenceSoon } from "@/lib/geo/silence-check";
 import { formatDueMoney } from "@/lib/format";
 import { badgeClass, PAYMENT_TONE, TONE_BADGE, toneOf } from "@/lib/ui/tone";
 import { IconArrowRight } from "../icons";
@@ -29,6 +30,7 @@ export default async function FleetPage() {
   const locale = await getLocale();
   const today = startOfTodayTbilisi();
   const now = new Date();
+  await checkTrackerSilenceSoon(operator.id, now);
 
   const vehicles = await prisma.asset.findMany({
     where: { operatorId: operator.id, category: "vehicle" },
@@ -39,6 +41,19 @@ export default async function FleetPage() {
     },
     orderBy: { name: "asc" },
   });
+  // A red line crossed and not yet resolved: the car counts as outside
+  // even when its tracker has since gone quiet (the last word it gave).
+  const breached = new Set(
+    (
+      await prisma.alert.findMany({
+        where: { operatorId: operator.id, status: "open", type: "geofence_breach" },
+        select: { payload: true },
+        take: 200,
+      })
+    )
+      .map((alert) => (alert.payload as { assetId?: string } | null)?.assetId)
+      .filter((id): id is string => !!id),
+  );
 
   const rows = vehicles.map((vehicle) => {
     const running = activeContract(vehicle.contracts, today) ?? null;
@@ -54,11 +69,12 @@ export default async function FleetPage() {
         ? { lat: device.lastLat, lng: device.lastLng }
         : null;
     const outside =
-      position != null &&
-      vehicle.geofences.some((fence) => {
-        const shape = shapeFromRow(fence);
-        return shape ? evaluateFence(shape, fence.approachKm, position).zone === "outside" : false;
-      });
+      (watched && breached.has(vehicle.id)) ||
+      (position != null &&
+        vehicle.geofences.some((fence) => {
+          const shape = shapeFromRow(fence);
+          return shape ? evaluateFence(shape, fence.approachKm, position).zone === "outside" : false;
+        }));
     return {
       vehicle,
       running,
@@ -162,7 +178,10 @@ export default async function FleetPage() {
                   >
                     {endedOwing
                       ? `${t(locale, "alert_unpaid")}: ${formatDueMoney(status.amountDue, money.currency)}`
-                      : `${formatDueMoney(status.amountDue, money.currency)} · ${t(locale, "pay_days_overdue")}: ${status.daysOverdue}/${status.graceDays}`}
+                      : t(locale, "fleet_late_badge")
+                          .replace("{amount}", formatDueMoney(status.amountDue, money.currency))
+                          .replace("{days}", String(status.daysOverdue))
+                          .replace("{grace}", String(status.graceDays))}
                   </Link>
                 ) : status && running ? (
                   <span className={badgeClass(toneOf(PAYMENT_TONE, status.state))}>

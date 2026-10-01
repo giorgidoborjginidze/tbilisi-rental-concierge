@@ -27,6 +27,21 @@ export interface ContractInput {
   paidThrough: Date | null;
   /** null: the form had no reminders checkbox (keep what is stored / on). */
   remindersEnabled: boolean | null;
+  /** The renter agreed to WhatsApp notices; null: not on the form. */
+  waConsent: boolean | null;
+  /** The renter asked for no more messages; null: not on the form. */
+  messagesOptOut: boolean | null;
+}
+
+/**
+ * A yes/no that the contract stores as "since when" (consent given,
+ * objection made): keeps the first date while it stays ticked, clears it
+ * when unticked, and leaves it alone when the form had no such box.
+ */
+export function stampedFlag(ticked: boolean | null, stored: Date | null, now: Date): Date | null {
+  if (ticked == null) return stored;
+  if (!ticked) return null;
+  return stored ?? now;
 }
 
 /** Reads one submitted field (trimmed, "" when absent). */
@@ -59,7 +74,7 @@ export function parseContractInput(
   const startDate = dateOf(startRaw);
   const endDate = dateOf(endRaw);
   if (!startDate || !endDate) return { error: "error_required" };
-  if (endDate <= startDate) return { error: "error_dates" };
+  if (endDate <= startDate) return { error: "error_contract_dates" };
 
   const depositRaw = get("deposit");
   const deposit = depositRaw ? Number(depositRaw) : null;
@@ -97,6 +112,8 @@ export function parseContractInput(
       paidRaw,
       paidThrough,
       remindersEnabled: has("remindersField") ? get("remindersEnabled") === "on" : null,
+      waConsent: has("messagesField") ? get("waConsent") === "on" : null,
+      messagesOptOut: has("messagesField") ? get("messagesOptOut") === "on" : null,
     },
   };
 }

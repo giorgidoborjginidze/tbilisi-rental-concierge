@@ -1,12 +1,13 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { addTrade, deleteTrade } from "@/lib/crypto/actions";
+import { addTrade, deleteTrade, restoreTrade } from "@/lib/crypto/actions";
 import type { FormState } from "@/lib/units/actions";
 import { IconClose, IconTrendDown, IconTrendUp } from "@/app/icons";
 import { formatMoney, formatQuantity } from "@/lib/format";
 import ConfirmAction from "@/app/confirm-action";
 import { FormMessage, Req } from "@/app/form-bits";
+import PriceCurrencySelect, { priceLabelIn, type PriceCurrency } from "../../price-currency";
 
 export interface TradeRow {
   id: string;
@@ -40,6 +41,7 @@ export default function CryptoTrades({
 }) {
   const [open, setOpen] = useState<"buy" | "sell" | null>(initialOpen);
   const [unit, setUnit] = useState<"oz" | "g">("oz");
+  const [currency, setCurrency] = useState<PriceCurrency>("USD");
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     async (previous, formData) => {
       const result = await addTrade(previous, formData);
@@ -128,19 +130,23 @@ export default function CryptoTrades({
           </label>
           <label className="field">
             <span>
-              {priceLabel}
+              {priceLabelIn(priceLabel, currency)}
               <Req />
             </span>
-            <input
-              name="unitPrice"
-              type="number"
-              inputMode="decimal"
-              step="any"
-              min="0"
-              required
-              aria-required="true"
-              defaultValue={sent?.unitPrice}
-            />
+            <span className="price-with-currency">
+              <input
+                name="unitPrice"
+                type="number"
+                inputMode="decimal"
+                step="any"
+                min="0"
+                required
+                aria-required="true"
+                defaultValue={sent?.unitPrice}
+              />
+              <PriceCurrencySelect value={currency} onChange={setCurrency} label={labels.price_currency} />
+            </span>
+            {currency === "GEL" && <span className="hint">{labels.price_gel_hint}</span>}
           </label>
           <label className="field">
             {open === "buy" ? labels.trade_date_buy : labels.trade_date_sell}
@@ -167,7 +173,7 @@ export default function CryptoTrades({
                 <th className="num">{tableQuantity}</th>
                 <th className="num">{tablePrice}</th>
                 <th>{labels.trade_date}</th>
-                <th />
+                <th><span className="sr-only">{labels.col_actions}</span></th>
               </tr>
             </thead>
             <tbody>
@@ -187,6 +193,7 @@ export default function CryptoTrades({
                   <td className="num">
                     <ConfirmAction
                       action={deleteTrade}
+                      undo={{ action: restoreTrade, label: labels.decide_undo, done: labels.deleted_undo_trade }}
                       fields={{ tradeId: t.id, assetId }}
                       trigger={<IconClose size={15} />}
                       triggerClassName="btn-chip btn-chip--icon"

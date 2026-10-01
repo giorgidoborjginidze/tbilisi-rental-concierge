@@ -55,7 +55,9 @@
 - **ელფოსტა**: Resend — მხოლოდ პაროლის აღდგენა.
 - **ჰოსტინგი/ბაზა**: Vercel + Neon Postgres.
 - **ქუქიები**: `session`, `locale`, `theme`, `splash_seen`; localStorage — ტური. ანალიტიკა/რეკლამა არ არის.
-- **წაშლა**: წაშლილი ხელშეკრულება 30 დღე აღდგენადია (`CONTRACT_UNDO_MS`) და შემდეგაც დამალულად რჩება (soft delete). ანგარიშის თვითწაშლის ღილაკი **არ არსებობს** — წაშლა ხდება მოთხოვნით ელფოსტაზე. ექსპორტის ღილაკი **არ არსებობს** — ასლი იგზავნება მოთხოვნით.
+- **წაშლა**: წაშლილი ხელშეკრულება 30 დღე აღდგენადია (`CONTRACT_UNDO_MS`) და შემდეგაც დამალულად რჩება (soft delete). **ანგარიშის თვითწაშლა** არსებობს (პარამეტრები → შენი მონაცემები; პაროლი + სიტყვა „წაშლა“): ანგარიში მაშინვე იშლება ყველა დაკავშირებულ ჩანაწერთან ერთად (cascade), **მათ შორის გამოწერის გადახდების ცხრილიც (`Payment`)** — Flitt საკუთარ ჩანაწერს ინახავს. **ექსპორტი** არსებობს: `/settings/export` — მთელი სივრცის JSON ფაილი (`lib/account/export.ts`).
+- **თანხმობა/უარი**: ხელშეკრულების ფორმაში მფლობელი აღნიშნავს, დაეთანხმა თუ არა დამქირავებელი/მძღოლი WhatsApp შეტყობინებებს (`waConsentAt`) და ითხოვა თუ არა შეწყვეტა (`messagesOptOutAt`). უარის შემდეგ ახალი შეტყობინება აღარ მზადდება და რიგში მყოფი იხსნება; ყოველ შეტყობინებას ემატება ხაზი „შეტყობინებები აღარ გსურთ? აცნობეთ გამქირავებელს.“ თანხმობის ნიშანი გაგზავნას **არ** ბლოკავს — ეს მფლობელის ჩანაწერია.
+- **გადახდის ინსტრუქცია** (`Operator.payInstructions`, მაგ. ანგარიშის ნომერი) — მფლობელი წერს და ის ემატება გადახდის შეხსენებებს.
 
 ## 4. ღია კითხვები იურისტისთვის
 
@@ -64,7 +66,7 @@
 3. **GPS.** სამართლებრივი საფუძველი მძღოლის მდებარეობისთვის: ხელშეკრულება + წინასწარი წერილობითი ინფორმირება — საკმარისია თუ საჭიროა თანხმობა? საჭიროა მძღოლის ხელშეკრულების სანიმუშო პუნქტი (ტრეკერი + WhatsApp შეტყობინებები) — შეგვიძლია დავამატოთ აპში.
 4. **პასუხის ვადა** მონაცემთა სუბიექტის მოთხოვნაზე — ტექსტში „არაუგვიანეს 10 სამუშაო დღისა“. გადაამოწმეთ ახალი კანონის მიხედვით (მათ შორის გაგრძელების შესაძლებლობა).
 5. **საერთაშორისო გადაცემა** (აშშ/ევროკავშირი: Vercel, Meta, Anthropic, Resend, Neon-ის რეგიონი): რა გარანტიებია საჭირო და რომელი ქვეყნებია „ადეკვატური“ სამსახურის სიის მიხედვით?
-6. **შენახვის ვადები.** გადახდის ჩანაწერების ვადა („საგადასახადო კანონმდებლობით დადგენილი ვადა“) — ზუსტი რიცხვი. ანგარიშის წაშლა „30 დღეში“ — მისაღებია? სერვერის ჟურნალის ვადა Vercel-ის პარამეტრებზეა დამოკიდებული.
+6. **შენახვის ვადები.** თვითწაშლისას ჩვენი გადახდის ჩანაწერები (`Payment`) ანგარიშთან ერთად იშლება და ტექსტიც ასე ამბობს (Flitt-ის ჩანაწერი რჩება). საკმარისია თუ არა ეს Activo-ს საკუთარი საგადასახადო ვალდებულებისთვის, თუ ჩანაწერი (ანონიმიზებულად) უნდა დარჩეს? მოთხოვნით წაშლა „30 დღეში“ — მისაღებია? სერვერის ჟურნალის ვადა Vercel-ის პარამეტრებზეა დამოკიდებული.
 7. **თანხის დაბრუნება.** „გადახდილი თვე არ ბრუნდება, გარდა კანონით გათვალისწინებული შემთხვევებისა“ — მომხმარებლის უფლებების დაცვის კანონით (დისტანციური ხელშეკრულება, 14-დღიანი უარის უფლება ციფრულ მომსახურებაზე) რა უნდა ეწეროს ზუსტად?
 8. **პასუხისმგებლობის ზღვარი** — ბოლო 12 თვის გადახდილი თანხა. დასაშვებია თუ არა ფიზიკურ პირ მომხმარებელთან?
 9. **დავა** — თბილისის საქალაქო სასამართლო. საჭიროა თუ არა არბიტრაჟი ბიზნეს-მომხმარებლებისთვის?
@@ -74,9 +76,9 @@
 
 ## 5. პროდუქტში გასაკეთებელი, რაც ტექსტს სრულად ჭეშმარიტს გახდის
 
-- ანგარიშის წაშლის და მონაცემების ექსპორტის თვითმომსახურება (ახლა — მოთხოვნით).
+- ~~ანგარიშის წაშლის და მონაცემების ექსპორტის თვითმომსახურება~~ — გაკეთდა.
 - soft-delete-ით წაშლილი ხელშეკრულებების სრული წაშლა ვადის შემდეგ (ახლა რჩება).
-- დამქირავებლის/მძღოლის თანხმობის ჩეკბოქსი ხელშეკრულების ფორმაში და უარის თქმის (opt-out) გზა WhatsApp შეტყობინებებში.
+- ~~დამქირავებლის/მძღოლის თანხმობის ჩეკბოქსი და opt-out~~ — გაკეთდა (ჩანაწერის სახით; გაგზავნას თანხმობის გარეშე არ ბლოკავს).
 - მძღოლის ხელშეკრულების სანიმუშო GPS პუნქტი.
 
 ---
@@ -121,9 +123,17 @@ Meta Cloud API from one platform number. Anthropic receives unit name,
 district, city and prices only when `ANTHROPIC_API_KEY` is set. Flitt:
 one month at a time, no recurring charges, no card data stored. Resend:
 password reset only. Hosting Vercel, database Neon. Essential cookies only
-(`session`, `locale`, `theme`, `splash_seen`). No self-service account
-deletion or data export yet (on request by email); soft-deleted contracts
-are kept.
+(`session`, `locale`, `theme`, `splash_seen`). Self-service account
+deletion exists (Settings → Your data; password + the word "delete"): it
+cascades to everything, including our `Payment` rows — Flitt keeps its own
+record, and the privacy text says so. Self-service export exists:
+`/settings/export` returns the whole workspace as JSON. The contract form
+records the renter's WhatsApp consent (`waConsentAt`) and opt-out
+(`messagesOptOutAt`); an opt-out stops new messages and withdraws queued
+ones, and every message ends with "Don't want these messages? Tell the
+owner." Consent is a record only — it does not gate sending. The owner's
+payment instructions (`Operator.payInstructions`) are added to payment
+reminders. Soft-deleted contracts are kept.
 
 ## Open questions for the lawyer
 
@@ -131,7 +141,9 @@ Register (informal "შენ" to owners, formal "თქვენ" to tenants/dr
 controller/processor split and whether a separate DPA is needed; GPS legal
 basis for drivers (contract + prior written notice vs consent) and a model
 contract clause; the 10-working-day response time; cross-border transfer
-safeguards; retention of payment records; refund wording under consumer law
+safeguards; retention of payment records (self-deletion currently erases
+our `Payment` rows — enough for Activo's own tax duty, or keep an
+anonymised record?); refund wording under consumer law
 (distance contracts, digital services); the 12-month liability cap for
 consumers; forum (Tbilisi City Court vs arbitration for businesses); breach
 notification; age limit 18; pre-contract price information under consumer

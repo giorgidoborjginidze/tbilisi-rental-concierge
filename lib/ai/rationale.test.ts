@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { stubRationale } from "./rationale";
 import { suggestRate } from "@/lib/pricing/engine";
 
-const date = new Date("2026-10-05T00:00:00Z");
+const date = new Date("2026-10-14T00:00:00Z"); // a Wednesday, mid-month
 const october = suggestRate({
   baseNightlyRate: 130,
   city: "Batumi",

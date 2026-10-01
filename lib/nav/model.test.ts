@@ -89,3 +89,15 @@ describe("tourStops", () => {
     expect(tourStops("rentals")).toContain("s7");
   });
 });
+
+describe("fleet list for workspaces that let cars", () => {
+  it("a hotel with cars on contracts reaches /fleet from the account menu", () => {
+    const model = navModel({ profile: "hotel", units: 3, vehicles: 2 });
+    expect(model.menuAlways.map((e) => e.href)).toContain("/fleet");
+    expect(model.menuMobile.map((e) => e.href)).toContain("/fleet");
+  });
+  it("no cars, no fleet entry; a car rental has it in the bar already", () => {
+    expect(navModel({ profile: "hotel", units: 3, vehicles: 0 }).menuAlways).toEqual([]);
+    expect(navModel({ profile: "car_rental", units: 0, vehicles: 4 }).menuAlways).toEqual([]);
+  });
+});

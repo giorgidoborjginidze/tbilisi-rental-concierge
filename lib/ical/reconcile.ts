@@ -46,6 +46,12 @@ export interface FeedPlan {
   update: StayUpdate[];
   /** Ids of stays that vanished from the feed — to be cancelled. */
   cancel: string[];
+  /**
+   * The feed came back with no event at all while it still had future
+   * stays: held back as suspect (a channel glitch) — nothing is cancelled
+   * until a second fetch in a row is empty too.
+   */
+  suspectEmpty?: boolean;
 }
 
 export interface PlanContext {
@@ -56,6 +62,8 @@ export interface PlanContext {
    */
   ownsLegacy: boolean;
   now: Date;
+  /** The previous fetch of this feed was empty too (it was held back then). */
+  emptyBefore?: boolean;
 }
 
 const sameTime = (a: Date | null | undefined, b: Date | null | undefined) =>
@@ -121,6 +129,12 @@ export function planFeedSync(
     if (stay.checkOut.getTime() <= context.now.getTime()) continue;
     const ours = stay.feedId === context.feedId || (stay.feedId == null && context.ownsLegacy);
     if (ours) plan.cancel.push(stay.id);
+  }
+  // An empty calendar that would wipe every future stay is more likely a
+  // glitch than every guest cancelling at once: wait for a second empty
+  // fetch before believing it.
+  if (inFeed.size === 0 && plan.cancel.length > 0 && !context.emptyBefore) {
+    return { ...plan, cancel: [], suspectEmpty: true };
   }
   return plan;
 }

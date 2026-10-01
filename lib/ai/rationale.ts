@@ -36,6 +36,7 @@ const REASON_TEXT: Record<Locale, Record<string, string>> = {
     above_benchmark: "the district average ({adr}) pulls it down",
     at_floor: "held at the lowest price (60% of base)",
     at_ceiling: "held at the highest price (180% of base)",
+    weekend: "a Friday or Saturday night raises it (×{w})",
   },
   ka: {
     high_season: "სეზონი ზრდის (×{s})",
@@ -46,6 +47,7 @@ const REASON_TEXT: Record<Locale, Record<string, string>> = {
     above_benchmark: "უბნის საშუალო ({adr}) ქვემოთ სწევს",
     at_floor: "დაჭერილია ყველაზე დაბალ ფასზე (საბაზოს 60%)",
     at_ceiling: "დაჭერილია ყველაზე მაღალ ფასზე (საბაზოს 180%)",
+    weekend: "პარასკევი ან შაბათი ღამე ზრდის (×{w})",
   },
 };
 
@@ -78,6 +80,7 @@ export function stubRationale(
       text
         .replace("{s}", factor(result.factors.seasonality))
         .replace("{d}", factor(result.factors.demand))
+        .replace("{w}", factor(result.factors.weekend ?? 1))
         .replace("{adr}", adr == null ? "—" : formatMoney(adr, request.currency)),
     )
     .join("; ");

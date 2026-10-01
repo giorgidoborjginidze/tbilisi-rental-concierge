@@ -7,7 +7,13 @@ import { LIVE_CONTRACT } from "@/lib/rentals/live";
 import { getWriter, requireWriter } from "@/lib/auth/session";
 import type { FormState } from "@/lib/units/actions";
 import type { StringKey } from "@/lib/i18n/strings";
-import { TEMPLATE_KEYS, type TemplateKey } from "@/lib/notify/templates";
+import {
+  isFixedTemplate,
+  mentionsPolice,
+  TEMPLATE_KEYS,
+  TEMPLATE_ROLE,
+  type TemplateKey,
+} from "@/lib/notify/templates";
 import { flushOutbox } from "@/lib/notify/whatsapp";
 import { MAX_TEMPLATE_CHARS } from "@/lib/notify/limits";
 import { parsePolygon } from "@/lib/geo/fence";
@@ -282,8 +288,98 @@ async function receivePayment(formData: FormData): Promise<ReceiveResult> {
  * payment never re-opens. Payments from before the balance was last
  * restated are part of that statement and are not deleted here.
  */
-export async function deletePayment(formData: FormData) {
-  await removePayment(str(formData, "assetId"), str(formData, "paymentId"), false);
+export async function deletePayment(formData: FormData): Promise<{ undo: Record<string, string> } | void> {
+  const assetId = str(formData, "assetId");
+  const paymentId = str(formData, "paymentId");
+  // What the undo puts back, read before it goes.
+  const payment = paymentId
+    ? await prisma.rentPayment.findUnique({ where: { id: paymentId } })
+    : null;
+  const error = await removePayment(assetId, paymentId, false);
+  if (error || !payment) return;
+  return {
+    undo: {
+      assetId,
+      contractId: payment.contractId,
+      amount: String(payment.amount),
+      paidAt: payment.paidAt.toISOString(),
+      createdAt: payment.createdAt.toISOString(),
+      method: payment.method,
+      note: payment.note ?? "",
+    },
+  };
+}
+
+/**
+ * Undo of a deleted payment: the same money, at its own place in the
+ * ledger (its original entry time), and the schedule rebuilt from the
+ * opening balance — so it lands exactly where it was. A payment from
+ * before the balance was last restated cannot come back this way.
+ */
+export async function restorePayment(formData: FormData): Promise<void> {
+  const assetId = str(formData, "assetId");
+  const contractId = str(formData, "contractId");
+  const amount = Number(str(formData, "amount"));
+  const paidAt = new Date(str(formData, "paidAt"));
+  const createdAt = new Date(str(formData, "createdAt"));
+  if (!assetId || !contractId || !Number.isFinite(amount) || amount <= 0) return;
+  if (Number.isNaN(paidAt.getTime()) || Number.isNaN(createdAt.getTime()) || createdAt > new Date()) return;
+
+  const owned = await ownAsset(assetId);
+  if (!owned) return;
+  const contract = await prisma.rentalContract.findFirst({
+    where: { id: contractId, assetId, ...LIVE_CONTRACT },
+  });
+  if (!contract || (contract.openingAt && createdAt <= contract.openingAt)) return;
+
+  const kept = await prisma.rentPayment.findMany({
+    where: {
+      contractId,
+      ...(contract.openingAt ? { createdAt: { gt: contract.openingAt } } : {}),
+    },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+  });
+  const created = await prisma.rentPayment.create({
+    data: {
+      contractId,
+      amount,
+      currency: contract.currency,
+      paidAt,
+      createdAt,
+      // Rewritten by the replay just below.
+      periodStart: contract.paidThrough ?? contract.startDate,
+      periodEnd: contract.paidThrough ?? contract.startDate,
+      method: ["cash", "transfer", "card", "other"].includes(str(formData, "method"))
+        ? str(formData, "method")
+        : "cash",
+      note: str(formData, "note") || null,
+    },
+  });
+  const all = [...kept, created].sort(
+    (a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id),
+  );
+  const openingPaidThrough =
+    contract.openingPaidThrough ??
+    all.reduce((min, row) => (row.periodStart < min ? row.periodStart : min), all[0].periodStart);
+  const replay = replayLedger(
+    contractTerms(contract, owned.asset),
+    { paidThrough: openingPaidThrough, credit: contract.openingAt ? contract.openingCredit : 0 },
+    all.map((row) => row.amount),
+  );
+  await prisma.$transaction([
+    prisma.rentalContract.update({
+      where: { id: contract.id },
+      data: { paidThrough: replay.state.paidThrough, creditBalance: replay.state.credit },
+    }),
+    ...all.map((row, i) =>
+      prisma.rentPayment.update({
+        where: { id: row.id },
+        data: { periodStart: replay.applied[i].periodStart, periodEnd: replay.applied[i].periodEnd },
+      }),
+    ),
+  ]);
+  await settlePaidRent(prisma, contract.id, replay.state.paidThrough, new Date(), { withdrawOwed: true });
+  refresh(assetId);
 }
 
 /**
@@ -551,14 +647,24 @@ export async function saveNotifySetup(
 
   // Messages go out on one line and are kept short (lib/notify/limits.ts).
   for (const key of TEMPLATE_KEYS) {
-    if ([...str(formData, `tpl_${key}`)].length > MAX_TEMPLATE_CHARS) {
+    const body = str(formData, `tpl_${key}`);
+    if ([...body].length > MAX_TEMPLATE_CHARS) {
       return { error: "error_template_too_long" };
+    }
+    // The police are mentioned only in the fixed red-line texts.
+    if (TEMPLATE_ROLE[key] !== "owner" && !isFixedTemplate(key) && mentionsPolice(body)) {
+      return { error: "error_template_112" };
     }
   }
 
   await prisma.operator.update({
     where: { id: operator.id },
-    data: { notifyPhone: str(formData, "notifyPhone") || null },
+    data: {
+      notifyPhone: str(formData, "notifyPhone") || null,
+      ...(formData.has("payInstructions")
+        ? { payInstructions: str(formData, "payInstructions").slice(0, 160) || null }
+        : {}),
+    },
   });
 
   // A template row exists only while it differs from the default, so
@@ -566,6 +672,11 @@ export async function saveNotifySetup(
   // form actually showed are touched: a flat's page lists the lease texts,
   // a car's page the vehicle texts, and neither may wipe the other's.
   for (const key of TEMPLATE_KEYS) {
+    // Fixed wording (the owner's legal right towards the driver): no edits.
+    if (isFixedTemplate(key)) {
+      await prisma.notifyTemplate.deleteMany({ where: { operatorId: operator.id, key } });
+      continue;
+    }
     if (!formData.has(`tpl_${key}`)) continue;
     const body = str(formData, `tpl_${key}`);
     if (!body) {
@@ -615,7 +726,37 @@ export async function markMessageSent(formData: FormData) {
     data: { status: "sent", sentAt: new Date(), error: null },
   });
   if (assetId) refresh(assetId);
-  else revalidatePath("/alerts");
+  revalidatePath("/alerts");
+}
+
+/**
+ * The wa.me link was tapped: the message counts as sent at once (no second
+ * "mark sent" step); `{ undo }` lets the owner take it back when WhatsApp
+ * was closed without sending.
+ */
+export async function sentByLink(formData: FormData): Promise<{ undo: Record<string, string> } | null> {
+  await markMessageSent(formData);
+  return { undo: { messageId: str(formData, "messageId"), assetId: str(formData, "assetId") } };
+}
+
+/** Undo of a send-by-link: back in the queue (only a hand-sent message, minutes old). */
+export async function unmarkMessageSent(formData: FormData): Promise<void> {
+  const operator = await requireWriter();
+  const messageId = str(formData, "messageId");
+  if (!messageId) return;
+  await prisma.notifyMessage.updateMany({
+    where: {
+      id: messageId,
+      operatorId: operator.id,
+      status: "sent",
+      providerRef: null,
+      sentAt: { gte: new Date(Date.now() - 30 * 60_000) },
+    },
+    data: { status: "queued", sentAt: null },
+  });
+  const assetId = str(formData, "assetId");
+  if (assetId) refresh(assetId);
+  revalidatePath("/alerts");
 }
 
 /**

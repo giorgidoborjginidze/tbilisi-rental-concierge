@@ -23,6 +23,8 @@ export interface DeckAsset {
   category: string;
   /** The category whose line icon marks the card. */
   badge: string;
+  /** Where the name leads (a car on a contract: its rental desk). */
+  href?: string;
   slides: DeckSlide[];
 }
 
@@ -154,19 +156,14 @@ function Card({
           "--cat": `var(--cat-${asset.category.replace(/_/g, "-")}, var(--cat-other))`,
         } as React.CSSProperties
       }
-      role="button"
-      tabIndex={0}
       aria-label={asset.name}
+      // A tap anywhere on the card moves to its next slide (pointer only);
+      // keyboards and screen readers use the "next" button in its foot, so
+      // the card is not a button wrapped around a link.
       onClick={(event) => {
-        // Links inside keep their own behaviour.
-        if ((event.target as HTMLElement).closest("a")) return;
+        // Links and buttons inside keep their own behaviour.
+        if ((event.target as HTMLElement).closest("a,button")) return;
         advance();
-      }}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          advance();
-        }
       }}
     >
       <div className="adeck__art">
@@ -175,7 +172,7 @@ function Card({
       </div>
 
       <div className="adeck__body">
-        <Link href={`/assets/${asset.id}/edit`} className="adeck__name">
+        <Link href={asset.href ?? `/assets/${asset.id}/edit`} className="adeck__name">
           {asset.name}
         </Link>
         <div className="adeck__place">{asset.place}</div>
@@ -239,10 +236,10 @@ function Card({
               <i key={i} className={i === step ? "on" : undefined} />
             ))}
           </span>
-          <span className="adeck__hint">
+          <button type="button" className="adeck__hint" onClick={advance}>
             {step === last ? labels.restart : labels.tap}
             {step === last ? <IconRestart size={13} /> : <IconArrowRight size={13} />}
-          </span>
+          </button>
         </div>
       </div>
     </article>

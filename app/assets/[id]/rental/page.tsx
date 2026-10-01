@@ -4,7 +4,8 @@ import { prisma } from "@/lib/db";
 import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { asLocale, t, type StringKey } from "@/lib/i18n/strings";
-import { siteUrl } from "@/lib/site";
+import { shownOrigin } from "@/lib/site";
+import { headers } from "next/headers";
 import { evaluateFence, shapeFromRow } from "@/lib/geo/fence";
 import { isTrackerSilent, silenceSpan } from "@/lib/geo/silence";
 import {
@@ -17,18 +18,19 @@ import { activeContract, contractPhase } from "@/lib/rentals/phase";
 import { DESK_TABS, deskTab, rentalDesk, type DeskTab } from "@/lib/rentals/desk";
 import { rentLabel } from "@/lib/rentals/display";
 import { firstParam, type QueryValue } from "@/lib/params";
-import { formatDueMoney, formatMoney } from "@/lib/format";
+import { formatDueMoney, formatMoney, formatNumber } from "@/lib/format";
 import { badgeClass, PAYMENT_TONE, toneOf, ZONE_TONE } from "@/lib/ui/tone";
 import { SeverityIcon } from "@/app/alert-icon";
 import { IconArrowRight, IconClose, IconEdit } from "@/app/icons";
 import { asPeriod } from "@/lib/rentals/amount";
 import { defaultPaidThrough } from "@/lib/rentals/schedule";
-import { stalePaymentMessage, type WithdrawReason } from "@/lib/rentals/settle";
+import { staleMessageReasons, type WithdrawReason } from "@/lib/rentals/settle";
 import { dayKey, startOfTodayTbilisi, tbilisiFormat } from "@/lib/time";
 import {
   deleteGeofence,
   deleteGpsDevice,
   deletePayment,
+  restorePayment,
   retryOutbox,
   rotateGpsToken,
   toggleGeofence,
@@ -36,6 +38,7 @@ import {
 import {
   DEFAULT_TEMPLATES,
   templateKeysFor,
+  isFixedTemplate,
   type TemplateKey,
 } from "@/lib/notify/templates";
 import { autoSendFor } from "@/lib/notify/whatsapp";
@@ -46,18 +49,18 @@ import TemplatesForm, { type TemplateField } from "./templates-form";
 import ConfirmAction from "@/app/confirm-action";
 import OutboxList, { type OutboxItem } from "@/app/outbox-list";
 import { outboxView, PENDING_STATUSES } from "@/lib/notify/outbox-view";
-import { titled } from "@/lib/i18n/metadata";
+import { assetTitled } from "../asset-title";
 import { LIVE_CONTRACT } from "@/lib/rentals/live";
 import Kpi from "../../../kpi";
 
 export const dynamic = "force-dynamic";
 
-export const generateMetadata = titled("rental_service");
+export const generateMetadata = assetTitled("rental_service");
 
 const LABEL_KEYS: StringKey[] = [
   "aria_lat", "aria_lng",
   "save", "cancel", "delete",
-  "error_required", "error_invalid_number", "error_dates",
+  "error_required", "error_invalid_number", "error_dates", "error_contract_dates",
   "error_device_taken", "error_fence_points", "error_template_too_long",
   "error_fence_center", "error_fence_radius", "error_fence_approach",
   "pay_period", "period_daily", "period_weekly", "period_monthly",
@@ -77,6 +80,7 @@ const LABEL_KEYS: StringKey[] = [
   "fence_preset_batumi20", "fence_preset_kutaisi20", "fence_preset_georgia",
   "fence_preset_hint",
   "tpl_notify_phone", "tpl_notify_phone_hint", "tpl_vars_hint", "tpl_save", "tpl_edited",
+  "tpl_pay_to", "tpl_pay_to_hint", "tpl_pay_to_placeholder", "tpl_fixed_hint", "error_template_112",
 ];
 
 // The rental service for one asset — only for what is actually rented out
@@ -116,9 +120,15 @@ export default async function RentalServicePage({
   const isVehicle = desk === "vehicle";
 
   const labels = Object.fromEntries(LABEL_KEYS.map((key) => [key, t(locale, key)]));
+  // Distances in the reader's own unit word ("27.7 კმ"), one decimal at most.
+  const km = (value: number) => `${formatNumber(Math.round(value * 10) / 10, "auto")} ${t(locale, "unit_km")}`;
   if (!isVehicle) {
     labels.pay_grace_hint = labels.pay_grace_hint_property;
     labels.tpl_vars_hint = t(locale, "tpl_vars_hint_property");
+  } else {
+    // A car has a driver, not a tenant.
+    labels.pay_amount_hint = t(locale, "pay_amount_hint_driver");
+    labels.contract_reminders = t(locale, "contract_reminders_driver");
   }
 
   // ── The contract the schedule follows: the one running today, else the
@@ -158,7 +168,7 @@ export default async function RentalServicePage({
     }),
     prisma.operator.findUnique({
       where: { id: operator.id },
-      select: { notifyPhone: true },
+      select: { notifyPhone: true, payInstructions: true },
     }),
     // Everything still to go out (however old), and the latest handled ones.
     prisma.notifyMessage.findMany({
@@ -215,22 +225,26 @@ export default async function RentalServicePage({
     return {
       key,
       label: t(locale, `tplk_${key}` as StringKey),
-      body: override?.trim() || DEFAULT_TEMPLATES[messageLocale][key as TemplateKey],
-      isDefault: !override?.trim(),
+      body: isFixedTemplate(key)
+        ? DEFAULT_TEMPLATES[messageLocale][key as TemplateKey]
+        : override?.trim() || DEFAULT_TEMPLATES[messageLocale][key as TemplateKey],
+      isDefault: isFixedTemplate(key) || !override?.trim(),
+      fixed: isFixedTemplate(key),
     };
   });
 
   // ── Messages ──
-  // A reminder whose rent has been paid (or whose contract ended) since it
-  // was queued must not be offered for sending, even before the next check
-  // withdraws it.
-  const contractById = new Map(asset.contracts.map((c) => [c.id, c]));
+  // Whatever no longer holds — paid rent, a car back inside its line,
+  // hours-old red-line news, an objecting renter, a draft in the account's
+  // earlier language — is never offered for sending, even before the next
+  // check withdraws it (lib/rentals/settle.ts staleMessageReasons).
+  const staleBy = await staleMessageReasons(
+    prisma,
+    messages.filter((message) => message.status === "queued" || message.status === "failed"),
+    today,
+  );
   const staleReason = (message: (typeof messages)[number]): WithdrawReason | null =>
-    message.status === "queued" || message.status === "failed"
-      ? message.contractId
-        ? stalePaymentMessage(message, contractById.get(message.contractId) ?? null, today)
-        : null
-      : null;
+    staleBy.get(message.id) ?? null;
   const outboxItems: OutboxItem[] = messages.map((message) => ({
     ...message,
     stale: staleReason(message),
@@ -425,6 +439,7 @@ export default async function RentalServicePage({
                     {(!contract.openingAt || payment.createdAt > contract.openingAt) && (
                       <ConfirmAction
                         action={deletePayment}
+                        undo={{ action: restorePayment, label: t(locale, "decide_undo"), done: t(locale, "deleted_undo_payment") }}
                         fields={{ assetId: asset.id, paymentId: payment.id }}
                         trigger={<IconClose size={15} />}
                         ariaLabel={t(locale, "aria_delete_payment")}
@@ -436,6 +451,13 @@ export default async function RentalServicePage({
                   </li>
                 ))}
               </ul>
+              {/* Why some rows have no delete: said, not left to guess. */}
+              {contract.openingAt &&
+                payments.some((payment) => payment.createdAt <= contract.openingAt!) && (
+                  <p className="field-hint" style={{ marginTop: 8 }}>
+                    {t(locale, "pay_locked_note")}
+                  </p>
+                )}
             </>
           )}
         </>
@@ -490,7 +512,7 @@ export default async function RentalServicePage({
             {position.lat.toFixed(5)}, {position.lng.toFixed(5)} ·{" "}
             {fmtStamp.format(device.lastPingAt)}
             {device.lastSpeed != null
-              ? ` · ${t(locale, "gps_speed")} ${Math.round(device.lastSpeed)} km/h`
+              ? ` · ${t(locale, "gps_speed")} ${Math.round(device.lastSpeed)} ${t(locale, "unit_kmh")}`
               : ""}
           </>
         ) : (
@@ -581,15 +603,15 @@ export default async function RentalServicePage({
                   {reading && !silent && (
                     <span className={badgeClass(toneOf(ZONE_TONE, reading.zone))} style={{ marginLeft: 6 }}>
                       {t(locale, `fence_status_${reading.zone}` as StringKey)} ·{" "}
-                      {reading.distanceKm.toFixed(1)} km
+                      {km(reading.distanceKm)}
                     </span>
                   )}
                   <div style={{ color: "var(--color-text-muted)", marginTop: 3 }}>
                     {fence.kind === "circle"
-                      ? `${fence.centerLat?.toFixed(4)}, ${fence.centerLng?.toFixed(4)} · ${fence.radiusKm} km`
+                      ? `${fence.centerLat?.toFixed(4)}, ${fence.centerLng?.toFixed(4)} · ${km(fence.radiusKm ?? 0)}`
                       : `${t(locale, "fence_polygon")} · ${(fence.points as unknown[])?.length ?? 0}`}
                     {" · "}
-                    {t(locale, "fence_approach")}: {fence.approachKm} km
+                    {t(locale, "fence_approach_short")}: {km(fence.approachKm)}
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
@@ -634,7 +656,7 @@ export default async function RentalServicePage({
                 <div style={{ fontSize: 13 }}>
                   <b>{t(locale, `fence_event_${event.kind}` as StringKey)}</b> ·{" "}
                   {fmtStamp.format(event.createdAt)} · {event.lat.toFixed(4)},{" "}
-                  {event.lng.toFixed(4)} · {event.distanceKm.toFixed(1)} km
+                  {event.lng.toFixed(4)} · {km(event.distanceKm)}
                 </div>
               </li>
             ))}
@@ -650,7 +672,11 @@ export default async function RentalServicePage({
           <span className="desk-fold__hint">{t(locale, "desk_settings_gps_hint")}</span>
         </summary>
         <p className="section-hint" style={{ maxWidth: 640 }}>
-          {t(locale, "gps_intro")}
+          {t(locale, "gps_intro")}{" "}
+          {/* The setup, step by step, for the owner and the installer. */}
+          <Link href="/learn#gps" className="link">
+            {t(locale, "gps_lesson_link")}
+          </Link>
         </p>
         <GpsForm
           assetId={asset.id}
@@ -665,7 +691,7 @@ export default async function RentalServicePage({
                 }
               : null
           }
-          endpoint={`${siteUrl()}/api/gps/ping`}
+          endpoint={`${shownOrigin(await headers())}/api/gps/ping`}
           labels={labels}
         />
         {device && (
@@ -756,7 +782,7 @@ export default async function RentalServicePage({
           {t(locale, "tpl_intro")}
         </p>
         <p className="field-hint" style={{ maxWidth: 640 }}>
-          {t(locale, messageLocale === "ka" ? "tpl_lang_ka" : "tpl_lang_en")}
+          {t(locale, messageLocale === "ka" ? (isVehicle ? "tpl_lang_ka_driver" : "tpl_lang_ka") : isVehicle ? "tpl_lang_en_driver" : "tpl_lang_en")}
         </p>
         {isVehicle && (
           <p className="alert-card alert-card--info" style={{ display: "block", fontSize: 13 }}>
@@ -769,6 +795,7 @@ export default async function RentalServicePage({
         <TemplatesForm
           assetId={asset.id}
           notifyPhone={me?.notifyPhone ?? ""}
+          payInstructions={me?.payInstructions ?? ""}
           fields={templateFields}
           labels={labels}
         />
@@ -899,7 +926,16 @@ export default async function RentalServicePage({
     <main>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
         <div style={{ minWidth: 0 }}>
-          <p className="desk-eyebrow">{t(locale, "rental_service")}</p>
+          <p className="desk-eyebrow">
+            {/* A car's desk is one of the fleet: the way back to the list. */}
+            {isVehicle ? (
+              <Link href="/fleet" className="link">
+                {t(locale, "nav_fleet")}
+              </Link>
+            ) : null}
+            {isVehicle ? " · " : null}
+            {t(locale, "rental_service")}
+          </p>
           <h1 style={{ marginBottom: 0 }}>
             {displayName}
             {isVehicle && asset.plateNumber && (
@@ -926,7 +962,7 @@ export default async function RentalServicePage({
                 key={key}
                 href={tabHref(key)}
                 className={`btn-chip${key === tab ? " btn-chip--active" : ""}`}
-                aria-current={key === tab ? "page" : undefined}
+                aria-current={key === tab ? "true" : undefined}
                 scroll={false}
               >
                 {tabLabel[key]}

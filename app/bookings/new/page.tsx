@@ -1,4 +1,5 @@
 import Link from "next/link";
+import LooseFlatsNote from "@/app/loose-flats-note";
 import { prisma } from "@/lib/db";
 import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
@@ -35,7 +36,7 @@ export default async function NewBookingPage({
     "booking_unit", "booking_source", "source_manual", "source_direct",
     "booking_guest", "booking_check_in", "booking_check_out", "booking_amount",
     "save", "cancel", "error_required", "error_invalid_number", "error_dates",
-    "error_booking_overlap", "error_demo_readonly", "form_required_legend",
+    "error_booking_overlap", "error_booking_closed_block", "booking_block_confirm", "error_demo_readonly", "form_required_legend",
   ];
   const labels = Object.fromEntries(labelKeys.map((key) => [key, t(locale, key)]));
 
@@ -43,6 +44,7 @@ export default async function NewBookingPage({
     <main>
       <div className="auth-box" style={{ maxWidth: 480 }}>
       <h1>{t(locale, "booking_new_title")}</h1>
+      <LooseFlatsNote locale={locale} operatorId={operator.id} />
       {units.length === 0 ? (
         // A stay needs its place first — a unit, or a flat under Assets
         // let by the day (which gets its unit when saved).

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { parseTradeInput, TROY_OUNCE_GRAMS } from "./trade-input";
+import { parseTradeInput, toUsdTrade, TROY_OUNCE_GRAMS } from "./trade-input";
+import { nbgUsdRate } from "@/lib/prices/usd-gel-on";
 
 const today = new Date("2026-09-30T00:00:00Z");
 const reader = (fields: Record<string, string>) => (key: string) => fields[key] ?? "";
@@ -7,7 +8,7 @@ const reader = (fields: Record<string, string>) => (key: string) => fields[key] 
 describe("parseTradeInput", () => {
   it("reads a coin buy, dated today when no date is typed", () => {
     expect(parseTradeInput(reader({ quantity: "0.5", unitPrice: "60000" }), { metal: false, today })).toEqual({
-      value: { side: "buy", quantity: 0.5, unitPrice: 60000, tradedAt: today },
+      value: { side: "buy", quantity: 0.5, unitPrice: 60000, tradedAt: today, priceCurrency: "USD" },
     });
   });
 
@@ -25,7 +26,7 @@ describe("parseTradeInput", () => {
 
   it("grams only apply to metals", () => {
     const result = parseTradeInput(reader({ quantity: "10", unitPrice: "5", unit: "g" }), { metal: false, today });
-    expect(result).toEqual({ value: { side: "buy", quantity: 10, unitPrice: 5, tradedAt: today } });
+    expect(result).toEqual({ value: { side: "buy", quantity: 10, unitPrice: 5, tradedAt: today, priceCurrency: "USD" } });
   });
 
   it("the first purchase on the add form may be left empty; half-filled is an error", () => {
@@ -51,5 +52,34 @@ describe("parseTradeInput", () => {
   it("a sell is a sell", () => {
     const result = parseTradeInput(reader({ side: "sell", quantity: "1", unitPrice: "1" }), { metal: false, today });
     expect("value" in result && result.value?.side).toBe("sell");
+  });
+});
+
+describe("prices typed in lari", () => {
+  const today = new Date("2026-10-01T00:00:00Z");
+  const fields = (map: Record<string, string>) => (key: string) => map[key] ?? "";
+
+  it("keeps the currency the price was typed in", () => {
+    const parsed = parseTradeInput(fields({ quantity: "0.5", unitPrice: "160000", priceCurrency: "GEL" }), {
+      metal: false,
+      today,
+    });
+    expect("value" in parsed && parsed.value?.priceCurrency).toBe("GEL");
+    const usd = parseTradeInput(fields({ quantity: "1", unitPrice: "10" }), { metal: false, today });
+    expect("value" in usd && usd.value?.priceCurrency).toBe("USD");
+  });
+
+  it("converts a lari price at the day's rate, and refuses without a rate", () => {
+    const trade = { side: "buy" as const, quantity: 1, unitPrice: 270, tradedAt: today, priceCurrency: "GEL" as const };
+    expect(toUsdTrade(trade, 2.7)).toMatchObject({ unitPrice: 100, priceCurrency: "USD" });
+    expect(toUsdTrade(trade, null)).toBeNull();
+    const dollars = { ...trade, priceCurrency: "USD" as const };
+    expect(toUsdTrade(dollars, null)).toBe(dollars);
+  });
+
+  it("reads the NBG answer", () => {
+    expect(nbgUsdRate([{ currencies: [{ code: "USD", rate: 2.7, quantity: 1 }] }])).toBe(2.7);
+    expect(nbgUsdRate([])).toBeNull();
+    expect(nbgUsdRate(null)).toBeNull();
   });
 });

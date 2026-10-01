@@ -192,7 +192,24 @@ export default function Calculator({
         </label>
       </div>
 
-      <div>
+      <div id="inv-results">
+        {/* On a phone the inputs come first and the result is a long way
+            down: it rides along at the bottom of the screen, changing as
+            the figures are typed, one tap from the full result. */}
+        <a href="#inv-results" className="inv-sticky">
+          <span className={VERDICT_BADGE[result.verdict]}>{labels[`res_verdict_${result.verdict}`]}</span>
+          <span className="inv-sticky__fig">
+            {labels.res_net_income}: <b>{fmt(result.netMonthlyIncome)}</b>
+          </span>
+          {useLoan && (
+            <span className="inv-sticky__fig">
+              {labels.res_cash_flow}:{" "}
+              <b style={{ color: result.monthlyCashFlow >= 0 ? "var(--status-rented-text)" : "var(--status-danger-text)" }}>
+                {fmt(result.monthlyCashFlow)}
+              </b>
+            </span>
+          )}
+        </a>
         {/* The verdict and what it compares, on the same money. */}
         <div className="alert-card" style={{ alignItems: "center", flexWrap: "wrap" }}>
           <div className="alert-card__title">{labels.inv_results}</div>

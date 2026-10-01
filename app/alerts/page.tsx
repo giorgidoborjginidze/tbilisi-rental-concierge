@@ -11,7 +11,7 @@ import { alertCategories } from "@/lib/alerts/category";
 import { templateFamily } from "@/lib/notify/templates";
 import { periodWordKey } from "@/lib/rentals/display";
 import { statusFor } from "@/lib/rentals/terms";
-import { formatDueMoney, formatMoney } from "@/lib/format";
+import { formatDueMoney, formatMoney, formatNumber } from "@/lib/format";
 import { silenceSpan } from "@/lib/geo/silence";
 import { WITHDRAW_REASONS } from "@/lib/rentals/settle";
 import type { ScheduleStatus } from "@/lib/rentals/schedule";
@@ -27,9 +27,10 @@ import OutboxList, { type OutboxItem } from "../outbox-list";
 import { deskHref, rentalDesk } from "@/lib/rentals/desk";
 import { autoSendFor } from "@/lib/notify/whatsapp";
 import { outboxView } from "@/lib/notify/outbox-view";
-import { stalePaymentMessage } from "@/lib/rentals/settle";
+import { staleMessageReasons } from "@/lib/rentals/settle";
 import { retryOutbox } from "@/lib/rentals/actions";
 import { LIVE_CONTRACT } from "@/lib/rentals/live";
+import { checkTrackerSilenceSoon } from "@/lib/geo/silence-check";
 
 export const dynamic = "force-dynamic";
 
@@ -88,15 +89,31 @@ interface AlertPayload {
 /** At most this many open alerts of each list (needs you / advice) are read. */
 const OPEN_LIMIT = 200;
 
+/** The kind filters on the open list (?type=): what each one shows. */
+const ALERT_FILTERS: { key: string; label: StringKey; types: string[] }[] = [
+  { key: "rent", label: "alerts_filter_rent", types: ["rent_overdue", "repossession_right", "contract_ended"] },
+  { key: "gps", label: "alerts_filter_gps", types: ["geofence_breach", "tracker_silent"] },
+  { key: "calendar", label: "alerts_filter_calendar", types: ["overlap", "vacancy_gap", "underpriced"] },
+  { key: "contracts", label: "alerts_filter_contracts", types: ["contract_expiry", "lease_expiry"] },
+];
+
 /** Alert types whose figures are read live from their contract. */
 const CONTRACT_ALERTS = ["rent_overdue", "repossession_right", "contract_ended"];
 
 export default async function AlertsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: QueryValue; tab?: QueryValue; closed?: QueryValue; g?: QueryValue }>;
+  searchParams: Promise<{
+    view?: QueryValue;
+    tab?: QueryValue;
+    closed?: QueryValue;
+    g?: QueryValue;
+    type?: QueryValue;
+    scanned?: QueryValue;
+  }>;
 }) {
   const operator = await requireOperator();
+  await checkTrackerSilenceSoon(operator.id);
 
   const query = await searchParams;
   const view = firstParam(query.view);
@@ -146,8 +163,24 @@ export default async function AlertsPage({
     !done && (urgentFound.length === OPEN_LIMIT || adviceFound.length === OPEN_LIMIT)
       ? await prisma.alert.count({ where: { operatorId: operator.id, status: "open" } })
       : null;
-  // Open alerts: what costs money or the car today comes first.
-  const alerts = done ? found : rankAlerts(found);
+  // Open alerts: what costs money or the car today comes first — of one
+  // kind only when the owner picked a filter (rent, GPS, calendar…).
+  const typeFilter = ALERT_FILTERS.find((filter) => filter.key === firstParam(query.type)) ?? null;
+  // Advice about days already over (a free window that has passed, a
+  // month gone by) waits for the next scan to close it — it is not shown.
+  const todayKey0 = dayKey(startOfTodayTbilisi());
+  const pastAdvice = (alert: { type: string; payload: unknown }) => {
+    const payload = (alert.payload ?? {}) as AlertPayload;
+    if (alert.type === "vacancy_gap") return !payload.openEnd && !!payload.end && payload.end <= todayKey0;
+    if (alert.type === "underpriced") return !!payload.month && payload.month < todayKey0.slice(0, 7);
+    return false;
+  };
+  const alerts = (done ? found : rankAlerts(found).filter((alert) => !pastAdvice(alert))).filter(
+    (alert) => !typeFilter || typeFilter.types.includes(alert.type),
+  );
+  // A manual "scan now" just ran: said, with what it found.
+  const scannedRaw = firstParam(query.scanned);
+  const scanned = scannedRaw != null && /^\d{1,4}$/.test(scannedRaw) ? Number(scannedRaw) : null;
   const lastRun = done ? null : await lastRunFor(operator.id);
   // A unit and the asset linked to it are one place: one group.
   const linkedAssets = done
@@ -183,33 +216,29 @@ export default async function AlertsPage({
   const messageAssetIds = [
     ...new Set(messageRows.map((message) => message.assetId).filter(Boolean)),
   ] as string[];
-  const messageContractIds = [
-    ...new Set(messageRows.map((message) => message.contractId).filter(Boolean)),
-  ] as string[];
-  const [messageAssets, messageContracts] = await Promise.all([
-    messageAssetIds.length
-      ? prisma.asset.findMany({
-          where: { id: { in: messageAssetIds }, operatorId: operator.id },
-          select: { id: true, name: true, nameKa: true, category: true, _count: { select: { contracts: { where: LIVE_CONTRACT } } } },
-        })
-      : [],
-    messageContractIds.length
-      ? prisma.rentalContract.findMany({
-          where: { id: { in: messageContractIds }, asset: { operatorId: operator.id }, ...LIVE_CONTRACT },
-        })
-      : [],
-  ]);
+  const messageAssets = messageAssetIds.length
+    ? await prisma.asset.findMany({
+        where: { id: { in: messageAssetIds }, operatorId: operator.id },
+        select: { id: true, name: true, nameKa: true, category: true, _count: { select: { contracts: { where: LIVE_CONTRACT } } } },
+      })
+    : [];
   const messageAssetBy = new Map(messageAssets.map((asset) => [asset.id, asset]));
-  const messageContractBy = new Map(messageContracts.map((contract) => [contract.id, contract]));
+  // What no longer holds is never offered for sending, whatever its kind
+  // (paid rent, a car back inside its line, hours-old red-line news, an
+  // objecting renter, a draft in the account's earlier language) — even
+  // before the next check withdraws it.
+  const staleBy = await staleMessageReasons(
+    prisma,
+    messageRows.filter((message) => message.status === "queued" || message.status === "failed"),
+    today0,
+    now0,
+  );
   const outboxItems: OutboxItem[] = messageRows.map((message) => {
     const asset = message.assetId ? messageAssetBy.get(message.assetId) : undefined;
     const desk = asset ? rentalDesk(asset.category, asset._count.contracts) : null;
     return {
       ...message,
-      stale:
-        (message.status === "queued" || message.status === "failed") && message.contractId
-          ? stalePaymentMessage(message, messageContractBy.get(message.contractId) ?? null, today0)
-          : null,
+      stale: staleBy.get(message.id) ?? null,
       property: asset ? asset.category !== "vehicle" : false,
       asset: asset
         ? {
@@ -440,7 +469,7 @@ export default async function AlertsPage({
           payload.lat != null && payload.lng != null
             ? `${payload.lat.toFixed(4)}, ${payload.lng.toFixed(4)}`
             : null,
-          payload.distanceKm != null ? `${payload.distanceKm} km` : null,
+          payload.distanceKm != null ? `${formatNumber(Math.round(payload.distanceKm * 10) / 10, "auto")} ${t(locale, "unit_km")}` : null,
         ]
           .filter(Boolean)
           .join(" · ");
@@ -532,12 +561,21 @@ export default async function AlertsPage({
   // Every free window on the list, and how many places have one.
   const vacancyIds = alerts.filter((alert) => alert.type === "vacancy_gap").map((alert) => alert.id);
   const vacancyGroups = groups.filter((group) => group.kinds.some((kind) => kind.type === "vacancy_gap")).length;
+  // Places whose only news is free windows are one card, not one card each
+  // (eleven rooms with gaps used to be eleven of twelve cards): a line per
+  // place with its nearest window, all of them on the calendar.
+  const windowsOnly = groups.filter(
+    (group) => group.kinds.length === 1 && group.kinds[0].type === "vacancy_gap",
+  );
+  const foldWindows = windowsOnly.length >= 2;
+  const mainGroups = foldWindows ? groups.filter((group) => !windowsOnly.includes(group)) : groups;
 
   return (
     <main>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3" data-tour="alerts">
         <h1 style={{ marginBottom: 0 }}>{t(locale, "alerts_title")}</h1>
-        {!done && !outbox && (
+        {/* The demo is read-only: no button it could not use. */}
+        {!done && !outbox && !operator.isDemo && (
           <form action={runAlertScan}>
             <button type="submit" className="btn-secondary">
               {t(locale, "alerts_scan")}
@@ -551,9 +589,13 @@ export default async function AlertsPage({
         // a guess, and a stopped schedule is noticed.
         <p
           className="alerts-run"
-          data-state={!lastRun ? "never" : !lastRun.ok || lastRun.late ? "warn" : "ok"}
+          data-state={scanned != null ? "ok" : !lastRun ? "never" : !lastRun.ok || lastRun.late ? "warn" : "ok"}
         >
-          {lastRun ? (
+          {scanned != null ? (
+            t(locale, "alerts_scanned_now").replace("{n}", String(scanned))
+          ) : operator.isDemo && !lastRun ? (
+            t(locale, "alerts_demo_run")
+          ) : lastRun ? (
             <>
               {t(locale, "alerts_last_run").replace("{at}", fmtStamp.format(lastRun.at))}
               {!lastRun.ok
@@ -588,12 +630,33 @@ export default async function AlertsPage({
             key={chip.key}
             href={chip.href}
             className={`btn-chip ${chip.on ? "btn-chip--active" : ""}`}
-            aria-current={chip.on ? "page" : undefined}
+            // The current view of this page — the top nav already marks
+            // the page itself ("page" once per page).
+            aria-current={chip.on ? "true" : undefined}
           >
             {chip.label}
           </Link>
         ))}
       </div>
+
+      {!done && !outbox && (
+        // By kind: only rent, only GPS, only the calendar, only contracts.
+        <nav className="mb-4 flex flex-wrap gap-1.5" aria-label={t(locale, "alerts_filter_label")}>
+          {[{ key: null, label: "alerts_filter_all" as StringKey }, ...ALERT_FILTERS].map((filter) => {
+            const on = (typeFilter?.key ?? null) === filter.key;
+            return (
+              <Link
+                key={filter.key ?? "all"}
+                href={filter.key ? `/alerts?type=${filter.key}` : "/alerts"}
+                className={`btn-chip ${on ? "btn-chip--active" : ""}`}
+                aria-current={on ? "true" : undefined}
+              >
+                {t(locale, filter.label)}
+              </Link>
+            );
+          })}
+        </nav>
+      )}
 
       {outbox ? (
         <section style={{ marginTop: 0 }}>
@@ -696,7 +759,7 @@ export default async function AlertsPage({
               </button>
             </form>
           )}
-          {groups.map((group) => {
+          {mainGroups.map((group) => {
             const first = group.alerts[0];
             const sev = severityOf(first);
             const name = group.unitId || group.assetId ? placeName(first, group.assetId) : null;
@@ -813,6 +876,55 @@ export default async function AlertsPage({
               </details>
             );
           })}
+          {foldWindows && (
+            <details className="alert-group alert-group--info" id="g-windows" open={focusGroup === "windows"}>
+              <summary className="alert-group__head">
+                <AlertTypeIcon type="vacancy_gap" />
+                <span className="alert-group__title">
+                  <b>{t(locale, "tips_windows_title")}</b>
+                  <span>
+                    {t(locale, "alerts_windows_summary")
+                      .replace("{places}", String(windowsOnly.length))
+                      .replace("{n}", String(windowsOnly.reduce((sum, group) => sum + group.alerts.length, 0)))}
+                  </span>
+                </span>
+                <span className="alert-group__chev" aria-hidden>
+                  <IconChevronDown size={16} />
+                </span>
+              </summary>
+              <div className="alert-group__body">
+                <p className="alert-kind__action">
+                  <b>{t(locale, "alert_action")}:</b> {t(locale, "action_vacancy_gap")}
+                </p>
+                <ul className="alert-rows">
+                  {windowsOnly.map((group) => {
+                    const first = group.alerts[0];
+                    const href = hrefOf(first);
+                    const name = placeName(first, group.assetId) ?? titleOf(first);
+                    const text = `${name} · ${detail(first.type, first.payload as AlertPayload, first.unit?.currency ?? "GEL", true)}${
+                      group.alerts.length > 1 ? ` · ${t(locale, "tips_more_windows").replace("{n}", String(group.alerts.length - 1))}` : ""
+                    }`;
+                    return (
+                      <li key={group.key} className="alert-row">
+                        {href ? (
+                          <Link href={href} className="alert-row__detail link">
+                            {text}
+                          </Link>
+                        ) : (
+                          <span className="alert-row__detail">{text}</span>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+                <div className="alert-group__foot">
+                  <Link href="/calendar" className="link icon-text">
+                    {t(locale, "alerts_open_calendar")} <IconArrowRight size={14} />
+                  </Link>
+                </div>
+              </div>
+            </details>
+          )}
         </div>
       )}
 

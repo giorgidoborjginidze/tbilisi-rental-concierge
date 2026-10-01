@@ -77,6 +77,15 @@ export async function register(
     if (problem) return { error: problem, values };
   }
 
+  // At most a few sign-ups an hour from one address (or for one email):
+  // the form is no machine for minting accounts or probing which emails
+  // are taken.
+  const ip = await clientIp();
+  if (isLimited("register", await attemptCounts(prisma, "register", email, ip, now))) {
+    return { error: "error_too_many_attempts", values };
+  }
+  await recordAttempt(prisma, "register", email, ip, now);
+
   // Hash first: a taken email is refused only after the same work as a
   // free one, and with a message that does not say which it was.
   const passwordHash = await hashPassword(password);

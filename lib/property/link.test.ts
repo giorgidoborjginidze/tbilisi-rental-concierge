@@ -167,4 +167,9 @@ describe("the daily 'rented today?' question (asksDailyQuestion)", () => {
     ).toBe(false);
     expect(asksDailyQuestion({ rentalMode: "long_term", unit: null })).toBe(false);
   });
+
+  it("does not ask about a room whose calendar is kept by hand (it has bookings)", () => {
+    expect(asksDailyQuestion({ rentalMode: "daily", unit: { channelLinks: null, bookings: 3 } })).toBe(false);
+    expect(asksDailyQuestion({ rentalMode: "daily", unit: { channelLinks: null, bookings: 0 } })).toBe(true);
+  });
 });

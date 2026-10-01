@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { logout } from "@/lib/auth/actions";
-import { activeHref } from "@/lib/nav/section";
+import { activeHref, currentValue } from "@/lib/nav/section";
 import { IconChevronDown } from "./icons";
 import { startTour } from "./tour";
 import { OPEN_ACCOUNT_MENU, OPEN_SUPPORT } from "./nav-events";
@@ -89,7 +89,7 @@ export default function AccountMenu({
       key={link.href}
       href={link.href}
       className="account-menu__item"
-      aria-current={link.href === current ? "page" : undefined}
+      aria-current={currentValue(pathname, link.href, current)}
       onClick={close}
     >
       {link.label}

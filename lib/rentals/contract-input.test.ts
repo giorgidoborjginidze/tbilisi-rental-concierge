@@ -48,8 +48,8 @@ describe("parseContractInput", () => {
     expect(parse({ ...base, startDate: "" })).toEqual({ error: "error_required" });
     expect(parse({ ...base, amount: "" })).toEqual({ error: "error_required" });
     expect(parse({ ...base, amount: "-5" })).toEqual({ error: "error_invalid_number" });
-    expect(parse({ ...base, endDate: "2026-02-01" })).toEqual({ error: "error_dates" });
-    expect(parse({ ...base, endDate: "2026-03-01" })).toEqual({ error: "error_dates" });
+    expect(parse({ ...base, endDate: "2026-02-01" })).toEqual({ error: "error_contract_dates" });
+    expect(parse({ ...base, endDate: "2026-03-01" })).toEqual({ error: "error_contract_dates" });
     expect(parse({ ...base, deposit: "abc" })).toEqual({ error: "error_invalid_number" });
     expect(parse({ ...base, graceDays: "90" })).toEqual({ error: "error_invalid_number" });
     expect(parse({ ...base, startDate: "03/01/2026" })).toEqual({ error: "error_required" });

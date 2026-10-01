@@ -63,6 +63,7 @@ export default function OccupancyCalendar({
   const hoverRef = useRef<string | null>(null);
   const dragging = useRef(false);
   const submitted = useRef(false);
+  const formRef = useRef<HTMLFormElement>(null);
   // Phones: one month at a time as a 7-column month view (cells a thumb
   // can hit), and taps instead of a drag — the first tap picks a night,
   // the second the last night of the range. The page still scrolls.
@@ -84,6 +85,14 @@ export default function OccupancyCalendar({
       setTapAnchor(null);
     }
   }, [pending, state]);
+
+  // A tap opens the form below the month: bring it into view (only as far
+  // as needed, so the month stays in sight for the second tap). The page's
+  // scroll-padding keeps it clear of the phone's tab bar.
+  const rangeKey = range ? `${range.start}|${range.end}` : null;
+  useEffect(() => {
+    if (rangeKey) formRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [rangeKey]);
 
   useEffect(() => {
     const endDrag = () => {
@@ -264,6 +273,7 @@ export default function OccupancyCalendar({
 
       {range && (
         <form
+          ref={formRef}
           // A second tap extends the range: the fields start again from it.
           key={`${range.start}|${range.end}`}
           action={formAction}

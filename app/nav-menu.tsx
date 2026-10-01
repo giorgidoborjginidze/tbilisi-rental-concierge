@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { activeHref } from "@/lib/nav/section";
+import { activeHref, currentValue } from "@/lib/nav/section";
 import { IconClose, IconMenu } from "./icons";
 
 // Mobile-only menu: a top-right button that opens a dropdown with the nav
@@ -59,7 +59,7 @@ export default function NavMenu({
             <Link
               key={link.href}
               href={link.href}
-              aria-current={link.href === current ? "page" : undefined}
+              aria-current={currentValue(pathname, link.href, current)}
               onClick={() => setOpen(false)}
             >
               {link.label}

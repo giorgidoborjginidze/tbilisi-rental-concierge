@@ -108,6 +108,12 @@ export default function BookingEditForm({
             {error.detail ? ` ${error.detail}` : ""}
           </p>
         )}
+        {error?.error === "error_booking_closed_block" && (
+          <label className="field" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <input type="checkbox" name="confirmBlock" value="1" required />
+            {labels.booking_block_confirm}
+          </label>
+        )}
 
         <div className="flex items-center gap-3">
           <button type="submit" disabled={pending} className="btn-primary">

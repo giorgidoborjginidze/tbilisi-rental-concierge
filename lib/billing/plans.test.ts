@@ -27,11 +27,15 @@ describe("plan catalog", () => {
     expect(plansFor("personal").map((p) => p.maxAssets)).toEqual([5, 20, 50]);
   });
 
-  it("trial grants the top tier, fallback is the bottom tier", () => {
+  it("trial grants the top tier; the fallback is a free allowance below the cheapest plan", () => {
     expect(trialPlan("personal").id).toBe("pro");
     expect(trialPlan("business").id).toBe("biz_m");
-    expect(fallbackPlan("personal").id).toBe("starter");
-    expect(fallbackPlan("business").id).toBe("biz_s");
+    expect(fallbackPlan("personal").id).toBe("free");
+    expect(fallbackPlan("business").id).toBe("free");
+    // A paid plan always buys more than not paying.
+    expect(fallbackPlan("personal").maxAssets).toBeLessThan(plansFor("personal")[0].maxAssets);
+    expect(fallbackPlan("personal").maxUnits).toBeLessThan(plansFor("personal")[0].maxUnits);
+    expect(fallbackPlan("business").maxAssets).toBeLessThan(plansFor("business")[0].maxAssets);
   });
 });
 
@@ -61,7 +65,7 @@ describe("effectivePlan", () => {
       ({ accountType: "personal", plan: "standard", trialEndsAt: inDays(-60), paidUntil }) as const;
     expect(effectivePlan(state(inDays(-1)), now).id).toBe("standard");
     expect(planStanding(state(inDays(-1)), now)).toBe("grace");
-    expect(effectivePlan(state(inDays(-GRACE_DAYS - 0.01)), now).id).toBe("starter");
+    expect(effectivePlan(state(inDays(-GRACE_DAYS - 0.01)), now).id).toBe("free");
     expect(planStanding(state(inDays(-GRACE_DAYS - 0.01)), now)).toBe("expired");
   });
 
@@ -71,14 +75,14 @@ describe("effectivePlan", () => {
       { accountType: "personal", plan: "standard", trialEndsAt: inDays(-240), paidUntil: inDays(-210) },
       now,
     );
-    expect(plan.id).toBe("starter");
+    expect(plan.id).toBe("free");
     expect(plan.analysis).toBe(false);
   });
 
   it("treats a plan with no payment at all as unpaid (trial or bottom tier)", () => {
     const base = { accountType: "personal", plan: "pro", paidUntil: null } as const;
     expect(effectivePlan({ ...base, trialEndsAt: inDays(5) }, now).id).toBe("pro"); // the trial
-    expect(effectivePlan({ ...base, trialEndsAt: inDays(-5) }, now).id).toBe("starter");
+    expect(effectivePlan({ ...base, trialEndsAt: inDays(-5) }, now).id).toBe("free");
     expect(planStanding({ ...base, trialEndsAt: inDays(-5) }, now)).toBe("expired");
   });
 
@@ -106,12 +110,12 @@ describe("effectivePlan", () => {
     expect(plan.id).toBe("pro");
   });
 
-  it("falls back to the bottom tier after the trial", () => {
+  it("falls back to the free allowance after the trial", () => {
     const plan = effectivePlan(
       { accountType: "personal", plan: null, trialEndsAt: inDays(-1), paidUntil: null },
       now,
     );
-    expect(plan.id).toBe("starter");
+    expect(plan.id).toBe("free");
   });
 });
 
@@ -182,5 +186,19 @@ describe("paidUntilAfterPayment (plan changes)", () => {
 
   it("gives no credit for an unknown old plan", () => {
     expect(iso(paidUntilAfterPayment({ plan: "legacy", paidUntil: inDays(90) }, "pro", now))).toBe(iso(addMonthsUtc(now, 1)));
+  });
+});
+
+describe("paying during the free trial", () => {
+  it("keeps the trial's top tier until the trial ends, then the plan bought", () => {
+    const state = { accountType: "personal", plan: "standard", trialEndsAt: inDays(20), paidUntil: inDays(50) } as const;
+    expect(effectivePlan(state, now).id).toBe("pro");
+    expect(effectivePlan(state, inDays(25)).id).toBe("standard");
+  });
+
+  it("counts the paid month from the trial's end, not from today", () => {
+    const trialEndsAt = inDays(20);
+    const until = paidUntilAfterPayment({ plan: null, paidUntil: null, trialEndsAt }, "standard", now);
+    expect(until.getTime()).toBe(addMonthsUtc(trialEndsAt, 1).getTime());
   });
 });

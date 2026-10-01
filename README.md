@@ -316,9 +316,10 @@ Before a release:
   data, new processors, new retention) — update `lib/legal/` and
   `docs/legal-review.md` together.
 - A visible UI change? The tutorial recordings on `/learn`
-  (`public/tutorials/*.mp4`) must be re-recorded on the new build; until
-  then add the lesson's slug to `OUTDATED_VIDEOS` in `lib/learn/lessons.ts`
-  so the page shows "ვიდეო განახლდება" instead of the old design.
+  (`public/tutorials/<slug>.mp4`) must be re-recorded on the new build; until
+  then remove the old file and keep the lesson's slug in `OUTDATED_VIDEOS`
+  in `lib/learn/lessons.ts` (the page then says once that the videos are
+  being re-recorded). The 2026-08-24 recordings were removed for this reason.
 
 ## Roadmap (build order)
 

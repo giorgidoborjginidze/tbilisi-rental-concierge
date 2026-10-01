@@ -7,6 +7,9 @@ import {
   defaultTemplate,
   MISSING,
   render,
+  isFixedTemplate,
+  mentionsPolice,
+  optOutLine,
 } from "./templates";
 import { baseVars, messageDate } from "./vars";
 
@@ -147,5 +150,25 @@ describe("waLink", () => {
       "https://wa.me/995599123456?text=hello%20world",
     );
     expect(waLink(null, "hi")).toBe("https://wa.me/?text=hi");
+  });
+});
+
+describe("fixed red-line texts, the 112 rule and the opt-out line", () => {
+  it("only the driver red-line texts are fixed", () => {
+    expect(isFixedTemplate("geo_breach_driver")).toBe(true);
+    expect(isFixedTemplate("geo_approach_driver")).toBe(true);
+    expect(isFixedTemplate("rent_due_renter")).toBe(false);
+  });
+
+  it("spots 112 as a number on its own, not inside another number", () => {
+    expect(mentionsPolice("დარეკავთ 112-ზე")).toBe(true);
+    expect(mentionsPolice("call 112")).toBe(true);
+    expect(mentionsPolice("ანგარიში GE11200000")).toBe(false);
+    expect(mentionsPolice("1120 ₾")).toBe(false);
+  });
+
+  it("the opt-out line speaks formally to the renter", () => {
+    expect(optOutLine("ka")).toContain("აცნობეთ");
+    expect(optOutLine("en")).toContain("Tell the owner");
   });
 });

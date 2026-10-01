@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { activeHref } from "@/lib/nav/section";
+import { activeHref, currentValue } from "@/lib/nav/section";
 
 // The top nav's inline links with a "you are here" mark: the current
 // section gets aria-current="page" and an underline. A sub-page lights its
@@ -22,7 +22,7 @@ export default function NavLinks({
         <Link
           key={link.href}
           href={link.href}
-          aria-current={link.href === current ? "page" : undefined}
+          aria-current={currentValue(pathname, link.href, current)}
           aria-label={link.badgeLabel}
         >
           {link.label}

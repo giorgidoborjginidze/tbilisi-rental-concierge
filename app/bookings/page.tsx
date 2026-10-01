@@ -159,7 +159,7 @@ export default async function BookingsPage({
             key={key}
             href={`/bookings?show=${key}${suffix}`}
             className={"btn-chip " + (key === show ? "btn-chip--active" : "")}
-            aria-current={key === show ? "page" : undefined}
+            aria-current={key === show ? "true" : undefined}
           >
             {t(locale, chipLabel[key])}
             {key === "unpriced" && unpricedCount > 0 ? ` (${unpricedCount})` : ""}
@@ -178,7 +178,7 @@ export default async function BookingsPage({
                 <th>{t(locale, "booking_dates")}</th>
                 <th>{t(locale, "dash_guest")}</th>
                 <th className="num">{t(locale, "booking_price")}</th>
-                <th />
+                <th><span className="sr-only">{t(locale, "col_actions")}</span></th>
               </tr>
             </thead>
             <tbody>

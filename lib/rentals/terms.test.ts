@@ -180,3 +180,53 @@ describe("settling a finished contract that still owes rent", () => {
     expect(lateContract([unpaid, running], today, null)?.id).toBe("running");
   });
 });
+
+describe("a period cut short by the contract's end", () => {
+  const d = (key: string) => new Date(`${key}T00:00:00Z`);
+  it("a 5-night monthly contract owes 5 nights, not the month", () => {
+    const status = statusFor(
+      {
+        startDate: d("2026-10-01"),
+        endDate: d("2026-10-06"),
+        paymentPeriod: "monthly",
+        paymentAmount: 1200,
+        monthlyRent: 1200,
+        graceDays: 3,
+        paidThrough: d("2026-10-01"),
+      },
+      d("2026-10-02"),
+      null,
+    );
+    expect(status.amountDue).toBeCloseTo((1200 * 5) / 31, 2);
+  });
+
+  it("whole periods stay whole; only the last, short one is prorated", () => {
+    const terms = contractTerms(
+      {
+        startDate: d("2026-01-01"),
+        endDate: d("2026-03-15"),
+        paymentPeriod: "monthly",
+        paymentAmount: 1000,
+        monthlyRent: 1000,
+      },
+      null,
+    );
+    expect(terms.rateFor?.(d("2026-01-01"))).toBe(1000);
+    expect(terms.rateFor?.(d("2026-02-01"))).toBe(1000);
+    expect(terms.rateFor?.(d("2026-03-01"))).toBeCloseTo((1000 * 14) / 31, 2);
+  });
+
+  it("a contract that ends on a boundary has no proration at all", () => {
+    const terms = contractTerms(
+      {
+        startDate: d("2026-01-01"),
+        endDate: d("2027-01-01"),
+        paymentPeriod: "monthly",
+        paymentAmount: 1000,
+        monthlyRent: 1000,
+      },
+      null,
+    );
+    expect(terms.rateFor).toBeUndefined();
+  });
+});

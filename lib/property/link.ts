@@ -109,10 +109,14 @@ export function unitFeedsAfterSave(input: {
  */
 export const asksDailyQuestion = (asset: {
   rentalMode: string;
-  unit: { channelLinks: unknown } | null;
+  /** `bookings`: live stays on the unit's calendar (entered by hand or synced). */
+  unit: { channelLinks: unknown; bookings?: number } | null;
 }): boolean =>
   asset.rentalMode === "daily" &&
-  (!asset.unit || parseChannelLinks(asset.unit.channelLinks).icalUrls.length === 0);
+  (!asset.unit ||
+    // A room whose calendar is kept — by channel feeds or bookings typed
+    // in — has its record there; asking every morning would only repeat it.
+    (parseChannelLinks(asset.unit.channelLinks).icalUrls.length === 0 && (asset.unit.bookings ?? 0) === 0));
 
 export interface UnitForAsset {
   name: string;

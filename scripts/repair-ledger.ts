@@ -20,7 +20,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { planContractRepair } from "../lib/rentals/repair";
 import { PAYMENT_TEMPLATES } from "../lib/notify/templates";
 import { startOfTodayTbilisi } from "../lib/time";
-import { settlePaidRent } from "../lib/rentals/settle";
+import { settlePaidRent, sweepStaleMessages } from "../lib/rentals/settle";
 
 // Same adapter selection as lib/db.ts.
 const url = process.env.DATABASE_URL ?? "file:./prisma/dev.db";
@@ -101,6 +101,11 @@ async function main() {
     resolved += settled.resolved;
     removed += settled.cancelled;
   }
+
+  // Everything else that should never go out after a deploy: red-line texts
+  // for a car that has since come back (or hours old), messages to a renter
+  // who objected, drafts written before the account's language changed.
+  removed += await sweepStaleMessages(prisma, startOfTodayTbilisi(now), undefined, now);
 
   console.log(
     `[repair-ledger] ${updated} contract(s) brought onto the ledger, ` +

@@ -12,6 +12,7 @@ import { formatMoney } from "@/lib/format";
 import { titled } from "@/lib/i18n/metadata";
 import { DAY_LET_WITHOUT_UNIT } from "@/lib/property/places";
 import { addAssetToRentals } from "@/lib/assets/actions";
+import { LIVE_STAY } from "@/lib/bookings/live";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,8 @@ export default async function UnitsPage() {
   const units = await prisma.unit.findMany({
     where: { operatorId: operator.id },
     include: {
-      _count: { select: { bookings: true, leases: true } },
+      // Live stays only: a cancelled stay or a channel copy is not a booking.
+      _count: { select: { bookings: { where: LIVE_STAY }, leases: true } },
       feeds: true,
     },
     orderBy: [{ city: "asc" }, { district: "asc" }, { name: "asc" }],
@@ -96,7 +98,7 @@ export default async function UnitsPage() {
                 <th className="num">{t(locale, "base_rate_short")}</th>
                 <th className="num">{t(locale, "bookings")}</th>
                 <th className="ical-cell">iCal</th>
-                <th />
+                <th><span className="sr-only">{t(locale, "col_actions")}</span></th>
               </tr>
             </thead>
             <tbody>
@@ -109,7 +111,7 @@ export default async function UnitsPage() {
                     <td>
                       <div>{displayName}</div>
                       <div className="cell-sub">
-                        {cityLabel(locale, unit.city)} · {unit.address}
+                        {[cityLabel(locale, unit.city), unit.address].filter(Boolean).join(" · ")}
                       </div>
                     </td>
                     <td data-label={t(locale, "unit_district")}>{districtLabel(locale, unit.district)}</td>

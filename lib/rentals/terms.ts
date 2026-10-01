@@ -6,7 +6,14 @@
 import { dayPrice } from "../assets/daily-price";
 import { asPeriod, perPeriodAmount } from "./amount";
 import type { LedgerTerms } from "./ledger";
-import { evaluateSchedule, type ScheduleStatus } from "./schedule";
+import {
+  boundaryIndexOnOrAfter,
+  evaluateSchedule,
+  periodBoundary,
+  roundMoney,
+  startOfDay,
+  type ScheduleStatus,
+} from "./schedule";
 import { activeContract, contractPhase, scheduleContract } from "./phase";
 
 /** Per-period amount, as the renter pays it. */
@@ -70,7 +77,33 @@ export function contractTerms(
     endDate: contract.endDate,
     period,
     amount,
-    rateFor: period === "daily" ? dailyRateFor(amount, pricing) : undefined,
+    rateFor: period === "daily" ? dailyRateFor(amount, pricing) : partialLastPeriod(contract, period, amount),
+  };
+}
+
+/**
+ * A week or month cut short by the contract's end is charged for the days
+ * it has, not as a whole period — the same nights the income figures count
+ * (a 5-night "monthly" contract owes 5 nights, not the month). Undefined
+ * when the contract ends on a period boundary (every period is whole).
+ */
+function partialLastPeriod(
+  contract: { startDate: Date; endDate: Date },
+  period: "weekly" | "monthly",
+  amount: number,
+): ((periodStart: Date) => number) | undefined {
+  const start = startOfDay(contract.startDate);
+  const end = startOfDay(contract.endDate);
+  if (end <= start) return undefined;
+  const last = boundaryIndexOnOrAfter(start, period, end);
+  if (periodBoundary(start, period, last).getTime() === end.getTime()) return undefined;
+  return (periodStart) => {
+    const from = startOfDay(periodStart);
+    const n = boundaryIndexOnOrAfter(start, period, from);
+    const next = periodBoundary(start, period, n + 1);
+    if (next <= end) return amount;
+    const whole = next.getTime() - from.getTime();
+    return whole > 0 ? roundMoney((amount * (end.getTime() - from.getTime())) / whole) : amount;
   };
 }
 

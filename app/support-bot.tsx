@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { IconChat, IconClose } from "./icons";
 import { OPEN_SUPPORT } from "./nav-events";
-import { supportLauncherHidden, type BotFaqId } from "@/lib/nav/support";
+import { supportLauncherHidden, supportLauncherPhoneHidden, type BotFaqId } from "@/lib/nav/support";
 
 // FAQ the bot can answer on its own. Each entry maps to bot_q_<id> / bot_a_<id>
 // strings and carries keywords (both languages) for free-text matching.
@@ -136,7 +136,9 @@ export default function SupportBot({
       {!launcherHidden && (
       <button
         type="button"
-        className={`bot-launcher${typing && !open ? " bot-launcher--typing" : ""}`}
+        className={`bot-launcher${typing && !open ? " bot-launcher--typing" : ""}${
+          supportLauncherPhoneHidden(pathname) ? " bot-launcher--phone-off" : ""
+        }`}
         aria-label={labels.launcher}
         aria-expanded={open}
         onClick={toggle}

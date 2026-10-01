@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { saveDayEntry } from "@/lib/rentals/actions";
-import { IconCheck, IconClose } from "./icons";
+import { IconAlert, IconCheck, IconClose } from "./icons";
 import { formatMoney } from "@/lib/format";
 import type { FormState } from "@/lib/units/actions";
 
@@ -23,7 +23,12 @@ export interface DayAsset {
    * record of the night, so the question is not asked (one source per
    * night — lib/property/stays.ts). `amount` is the night's price if known.
    */
-  covered: { label: string; amount: number | null } | null;
+  covered: {
+    label: string;
+    amount: number | null;
+    /** The contract holding the day is late (past its grace): a warning, not a ✓. */
+    late?: string;
+  } | null;
 }
 
 // One row per daily-let asset, asking the only question that matters each
@@ -81,6 +86,23 @@ function Row({
       : asset.kind === "weekend"
         ? labels.day_weekend
         : labels.day_base;
+
+  if (asset.covered?.late) {
+    // A car whose driver is past the grace period is not a good day's
+    // rental: the row says so instead of a green tick and counts nothing.
+    return (
+      <div className="daily-row daily-row--done daily-row--late">
+        <span className="daily-row__ico" data-on="late">
+          <IconAlert size={17} />
+        </span>
+        <span className="daily-row__txt">
+          <b>{asset.name}</b>
+          <span>{asset.covered.late}</span>
+        </span>
+        <span className="daily-row__src">{asset.covered.label}</span>
+      </div>
+    );
+  }
 
   if (asset.covered) {
     return (

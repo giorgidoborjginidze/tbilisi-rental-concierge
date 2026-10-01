@@ -3,7 +3,8 @@
 //
 // A sub-page lights its parent: /units, /bookings, /pricing and /analytics
 // are part of Rentals, whose landing page is the calendar (/calendar);
-// /assets/<id>/rental is part of Assets; /invest/pro is part of Invest.
+// /assets/<id>/rental is part of Assets (of Fleet, where the bar has a
+// Fleet seat); /invest/pro is part of Invest.
 // A bar that has its own seat for /units lights that seat instead.
 
 /** Pages that live under another entry than their own path. */
@@ -33,8 +34,22 @@ export function sectionOf(pathname: string): string {
  * on or under (the longest wins, so a tab for /calendar beats /units), else
  * the entry of the path's section. Null when none of them fits.
  */
+/**
+ * The aria-current value of a navigation entry: "page" when the reader is
+ * on that very page, "true" when it is only the section of the page (a
+ * sub-page lights its parent) — so a page has one "page", not two.
+ */
+export function currentValue(pathname: string, href: string, current: string | null): "page" | "true" | undefined {
+  if (href !== current) return undefined;
+  const path = pathname.split(/[?#]/)[0] || "/";
+  return path === href ? "page" : "true";
+}
+
 export function activeHref(pathname: string, hrefs: readonly string[]): string | null {
   const path = pathname.split(/[?#]/)[0] || "/";
+  // A rental desk belongs to the fleet where the workspace has one: a car
+  // opened from /fleet keeps "Fleet" lit, not "Assets".
+  if (hrefs.includes("/fleet") && /^\/assets\/[^/]+\/rental$/.test(path)) return "/fleet";
   const direct = hrefs
     .filter((href) => under(path, href))
     .sort((a, b) => b.length - a.length)[0];

@@ -32,7 +32,7 @@ export const PRIVACY: LegalText = {
           "ანგარიში: ელფოსტა, პაროლი (მხოლოდ ჰეშის სახით — თავად პაროლი არსად ინახება), სახელი (თუ მიუთითებ), ენა და სამუშაო სივრცის ტიპი; გუნდში მოწვევისას — მოწვეულის ელფოსტა.",
           "უსაფრთხოება: სესიის ჩანაწერი (ცალმხრივი ჰეშით) და შესვლის მცდელობები (ელფოსტა და IP მისამართი) — ზედმეტი მცდელობების შესაზღუდად.",
           "შენი პორტფელი: აქტივები, მისამართები, ღირებულებები, ხელშეკრულებები, გადახდები, შემოსავალი, ჯავშნები, ციფრული აქტივები და შენიშვნები — რასაც თავად შეიყვან.",
-          "სხვა ადამიანების მონაცემები, რასაც შენ შეიყვან: დამქირავებლის, სტუმრის ან მძღოლის სახელი და ტელეფონის ნომერი, ხელშეკრულების პირობები, გადახდები და მათთვის გაგზავნილი შეტყობინებების ტექსტი.",
+          "სხვა ადამიანების მონაცემები, რასაც შენ შეიყვან: დამქირავებლის, სტუმრის ან მძღოლის სახელი და ტელეფონის ნომერი, ხელშეკრულების პირობები, გადახდები, მათთვის გაგზავნილი შეტყობინებების ტექსტი და შენი აღნიშვნა — დაეთანხმა თუ არა WhatsApp შეტყობინებებს და ხომ არ ითხოვა მათი შეწყვეტა. გადახდის ინსტრუქცია (მაგალითად, ანგარიშის ნომერი), რომელსაც შენ დაწერ, შეტყობინებებში ემატება.",
           "ავტომობილის მდებარეობა, თუ GPS ტრეკერს დააკავშირებ: ბოლო მიღებული წერტილი, სიჩქარე და დრო (ყოველი ახალი სიგნალი წინას ცვლის) და ის წერტილები, სადაც ავტომობილი შენ მიერ დადგენილ წითელ ხაზს მიუახლოვდა, გადაკვეთა ან დაბრუნდა. მარშრუტის ისტორიას არ ვინახავთ.",
           "კალენდრები: Airbnb-ისა და Booking.com-ის iCal ბმულები და მათგან მიღებული ჯავშნების თარიღები (და სტუმრის სახელი, თუ არხი მას შეიცავს).",
           "გადახდა: გეგმა, თანხა, შეკვეთის ნომერი და სტატუსი. ბარათის მონაცემებს Flitt-ის გვერდზე შეიყვან — ისინი ჩვენამდე არ მოდის.",
@@ -84,7 +84,7 @@ export const PRIVACY: LegalText = {
         id: "retention",
         heading: "რამდენ ხანს ვინახავთ",
         list: [
-          "ანგარიშისა და პორტფელის მონაცემებს — სანამ ანგარიში არსებობს. ანგარიშის წაშლის მოთხოვნიდან 30 დღეში ვშლით, გარდა გადახდის ჩანაწერებისა, რომლებსაც საგადასახადო კანონმდებლობით დადგენილი ვადით ვინახავთ.",
+          "ანგარიშისა და პორტფელის მონაცემებს — სანამ ანგარიში არსებობს. თუ ანგარიშს თავად წაშლი (პარამეტრები → შენი მონაცემები), ის მაშინვე იშლება ყველაფერთან ერთად, რაც მასში იყო, მათ შორის გამოწერის გადახდების ჩვენეული ჩანაწერიც; ბარათით გადახდის ჩანაწერს Flitt საგადასახადო კანონმდებლობით დადგენილი ვადით ინახავს. წერილობითი მოთხოვნისას 30 დღეში ვშლით.",
           "რასაც თავად წაშლი, მაშინვე ქრება შენი ხედიდან. წაშლილი ხელშეკრულება 30 დღის განმავლობაში აღდგენადია, მისი გადახდების ისტორია კი დამალულად რჩება ანგარიშთან; სრულად წაშლა შეგიძლია მოგვთხოვო.",
           "GPS: ბოლო წერტილი ყოველ ახალ სიგნალზე იცვლება; წითელი ხაზის მოვლენები ინახება, სანამ ხაზს, ავტომობილს ან ანგარიშს არ წაშლი.",
           "შესვლის მცდელობები და პაროლის აღდგენის მოთხოვნები (ლიმიტის დასაცავად) — ერთი დღის შემდეგ იშლება, არაუგვიანეს ორი დღისა.",
@@ -107,14 +107,15 @@ export const PRIVACY: LegalText = {
           "მიმართო პერსონალურ მონაცემთა დაცვის სამსახურს ([personaldata.ge](https://personaldata.ge)) ან სასამართლოს.",
         ],
         after: [
-          "მოთხოვნა გამოგზავნე მისამართზე {email} იმ ელფოსტიდან, რომლითაც ანგარიშზე შედიხარ. გიპასუხებთ კანონით დადგენილ ვადაში — არაუგვიანეს 10 სამუშაო დღისა.",
+          "პარამეტრებში, „შენი მონაცემები“ განყოფილებაში, შეგიძლია თავად ჩამოტვირთო შენი სივრცის ყველა მონაცემის ასლი (JSON ფაილი) და თავად წაშალო ანგარიში.",
+          "სხვა მოთხოვნა გამოგზავნე მისამართზე {email} იმ ელფოსტიდან, რომლითაც ანგარიშზე შედიხარ. გიპასუხებთ კანონით დადგენილ ვადაში — არაუგვიანეს 10 სამუშაო დღისა.",
         ],
       },
       {
         id: "third-persons",
         heading: "თუ თქვენ დამქირავებელი, სტუმარი ან მძღოლი ხართ",
         body: [
-          "თქვენს მონაცემებს Activo-ში ქონების ან ავტომობილის მფლობელი შეიყვანს და მათზე დამუშავებისთვის პასუხისმგებელი პირი ის არის. თქვენი უფლებების გამოსაყენებლად მიმართეთ მას. შეგიძლიათ მოგვწეროთ {email}-ზეც — მოთხოვნას მფლობელს გადავუგზავნით და მის შესრულებაში დავეხმარებით. თუ WhatsApp შეტყობინებების მიღება აღარ გსურთ, აცნობეთ მფლობელს.",
+          "თქვენს მონაცემებს Activo-ში ქონების ან ავტომობილის მფლობელი შეიყვანს და მათზე დამუშავებისთვის პასუხისმგებელი პირი ის არის. თქვენი უფლებების გამოსაყენებლად მიმართეთ მას. შეგიძლიათ მოგვწეროთ {email}-ზეც — მოთხოვნას მფლობელს გადავუგზავნით და მის შესრულებაში დავეხმარებით. თუ WhatsApp შეტყობინებების მიღება აღარ გსურთ, აცნობეთ მფლობელს: როცა ის ამას აღნიშნავს, თქვენთვის ახალი შეტყობინებები აღარ მზადდება. ამას ყოველი შეტყობინებაც გახსენებთ.",
         ],
       },
       {
@@ -158,7 +159,7 @@ export const PRIVACY: LegalText = {
           "Account: email, password (stored only as a hash — the password itself is never kept), name (if you give one), language and workspace type; for a team invitation, the invitee's email.",
           "Security: a session record (one-way hashed) and sign-in attempts (email and IP address) to limit repeated attempts.",
           "Your portfolio: assets, addresses, values, contracts, payments, income, bookings, digital holdings and notes — whatever you enter.",
-          "Other people's data you enter: a tenant's, guest's or driver's name and phone number, contract terms, payments and the text of messages sent to them.",
+          "Other people's data you enter: a tenant's, guest's or driver's name and phone number, contract terms, payments, the text of messages sent to them, and your note of whether they agreed to WhatsApp messages and whether they asked to stop them. The payment instructions you write (for example an account number) are added to those messages.",
           "Vehicle location, if you connect a GPS tracker: the last reported position, speed and time (each new report replaces the previous one) and the positions where the vehicle approached, crossed or came back across a red line you set. We keep no route history.",
           "Calendars: Airbnb and Booking.com iCal links and the booking dates read from them (and the guest's name if the feed includes it).",
           "Billing: plan, amount, order number and status. You enter card details on Flitt's page — they never reach us.",
@@ -210,7 +211,7 @@ export const PRIVACY: LegalText = {
         id: "retention",
         heading: "How long we keep data",
         list: [
-          "Account and portfolio data — while the account exists. We delete it within 30 days of a request to delete the account, except payment records, which we keep for the period tax law requires.",
+          "Account and portfolio data — while the account exists. When you delete the account yourself (Settings → Your data) it is erased at once together with everything in it, including our record of your subscription payments; Flitt keeps its own record of card payments for the period tax law requires. On a written request we delete within 30 days.",
           "What you delete disappears from your view at once. A deleted contract can be restored for 30 days, and its payment history stays hidden with the account; you can ask us to erase it completely.",
           "GPS: the last position is replaced with every new report; red-line events are kept until you delete the red line, the vehicle or the account.",
           "Sign-in attempts and password-reset requests (kept for the rate limit) — deleted after a day, at the latest within two days.",
@@ -233,14 +234,15 @@ export const PRIVACY: LegalText = {
           "complain to the Personal Data Protection Service of Georgia ([personaldata.ge](https://personaldata.ge)) or to a court.",
         ],
         after: [
-          "Send your request to {email} from the email address you sign in with. We answer within the time the law sets — no later than 10 working days.",
+          "In Settings → Your data you can download a copy of everything in your workspace (a JSON file) and delete the account yourself.",
+          "Send any other request to {email} from the email address you sign in with. We answer within the time the law sets — no later than 10 working days.",
         ],
       },
       {
         id: "third-persons",
         heading: "If you are a tenant, guest or driver",
         body: [
-          "Your data was entered into Activo by the owner of the property or vehicle, who is its controller. To exercise your rights, contact the owner. You can also write to us at {email} — we will pass the request to the owner and help them fulfil it. If you no longer want to receive WhatsApp messages, tell the owner.",
+          "Your data was entered into Activo by the owner of the property or vehicle, who is its controller. To exercise your rights, contact the owner. You can also write to us at {email} — we will pass the request to the owner and help them fulfil it. If you no longer want to receive WhatsApp messages, tell the owner: once they mark it, no further messages are prepared for you. Every message says this too.",
         ],
       },
       {

@@ -68,11 +68,13 @@ function DashboardHeader({
   operator: SessionOperator;
   sub: string;
 }) {
-  const name = operator.name ?? operator.email;
+  // A name, never a whole e-mail address (it wraps over two lines on a
+  // phone): without one the greeting stands alone.
+  const name = operator.name?.trim();
   // A greeting reads warmer than repeating the brand (already in the logo).
   return (
     <header>
-      <h1>{t(locale, "greeting")}, {name}</h1>
+      <h1>{name ? `${t(locale, "greeting")}, ${name}` : t(locale, "greeting")}</h1>
       <p style={{ color: "var(--color-text-muted)" }}>{sub}</p>
     </header>
   );
@@ -243,7 +245,13 @@ async function HotelDashboard({
       <DashboardHeader
         locale={locale}
         operator={operator}
-        sub={`${t(locale, "profile_hotel")} · ${unitCount} ${t(locale, "nav_units").toLowerCase()}`}
+        sub={
+          // The same places the "occupied now" chip counts (rooms and flats
+          // let by the day), in the singular after a number in Georgian.
+          places.length > 0
+            ? `${t(locale, "profile_hotel")} · ${t(locale, places.length === 1 ? "places_count_one" : "places_count").replace("{n}", String(places.length))}`
+            : t(locale, "profile_hotel")
+        }
       />
 
       {/* The same "all income" as the income bars and /assets; the
@@ -258,7 +266,10 @@ async function HotelDashboard({
                 `${t(locale, "dash_occupied_now")}: ${occupiedNow} / ${places.length}`,
                 `${t(locale, "kpi_occupancy")}: ${pct(portfolio.occupancyRate)}`,
                 `${t(locale, "kpi_adr_short")}: ${formatMoney(portfolio.adr, currency)}`,
-                `${t(locale, "kpi_revpar_chip")}: ${formatMoney(portfolio.revpar, currency)}${partial}`,
+                {
+                  text: `${t(locale, "kpi_revpar_chip")}: ${formatMoney(portfolio.revpar, currency)}${partial}`,
+                  hint: t(locale, "kpi_revpar_hint"),
+                },
                 `${t(locale, "kpi_booking_revenue")}: ${formatMoney(portfolio.revenue, currency)}${partial}`,
               ]
             : []
@@ -290,7 +301,7 @@ async function HotelDashboard({
         }
       />
 
-      <PortfolioRing locale={locale} operatorId={operator.id} />
+      <PortfolioRing locale={locale} operatorId={operator.id} folded />
       <AssetDeck locale={locale} operatorId={operator.id} />
       <IncomeBars locale={locale} operatorId={operator.id} />
 
@@ -526,7 +537,7 @@ async function CarRentalDashboard({
         }
       />
 
-      <PortfolioRing locale={locale} operatorId={operator.id} />
+      <PortfolioRing locale={locale} operatorId={operator.id} folded />
       <AssetDeck locale={locale} operatorId={operator.id} />
       <IncomeBars locale={locale} operatorId={operator.id} />
 

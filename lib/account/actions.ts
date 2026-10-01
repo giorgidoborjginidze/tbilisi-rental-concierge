@@ -13,7 +13,7 @@ import {
 } from "@/lib/auth/limit";
 import { hashPassword, MIN_PASSWORD_LENGTH, verifyPassword } from "@/lib/auth/password";
 import { validEmail } from "@/lib/auth/reset";
-import { destroyOtherSessions, requireWriter, type SessionOperator } from "@/lib/auth/session";
+import { destroyOtherSessions, destroySession, requireWriter, type SessionOperator } from "@/lib/auth/session";
 import type { FormState } from "@/lib/units/actions";
 import { WORKSPACE_PROFILES } from "@/lib/nav/model";
 
@@ -141,4 +141,25 @@ export async function signOutOtherDevices() {
   const operator = await requireWriter();
   await destroyOtherSessions(operator.id);
   revalidatePath("/settings");
+}
+
+/**
+ * Delete the account and everything in it — assets, units, contracts,
+ * payments, messages, alerts (every table cascades from the operator).
+ * Asks for the password and for the word typed out, refuses the demo, and
+ * signs out. Team members of a company account are kept as accounts of
+ * their own (they lose the link to the company).
+ */
+export async function deleteAccount(_prev: FormState, formData: FormData): Promise<FormState> {
+  const operator = await requireWriter();
+  const password = String(formData.get("password") ?? "");
+  const confirm = String(formData.get("confirm") ?? "").trim().toLowerCase();
+  if (!password) return { error: "error_required" };
+  if (confirm !== "delete" && confirm !== "წაშლა") return { error: "error_delete_word" };
+  const check = await confirmPassword(operator, password);
+  if (check !== "ok") return { error: check };
+
+  await prisma.operator.delete({ where: { id: operator.id } });
+  await destroySession();
+  redirect("/?deleted=1");
 }

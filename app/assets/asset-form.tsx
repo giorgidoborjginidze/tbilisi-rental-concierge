@@ -11,6 +11,7 @@ import { FormMessage, Req, RequiredLegend } from "@/app/form-bits";
 import { IconTrash } from "@/app/icons";
 import { keepTyped } from "@/app/keep-typed";
 import { todayKey } from "@/lib/time";
+import PriceCurrencySelect, { priceLabelIn, type PriceCurrency } from "./price-currency";
 
 export interface AssetFormValues {
   id?: string;
@@ -108,6 +109,7 @@ export default function AssetForm({
   const [status, setStatus] = useState(asset?.status ?? initialStatus ?? "personal_use");
   const [withTenant, setWithTenant] = useState(true);
   const [metalUnit, setMetalUnit] = useState<"oz" | "g">("oz");
+  const [priceCurrency, setPriceCurrency] = useState<PriceCurrency>("USD");
   // Unknown or odd keys (?category=__proto__) have no types, not a crash.
   const types = Object.hasOwn(typesByCategory, category) ? typesByCategory[category] : [];
 
@@ -307,15 +309,22 @@ export default function AssetForm({
                 <input name="quantity" type="number" inputMode="decimal" step="any" min="0" defaultValue={sent?.quantity} />
               </label>
               <label className="field">
-                {category === "metal"
-                  ? labels.metal_unit_price_generic.replace(
-                      "{unit}",
-                      metalUnit === "g" ? labels.metal_unit_g : labels.metal_unit_oz,
-                    )
-                  : category === "stock"
-                    ? labels.stock_unit_price
-                    : labels.crypto_unit_price}
-                <input name="unitPrice" type="number" inputMode="decimal" step="any" min="0" defaultValue={sent?.unitPrice} />
+                {priceLabelIn(
+                  category === "metal"
+                    ? labels.metal_unit_price_generic.replace(
+                        "{unit}",
+                        metalUnit === "g" ? labels.metal_unit_g : labels.metal_unit_oz,
+                      )
+                    : category === "stock"
+                      ? labels.stock_unit_price
+                      : labels.crypto_unit_price,
+                  priceCurrency,
+                )}
+                <span className="price-with-currency">
+                  <input name="unitPrice" type="number" inputMode="decimal" step="any" min="0" defaultValue={sent?.unitPrice} />
+                  <PriceCurrencySelect value={priceCurrency} onChange={setPriceCurrency} label={labels.price_currency} />
+                </span>
+                {priceCurrency === "GEL" && <span className="hint">{labels.price_gel_hint}</span>}
               </label>
               <label className="field">
                 {labels.trade_date_buy}
@@ -428,6 +437,7 @@ export default function AssetForm({
                     <ContractFields
                       compact
                       suggestDates
+                      defaultPeriod={category === "vehicle" ? "weekly" : "monthly"}
                       labels={
                         category === "vehicle"
                           ? { ...labels, contract_tenant: labels.contract_driver, tenant_phone: labels.driver_phone }

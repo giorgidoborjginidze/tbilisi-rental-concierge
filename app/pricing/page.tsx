@@ -1,4 +1,5 @@
 import Link from "next/link";
+import LooseFlatsNote from "@/app/loose-flats-note";
 import { redirect } from "next/navigation";
 import { SeverityIcon } from "../alert-icon";
 import { prisma } from "@/lib/db";
@@ -54,6 +55,7 @@ export default async function PricingPage({
       .replace("{base}", whole(steps.base))
       .replace("{s}", steps.seasonality.toFixed(2))
       .replace("{d}", steps.demand.toFixed(2))
+      .replace("{w}", (steps.weekend ?? 1) !== 1 ? t(locale, "pricing_math_weekend").replace("{w}", (steps.weekend ?? 1).toFixed(2)) : "")
       .replace("{raw}", whole(steps.raw));
     if (steps.nudged != null) {
       line += t(locale, "pricing_math_nudge")
@@ -78,6 +80,7 @@ export default async function PricingPage({
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
         <h1 style={{ marginBottom: 0 }}>{t(locale, "pricing_title")}</h1>
         <UnitFilter
+          label={t(locale, "booking_unit")}
           basePath="/pricing"
           units={units.map((u) => ({ id: u.id, label: displayName(u) }))}
           selected={selected.id}
@@ -92,6 +95,16 @@ export default async function PricingPage({
           </>
         )}
       </p>
+      {selected.baseNightlyRate > 0 && (
+        // The prices leave the page: a table to paste into the channels.
+        <p className="mb-4 flex flex-wrap items-center gap-2" style={{ fontSize: 13 }}>
+          <a href={`/pricing/export?unit=${selected.id}`} className="btn-chip btn-chip--icon-text" download>
+            {t(locale, "pricing_export_csv")}
+          </a>
+          <span style={{ color: "var(--color-text-muted)" }}>{t(locale, "pricing_export_hint")}</span>
+        </p>
+      )}
+      <LooseFlatsNote locale={locale} operatorId={operator.id} />
 
       {/* A unit made for a flat with no day rate has nothing to build on:
           say so, and where to set it, instead of an empty table. */}
@@ -108,7 +121,7 @@ export default async function PricingPage({
       ) : (
       // On a phone each night is a small card: the date, the price, the
       // district figure and the reason all in view (.table-stack).
-      <div className="card table-stack">
+      <div className="card table-stack" tabIndex={0} role="region" aria-label={t(locale, "pricing_title")}>
         <table>
           <thead>
             <tr>

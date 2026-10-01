@@ -96,6 +96,12 @@ describe("flittConfig", () => {
     expect(isProductionDeploy({ NODE_ENV: "production" })).toBe(false);
   });
 
+  it("fails closed on any other production host (Docker, Railway…) without keys", () => {
+    expect(flittConfig({ NODE_ENV: "production" })).toBeNull();
+    // …unless it opts in to the test merchant on purpose.
+    expect(flittConfig({ NODE_ENV: "production", FLITT_SANDBOX: "1" })?.merchantId).toBe("1396424");
+  });
+
   it("never lets FLITT_SANDBOX switch production to the test merchant", () => {
     expect(flittConfig({ VERCEL_ENV: "production", VERCEL: "1", FLITT_SANDBOX: "1" })).toBeNull();
     expect(flittConfig({ VERCEL_ENV: "preview", NODE_ENV: "production", VERCEL: "1", FLITT_SANDBOX: "1" })?.merchantId).toBe("1396424");

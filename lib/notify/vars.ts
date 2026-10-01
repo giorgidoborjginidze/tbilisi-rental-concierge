@@ -18,6 +18,8 @@ export interface VarsAsset {
 export interface VarsOwner {
   name?: string | null;
   notifyPhone?: string | null;
+  /** How renters pay (Operator.payInstructions): the {pay_to} placeholder. */
+  payInstructions?: string | null;
 }
 
 /** "5 ოქტომბერი, 2026" / "5 October 2026" — a stored calendar day. */
@@ -46,5 +48,7 @@ export function baseVars(locale: Locale, asset: VarsAsset, owner: VarsOwner, ren
     tenant: renter,
     owner: owner.name?.trim() || t(locale, "msg_owner_fallback"),
     owner_phone: ownerPhone(owner),
+    // One line, short: it rides inside a reminder.
+    pay_to: owner.payInstructions?.replace(/\s+/g, " ").trim().slice(0, 160) || MISSING,
   };
 }

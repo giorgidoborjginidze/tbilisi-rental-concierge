@@ -6,6 +6,7 @@ import { manualSendable } from "@/lib/notify/outbox-view";
 import { WITHDRAW_REASONS, type WithdrawReason } from "@/lib/rentals/settle";
 import { deleteMessage, markMessageSent, restoreMessage } from "@/lib/rentals/actions";
 import ConfirmAction from "./confirm-action";
+import WaSendLink from "./wa-send-link";
 import { tbilisiFormat } from "@/lib/time";
 import { IconClose, IconExternal, IconRestart } from "./icons";
 
@@ -123,14 +124,17 @@ export default function OutboxList({
                   number: those notes only go out automatically. */}
               {manualSendable(message, autoSend) && (
                   <>
-                    <a
+                    {/* Opening WhatsApp marks it sent (with an undo). */}
+                    <WaSendLink
                       href={waLink(message.toPhone, message.body)}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      messageId={message.id}
+                      assetId={message.assetId ?? ""}
                       className="btn-chip btn-chip--wa btn-chip--icon-text"
+                      undoLabel={t(locale, "outbox_unmark")}
+                      doneLabel={t(locale, "outbox_marked_by_link")}
                     >
                       {t(locale, "outbox_send")} <IconExternal size={14} />
-                    </a>
+                    </WaSendLink>
                     <form action={markMessageSent}>
                       <input type="hidden" name="assetId" value={message.assetId ?? ""} />
                       <input type="hidden" name="messageId" value={message.id} />

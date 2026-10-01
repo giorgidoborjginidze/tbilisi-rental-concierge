@@ -32,6 +32,8 @@ export interface LegalValues {
   grace: number;
   /** Every plan with its monthly price ("personal account — Starter 15 ₾, …"). */
   plans: string;
+  /** What an account keeps without a paid plan ("2 assets and 1 unit"). */
+  free: string;
   updated: string;
 }
 

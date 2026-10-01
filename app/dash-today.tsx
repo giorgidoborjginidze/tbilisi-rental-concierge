@@ -11,6 +11,7 @@ import { alertHref } from "@/lib/alerts/links";
 import { URGENT_TYPES } from "@/lib/alerts/rank";
 import { foldIntoCards, rentCardRank, todaySegments } from "@/lib/dashboard/today";
 import { silenceSpan } from "@/lib/geo/silence";
+import { checkTrackerSilenceSoon } from "@/lib/geo/silence-check";
 import { alertSeverity } from "@/lib/ui/tone";
 import { dayKey, startOfTodayTbilisi, tbilisiFormat } from "@/lib/time";
 import { formatMoney } from "@/lib/format";
@@ -21,9 +22,10 @@ import { contractNightValue, placeStays } from "@/lib/property/stays";
 import { asksDailyQuestion } from "@/lib/property/link";
 import { alertGlyph } from "./alert-icon";
 import { IconArrowRight } from "./icons";
-import DecideCards, { type DecideItem } from "./decide-cards";
+import DecideCards, { DecideToastHost, type DecideItem } from "./decide-cards";
 import DailyCheckClient, { type DayAsset } from "./daily-check-client";
 import { LIVE_CONTRACT } from "@/lib/rentals/live";
+import { LIVE_STAY } from "@/lib/bookings/live";
 
 // "Today": the one block under the hero that says what needs the owner
 // today — urgent alerts (a double booking, the repossession right, a red
@@ -84,6 +86,7 @@ async function loadRentItems(locale: Locale, operatorId: string, today: Date): P
       currency: contract.currency,
       periodsOwed: status.periodsOwed,
       severe: status.state === "repossess",
+      vehicle: contract.asset.category === "vehicle",
       flags: [],
     });
   }
@@ -101,7 +104,13 @@ async function loadDaily(locale: Locale, operatorId: string, today: Date) {
       where: { operatorId, rentalMode: "daily" },
       include: {
         days: { where: { date: today } },
-        unit: { select: { operatorId: true, channelLinks: true } },
+        unit: {
+          select: {
+            operatorId: true,
+            channelLinks: true,
+            _count: { select: { bookings: { where: LIVE_STAY } } },
+          },
+        },
       },
       orderBy: { name: "asc" },
     })
@@ -109,7 +118,10 @@ async function loadDaily(locale: Locale, operatorId: string, today: Date) {
     asksDailyQuestion({
       rentalMode: asset.rentalMode,
       // Only this workspace's own unit speaks for the flat.
-      unit: asset.unit && asset.unit.operatorId === operatorId ? asset.unit : null,
+      unit:
+        asset.unit && asset.unit.operatorId === operatorId
+          ? { channelLinks: asset.unit.channelLinks, bookings: asset.unit._count.bookings }
+          : null,
     }),
   );
   if (assets.length === 0) return null;
@@ -120,7 +132,7 @@ async function loadDaily(locale: Locale, operatorId: string, today: Date) {
     assets.map((asset) => asset.id),
     { start: today, end: tomorrow },
   );
-  const coverOf = (assetId: string): DayAsset["covered"] => {
+  const coverOf = (assetId: string): (NonNullable<DayAsset["covered"]> & { contractId?: string }) | null => {
     const src = sourcesOf.get(assetId);
     const stay = src ? placeStays(src).find((s) => s.start <= today && s.end > today) : undefined;
     if (!src || !stay) return null;
@@ -141,6 +153,7 @@ async function loadDaily(locale: Locale, operatorId: string, today: Date) {
       return {
         label: t(locale, "overlap_src_contract"),
         amount: contract && src.dailyMode ? contractNightValue(contract, today.getTime(), src) : null,
+        contractId: stay.id,
       };
     }
     return { label: t(locale, "overlap_src_lease"), amount: null };
@@ -161,12 +174,23 @@ async function loadDaily(locale: Locale, operatorId: string, today: Date) {
       answered: entry ? { rented: entry.rented, amount: entry.amount } : null,
     };
   });
-  const earned = rows.reduce(
+  return { rows, currency: rows[0]?.currency ?? "GEL" };
+}
+
+/** What the daily rows earned today — a late contract's day counts nothing. */
+function dailyEarned(rows: DayAsset[]): number {
+  return rows.reduce(
     (sum, row) =>
-      sum + (row.covered ? row.covered.amount ?? 0 : row.answered?.rented ? row.answered.amount : 0),
+      sum +
+      (row.covered
+        ? row.covered.late
+          ? 0
+          : row.covered.amount ?? 0
+        : row.answered?.rented
+          ? row.answered.amount
+          : 0),
     0,
   );
-  return { rows, earned, currency: rows[0]?.currency ?? "GEL" };
 }
 
 interface UrgentAlert {
@@ -193,6 +217,9 @@ export async function TodaySection({
 }) {
   const now = new Date();
   const today = startOfTodayTbilisi(now);
+  // A tracker that went quiet since the last check is in this list today,
+  // not after tomorrow's scan (throttled: at most every few minutes).
+  await checkTrackerSilenceSoon(operatorId, now);
 
   const [items, daily, urgent, linked] = await Promise.all([
     loadRentItems(locale, operatorId, today),
@@ -209,6 +236,16 @@ export async function TodaySection({
     }),
   ]);
   const unitOfAsset = new Map(linked.map((asset) => [asset.id, asset.unitId!]));
+
+  // A day held by a contract whose driver is past the grace period (the
+  // repossession right) is a warning in the daily list, not a rented day.
+  const lateContract = new Map(items.filter((item) => item.severe).map((item) => [item.contractId, item]));
+  for (const row of daily?.rows ?? []) {
+    const id = (row.covered as { contractId?: string } | null)?.contractId;
+    const late = id ? lateContract.get(id) : undefined;
+    if (row.covered && late) row.covered = { ...row.covered, late: `${t(locale, "daily_late_warn")} · ${late.sub}` };
+  }
+  const earned = daily ? dailyEarned(daily.rows) : 0;
 
   // Names and desks of the assets the alerts are about — the name the owner
   // reads, not the one stored in the payload.
@@ -240,7 +277,7 @@ export async function TodaySection({
   // One line per place: a late car's red line and silent tracker ride on
   // its rent card; other places get a row.
   const groups = groupAlerts(urgent, unitOfAsset);
-  const { rows, flags } = foldIntoCards(groups, new Set(items.map((item) => item.assetId)));
+  const { rows, flags } = foldIntoCards(groups, items);
 
   const title = (alert: UrgentAlert): string =>
     t(
@@ -296,12 +333,17 @@ export async function TodaySection({
 
   // The flags a rent card carries, in its own words.
   for (const item of items) {
-    const types = flags.get(item.assetId) ?? [];
+    const types = flags.get(item.contractId) ?? [];
     const group = groups.find((g) => g.assetId === item.assetId);
     item.flags = types.map((type) => {
       const kind = group?.kinds.find((k) => k.type === type);
+      // Only this contract's own alerts of the kind (and the car's own).
+      const own = kind?.alerts.filter((alert) => {
+        const id = (alert.payload as { contractId?: string } | null)?.contractId;
+        return !id || id === item.contractId;
+      });
       return {
-        label: kind ? issue(kind as { type: string; alerts: UrgentAlert[] }) : t(locale, `alert_${type}` as StringKey),
+        label: kind && own?.length ? issue({ type, alerts: own }) : t(locale, `alert_${type}` as StringKey),
         tone: alertSeverity(type) === "danger" ? "danger" : "warn",
       };
     });
@@ -311,7 +353,7 @@ export async function TodaySection({
   // periods owed. Rows and cards are then merged by severity, so a row is
   // never below a milder card (lib/dashboard/today.ts).
   const cardRank = (item: DecideItem) =>
-    rentCardRank({ severe: item.severe, flags: flags.get(item.assetId) ?? [] });
+    rentCardRank({ severe: item.severe, flags: flags.get(item.contractId) ?? [] });
   items.sort((a, b) => cardRank(a) - cardRank(b) || b.periodsOwed - a.periodsOwed);
   const segments = todaySegments(rows, items, cardRank);
 
@@ -381,6 +423,7 @@ export async function TodaySection({
         </span>
       </div>
 
+      <DecideToastHost labels={decideLabels}>
       {segments.map((segment, i) =>
         segment.kind === "rows" ? (
           <Fragment key={`r${i}`}>{rowList(segment.items)}</Fragment>
@@ -395,7 +438,7 @@ export async function TodaySection({
                     {t(locale, "today_rent_title")}
                     <span className="today-count">{items.length}</span>
                   </h3>
-                  {fleetLink && (
+                  {(fleetLink || items.some((item) => item.vehicle)) && (
                     <Link href="/fleet" className="link icon-text" style={{ gap: 4 }}>
                       {t(locale, "today_fleet_all")} <IconArrowRight size={14} />
                     </Link>
@@ -405,10 +448,11 @@ export async function TodaySection({
               </>
             )}
             {/* Every late rent is listed — the first few, then "all (N)". */}
-            <DecideCards items={segment.items} labels={decideLabels} />
+            <DecideCards items={segment.items} />
           </div>
         ),
       )}
+      </DecideToastHost>
 
       {nothing && <p className="today__clear">{t(locale, "today_clear")}</p>}
 
@@ -418,13 +462,16 @@ export async function TodaySection({
         <div className="today-block">
           <div className="today-block__head">
             <h3>{t(locale, "today_daily")}</h3>
-            {daily.earned > 0 && (
+            {earned > 0 && (
               <span className="daily-total">
-                {t(locale, "day_earned")}: <b>{formatMoney(daily.earned, daily.currency)}</b>
+                {t(locale, "day_earned")}: <b>{formatMoney(earned, daily.currency)}</b>
               </span>
             )}
           </div>
-          <p className="decide-hint">{t(locale, "day_sub")}</p>
+          {/* The question only while a row still asks it. */}
+          <p className="decide-hint">
+            {t(locale, daily.rows.some((row) => !row.covered && !row.answered) ? "day_sub" : "day_sub_done")}
+          </p>
           <DailyCheckClient
             assets={daily.rows}
             labels={Object.fromEntries(dailyKeys.map((key) => [key, t(locale, key)]))}

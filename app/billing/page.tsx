@@ -198,6 +198,14 @@ export default async function BillingPage({
             </div>
           )}
           {standingBlock}
+          {context.plan.id === "free" && (
+            // No trial, nothing paid: the free allowance, said plainly.
+            <Notice severity="info" role="note" style={{ marginTop: 8 }}>
+              {t(locale, "billing_free_note")
+                .replace("{assets}", String(context.plan.maxAssets))
+                .replace("{units}", String(context.plan.maxUnits))}
+            </Notice>
+          )}
 
           <div className="kpi-grid kpi-grid--3d" style={{ margin: "14px 0 8px" }}>
             <Kpi label={t(locale, "nav_assets")} value={`${context.assetCount} / ${context.plan.maxAssets}`} />

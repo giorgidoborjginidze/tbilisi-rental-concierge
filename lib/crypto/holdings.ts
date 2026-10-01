@@ -116,12 +116,14 @@ export function summarize(trades: CryptoTradeLike[]): HoldingsSummary {
 export function sellShortfall(
   trades: CryptoTradeLike[],
   next: CryptoTradeLike,
-): { held: number } | null {
-  const withNext = chronological([
-    ...trades,
-    { ...next, createdAt: next.createdAt ?? Number.MAX_SAFE_INTEGER },
-  ]);
-  return firstShortfall(withNext);
+): { held: number; later?: CryptoTradeLike } | null {
+  const added = { ...next, createdAt: next.createdAt ?? Number.MAX_SAFE_INTEGER };
+  const short = firstShortfall(chronological([...trades, added]));
+  if (!short) return null;
+  // The new sell itself is too big: what was held on its date. Otherwise it
+  // fits on its own date but leaves a LATER sell uncovered: that sell (its
+  // date) and what would be left for it — never "you held 0 then".
+  return short.trade === added ? { held: short.held } : { held: short.held, later: short.trade };
 }
 
 /**
@@ -134,10 +136,11 @@ export function removalShortfall(
 ): { held: number } | null {
   const before = firstShortfall(chronological(trades));
   if (before) return null; // already inconsistent; never block a clean-up
-  return firstShortfall(chronological(trades.filter((_, i) => i !== index)));
+  const after = firstShortfall(chronological(trades.filter((_, i) => i !== index)));
+  return after ? { held: after.held } : null;
 }
 
-function firstShortfall(ordered: CryptoTradeLike[]): { held: number } | null {
+function firstShortfall<T extends CryptoTradeLike>(ordered: T[]): { held: number; trade: T } | null {
   let held = 0;
   for (const trade of ordered) {
     const q = Math.max(0, trade.quantity);
@@ -145,7 +148,7 @@ function firstShortfall(ordered: CryptoTradeLike[]): { held: number } | null {
       held += q;
       continue;
     }
-    if (q - held > tolerance(held)) return { held };
+    if (q - held > tolerance(held)) return { held, trade };
     held = Math.max(0, held - q);
     if (held <= tolerance(q)) held = 0;
   }

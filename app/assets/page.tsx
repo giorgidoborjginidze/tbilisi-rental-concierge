@@ -84,7 +84,7 @@ function HoldingTable({
               <th className="num">{t(locale, "crypto_current_price")}</th>
               <th className="num">{t(locale, "crypto_value")}</th>
               <th className="num">{t(locale, "crypto_pnl")}</th>
-              <th />
+              <th><span className="sr-only">{t(locale, "col_actions")}</span></th>
             </tr>
           </thead>
           <tbody>
@@ -311,7 +311,7 @@ export default async function AssetsPage() {
       [
         "edit", "contracts_col", "contract_until", "contract_add",
         "market_rent_est", "below_market", "asset_value_col", "mode_daily",
-        "rental_service",
+        "rental_service", "card_turn",
       ] as StringKey[]
     ).map((k) => [k, t(locale, k)]),
   );
@@ -352,6 +352,7 @@ export default async function AssetsPage() {
       )}
 
       <AssetSegments
+        label={t(locale, "asset_category")}
         options={[
           { value: "all", label: t(locale, "seg_all") },
           { value: "real_estate", label: t(locale, "seg_real_estate") },
@@ -375,7 +376,7 @@ export default async function AssetsPage() {
               {group.map((asset) => {
                 const contract = activeContract(asset);
                 const status = effectiveStatus(asset);
-                const desk = rentalDesk(asset.category, asset.contracts.length);
+                const desk = rentalDesk(asset.category, asset.contracts.length, status);
                 const benchmark = asset.district
                   ? rentBenchmarks.get(asset.district) ?? null
                   : null;
@@ -500,7 +501,7 @@ export default async function AssetsPage() {
                       <th>{t(locale, "unit_name")}</th>
                       <th>{t(locale, "unit_type")}</th>
                       <th className="num">{t(locale, "income_monthly")}</th>
-                      <th />
+                      <th><span className="sr-only">{t(locale, "col_actions")}</span></th>
                     </tr>
                   </thead>
                   <tbody>

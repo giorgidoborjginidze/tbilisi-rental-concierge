@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { changeEmail, changePassword } from "@/lib/account/actions";
+import { changeEmail, changePassword, deleteAccount } from "@/lib/account/actions";
 import type { FormState } from "@/lib/units/actions";
 
 type Labels = Record<string, string>;
@@ -81,5 +81,34 @@ export function ChangeEmailForm({ labels, current }: { labels: Labels; current: 
         </button>
       </div>
     </form>
+  );
+}
+
+/** Delete the account: the password and the word typed out, then gone. */
+export function DeleteAccountForm({ labels }: { labels: Labels }) {
+  const [state, action, pending] = useActionState<FormState, FormData>(deleteAccount, null);
+  return (
+    <details className="settings-form settings-danger">
+      <summary className="settings-form__title">{labels.account_delete}</summary>
+      <form action={action} style={{ display: "grid", gap: 10, marginTop: 10 }}>
+        <p className="field-hint" style={{ margin: 0 }}>{labels.account_delete_hint}</p>
+        <div className="settings-form__pair">
+          <label className="field">
+            {labels.password_current}
+            <input name="password" type="password" required autoComplete="current-password" />
+          </label>
+          <label className="field">
+            {labels.account_delete_word}
+            <input name="confirm" required autoComplete="off" />
+          </label>
+        </div>
+        <Message state={state} labels={labels} ok="" />
+        <div>
+          <button type="submit" className="btn-danger" disabled={pending}>
+            {labels.account_delete_yes}
+          </button>
+        </div>
+      </form>
+    </details>
   );
 }

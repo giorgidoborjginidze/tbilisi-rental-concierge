@@ -11,6 +11,8 @@ import {
   staleRentAlert,
   sweepStaleMessages,
   sweepStaleRentAlerts,
+  inOtherLanguage,
+  tooOldToSend,
   withdrawAsset,
   withdrawContract,
   withdrawFenceMessages,
@@ -64,6 +66,7 @@ function fakeDb(alerts: Row[], messages: Row[], contracts: Row[] = [], events: R
     notifyMessage: table(messages),
     rentalContract: table(contracts),
     geoEvent: table(events),
+    operator: table([{ id: "op1", locale: "ka" }, { id: "opEn", locale: "en" }]),
   } as unknown as PrismaClient & {
     alert: ReturnType<typeof table>;
     notifyMessage: ReturnType<typeof table>;
@@ -80,6 +83,9 @@ const message = (id: string, dedupeKey: string, extra: Partial<Row> = {}): Row =
   cancelReason: null,
   cancelledAt: null,
   error: null,
+  operatorId: "op1",
+  body: "შეხსენება",
+  createdAt: new Date(),
   ...extra,
 });
 
@@ -467,5 +473,45 @@ describe("red lines that are gone", () => {
     expect(await withdrawAsset(db, "op", "car")).toEqual({ resolved: 1, cancelled: 1 });
     expect(db.notifyMessage.rows[0].cancelReason).toBe("asset_deleted");
     expect(db.alert.rows[1].status).toBe("open");
+  });
+});
+
+describe("messages that must not go out late or in the wrong language", () => {
+  const today = d("2026-10-01");
+
+  it("withdraws red-line news hours old, an objecting renter's texts and pre-Georgian English drafts", async () => {
+    const now = new Date();
+    const db = fakeDb(
+      [],
+      [
+        message("g1", "geo|e1|driver", { kind: "geo_breach_driver", createdAt: new Date(now.getTime() - 5 * 3_600_000) }),
+        message("g2", "geo|e2|owner", { kind: "geo_breach_owner", toRole: "owner" }),
+        message("p1", "pay|c3|2026-10-01|due", { contractId: "c3", kind: "pay_due_driver" }),
+        message("x1", "pay|c1|2026-10-01|due", { kind: "pay_due_driver", body: "Toyota Prius — your payment is 8 day(s) late" }),
+      ],
+      [
+        { id: "c1", startDate: d("2026-09-01"), endDate: d("2027-09-01"), paidThrough: d("2026-10-01"), remindersEnabled: true },
+        { id: "c3", startDate: d("2026-09-01"), endDate: d("2027-09-01"), paidThrough: d("2026-10-01"), remindersEnabled: true, messagesOptOutAt: d("2026-09-20") },
+      ],
+      [
+        { id: "e1", geofenceId: "f1", kind: "breach", createdAt: new Date(now.getTime() - 5 * 3_600_000) },
+        { id: "e2", geofenceId: "f2", kind: "breach", createdAt: now },
+      ],
+    );
+    expect(await sweepStaleMessages(db, today, undefined, now)).toBe(3);
+    const reason = (id: string) => db.notifyMessage.rows.find((r) => r.id === id)!.cancelReason;
+    expect(reason("g1")).toBe("too_old");
+    expect(reason("g2")).toBeNull();
+    expect(reason("p1")).toBe("opt_out");
+    expect(reason("x1")).toBe("old_language");
+  });
+
+  it("pure checks", () => {
+    expect(inOtherLanguage("Toyota Prius — late", "ka")).toBe(true);
+    expect(inOtherLanguage("ტოიოტა (AA-001-AA)", "ka")).toBe(false);
+    expect(inOtherLanguage("Prius — late", "en")).toBe(false);
+    const now = new Date("2026-10-01T12:00:00Z");
+    expect(tooOldToSend({ kind: "geo_breach_driver", createdAt: new Date("2026-10-01T08:00:00Z") }, now)).toBe(true);
+    expect(tooOldToSend({ kind: "pay_due_driver", createdAt: new Date("2026-09-01T08:00:00Z") }, now)).toBe(false);
   });
 });

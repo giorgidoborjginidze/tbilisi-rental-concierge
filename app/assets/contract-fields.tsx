@@ -25,6 +25,10 @@ export interface ContractValues {
   deposit?: string;
   notes?: string;
   remindersEnabled?: boolean;
+  /** The renter agreed to WhatsApp notices. */
+  waConsent?: boolean;
+  /** The renter asked for no more messages. */
+  messagesOptOut?: boolean;
 }
 
 /** One year after a "YYYY-MM-DD" day (the usual lease), as "YYYY-MM-DD". */
@@ -46,16 +50,19 @@ export default function ContractFields({
   initial,
   compact = false,
   suggestDates = false,
+  defaultPeriod = "monthly",
 }: {
   labels: Record<string, string>;
   initial?: ContractValues;
   compact?: boolean;
   /** Start today and end a year later unless the owner says otherwise. */
   suggestDates?: boolean;
+  /** A new contract's frequency (cars are usually let by the week). */
+  defaultPeriod?: "daily" | "weekly" | "monthly";
 }) {
   const today = todayKey();
   const [period, setPeriod] = useState<"daily" | "weekly" | "monthly">(
-    asPeriod(initial?.paymentPeriod ?? "monthly"),
+    asPeriod(initial?.paymentPeriod ?? defaultPeriod),
   );
   const [amount, setAmount] = useState(initial?.amount ?? "");
   const [start, setStart] = useState(initial?.startDate ?? (suggestDates ? today : ""));
@@ -70,10 +77,18 @@ export default function ContractFields({
   const paidThrough = paidTyped ?? suggestedPaid;
 
   const amountNumber = Number(amount);
+  // "About X a month" only means something for a contract of a month or
+  // more — a one-night let is not 5,479 ₾ a month.
+  const spanDays =
+    start && end && end > start
+      ? Math.round((dayFromKey(end).getTime() - dayFromKey(start).getTime()) / 86_400_000)
+      : null;
   const monthly =
-    period !== "monthly" && Number.isFinite(amountNumber) && amountNumber > 0
+    period !== "monthly" && Number.isFinite(amountNumber) && amountNumber > 0 && (spanDays == null || spanDays >= 28)
       ? formatNumber(monthlyEquivalent(amountNumber, period))
       : null;
+  // The last day must be after the first (a contract holds at least a night).
+  const minEnd = start ? dayKey(new Date(dayFromKey(start).getTime() + 86_400_000)) : undefined;
 
   return (
     <>
@@ -147,7 +162,7 @@ export default function ContractFields({
           type="date"
           required
           aria-required="true"
-          min={start || undefined}
+          min={minEnd}
           value={end}
           onChange={(event) => setEnd(event.target.value)}
         />
@@ -189,6 +204,17 @@ export default function ContractFields({
             <input type="hidden" name="remindersField" value="1" />
             <input type="checkbox" name="remindersEnabled" defaultChecked={initial?.remindersEnabled ?? true} />
             {labels.contract_reminders}
+          </label>
+          {/* What the renter said about messages: their agreement, or that
+              they want none (then nothing at all goes to them). */}
+          <input type="hidden" name="messagesField" value="1" />
+          <label className="field col-span-2" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <input type="checkbox" name="waConsent" defaultChecked={initial?.waConsent ?? false} />
+            {labels.contract_wa_consent}
+          </label>
+          <label className="field col-span-2" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <input type="checkbox" name="messagesOptOut" defaultChecked={initial?.messagesOptOut ?? false} />
+            {labels.contract_opt_out}
           </label>
         </>
       )}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { demandFactor, groupRuns, suggestRate } from "./engine";
-import { seasonalityFactor } from "./seasonality";
+import { demandFactor, groupRuns, suggestRate, WEEKEND_FACTOR } from "./engine";
+import { seasonalityFactor, seasonalityOn } from "./seasonality";
 
 const d = (iso: string) => new Date(`${iso}T00:00:00Z`);
 
@@ -110,7 +110,7 @@ describe("suggestRate explains itself", () => {
   const october = suggestRate({
     baseNightlyRate: 130,
     city: "Batumi",
-    date: d("2026-10-05"), // 0.9
+    date: d("2026-10-14"), // 0.9 (a Wednesday, mid-month)
     upcomingOccupancy: 0.6, // 1.0
     benchmarkAdr: 135,
   });
@@ -181,5 +181,27 @@ describe("groupRuns", () => {
 
   it("keeps nights apart when the reason differs", () => {
     expect(groupRuns([row("2026-10-01", 120, "a"), row("2026-10-02", 120, "b")])).toHaveLength(2);
+  });
+});
+
+describe("weekend nights and month boundaries", () => {
+  it("Friday and Saturday nights carry the weekend factor, said as a reason", () => {
+    const friday = suggestRate({ baseNightlyRate: 100, city: "Tbilisi", date: d("2026-04-17"), upcomingOccupancy: 0.6, benchmarkAdr: null });
+    const thursday = suggestRate({ baseNightlyRate: 100, city: "Tbilisi", date: d("2026-04-16"), upcomingOccupancy: 0.6, benchmarkAdr: null });
+    expect(friday.steps.weekend).toBe(WEEKEND_FACTOR);
+    expect(friday.reasons).toContain("weekend");
+    expect(friday.suggestedRate).toBeGreaterThan(thursday.suggestedRate);
+    expect(thursday.steps.weekend).toBe(1);
+  });
+
+  it("the season slopes across a month boundary instead of a cliff", () => {
+    const last = seasonalityOn("Batumi", d("2026-09-30"));
+    const first = seasonalityOn("Batumi", d("2026-10-01"));
+    // September 1.2, October 0.9: the two nights either side of the 1st are close.
+    expect(Math.abs(last - first)).toBeLessThan(0.05);
+    expect(seasonalityOn("Batumi", d("2026-09-15"))).toBe(1.2);
+    expect(seasonalityOn("Batumi", d("2026-10-15"))).toBe(0.9);
+    expect(seasonalityOn("Batumi", d("2026-10-03"))).toBeLessThan(1.2);
+    expect(seasonalityOn("Batumi", d("2026-10-03"))).toBeGreaterThan(0.9);
   });
 });

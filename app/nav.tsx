@@ -21,6 +21,7 @@ const PLAN_LATIN: Record<string, string> = {
   pro: "Pro",
   biz_s: "Business S",
   biz_m: "Business M",
+  free: "Free",
 };
 
 export default async function Nav() {

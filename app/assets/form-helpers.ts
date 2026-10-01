@@ -11,11 +11,15 @@ import { prisma } from "@/lib/db";
 import { cityOptions, districtOptions } from "@/lib/places";
 import { CONTRACT_LABEL_KEYS } from "./contract-labels";
 
+const HOLDING_KINDS = ["crypto", "stock", "metal"] as const;
+
 // Everything an AssetForm (client component) needs, resolved server-side.
 export async function assetFormProps(
   locale: Locale,
   operatorId: string,
   currentAssetId?: string,
+  /** The category the form opens on — always offered. */
+  keepCategory?: string,
 ) {
   const labelKeys: StringKey[] = [
     "unit_name", "unit_city", "unit_district", "unit_address",
@@ -26,7 +30,7 @@ export async function assetFormProps(
     "daily_rate", "weekend_pct", "holiday_pct", "daily_pricing_hint",
     "income_monthly", "income_source_hint",
     "save", "cancel", "delete", "error_required", "error_invalid_number",
-    "error_email_taken", "error_dates",
+    "error_email_taken", "error_dates", "error_contract_dates",
     "crypto_coin", "crypto_custom", "crypto_custom_symbol", "crypto_custom_id",
     "crypto_custom_id_hint", "stock_ticker",
     "stock_custom_ticker", "metal_type",
@@ -41,6 +45,7 @@ export async function assetFormProps(
     "tenant_step_title", "tenant_step_title_car", "tenant_step_now", "tenant_step_later",
     "contract_driver", "driver_phone",
     "holding_first_title", "holding_first_hint", "crypto_quantity", "crypto_unit_price",
+    "price_currency", "price_gel_hint", "error_rate_unavailable",
     "stock_unit_price", "metal_quantity", "metal_unit_price_generic", "metal_unit_oz",
     "metal_unit_g", "metal_unit_label", "trade_date_buy",
     ...CONTRACT_LABEL_KEYS,
@@ -55,6 +60,20 @@ export async function assetFormProps(
         label: t(locale, `type_${value}` as StringKey),
       })),
     ]),
+  );
+
+  // A car rental is not offered coins, shares and gold unless it already
+  // keeps some (or asked for one): its form lists what a fleet adds.
+  const [operator, holdings] = await Promise.all([
+    prisma.operator.findUnique({ where: { id: operatorId }, select: { profile: true } }),
+    prisma.asset.count({ where: { operatorId, category: { in: [...HOLDING_KINDS] } } }),
+  ]);
+  const offered = ASSET_CATEGORIES.filter(
+    (value) =>
+      operator?.profile !== "car_rental" ||
+      holdings > 0 ||
+      value === keepCategory ||
+      !(HOLDING_KINDS as readonly string[]).includes(value),
   );
 
   // Units available for linking: not linked to another asset.
@@ -74,7 +93,7 @@ export async function assetFormProps(
     labels,
     typesByCategory,
     // One form for everything — including crypto/stock/metal holdings.
-    categories: ASSET_CATEGORIES.map((value) => ({
+    categories: offered.map((value) => ({
       value,
       label: t(locale, `category_${value}` as StringKey),
     })),

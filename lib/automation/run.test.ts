@@ -25,7 +25,7 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
-import { runAutomation, type RunDeps } from "./run";
+import { RUN_BUDGET_MS, runAutomation, SYNC_BUDGET_MS, type RunDeps } from "./run";
 
 const now = new Date("2026-09-30T04:00:00Z");
 
@@ -79,5 +79,35 @@ describe("the automatic run", () => {
     expect(summary.pruneFailed).toBe(true);
     expect(summary.failedOperators).toEqual([]);
     expect(summary.errors).toEqual(["prune: db down"]);
+  });
+});
+
+describe("the run's time budget and the silence check", () => {
+  beforeEach(() => {
+    db.runs.length = 0;
+  });
+
+  it("past the sync budget, calendars are skipped but every workspace is still scanned", async () => {
+    const d = deps({ elapsed: () => SYNC_BUDGET_MS + 1 });
+    const { ok, summary } = await runAutomation("daily", now, d);
+    expect(d.sync).not.toHaveBeenCalled();
+    expect(d.scan).toHaveBeenCalledTimes(2);
+    expect(ok).toBe(true);
+    expect(summary.alertsCreated).toBe(2);
+  });
+
+  it("past the run budget, the remaining workspaces are recorded as not done", async () => {
+    const d = deps({ elapsed: () => RUN_BUDGET_MS + 1 });
+    const { ok, summary } = await runAutomation("daily", now, d);
+    expect(d.scan).not.toHaveBeenCalled();
+    expect(ok).toBe(false);
+    expect(summary.failedOperators).toEqual(["op-a", "op-b"]);
+  });
+
+  it("the calendar-only run also checks for silent trackers", async () => {
+    const silence = vi.fn(async () => 1);
+    const { summary } = await runAutomation("sync", now, deps({ silence }));
+    expect(silence).toHaveBeenCalledTimes(2);
+    expect(summary.alertsCreated).toBe(2);
   });
 });

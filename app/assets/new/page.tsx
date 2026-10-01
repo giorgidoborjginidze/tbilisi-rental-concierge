@@ -29,7 +29,7 @@ export default async function NewAssetPage({
     status: firstParam(query.status),
   });
   const locale = await getLocale();
-  const props = await assetFormProps(locale, operator.id);
+  const props = await assetFormProps(locale, operator.id, undefined, defaults.category);
 
   return (
     <main>

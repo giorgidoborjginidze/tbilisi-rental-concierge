@@ -25,12 +25,14 @@ import {
   withdrawContract,
 } from "@/lib/rentals/settle";
 import {
+  stampedFlag,
   ledgerAfterEdit,
   parseContractInput,
   startingPaidThrough,
   type ContractInput,
 } from "@/lib/rentals/contract-input";
-import { parseTradeInput } from "@/lib/assets/trade-input";
+import { parseTradeInput, toUsdTrade } from "@/lib/assets/trade-input";
+import { usdGelOn } from "@/lib/prices/usd-gel-on";
 import { cityKey, districtKey } from "@/lib/places";
 import { checkFeedUrl } from "@/lib/ical/fetch";
 import { normalizeFeedUrl } from "@/lib/ical/sync";
@@ -82,6 +84,12 @@ async function createHolding(
     optional: true,
   });
   if ("error" in trade) return fail(trade.error);
+  // Bought in lari: stored in USD at the NBG rate of that day.
+  if (trade.value?.priceCurrency === "GEL") {
+    const usd = toUsdTrade(trade.value, (await usdGelOn(trade.value.tradedAt))?.rate ?? null);
+    if (!usd) return fail("error_rate_unavailable");
+    trade.value = usd;
+  }
 
   const { getBillingContext } = await import("@/lib/billing/context");
   if (!(await getBillingContext(operator)).canAddAsset) {
@@ -457,6 +465,8 @@ async function createContract(
       creditBalance: 0,
       // The quick forms have no checkbox: reminders stay on.
       remindersEnabled: input.remindersEnabled ?? true,
+      waConsentAt: stampedFlag(input.waConsent, null, new Date()),
+      messagesOptOutAt: stampedFlag(input.messagesOptOut, null, new Date()),
       // The ledger's opening balance: payments recorded from now on are
       // replayed on top of it if one of them is ever deleted.
       openingPaidThrough: paidThrough,
@@ -564,10 +574,20 @@ export async function updateContract(
       deposit: input.deposit,
       notes: input.notes,
       remindersEnabled,
+      waConsentAt: stampedFlag(input.waConsent, contract.waConsentAt, now),
+      messagesOptOutAt: stampedFlag(input.messagesOptOut, contract.messagesOptOutAt, now),
       status: phase,
       ...(ledger ?? {}),
     },
   });
+  // The renter objected just now: nothing more goes to them, starting with
+  // what is already waiting in the outbox.
+  if (input.messagesOptOut && !contract.messagesOptOutAt) {
+    await prisma.notifyMessage.updateMany({
+      where: { contractId, toRole: { not: "owner" }, status: { in: ["queued", "failed"] } },
+      data: { status: "cancelled", cancelReason: "opt_out", cancelledAt: now },
+    });
+  }
 
   const changed =
     ledger != null ||
@@ -785,13 +805,52 @@ export async function addIncome(
   return { ok: true };
 }
 
-export async function deleteIncome(formData: FormData) {
+export async function deleteIncome(formData: FormData): Promise<{ undo: Record<string, string> } | null> {
   const operator = await requireWriter();
   const incomeId = str(formData, "incomeId");
-  if (incomeId) {
-    await prisma.incomeRecord.deleteMany({
-      where: { id: incomeId, operatorId: operator.id },
-    });
-    revalidatePath("/assets");
-  }
+  if (!incomeId) return null;
+  const row = await prisma.incomeRecord.findFirst({ where: { id: incomeId, operatorId: operator.id } });
+  if (!row) return null;
+  await prisma.incomeRecord.delete({ where: { id: row.id } });
+  revalidatePath("/assets");
+  revalidatePath("/");
+  // What the undo puts back.
+  return {
+    undo: {
+      assetId: row.assetId ?? "",
+      source: row.source,
+      description: row.description ?? "",
+      date: row.date.toISOString(),
+      amount: String(row.amount),
+      currency: row.currency,
+      createdAt: row.createdAt.toISOString(),
+    },
+  };
+}
+
+/** Undo of a deleted income entry: the same entry again. */
+export async function restoreIncome(formData: FormData): Promise<void> {
+  const operator = await requireWriter();
+  const amount = Number(str(formData, "amount"));
+  const date = new Date(str(formData, "date"));
+  const createdAt = new Date(str(formData, "createdAt"));
+  if (!(amount > 0) || Number.isNaN(date.getTime())) return;
+  const assetId = str(formData, "assetId");
+  const asset = assetId
+    ? await prisma.asset.findFirst({ where: { id: assetId, operatorId: operator.id }, select: { id: true } })
+    : null;
+  await prisma.incomeRecord.create({
+    data: {
+      operatorId: operator.id,
+      assetId: asset?.id ?? null,
+      source: str(formData, "source") || "other",
+      description: str(formData, "description") || null,
+      date,
+      amount,
+      currency: str(formData, "currency") === "USD" ? "USD" : "GEL",
+      ...(Number.isNaN(createdAt.getTime()) || createdAt > new Date() ? {} : { createdAt }),
+    },
+  });
+  revalidatePath("/assets");
+  revalidatePath("/");
 }

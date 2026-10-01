@@ -83,23 +83,13 @@ export default function AssetFlipCard({
       className={`aflip${open ? " aflip--open" : ""}`}
       style={{ "--cat": `var(--cat-${asset.category.replace(/_/g, "-")}, var(--cat-other))` } as React.CSSProperties}
     >
-      <div
-        className="aflip__inner"
-        onClick={onClick}
-        role="button"
-        tabIndex={0}
-        aria-expanded={open}
-        aria-label={asset.name}
-        onKeyDown={(event) => {
-          if (event.target !== event.currentTarget) return;
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            toggle();
-          }
-        }}
-      >
+      {/* A tap on the card's empty space turns it (pointer only); keyboards
+          and screen readers use the turn button, so the card itself is not
+          a button wrapped around links (nested-interactive). The face out
+          of view is inert: nothing on it can be tabbed to. */}
+      <div className="aflip__inner" onClick={onClick}>
         {/* ── front ── */}
-        <div className="aflip__face">
+        <div className="aflip__face" inert={open}>
           {/* Category-tinted header art — where the asset's photo will
               live; until then a silhouette in the category's ice tint. */}
           <div className="aflip__art" aria-hidden>
@@ -130,7 +120,12 @@ export default function AssetFlipCard({
           </div>
           <div className="aflip__top">
             <div style={{ minWidth: 0 }}>
-              <Link href={`/assets/${asset.id}/edit`} className="link aflip__name">
+              {/* A car on a contract opens its rental desk — payments, GPS,
+                  messages — where its owner works; the rest open the form. */}
+              <Link
+                href={asset.category === "vehicle" && asset.serviceHref ? asset.serviceHref : `/assets/${asset.id}/edit`}
+                className="link aflip__name"
+              >
                 {asset.name}
               </Link>
               <div className="aflip__sub">
@@ -140,6 +135,9 @@ export default function AssetFlipCard({
             </div>
             <div className="aflip__badges">
               <span className={`badge ${asset.statusClass}`}>{asset.statusLabel}</span>
+              {/* Rent well under the district's market is worth seeing
+                  without turning the card over. */}
+              {asset.belowMarket && <span className="badge badge--warn">{labels.below_market}</span>}
               {/* Late rent is the one thing worth interrupting a scan for. */}
               {asset.overdue &&
                 (asset.overdueHref ? (
@@ -170,14 +168,21 @@ export default function AssetFlipCard({
                 </>
               )}
             </span>
-            <span className="aflip__turn">
+            <button
+              type="button"
+              className="aflip__turn"
+              aria-expanded={open}
+              aria-label={`${labels.card_turn}: ${asset.name}`}
+              title={labels.card_turn}
+              onClick={toggle}
+            >
               <TurnIcon />
-            </span>
+            </button>
           </div>
         </div>
 
         {/* ── back ── */}
-        <div className="aflip__face aflip__face--back">
+        <div className="aflip__face aflip__face--back" inert={!open}>
           <div className="aflip__row">
             <span>{labels.contracts_col}</span>
             {asset.contract || !asset.addContractHref ? (
@@ -217,9 +222,16 @@ export default function AssetFlipCard({
           {extras && <div className="aflip__extras">{extras}</div>}
 
           <div className="aflip__actions">
-            <span className="aflip__turn">
+            <button
+              type="button"
+              className="aflip__turn"
+              aria-expanded={open}
+              aria-label={`${labels.card_turn}: ${asset.name}`}
+              title={labels.card_turn}
+              onClick={toggle}
+            >
               <TurnIcon />
-            </span>
+            </button>
             {asset.serviceHref && (
               <Link href={asset.serviceHref} className="btn-chip btn-chip--icon-text">
                 {labels.rental_service} <IconArrowRight size={14} />

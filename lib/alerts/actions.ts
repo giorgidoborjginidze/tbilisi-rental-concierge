@@ -64,7 +64,10 @@ export async function reopenAlerts(formData: FormData) {
  */
 export async function runAlertScan() {
   const operator = await requireWriter();
-  await scanAlerts(new Date(), operator.id);
+  const result = await scanAlerts(new Date(), operator.id);
   await flushOutbox(operator.id).catch(() => undefined);
   revalidatePath("/", "layout");
+  // The page says the check just ran (and what it found), instead of the
+  // "never ran" line about the daily schedule.
+  redirect(`/alerts?scanned=${result.created}`);
 }

@@ -23,7 +23,7 @@ import { rentLabel } from "@/lib/rentals/display";
 import { loadAssetSources } from "@/lib/property/places";
 import { contractNightValue, dayFills, emptySources, placeStays } from "@/lib/property/stays";
 import { cityLabel, districtLabel } from "@/lib/places";
-import { titled } from "@/lib/i18n/metadata";
+import { assetTitled } from "../asset-title";
 import { formatMoney } from "@/lib/format";
 import { rentalDesk } from "@/lib/rentals/desk";
 import { IconAlert, IconArrowLeft, IconArrowRight, IconRestart } from "@/app/icons";
@@ -34,7 +34,7 @@ import { firstParam, type QueryValue } from "@/lib/params";
 
 export const dynamic = "force-dynamic";
 
-export const generateMetadata = titled("asset_edit_title");
+export const generateMetadata = assetTitled("asset_edit_title");
 
 const DAY_MS = 86_400_000;
 
@@ -106,9 +106,9 @@ export default async function EditAssetPage({
       />
     );
   }
-  const props = await assetFormProps(locale, operator.id, asset.id);
+  const props = await assetFormProps(locale, operator.id, asset.id, asset.category);
   const isIncome = asset.category === "income_source";
-  const desk = rentalDesk(asset.category, asset.contracts.length);
+  const desk = rentalDesk(asset.category, asset.contracts.length, asset.status);
 
   const today = startOfTodayTbilisi();
   const activeContract = runningContract(asset.contracts, today);
@@ -143,7 +143,9 @@ export default async function EditAssetPage({
   // drawn too: a past stay is part of the record.
   const calStart = monthStartTbilisi(-2);
   const calEnd = monthStartTbilisi(4);
-  const showCalendar = !isIncome;
+  // A car on a contract lives on its rental desk (payments, GPS); a
+  // nights calendar is only for one let by the day.
+  const showCalendar = !isIncome && !(asset.category === "vehicle" && asset.rentalMode !== "daily");
   const isDaily = asset.rentalMode === "daily";
   const sources = showCalendar
     ? (await loadAssetSources(operator.id, [asset.id], { start: calStart, end: calEnd })).get(asset.id) ??
@@ -239,7 +241,7 @@ export default async function EditAssetPage({
     "mark_amount_night", "mark_note", "nights_short",
     "contract_start", "contract_end", "contract_amount_monthly", "contract_amount_daily",
     "contract_tenant", "cancel", "error_required", "error_invalid_number",
-    "error_dates", "error_days_taken", "notice_days_held", "notice_days_held_link",
+    "error_dates", "error_contract_dates", "error_days_taken", "notice_days_held", "notice_days_held_link",
     "tap_hint", "calendar_prev_month", "calendar_next_month",
   ];
   // Monday-first short weekday names for the phone's month view
@@ -252,7 +254,11 @@ export default async function EditAssetPage({
     calendarLabelKeys.map((key) => [key, t(locale, key)]),
   );
   // A car let by the day has a driver, not a guest.
-  if (asset.category === "vehicle") calendarLabels.mark_note = t(locale, "mark_note_driver");
+  if (asset.category === "vehicle") {
+    calendarLabels.mark_note = t(locale, "mark_note_driver");
+    // …and days, not nights.
+    calendarLabels.tap_hint = t(locale, "tap_hint_days");
+  }
 
   const contractLabels = Object.fromEntries(
     CONTRACT_LABEL_KEYS.map((key) => [key, t(locale, key)]),
@@ -261,6 +267,9 @@ export default async function EditAssetPage({
   if (asset.category === "vehicle") {
     contractLabels.contract_tenant = t(locale, "contract_driver");
     contractLabels.tenant_phone = t(locale, "driver_phone");
+    contractLabels.contract_reminders = t(locale, "contract_reminders_driver");
+    contractLabels.contract_wa_consent = t(locale, "contract_wa_consent_driver");
+    contractLabels.contract_opt_out = t(locale, "contract_opt_out_driver");
   }
 
   // ── Contracts: the live ones (editable), a notice after a delete or an
@@ -309,6 +318,8 @@ export default async function EditAssetPage({
       deposit: contract.deposit?.toString() ?? "",
       notes: contract.notes ?? "",
       remindersEnabled: contract.remindersEnabled,
+      waConsent: contract.waConsentAt != null,
+      messagesOptOut: contract.messagesOptOutAt != null,
     },
   }));
   const restoreButton = (contractId: string, label: string) => (

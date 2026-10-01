@@ -72,10 +72,11 @@ export default async function HoldingView({
 
   const labelKeys: StringKey[] = [
     "aria_delete_trade", "crypto_buy", "crypto_sell", "crypto_quantity", "crypto_unit_price",
+    "price_currency", "price_gel_hint", "error_rate_unavailable", "decide_undo", "deleted_undo_trade", "col_actions",
     "crypto_add_trade", "crypto_side", "error_required", "error_invalid_number", "error_demo_readonly",
     "trade_date_buy", "trade_date_sell", "trade_date", "trade_saved", "trade_delete_q",
     "delete", "cancel", "metal_unit_oz", "metal_unit_g", "metal_unit_label", "form_required_legend",
-    "error_sell_exceeds",
+    "error_sell_exceeds", "error_sell_uncovers_later",
   ];
   const labels = Object.fromEntries(labelKeys.map((k) => [k, t(locale, k)]));
   // The trade form and table read crypto_quantity / crypto_unit_price.

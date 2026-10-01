@@ -43,7 +43,7 @@ export default async function EditBookingPage({
   const labelKeys: StringKey[] = [
     "booking_guest", "booking_check_in", "booking_check_out", "booking_amount_total",
     "save", "cancel", "error_required", "error_invalid_number", "error_dates",
-    "error_booking_overlap", "booking_cancel_stay", "booking_cancel_confirm",
+    "error_booking_overlap", "error_booking_closed_block", "booking_block_confirm", "booking_cancel_stay", "booking_cancel_confirm",
     "booking_restore", "form_required_legend",
   ];
   const labels = Object.fromEntries(labelKeys.map((key) => [key, t(locale, key)]));

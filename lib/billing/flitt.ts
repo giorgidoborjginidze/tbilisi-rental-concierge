@@ -46,10 +46,12 @@ export function flittConfig(env: Env = process.env): FlittConfig | null {
     cfgMerchant = merchantId;
     cfgSecret = secretKey;
   } else {
-    // No keys: the public sandbox, but never on a production deployment
-    // (a preview may opt in with FLITT_SANDBOX=1).
-    const sandboxAllowed =
-      !isProductionDeploy(env) || (env.FLITT_SANDBOX === "1" && env.VERCEL_ENV !== "production");
+    // No keys: the public sandbox (whose secret is public — anyone could
+    // sign an "approved" callback) only in development. Any production
+    // build — Vercel or any other host — fails closed unless it opts in
+    // with FLITT_SANDBOX=1, and Vercel's production never may.
+    const production = isProductionDeploy(env) || env.NODE_ENV === "production";
+    const sandboxAllowed = !production || (env.FLITT_SANDBOX === "1" && env.VERCEL_ENV !== "production");
     if (!sandboxAllowed) return null;
     cfgMerchant = SANDBOX_MERCHANT_ID;
     cfgSecret = "test";

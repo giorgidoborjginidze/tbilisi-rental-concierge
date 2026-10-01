@@ -12,7 +12,10 @@ export default function AssetSegments({
   options,
   segments,
   ctaText,
+  label,
 }: {
+  /** The select's accessible name. */
+  label: string;
   options: { value: string; label: string }[];
   segments: { group: string; node: ReactNode; empty: boolean; addHref: string }[];
   ctaText: string;
@@ -29,7 +32,7 @@ export default function AssetSegments({
   return (
     <>
       <label className="field" data-tour="segments" style={{ maxWidth: 320, marginTop: 4 }}>
-        <select value={filter} onChange={(e) => setFilter(e.target.value)}>
+        <select aria-label={label} value={filter} onChange={(e) => setFilter(e.target.value)}>
           {options.map((o) => (
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}

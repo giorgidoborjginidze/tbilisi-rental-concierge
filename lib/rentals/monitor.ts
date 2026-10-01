@@ -59,7 +59,7 @@ export async function monitorRentPayments(
     include: {
       asset: {
         include: {
-          operator: { select: { id: true, locale: true, notifyPhone: true, name: true } },
+          operator: { select: { id: true, locale: true, notifyPhone: true, name: true, payInstructions: true } },
         },
       },
     },

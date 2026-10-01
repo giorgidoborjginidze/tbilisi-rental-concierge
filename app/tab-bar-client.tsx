@@ -2,7 +2,7 @@
 
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
-import { activeHref } from "@/lib/nav/section";
+import { activeHref, currentValue } from "@/lib/nav/section";
 import { OPEN_ACCOUNT_MENU } from "./nav-events";
 
 const ICONS: Record<string, React.ReactNode> = {
@@ -136,7 +136,7 @@ export default function TabBarClient({
             key={item.href}
             href={item.href}
             aria-label={item.label}
-            aria-current={on ? "page" : undefined}
+            aria-current={on ? currentValue(pathname, item.href, item.href) : undefined}
             title={item.label}
             className={
               item.center

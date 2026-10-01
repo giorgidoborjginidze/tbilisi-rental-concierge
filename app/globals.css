@@ -399,6 +399,8 @@ a:hover {
   opacity: 0.6;
   cursor: default;
 }
+/* A chosen chip is never washed out, even while its form is busy. */
+.btn-chip.btn-chip--active:disabled { opacity: 1; }
 .btn-chip--active {
   background: var(--color-primary);
   color: var(--color-primary-contrast);
@@ -1544,6 +1546,16 @@ td:first-child {
 }
 .aflip__turn {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* A real button: the card's keyboard and screen-reader way to turn. */
+  background: none;
+  border: 0;
+  padding: 0;
+  min-width: 44px;
+  min-height: 44px;
+  margin: -14px -12px;
+  cursor: pointer;
   color: var(--color-text-muted);
   opacity: 0.55;
   transition: opacity 0.2s ease, color 0.2s ease;
@@ -2163,6 +2175,111 @@ td:first-child {
   }
 }
 
+/* ── Car rental: late driver, red line, WhatsApp preview ── */
+.land-fleet {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 34px;
+  align-items: center;
+  margin-top: 20px;
+}
+@media (max-width: 900px) {
+  .land-fleet {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+}
+.lf {
+  display: grid;
+  gap: 10px;
+  border: 1px solid transparent;
+  border-radius: 18px;
+  background: var(--glass-fill-solid);
+  box-shadow: var(--glass-edge);
+  padding: 14px;
+}
+.lf__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-bg) 70%, transparent);
+  font-size: 14px;
+  min-width: 0;
+}
+.lf__icon {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: 10px;
+  color: var(--color-primary);
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+.lf__icon--alert {
+  color: var(--status-danger-text);
+}
+.lf__main {
+  display: grid;
+  min-width: 0;
+  flex: 1 1 140px;
+}
+.lf__main strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lf__muted {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+.lf__late {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--status-danger-text);
+  background: var(--status-danger-bg);
+}
+.lf__map {
+  flex: none;
+  stroke: var(--status-danger-text);
+  stroke-width: 1.6;
+  fill: var(--status-danger-text);
+}
+.lf__map circle[stroke-dasharray] {
+  fill: none;
+}
+.lf__map path {
+  fill: none;
+}
+.lf__wa {
+  margin-left: 18px;
+  padding: 10px 12px;
+  border-radius: 12px 12px 12px 4px;
+  background: color-mix(in srgb, #25d366 14%, var(--color-bg));
+  font-size: 13px;
+  line-height: 1.5;
+}
+.lf__wa p {
+  margin: 4px 0 0;
+}
+.lf__wa-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
 /* ── How it works ── */
 .land-steps {
   display: grid;
@@ -2528,29 +2645,6 @@ details[open] .faq__plus {
   margin-top: 14px;
   background: #000;
 }
-.learn-lesson__soon {
-  margin-top: 14px;
-  padding: 26px;
-  border-radius: var(--radius-lg);
-  border: 1px dashed transparent;
-  text-align: center;
-  font-size: 13px;
-  color: var(--color-text-muted);
-  background: var(--glass-fill);
-  backdrop-filter: var(--glass-blur);
-  box-shadow: var(--glass-edge);
-}
-/* A recording held back until it is re-recorded: what happened, and that
-   the written steps below still apply. */
-.learn-lesson__soon--updating {
-  display: grid;
-  gap: 6px;
-  justify-items: center;
-}
-.learn-lesson__soon-hint {
-  max-width: 44ch;
-  line-height: 1.5;
-}
 .learn-lesson__steps {
   list-style: decimal;
   margin: 14px 0 0 0;
@@ -2619,8 +2713,11 @@ details[open] .faq__plus {
 .gps-copy code {
   flex: 1 1 auto;
   min-width: 0;
-  overflow-x: auto;
-  white-space: nowrap;
+  /* Wrapped, never scrolled: the owner can read and check every character
+     of what goes to the installer, at any width. */
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-all;
   font-size: 12px;
   padding: 5px 9px;
   border-radius: var(--radius-sm);
@@ -2630,9 +2727,15 @@ details[open] .faq__plus {
 .gps-copy button {
   flex: 0 0 auto;
 }
+@media (max-width: 560px) {
+  /* The label above its value: the address gets the whole row. */
+  .gps-copy > div,
+  .gps-tech > div { flex-wrap: wrap; }
+  .gps-copy .field-hint { flex: 1 1 100%; min-width: 0; }
+  .gps-copy code { flex: 1 1 0; }
+}
 /* Token, example and protocol notes stay folded away: the owner forwards
-   the address; the installer reads the rest. The long one-line codes
-   scroll inside their box instead of widening the card. */
+   the address; the installer reads the rest. */
 .gps-copy {
   grid-template-columns: minmax(0, 1fr);
 }
@@ -2981,6 +3084,12 @@ body::before {
   .tabbar { display: flex; }
   /* Room for the bar so the last content never hides behind it. */
   main { padding-bottom: 130px; }
+  /* Anything scrolled into view (a form opened by a tap, a focused field)
+     stops above the bar, below the sticky nav. */
+  html {
+    scroll-padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+    scroll-padding-top: 76px;
+  }
 }
 
 
@@ -3343,6 +3452,14 @@ body::before {
   font-size: 12px;
   color: var(--color-text-muted);
   font-weight: 500;
+  /* A real button (the card's keyboard way forward), dressed as the hint. */
+  background: none;
+  border: 0;
+  font-family: inherit;
+  cursor: pointer;
+  min-height: 44px;
+  padding: 0 4px;
+  margin: -12px -4px;
 }
 @media (max-width: 760px) {
   /* Bleed exactly to the screen edge (main's side padding is 14 px on a
@@ -3528,6 +3645,11 @@ main > section > h2:first-child {
   background: var(--status-rented-bg);
   color: var(--status-rented-text);
 }
+.daily-row__ico[data-on="late"] {
+  background: var(--status-danger-bg);
+  color: var(--status-danger-text);
+}
+.daily-row--late .daily-row__txt span { color: var(--status-danger-text); }
 .daily-total {
   font-size: 13px;
   color: var(--color-text-muted);
@@ -3580,15 +3702,16 @@ main > section > h2:first-child {
   min-width: 180px;
   max-width: 280px;
 }
+/* The button sits in the toolbar's row with its neighbours; the answer
+   takes a line of its own under the whole row (it never pushes the button
+   up out of line with "Add booking" and "Add unit"). */
 .sync-form {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
+  display: contents;
 }
 .sync-result {
   margin: 0;
-  max-width: 360px;
+  order: 99;
+  flex: 1 1 100%;
   font-size: 12px;
   text-align: right;
   color: var(--color-text-muted);
@@ -3612,8 +3735,7 @@ main > section > h2:first-child {
   text-decoration-thickness: 1px;
 }
 @media (max-width: 640px) {
-  .sync-form { align-items: stretch; width: 100%; }
-  .sync-result { text-align: left; max-width: none; }
+  .sync-result { text-align: left; }
   .feed-status--compact { max-width: none; }
 }
 @media (max-width: 760px) {
@@ -4172,7 +4294,9 @@ a.badge--link:hover { text-decoration: underline; }
 }
 @media (max-width: 560px) {
   .fleet-row { flex-wrap: wrap; }
-  .fleet-row__main { flex-basis: calc(100% - 50px); }
+  /* The name takes what the arrow leaves (no fixed basis: the 14 px gap
+     plus the 44 px arrow used to push the arrow onto a row of its own). */
+  .fleet-row__main { flex: 1 1 0; }
   .fleet-row__badges { order: 3; max-width: none; justify-content: flex-start; flex-basis: 100%; }
 }
 /* An alert about a car or a flat: its desk and its waiting messages. */
@@ -4424,7 +4548,8 @@ a.badge--link:hover { text-decoration: underline; }
 @media (max-width: 480px) {
   .wealth-hero { padding: 24px 14px 20px; }
   .wealth-hero__chips { gap: 6px; }
-  .wealth-hero__chips .chip { font-size: 11.5px; padding: 3px 9px; }
+  /* The 12 px type floor holds on phones too; the chips wrap instead. */
+  .wealth-hero__chips .chip { font-size: 12px; padding: 3px 9px; }
 }
 .wealth-hero__sub {
   margin-top: 4px;
@@ -4580,11 +4705,11 @@ a.badge--link:hover { text-decoration: underline; }
 .nav-badge {
   display: inline-grid;
   place-items: center;
-  min-width: 18px;
-  height: 18px;
+  min-width: 19px;
+  height: 19px;
   padding: 0 5px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -4977,7 +5102,6 @@ td:has(> .confirm-inline) { white-space: normal; }
   .alert-card,
   .alert-group,
   .learn-lesson,
-  .learn-lesson__soon,
   details.faq,
   .btn-chip,
   .btn-secondary {
@@ -5158,6 +5282,7 @@ td:has(> .confirm-inline) { white-space: normal; }
 .cal-strip { display: none; }
 @media (max-width: 760px) {
   .cal-board { display: none; }
+  .cal-month-nav { display: none !important; }
   .cal-strip {
     display: block;
     padding: 12px 0 12px 12px;
@@ -5379,3 +5504,144 @@ main.legal { max-width: 780px; }
   display: grid;
   gap: 6px;
 }
+
+/* The composition ring folded under its heading (hotel and fleet
+   dashboards): the summary is the whole heading row. */
+.comp-ring--fold > summary {
+  list-style: none;
+  cursor: pointer;
+  min-height: 44px;
+}
+.comp-ring--fold > summary::-webkit-details-marker { display: none; }
+.comp-ring--fold:not([open]) { padding-bottom: 22px; }
+
+/* A holding's price with its currency beside it (USD or ₾). */
+.price-with-currency {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.price-with-currency input { flex: 1 1 auto; min-width: 0; }
+.price-with-currency .price-currency { flex: 0 0 auto; width: auto; }
+
+/* The app-wide "Deleted — Undo" toast (app/undo-toast.tsx): floats above
+   the content, and above the phone's tab bar. */
+.undo-toast-slot {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  width: min(480px, calc(100% - 24px));
+  z-index: 60;
+  pointer-events: none;
+}
+.undo-toast-slot .decide-toast {
+  pointer-events: auto;
+  margin: 0;
+  background: color-mix(in srgb, var(--color-bg) 92%, transparent);
+  backdrop-filter: blur(18px) saturate(1.6);
+}
+@media (max-width: 760px) {
+  .undo-toast-slot { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+  .undo-toast-slot .decide-toast { flex-direction: row; align-items: center; }
+}
+
+/* The PRO calculator's five years: figures never break ("1,550 ₾" on one
+   line) and the table fits its card at desktop widths. */
+.pro-years td.num,
+.pro-years th.num { white-space: nowrap; }
+.pro-years table { width: 100%; font-size: 13px; }
+.pro-years th { font-size: 12px; }
+@media (min-width: 641px) {
+  .pro-years { overflow-x: auto; }
+  .pro-years td,
+  .pro-years th { padding-left: 8px; padding-right: 8px; }
+}
+
+/* ── Phone tap targets: small links keep their look but get a 44 px tall
+   hit area (an invisible ::after around them), so a thumb lands on them —
+   names on the asset cards and the deck, booking amounts in "Today",
+   listing brandmarks, the hero's analytics chip, the demo ribbon's
+   sign-up link and table links. ── */
+@media (max-width: 760px) {
+  .aflip__name,
+  .adeck__name,
+  .today-moves__amount,
+  .brandmark,
+  .wealth-hero__chips .chip--link,
+  .demo-ribbon__cta,
+  .card td a.link,
+  .fleet-row__name {
+    position: relative;
+  }
+  .aflip__name::after,
+  .adeck__name::after,
+  .today-moves__amount::after,
+  .brandmark::after,
+  .wealth-hero__chips .chip--link::after,
+  .demo-ribbon__cta::after,
+  .card td a.link::after,
+  .fleet-row__name::after {
+    content: "";
+    position: absolute;
+    left: -4px;
+    right: -4px;
+    top: 50%;
+    height: 44px;
+    min-width: 44px;
+    transform: translateY(-50%);
+  }
+  .account-btn { min-height: 44px; }
+}
+
+/* Working pages on a phone (lib/nav/support.ts): the floating support
+   button would cover a field, a day or a column — it waits in the account
+   menu's Help group instead. */
+@media (max-width: 760px) {
+  .bot-launcher.bot-launcher--phone-off { display: none; }
+}
+
+/* The free calculator's result strip (phones only): the verdict and the
+   monthly figures stay in sight above the tab bar while the inputs are
+   filled in; a tap jumps to the full result. */
+.inv-sticky { display: none; }
+@media (max-width: 760px) {
+  .inv-sticky {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+    z-index: 35;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 12px;
+    min-height: 44px;
+    padding: 8px 14px;
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--color-bg) 90%, transparent);
+    backdrop-filter: blur(18px) saturate(1.6);
+    box-shadow: var(--glass-edge), 0 8px 20px -12px rgba(38, 92, 130, 0.5);
+    color: var(--color-text);
+    font-size: 13px;
+    text-decoration: none;
+  }
+  .inv-sticky__fig b { font-variant-numeric: tabular-nums; }
+  /* Room for the strip: the last fields and any focused one stay above it. */
+  main:has(.inv-sticky) { padding-bottom: 190px; }
+  html:has(.inv-sticky) { scroll-padding-bottom: calc(160px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* While a route skeleton shows, the page is shorter than the screen: the
+   footer stays below the fold instead of riding up behind the tab bar. */
+@media (max-width: 760px) {
+  main { min-height: calc(100svh - 64px); }
+}
+
+/* /learn: one note about the videos being re-recorded, above the lessons. */
+.learn-videos-note {
+  margin: 18px 0 0;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+.learn-lesson { scroll-margin-top: 90px; }

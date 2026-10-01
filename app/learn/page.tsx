@@ -15,8 +15,8 @@ export const generateMetadata = titled("learn_title", { alternates: { canonical:
 // The learning hub: the interactive tour up top, then one lesson per part
 // of the platform — a short silent recording with Georgian captions,
 // paired with the same flow written out as numbered steps. A recording
-// that shows an old design is held back ("the video is being updated")
-// until it is re-recorded; the written steps stay.
+// that shows an old design is held back until it is re-recorded (one note
+// says so for all of them); the written steps stay.
 export default async function LearnPage() {
   const locale = await getLocale();
   const operator = await getSessionOperator();
@@ -54,11 +54,19 @@ export default async function LearnPage() {
         />
       </div>
 
+      {/* The recordings are being redone for the current design: said once
+          here, not as an empty box in every lesson. */}
+      {lessons.some((lesson) => !videoFor(lesson.slug)) && (
+        <p className="learn-videos-note icon-text" role="note">
+          <IconClock size={16} /> {t(locale, "learn_videos_note")}
+        </p>
+      )}
+
       <div className="learn-grid">
         {lessons.map((lesson, i) => {
           const video = videoFor(lesson.slug);
           return (
-            <section key={lesson.slug} className="learn-lesson">
+            <section key={lesson.slug} id={lesson.slug} className="learn-lesson">
               <div className="learn-lesson__head">
                 <span className="land-step__n">{i + 1}</span>
                 <div>
@@ -67,7 +75,7 @@ export default async function LearnPage() {
                 </div>
               </div>
 
-              {video ? (
+              {video && (
                 <video
                   className="learn-lesson__video"
                   controls
@@ -77,18 +85,6 @@ export default async function LearnPage() {
                   poster={posterFor(lesson.slug)}
                   src={video}
                 />
-              ) : OUTDATED_VIDEOS.has(lesson.slug) ? (
-                <div className="learn-lesson__soon learn-lesson__soon--updating" role="note">
-                  <span className="icon-text" style={{ justifyContent: "center", fontWeight: 600 }}>
-                    <IconClock size={18} />
-                    {t(locale, "learn_video_updating")}
-                  </span>
-                  <span className="learn-lesson__soon-hint">{t(locale, "learn_video_updating_hint")}</span>
-                </div>
-              ) : (
-                <div className="learn-lesson__soon">
-                  {t(locale, "learn_video_soon")}
-                </div>
               )}
 
               <ol className="learn-lesson__steps">

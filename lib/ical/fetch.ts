@@ -34,7 +34,8 @@ export type FeedError =
   | "http" // any other non-2xx answer
   | "too_many_redirects"
   | "too_large"
-  | "not_ical"; // answered, but not with a calendar (e.g. a login page)
+  | "not_ical" // answered, but not with a calendar (e.g. a login page)
+  | "empty_suspect"; // answered with an empty calendar while stays were due: held back once
 
 export const FEED_ERRORS: FeedError[] = [
   "invalid_url",
@@ -47,6 +48,7 @@ export const FEED_ERRORS: FeedError[] = [
   "too_many_redirects",
   "too_large",
   "not_ical",
+  "empty_suspect",
 ];
 
 export class FeedFetchError extends Error {

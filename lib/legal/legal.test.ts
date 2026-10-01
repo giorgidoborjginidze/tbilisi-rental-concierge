@@ -9,7 +9,7 @@ import { STRING_KEYS, t, type StringKey } from "@/lib/i18n/strings";
 import { ATTEMPT_RETENTION_MS } from "@/lib/auth/limit";
 import { RESET_TTL_MS } from "@/lib/auth/reset";
 
-const KNOWN = new Set(["email", "entity", "trial", "grace", "plans", "updated"]);
+const KNOWN = new Set(["email", "entity", "trial", "grace", "plans", "free", "updated"]);
 const DOCS: [string, { ka: LegalDoc; en: LegalDoc }][] = [
   ["terms", TERMS],
   ["privacy", PRIVACY],

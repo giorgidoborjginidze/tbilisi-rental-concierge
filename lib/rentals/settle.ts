@@ -57,9 +57,18 @@ export type WithdrawReason =
   | "not_monitored"
   // The owner removed the message from the outbox: it is kept (so the same
   // message is never queued again) and can be put back.
-  | "owner";
+  | "owner"
+  // The renter asked for no more messages (RentalContract.messagesOptOutAt).
+  | "opt_out"
+  // Red-line news too old to send when the queue was finally delivered.
+  | "too_old"
+  // Written in another language than the account now uses (pre-locale drafts).
+  | "old_language";
 
 export const WITHDRAW_REASONS: WithdrawReason[] = [
+  "opt_out",
+  "too_old",
+  "old_language",
   "paid",
   "changed",
   "contract_ended",
@@ -567,26 +576,49 @@ export async function closeSupersededEndings(
   return autoResolve(db, alerts, "superseded", now);
 }
 
+/** Red-line news older than this is not sent any more (a backlog flushed late). */
+export const GEO_MESSAGE_MAX_AGE_MS = 3 * 60 * 60_000;
+
 /**
- * Last check before anything is sent (and at every scan): withdraw each
- * unsent message whose situation is over — the rent it chases is paid, its
- * contract ended or was deleted, the vehicle came back inside the line.
+ * A draft written in another language than the account now uses — the
+ * English texts queued before Georgian became the default. Pure: a
+ * Georgian account's message with no Georgian letter at all is one.
  */
-export async function sweepStaleMessages(
+export function inOtherLanguage(body: string, locale: string): boolean {
+  const georgian = /[\u10A0-\u10FF]/.test(body);
+  return locale === "ka" ? !georgian : georgian && !/[A-Za-z]{3,}/.test(body);
+}
+
+/** A red-line message too old to send: the car has moved on since. */
+export const tooOldToSend = (message: { kind: string; createdAt: Date }, now: Date): boolean =>
+  GEO_KINDS.includes(message.kind as TemplateKey) &&
+  now.getTime() - message.createdAt.getTime() > GEO_MESSAGE_MAX_AGE_MS;
+
+/**
+ * Why each of these unsent messages should not go out (only the stale
+ * ones are in the map): the rent it chases is paid, its contract ended or
+ * was deleted, the vehicle came back inside the line, the red-line news is
+ * hours old, or it was written in the account's earlier language. The
+ * sweep below and the outbox screens (which must never offer a stale
+ * "send on WhatsApp" link) share it.
+ */
+export async function staleMessageReasons(
   db: PrismaClient,
+  messages: { id: string; dedupeKey: string; kind: string; toRole: string; contractId: string | null; createdAt: Date; body: string; operatorId: string }[],
   today: Date,
-  operatorId?: string,
   now: Date = new Date(),
-): Promise<number> {
-  const messages = await db.notifyMessage.findMany({
-    where: {
-      status: { in: UNSENT },
-      kind: { in: [...PAYMENT_KINDS, ...GEO_KINDS] },
-      ...(operatorId ? { operatorId } : {}),
-    },
-    select: { id: true, dedupeKey: true, kind: true, toRole: true, contractId: true },
-  });
-  if (messages.length === 0) return 0;
+): Promise<Map<string, WithdrawReason>> {
+  const reasons = new Map<string, WithdrawReason>();
+  if (messages.length === 0) return reasons;
+
+  const locales = new Map(
+    (
+      await db.operator.findMany({
+        where: { id: { in: [...new Set(messages.map((m) => m.operatorId))] } },
+        select: { id: true, locale: true },
+      })
+    ).map((op) => [op.id, op.locale]),
+  );
 
   const contractIds = [
     ...new Set(messages.map((message) => message.contractId).filter(Boolean)),
@@ -602,6 +634,7 @@ export async function sweepStaleMessages(
           endDate: true,
           paidThrough: true,
           remindersEnabled: true,
+          messagesOptOutAt: true,
         },
       })
     ).map((contract) => [contract.id, contract]),
@@ -623,30 +656,64 @@ export async function sweepStaleMessages(
   );
   const fenceIds = [...new Set([...events.values()].map((event) => event.geofenceId))];
   const lastReturn = new Map<string, Date>();
-  for (const row of await db.geoEvent.findMany({
-    where: { geofenceId: { in: fenceIds }, kind: "return" },
-    select: { geofenceId: true, createdAt: true },
-  })) {
-    const seen = lastReturn.get(row.geofenceId);
-    if (!seen || row.createdAt > seen) lastReturn.set(row.geofenceId, row.createdAt);
+  if (fenceIds.length > 0) {
+    for (const row of await db.geoEvent.findMany({
+      where: { geofenceId: { in: fenceIds }, kind: "return" },
+      select: { geofenceId: true, createdAt: true },
+    })) {
+      const seen = lastReturn.get(row.geofenceId);
+      if (!seen || row.createdAt > seen) lastReturn.set(row.geofenceId, row.createdAt);
+    }
   }
 
-  const byReason = new Map<WithdrawReason, string[]>();
   for (const message of messages) {
-    let reason: WithdrawReason | null;
+    let reason: WithdrawReason | null = null;
+    const contract = message.contractId ? contracts.get(message.contractId) ?? null : null;
     if (PAYMENT_KINDS.includes(message.kind as TemplateKey)) {
       // A payment message queued before contracts were linked has no id:
       // nothing to check it against, so it is left alone.
-      if (!message.contractId) continue;
-      reason = stalePaymentMessage(message, contracts.get(message.contractId) ?? null, today);
-    } else {
+      if (message.contractId) reason = stalePaymentMessage(message, contract, today);
+    } else if (GEO_KINDS.includes(message.kind as TemplateKey)) {
       const eventId = geoEventOfDedupeKey(message.dedupeKey);
       const event = eventId ? events.get(eventId) ?? null : null;
       reason = staleGeoMessage(message, event, event ? lastReturn.get(event.geofenceId) ?? null : null);
+      if (!reason && tooOldToSend(message, now)) reason = "too_old";
     }
-    if (!reason) continue;
-    byReason.set(reason, [...(byReason.get(reason) ?? []), message.id]);
+    if (!reason && message.toRole !== "owner" && contract?.messagesOptOutAt) reason = "opt_out";
+    if (!reason && inOtherLanguage(message.body, locales.get(message.operatorId) ?? "ka")) {
+      reason = "old_language";
+    }
+    if (reason) reasons.set(message.id, reason);
   }
+  return reasons;
+}
+
+/**
+ * Last check before anything is sent (and at every scan): withdraw each
+ * unsent message whose situation is over (staleMessageReasons).
+ */
+export async function sweepStaleMessages(
+  db: PrismaClient,
+  today: Date,
+  operatorId?: string,
+  now: Date = new Date(),
+): Promise<number> {
+  const messages = await db.notifyMessage.findMany({
+    where: { status: { in: UNSENT }, ...(operatorId ? { operatorId } : {}) },
+    select: {
+      id: true,
+      dedupeKey: true,
+      kind: true,
+      toRole: true,
+      contractId: true,
+      createdAt: true,
+      body: true,
+      operatorId: true,
+    },
+  });
+  const reasons = await staleMessageReasons(db, messages, today, now);
+  const byReason = new Map<WithdrawReason, string[]>();
+  for (const [id, reason] of reasons) byReason.set(reason, [...(byReason.get(reason) ?? []), id]);
 
   let cancelled = 0;
   for (const [reason, ids] of byReason) {

@@ -27,7 +27,7 @@ import {
   resolveUnmonitoredSilence,
   type WithdrawReason,
 } from "@/lib/rentals/settle";
-import { isTrackerSilent, silenceKey, TRACKER_SILENT_MINUTES } from "@/lib/geo/silence";
+import { checkTrackerSilence } from "@/lib/geo/silence-check";
 import { dayKey, startOfTodayTbilisi } from "@/lib/time";
 import {
   OVERLAP_HORIZON_DAYS,
@@ -553,41 +553,11 @@ export async function scanAlerts(
 
   // 8. Trackers gone quiet on a rented vehicle with a live red line. An
   //    unplugged or jammed tracker is the theft scenario, and its last
-  //    position says nothing about where the car is now. One alert per
-  //    silence episode; it closes itself when the tracker reports again.
-  const silentBefore = new Date(now.getTime() - TRACKER_SILENT_MINUTES * 60_000);
-  const quietDevices = await prisma.gpsDevice.findMany({
-    where: {
-      lastPingAt: { not: null, lt: silentBefore },
-      asset: {
-        ...scope,
-        geofences: { some: { active: true } },
-        contracts: { some: { ...activeContractWhere(start), ...LIVE_CONTRACT } },
-      },
-    },
-    include: {
-      asset: { select: { id: true, operatorId: true, name: true, plateNumber: true } },
-    },
-  });
-  for (const device of quietDevices) {
-    if (!device.lastPingAt || !isTrackerSilent(device.lastPingAt, now)) continue;
-    await push(
-      device.asset.operatorId,
-      null,
-      "tracker_silent",
-      silenceKey(device.deviceId, device.lastPingAt),
-      {
-        assetId: device.asset.id,
-        assetName: device.asset.name,
-        category: "vehicle",
-        plate: device.asset.plateNumber,
-        deviceId: device.deviceId,
-        lastPingAt: device.lastPingAt.toISOString(),
-        lat: device.lastLat,
-        lng: device.lastLng,
-      },
-    );
-  }
+  //    position says nothing about where the car is now. One alert (and one
+  //    message to the owner) per silence episode; it closes itself when the
+  //    tracker reports again. The same check also runs on every sync, ping
+  //    and page view (lib/geo/silence-check.ts) — not only once a day.
+  result.created += await checkTrackerSilence(now, operatorId);
 
   // A silence alert for a vehicle nobody watches any more (tracker
   // disconnected, red lines paused or deleted, rental over) will never be

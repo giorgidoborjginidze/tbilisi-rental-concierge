@@ -171,11 +171,11 @@ describe("sellShortfall", () => {
     ).toEqual({ held: 0 });
   });
 
-  it("rejects a back-dated sell that leaves a later sell uncovered", () => {
+  it("rejects a back-dated sell that leaves a later sell uncovered — and names that later sell", () => {
     // Held 2 on 15 Jan; selling 2 then leaves the 10 Feb sell with nothing.
-    expect(
-      sellShortfall(record, { side: "sell", quantity: 2, unitPrice: 130, tradedAt: "2026-01-15" }),
-    ).toEqual({ held: 0 });
+    const short = sellShortfall(record, { side: "sell", quantity: 2, unitPrice: 130, tradedAt: "2026-01-15" });
+    expect(short?.held).toBe(0);
+    expect(short?.later?.tradedAt).toBe("2026-02-10");
   });
 
   it("never blocks a buy", () => {

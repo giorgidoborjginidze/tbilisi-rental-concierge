@@ -1,5 +1,5 @@
 import { t, type Locale, type StringKey } from "@/lib/i18n/strings";
-import { deleteIncome } from "@/lib/assets/actions";
+import { deleteIncome, restoreIncome } from "@/lib/assets/actions";
 import ConfirmAction from "@/app/confirm-action";
 import IncomeForm from "./income-form";
 import { formatMoney } from "@/lib/format";
@@ -60,6 +60,7 @@ export default function IncomeSection({
                     <td className="num">
                       <ConfirmAction
                         action={deleteIncome}
+                        undo={{ action: restoreIncome, label: t(locale, "decide_undo"), done: t(locale, "deleted_undo_income") }}
                         fields={{ incomeId: income.id }}
                         trigger={<IconClose size={15} />}
                         ariaLabel={t(locale, "aria_delete_income")}

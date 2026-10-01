@@ -316,11 +316,14 @@ export default async function CalendarPage({
         <h2 className="cal-month" style={{ margin: 0 }}>{monthLabel}</h2>
         <div className="flex flex-wrap items-center gap-3">
           <UnitFilter
+            label={t(locale, "booking_unit")}
             units={allUnits.map((u) => ({ id: u.id, label: displayName(u) }))}
             selected={unitQuery ?? ""}
             allLabel={t(locale, "calendar_all_units")}
           />
-          <div className="flex items-center gap-2">
+          {/* On a phone the strip's own arrows page the fortnights and step
+              into the neighbouring month: one pair of arrows, not two. */}
+          <div className="flex items-center gap-2 cal-month-nav">
             <Link
               href={`/calendar?month=${monthParam(prev.year, prev.month)}${unitSuffix}`}
               className="btn-chip btn-chip--icon"

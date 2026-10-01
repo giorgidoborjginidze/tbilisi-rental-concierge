@@ -48,9 +48,11 @@ describe("activeHref", () => {
     expect(activeHref("/invest", TABS)).toBeNull();
   });
 
-  it("the fleet seat is current on the fleet page; a car's desk is part of Assets", () => {
+  it("the fleet seat is current on the fleet page and on a car's desk; without one the desk is Assets", () => {
     expect(activeHref("/fleet", hrefs(fleet.tabs))).toBe("/fleet");
-    expect(activeHref("/assets/abc/rental", hrefs(fleet.tabs))).toBe("/assets");
+    expect(activeHref("/assets/abc/rental", hrefs(fleet.tabs))).toBe("/fleet");
+    expect(activeHref("/assets/abc/edit", hrefs(fleet.tabs))).toBe("/assets");
+    expect(activeHref("/assets/abc/rental", ["/", "/assets", "/alerts"])).toBe("/assets");
   });
 
   it("does not match a longer name that only shares a prefix", () => {
@@ -59,5 +61,14 @@ describe("activeHref", () => {
 
   it("gives nothing when the section is not offered (e.g. no Rentals entry)", () => {
     expect(activeHref("/calendar", ["/", "/assets", "/invest", "/alerts"])).toBeNull();
+  });
+});
+
+describe("currentValue (one aria-current=page per page)", () => {
+  it("is 'page' on the page itself and 'true' on its section", async () => {
+    const { currentValue } = await import("./section");
+    expect(currentValue("/calendar", "/calendar", "/calendar")).toBe("page");
+    expect(currentValue("/analytics", "/calendar", "/calendar")).toBe("true");
+    expect(currentValue("/analytics", "/assets", "/calendar")).toBeUndefined();
   });
 });

@@ -22,24 +22,60 @@ export function rentCardRank(card: { severe: boolean; flags: readonly string[] }
 export interface UrgentGroup {
   assetId: string | null;
   rank: number;
-  kinds: { type: string }[];
+  kinds: { type: string; alerts?: readonly { payload?: unknown }[] }[];
 }
 
+export interface RentCardRef {
+  contractId: string;
+  assetId: string;
+}
+
+const contractOf = (alert: { payload?: unknown }): string | null => {
+  const id = (alert.payload as { contractId?: unknown } | null | undefined)?.contractId;
+  return typeof id === "string" && id ? id : null;
+};
+
 /**
- * Split the urgent alert groups: those of an asset that has a rent card
- * become that card's flags; the others stay rows.
+ * Split the urgent alert groups: what an asset with a rent card carries
+ * becomes that card's flags; the rest stays rows. An alert about one
+ * contract (the repossession right of driver B) flags only that contract's
+ * card — never the card of another driver of the same car; an alert about
+ * the car itself (a red line, a silent tracker) flags every card of it.
+ * Kinds no card takes stay a row of their own. Flags are keyed by contract.
  */
 export function foldIntoCards<G extends UrgentGroup>(
   groups: G[],
-  cardAssets: ReadonlySet<string>,
+  cards: readonly RentCardRef[],
 ): { rows: G[]; flags: Map<string, string[]> } {
   const flags = new Map<string, string[]>();
   const rows: G[] = [];
   for (const group of groups) {
-    if (group.assetId && cardAssets.has(group.assetId)) {
-      flags.set(group.assetId, group.kinds.map((kind) => kind.type));
-    } else {
+    const own = group.assetId ? cards.filter((card) => card.assetId === group.assetId) : [];
+    if (own.length === 0) {
       rows.push(group);
+      continue;
+    }
+    const left: G["kinds"] = [];
+    for (const kind of group.kinds) {
+      const alerts = kind.alerts ?? [];
+      const general = alerts.length === 0 || alerts.some((alert) => contractOf(alert) == null);
+      const ids = new Set(alerts.map(contractOf).filter((id): id is string => id != null));
+      const takers = own.filter((card) => general || ids.has(card.contractId));
+      for (const card of takers) flags.set(card.contractId, [...(flags.get(card.contractId) ?? []), kind.type]);
+      if (general) continue;
+      // A contract with no card today (already paid up): its alert stays a row.
+      const untaken = alerts.filter((alert) => !own.some((card) => card.contractId === contractOf(alert)));
+      if (untaken.length > 0) left.push({ ...kind, alerts: untaken });
+    }
+    if (left.length > 0) {
+      const kept = new Set(left.flatMap((kind) => kind.alerts ?? []));
+      const withAlerts = group as G & { alerts?: readonly unknown[] };
+      rows.push({
+        ...group,
+        ...(withAlerts.alerts ? { alerts: withAlerts.alerts.filter((alert) => kept.has(alert as { payload?: unknown })) } : {}),
+        kinds: left,
+        rank: Math.min(...left.map((kind) => alertRank(kind.type))),
+      });
     }
   }
   return { rows, flags };

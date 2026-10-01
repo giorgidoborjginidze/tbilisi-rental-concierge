@@ -14,6 +14,21 @@ export function supportLauncherHidden(pathname: string | null | undefined): bool
   return /\/edit$/.test(path);
 }
 
+/**
+ * Pages that are a working surface edge to edge on a phone — the PRO
+ * calculator's fields, a car's payment form, the calendar strip, the
+ * price table: there the floating button would cover a field or a day, so
+ * on a phone it is left out (Help → Support chat in the account menu
+ * still opens it). On wider screens it stays.
+ */
+const PHONE_WORK_PAGES = [/^\/invest(\/|$)/, /^\/assets\/[^/]+\/rental$/, /^\/calendar$/, /^\/pricing$/, /^\/fleet$/];
+
+export function supportLauncherPhoneHidden(pathname: string | null | undefined): boolean {
+  if (!pathname) return false;
+  const path = pathname.replace(/\/+$/, "") || "/";
+  return PHONE_WORK_PAGES.some((page) => page.test(path));
+}
+
 /** The questions the support bot answers by itself (strings bot_q_<id> / bot_a_<id>). */
 export const BOT_FAQ_IDS = ["what", "pricing", "sync", "payment", "security", "calc"] as const;
 export type BotFaqId = (typeof BOT_FAQ_IDS)[number];

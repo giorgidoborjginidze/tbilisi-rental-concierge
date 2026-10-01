@@ -9,19 +9,21 @@ import { alertGlyph } from "./alert-icon";
 import { IconArrowRight } from "./icons";
 import { adviceTips } from "@/lib/alerts/groups";
 import { alertHref } from "@/lib/alerts/links";
-import { ADVICE_TYPES } from "@/lib/alerts/rank";
+import { ADVICE_TYPES, alertRank } from "@/lib/alerts/rank";
 import { owingEndingIds } from "@/lib/alerts/owing";
-import { rentalDesk } from "@/lib/rentals/desk";
+import { deskHref, rentalDesk } from "@/lib/rentals/desk";
 import { activeContract as runningContract, assetStatusNow } from "@/lib/rentals/phase";
 import { periodWordKey } from "@/lib/rentals/display";
 import { templateFamily } from "@/lib/notify/templates";
-import { monthKeyTbilisi, monthStartTbilisi, startOfTodayTbilisi, tbilisiFormat } from "@/lib/time";
+import { dayKey, monthKeyTbilisi, monthStartTbilisi, startOfTodayTbilisi, tbilisiFormat } from "@/lib/time";
 import { estimateMarketRent, getRentBenchmark } from "@/lib/market/rent";
 import { monthlyIncomeSeries } from "@/lib/analytics/monthly-income";
 import CountUp from "./count-up";
 import AssetDeckClient, { type DeckAsset, type DeckSlide } from "./asset-deck-client";
 import { districtLabel } from "@/lib/places";
 import { LIVE_CONTRACT } from "@/lib/rentals/live";
+import { loadAssetSources } from "@/lib/property/places";
+import { placeStays } from "@/lib/property/stays";
 import { getNetWorth, type NetWorth } from "@/lib/wealth/net-worth";
 import { PHYSICAL_GROUPS } from "@/lib/wealth/compose";
 import Approx from "./approx";
@@ -44,7 +46,8 @@ export function WealthHero({
   sub?: string;
   /** The figure rests partly on a last known or purchase price: "≈" + why. */
   approx?: { label: string; reason: string };
-  chips: string[];
+  /** Small figures under the hero; a `hint` explains a term (RevPAR). */
+  chips: (string | { text: string; hint: string })[];
   /** Where the figures are broken down (analytics, the fleet list). */
   link?: { href: string; label: string };
 }) {
@@ -59,9 +62,16 @@ export function WealthHero({
       {approx && <div className="wealth-hero__sub">{approx.reason}</div>}
       {(chips.length > 0 || link) && (
         <div className="wealth-hero__chips">
-          {chips.map((chip) => (
-            <span key={chip} className="chip">{chip}</span>
-          ))}
+          {chips.map((chip) =>
+            typeof chip === "string" ? (
+              <span key={chip} className="chip">{chip}</span>
+            ) : (
+              <span key={chip.text} className="chip" title={chip.hint}>
+                {chip.text}
+                <span className="sr-only"> — {chip.hint}</span>
+              </span>
+            ),
+          )}
           {link && (
             <Link href={link.href} className="chip chip--link icon-text">
               {link.label} <IconArrowRight size={13} />
@@ -95,9 +105,12 @@ export const CATEGORY_TINTS: Record<string, [string, string]> = {
 export function CompositionRing({
   locale,
   parts,
+  folded = false,
 }: {
   locale: Locale;
   parts: RingPart[];
+  /** A business dashboard: the ring waits closed under its heading. */
+  folded?: boolean;
 }) {
   const shown = parts.filter((part) => part.value > 0);
   if (shown.length < 2) return null; // one colour is not a composition
@@ -124,12 +137,13 @@ export function CompositionRing({
         ? `${Math.round(value / 1_000)}K`
         : String(Math.round(value));
 
-  return (
-    <section className="card comp-ring">
-      <div className="comp-ring__head">
-        <h2>{t(locale, "dash_comp_title")}</h2>
-        <p>{t(locale, "dash_comp_sub")}</p>
-      </div>
+  const head = (
+    <div className="comp-ring__head">
+      <h2>{t(locale, "dash_comp_title")}</h2>
+      <p>{folded ? `${short(total)} ₾ · ${t(locale, "dash_comp_open")}` : t(locale, "dash_comp_sub")}</p>
+    </div>
+  );
+  const body = (
       <div className="comp-ring__body">
       <svg viewBox="0 0 120 120" role="img" aria-label={t(locale, "dash_comp_title")}>
         <defs>
@@ -172,6 +186,18 @@ export function CompositionRing({
         ))}
       </div>
       </div>
+  );
+  // Hotels and fleets read their work first; what the portfolio is made
+  // of is one tap away (ia-04), not a screen of its own.
+  return folded ? (
+    <details className="card comp-ring comp-ring--fold">
+      <summary>{head}</summary>
+      {body}
+    </details>
+  ) : (
+    <section className="card comp-ring">
+      {head}
+      {body}
     </section>
   );
 }
@@ -252,14 +278,24 @@ export async function MarketTips({
         })
       : Promise.resolve([]),
   ]);
+  const todayKey = dayKey(startOfTodayTbilisi());
+  const monthNow = todayKey.slice(0, 7);
+  // Advice about the past is no advice: a free window already over, an
+  // "underpriced" month gone by, a contract already ended (the scan runs
+  // once a day — what it wrote yesterday is read against today here).
+  const current = open.filter((alert) => {
+    if (owing.has(alert.id)) return false;
+    const payload = (alert.payload ?? {}) as TipPayload;
+    if (alert.type === "vacancy_gap") return !payload.end || payload.end > todayKey || !!payload.openEnd;
+    if (alert.type === "underpriced") return !payload.month || payload.month >= monthNow;
+    if (alert.type === "contract_expiry" || alert.type === "lease_expiry") {
+      return !payload.endDate || payload.endDate >= todayKey;
+    }
+    return true;
+  });
   // One tip per kind per place, the most useful first; each names its
   // place and dates, and leads to the exact spot to act on it.
-  const tips = adviceTips(
-    open.filter((alert) => !owing.has(alert.id)),
-    types,
-    new Map(linked.map((asset) => [asset.id, asset.unitId!])),
-  );
-  const shown = tips.slice(0, TIPS_SHOWN);
+  const tips = adviceTips(current, types, new Map(linked.map((asset) => [asset.id, asset.unitId!])));
 
   const assetBy = new Map(assets.map((asset) => [asset.id, asset]));
   const deskOf = (assetId: string) => {
@@ -276,18 +312,22 @@ export async function MarketTips({
     key && /^\d{4}-\d{2}$/.test(key)
       ? tbilisiFormat(locale, { month: "long" }).format(new Date(`${key}-01T00:00:00Z`))
       : "";
+  const daysBetween = (from: string, to: string) =>
+    Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
+  // A window that began before today is shown from today.
+  const windowText = (payload: TipPayload) => {
+    const start = payload.start && payload.start < todayKey ? todayKey : payload.start;
+    const nights =
+      payload.start && start !== payload.start && payload.end && !payload.openEnd
+        ? daysBetween(todayKey, payload.end)
+        : payload.nights;
+    return payload.openEnd
+      ? `${day(start)} – … · ${nights}+ ${t(locale, "nights_short")}`
+      : `${day(start)} – ${day(payload.end)} · ${nights} ${t(locale, "nights_short")}`;
+  };
 
-  const detail = (type: string, payload: TipPayload, currency: string, more: number): ReactNode => {
+  const detail = (type: string, payload: TipPayload, currency: string): ReactNode => {
     switch (type) {
-      case "vacancy_gap":
-        return [
-          payload.openEnd
-            ? `${day(payload.start)} – … · ${payload.nights}+ ${t(locale, "nights_short")}`
-            : `${day(payload.start)} – ${day(payload.end)} · ${payload.nights} ${t(locale, "nights_short")}`,
-          more > 0 ? t(locale, "tips_more_windows").replace("{n}", String(more)) : null,
-        ]
-          .filter(Boolean)
-          .join(" · ");
       case "underpriced":
         // The arrow is a line icon: a text "→" pulls in a whole symbol
         // font file just for itself.
@@ -299,14 +339,17 @@ export async function MarketTips({
           </>
         );
       case "lease_expiry":
-      case "contract_expiry":
+      case "contract_expiry": {
+        // Counted from today, not from the day the scan wrote it.
+        const left = payload.endDate ? daysBetween(todayKey, payload.endDate) : payload.daysLeft;
         return [
           payload.tenantName,
           day(payload.endDate),
-          payload.daysLeft != null ? `${payload.daysLeft} ${t(locale, "days_left")}` : null,
+          left == null ? null : left <= 0 ? t(locale, "ends_today") : `${left} ${t(locale, "days_left")}`,
         ]
           .filter(Boolean)
           .join(" · ");
+      }
       case "contract_ended":
         return [payload.tenantName, `${t(locale, "cstatus_ended")}: ${day(payload.endDate)}`]
           .filter(Boolean)
@@ -315,6 +358,69 @@ export async function MarketTips({
         return "";
     }
   };
+
+  const nameOfTip = (first: (typeof open)[number]) => {
+    const payload = first.payload as TipPayload;
+    const asset = payload.assetId ? assetBy.get(payload.assetId) : undefined;
+    return first.unit ? named(first.unit) : asset ? named(asset) : payload.assetName ?? payload.unitName ?? null;
+  };
+
+  // Every free window is one tip: how many places and windows, and the
+  // nearest — the calendar lists them all (one place to act on them).
+  const windows = tips.filter((tip) => tip.type === "vacancy_gap");
+  const views: TipView[] = [];
+  for (const tip of tips) {
+    if (tip.type === "vacancy_gap") continue;
+    const first = tip.alerts[0];
+    const name = nameOfTip(first);
+    views.push({
+      key: tip.key,
+      type: tip.type,
+      rank: alertRank(tip.type),
+      title: `${t(locale, `alert_${tip.type}` as StringKey)}${name ? ` — ${name}` : ""}`,
+      detail: detail(tip.type, first.payload as TipPayload, first.unit?.currency ?? "GEL"),
+      action: t(locale, `action_${tip.type}` as StringKey),
+      href: alertHref(first, deskOf),
+      source: TIP_SOURCE[tip.type] ?? "tips_src_contract",
+    });
+  }
+  if (windows.length > 0) {
+    const first = windows[0].alerts[0];
+    const count = windows.reduce((sum, tip) => sum + tip.alerts.length, 0);
+    views.push({
+      key: "vacancy_gap:all",
+      type: "vacancy_gap",
+      rank: alertRank("vacancy_gap"),
+      title: t(locale, "tips_windows_title"),
+      detail: t(locale, "tips_windows_detail")
+        .replace("{places}", String(windows.length))
+        .replace("{n}", String(count))
+        .replace("{name}", nameOfTip(first) ?? "—")
+        .replace("{when}", windowText(first.payload as TipPayload)),
+      action: t(locale, "action_vacancy_gap"),
+      href: "/calendar",
+      source: "tips_src_calendar",
+    });
+  }
+  // A long-term rent well under the district's market (live, not waiting
+  // for a scan): the same comparison the deck and the asset card make.
+  for (const below of await rentBelowMarket(operatorId)) {
+    views.push({
+      key: `rent_below:${below.id}`,
+      type: "underpriced",
+      rank: alertRank("underpriced"),
+      title: `${t(locale, "tip_rent_below")} — ${named(below)}`,
+      detail: t(locale, "tip_rent_below_detail")
+        .replace("{rent}", formatMoney(below.rent, below.currency))
+        .replace("{market}", formatMoney(below.market, "GEL"))
+        .replace("{pct}", String(below.pct)),
+      action: t(locale, "tip_rent_below_action"),
+      href: `/assets/${below.id}/edit#contracts`,
+      source: "tips_src_bench",
+    });
+  }
+  views.sort((a, b) => a.rank - b.rank);
+  const shown = views.slice(0, TIPS_SHOWN);
 
   return (
     <section>
@@ -328,52 +434,91 @@ export async function MarketTips({
         </p>
       ) : (
         <div className="tips-grid">
-          {shown.map((tip) => {
-            const first = tip.alerts[0];
-            const payload = first.payload as TipPayload;
-            const asset = payload.assetId ? assetBy.get(payload.assetId) : undefined;
-            const name = first.unit
-              ? named(first.unit)
-              : asset
-                ? named(asset)
-                : payload.assetName ?? payload.unitName ?? null;
-            return (
-              <div key={tip.key} className="card tip-card">
-                <span className="tip-card__ico" data-sev={alertSeverity(tip.type)}>
-                  {alertGlyph(tip.type, 19)}
-                </span>
-                <div style={{ minWidth: 0 }}>
-                  <b className="t">
-                    {t(locale, `alert_${tip.type}` as StringKey)}
-                    {name ? ` — ${name}` : ""}
-                  </b>
-                  <span className="tip-card__when">
-                    {detail(tip.type, payload, first.unit?.currency ?? "GEL", tip.alerts.length - 1)}
+          {shown.map((tip) => (
+            <div key={tip.key} className="card tip-card">
+              <span className="tip-card__ico" data-sev={alertSeverity(tip.type)}>
+                {alertGlyph(tip.type, 19)}
+              </span>
+              <div style={{ minWidth: 0 }}>
+                <b className="t">{tip.title}</b>
+                <span className="tip-card__when">{tip.detail}</span>
+                <p>
+                  {tip.action}{" "}
+                  <Link href={tip.href} className="link icon-text" style={{ gap: 4 }}>
+                    {t(locale, "tips_open")} <IconArrowRight size={14} />
+                  </Link>
+                  <span className="tip-card__src">
+                    {t(locale, "tips_source")}: {t(locale, tip.source)}
                   </span>
-                  <p>
-                    {t(locale, `action_${tip.type}` as StringKey)}{" "}
-                    <Link href={alertHref(first, deskOf)} className="link icon-text" style={{ gap: 4 }}>
-                      {t(locale, "tips_open")} <IconArrowRight size={14} />
-                    </Link>
-                    <span className="tip-card__src">
-                      {t(locale, "tips_source")}: {t(locale, TIP_SOURCE[tip.type] ?? "tips_src_contract")}
-                    </span>
-                  </p>
-                </div>
+                </p>
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       )}
-      {tips.length > TIPS_SHOWN && (
+      {views.length > TIPS_SHOWN && (
         <p style={{ margin: "12px 0 0", fontSize: 13 }}>
           <Link href="/alerts" className="link icon-text" style={{ gap: 4 }}>
-            {t(locale, "tips_all").replace("{n}", String(tips.length))} <IconArrowRight size={14} />
+            {t(locale, "tips_all").replace("{n}", String(views.length))} <IconArrowRight size={14} />
           </Link>
         </p>
       )}
     </section>
   );
+}
+
+interface TipView {
+  key: string;
+  type: string;
+  rank: number;
+  title: string;
+  detail: ReactNode;
+  action: string;
+  href: string;
+  source: StringKey;
+}
+
+/** Share of the market rent under which a long-term rent is called low. */
+export const BELOW_MARKET_RATIO = 0.9;
+
+/**
+ * Flats let long-term for clearly less than the district's market rent
+ * (area × the district's GEL/m² estimate), most underpriced first.
+ */
+async function rentBelowMarket(operatorId: string) {
+  const now = new Date();
+  const today = startOfTodayTbilisi(now);
+  const assets = await prisma.asset.findMany({
+    where: {
+      operatorId,
+      category: "real_estate",
+      areaSqm: { not: null },
+      district: { not: null },
+      contracts: { some: { ...LIVE_CONTRACT, startDate: { lte: today }, endDate: { gt: today } } },
+    },
+    select: {
+      id: true, name: true, nameKa: true, areaSqm: true, district: true,
+      contracts: { where: LIVE_CONTRACT, orderBy: { endDate: "desc" } },
+    },
+  });
+  const monthKey = monthKeyTbilisi(now);
+  const out: { id: string; name: string; nameKa: string | null; rent: number; market: number; pct: number; currency: string }[] = [];
+  for (const asset of assets) {
+    const contract = runningContract(asset.contracts, today);
+    if (!contract || contract.currency !== "GEL") continue;
+    const market = estimateMarketRent(asset.areaSqm, await getRentBenchmark(asset.district!, monthKey));
+    if (!market || contract.monthlyRent >= market * BELOW_MARKET_RATIO) continue;
+    out.push({
+      id: asset.id,
+      name: asset.name,
+      nameKa: asset.nameKa,
+      rent: contract.monthlyRent,
+      market,
+      pct: Math.round((1 - contract.monthlyRent / market) * 100),
+      currency: contract.currency,
+    });
+  }
+  return out.sort((a, b) => b.pct - a.pct);
 }
 
 /**
@@ -398,19 +543,35 @@ export function ringPartsFromWorth(locale: Locale, worth: NetWorth): RingPart[] 
   return parts.filter((part) => part.value > 0);
 }
 
-async function PortfolioRingData({ locale, operatorId }: { locale: Locale; operatorId: string }) {
+async function PortfolioRingData({
+  locale,
+  operatorId,
+  folded,
+}: {
+  locale: Locale;
+  operatorId: string;
+  folded?: boolean;
+}) {
   const worth = await getNetWorth(operatorId);
-  return <CompositionRing locale={locale} parts={ringPartsFromWorth(locale, worth)} />;
+  return <CompositionRing locale={locale} parts={ringPartsFromWorth(locale, worth)} folded={folded} />;
 }
 
 /**
  * The ring, fetching its own data — one line to add on any dashboard. It
  * streams in: a price API taking its time never holds the page above it.
  */
-export function PortfolioRing({ locale, operatorId }: { locale: Locale; operatorId: string }) {
+export function PortfolioRing({
+  locale,
+  operatorId,
+  folded,
+}: {
+  locale: Locale;
+  operatorId: string;
+  folded?: boolean;
+}) {
   return (
     <Suspense fallback={null}>
-      <PortfolioRingData locale={locale} operatorId={operatorId} />
+      <PortfolioRingData locale={locale} operatorId={operatorId} folded={folded} />
     </Suspense>
   );
 }
@@ -466,6 +627,21 @@ export async function AssetDeck({
     ),
   );
 
+  // Tonight's stays of the day-let ones — the same record as the daily
+  // check in "Today" (lib/property/stays.ts), so the two never disagree.
+  const dayLets = assets.filter((asset) => asset.rentalMode === "daily").map((asset) => asset.id);
+  const heldTonight = new Set<string>();
+  if (dayLets.length > 0) {
+    const sources = await loadAssetSources(operatorId, dayLets, {
+      start: today,
+      end: new Date(today.getTime() + DAY_MS),
+    });
+    for (const [assetId, src] of sources) {
+      if (placeStays(src).some((stay) => stay.start <= today && stay.end > today)) heldTonight.add(assetId);
+    }
+    for (const asset of assets) if (asset.days.length > 0) heldTonight.add(asset.id);
+  }
+
   const fmtMoney = (value: number) => formatNumber(value);
   const fmtDate = tbilisiFormat(locale, {
     day: "numeric", month: "short", year: "numeric",
@@ -518,7 +694,10 @@ export async function AssetDeck({
           : undefined,
       note: contract
         ? `${contract.tenantName ?? "—"} · ${t(locale, "contract_until")} ${fmtDate.format(contract.endDate)}`
-        : t(locale, "deck_no_rent"),
+        : dayRate
+          ? // A day-let flat: is tonight taken (a booking, an answer, a stay)?
+            t(locale, heldTonight.has(asset.id) ? "deck_day_taken" : "deck_day_free")
+          : t(locale, "deck_no_rent"),
     });
 
     // 3 · Where it stands — the payment schedule when tracked, else status.
@@ -569,7 +748,15 @@ export async function AssetDeck({
         note: t(locale, property ? "deck_adv_late_property" : "deck_adv_repossess"),
         tone: "bad",
       };
-    } else if (schedule && (schedule.state === "grace" || schedule.state === "due")) {
+    } else if (schedule?.state === "due") {
+      // Due today is not late: say when it is due and how long the grace is.
+      advice = {
+        kind: "advice",
+        label: t(locale, "deck_attention"),
+        note: t(locale, "deck_adv_due_today").replace("{grace}", String(schedule.graceDays)),
+        tone: "warn",
+      };
+    } else if (schedule?.state === "grace") {
       advice = {
         kind: "advice",
         label: t(locale, "deck_attention"),
@@ -578,7 +765,7 @@ export async function AssetDeck({
           .replace("{grace}", String(schedule.graceDays)),
         tone: "warn",
       };
-    } else if (contract && marketRent && contract.monthlyRent < marketRent * 0.9) {
+    } else if (contract && marketRent && contract.monthlyRent < marketRent * BELOW_MARKET_RATIO) {
       const pct = Math.round((1 - contract.monthlyRent / marketRent) * 100);
       advice = {
         kind: "advice",
@@ -618,9 +805,11 @@ export async function AssetDeck({
     }
     slides.push(advice);
 
+    const desk = asset.category === "vehicle" ? rentalDesk(asset.category, asset.contracts.length, asset.status) : null;
     return {
       id: asset.id,
       name: displayName,
+      href: desk ? deskHref(asset.id, desk) : undefined,
       place: [districtLabel(locale, asset.district), asset.address, asset.areaSqm ? `${asset.areaSqm} m²` : null]
         .filter(Boolean)
         .join(" · "),

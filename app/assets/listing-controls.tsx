@@ -116,8 +116,10 @@ export default function ListingControls({
     <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
       <button
         type="button"
-        disabled={pending || status === "rented"}
-        onClick={() => flip("rented")}
+        // The chosen state stays a solid, readable pill: pressing it again
+        // does nothing (aria-pressed says it is the current one).
+        disabled={pending}
+        onClick={() => status !== "rented" && flip("rented")}
         className={`btn-chip ${status === "rented" ? "btn-chip--active" : ""}`}
         aria-pressed={status === "rented"}
       >
@@ -125,8 +127,10 @@ export default function ListingControls({
       </button>
       <button
         type="button"
-        disabled={pending || status === "vacant"}
-        onClick={() => flip("vacant")}
+        // The chosen state stays a solid, readable pill: pressing it again
+        // does nothing (aria-pressed says it is the current one).
+        disabled={pending}
+        onClick={() => status !== "vacant" && flip("vacant")}
         className={`btn-chip ${status === "vacant" ? "btn-chip--active" : ""}`}
         aria-pressed={status === "vacant"}
       >

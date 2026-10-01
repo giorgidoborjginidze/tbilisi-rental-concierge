@@ -43,13 +43,27 @@ const now = new Date("2026-09-30T12:00:00Z");
 const minutesAgo = (m: number) => new Date(now.getTime() - m * 60_000);
 
 describe("sign-in rate limit", () => {
-  it("refuses the sixth try after five failures for one email within 15 minutes", async () => {
+  it("refuses the sixth try after five failures for one email from one address", async () => {
     const db = memoryStore();
     for (let i = 0; i < 5; i += 1) {
-      expect(isLimited("login", await attemptCounts(db, "login", "a@b.ge", `10.0.0.${i}`, now))).toBe(false);
-      await recordAttempt(db, "login", "a@b.ge", `10.0.0.${i}`, now);
+      expect(isLimited("login", await attemptCounts(db, "login", "a@b.ge", "10.0.0.1", now))).toBe(false);
+      await recordAttempt(db, "login", "a@b.ge", "10.0.0.1", now);
     }
+    expect(isLimited("login", await attemptCounts(db, "login", "a@b.ge", "10.0.0.1", now))).toBe(true);
+    // The owner on another address can still sign in…
+    expect(isLimited("login", await attemptCounts(db, "login", "a@b.ge", "10.0.0.2", now))).toBe(false);
+  });
+
+  it("…but a guessing run spread over many addresses stops at ten for the email", async () => {
+    const db = memoryStore();
+    for (let i = 0; i < 10; i += 1) await recordAttempt(db, "login", "a@b.ge", `10.0.0.${i}`, now);
     expect(isLimited("login", await attemptCounts(db, "login", "a@b.ge", "10.0.0.99", now))).toBe(true);
+  });
+
+  it("a few typos by others on a shared carrier address do not lock everyone out", async () => {
+    const db = memoryStore();
+    for (let i = 0; i < 6; i += 1) await recordAttempt(db, "login", `user${i}@b.ge`, "203.0.113.7", now);
+    expect(isLimited("login", await attemptCounts(db, "login", "owner@b.ge", "203.0.113.7", now))).toBe(false);
   });
 
   it("refuses one address guessing across many emails", async () => {
@@ -91,9 +105,15 @@ describe("sign-in rate limit", () => {
 
 describe("clientIpFrom", () => {
   const headers = (h: Record<string, string>) => (name: string) => h[name] ?? null;
-  it("prefers the platform's x-real-ip, then the first x-forwarded-for entry", () => {
-    expect(clientIpFrom(headers({ "x-real-ip": "9.9.9.9", "x-forwarded-for": "1.1.1.1" }))).toBe("9.9.9.9");
-    expect(clientIpFrom(headers({ "x-forwarded-for": " 1.1.1.1 , 10.0.0.1" }))).toBe("1.1.1.1");
-    expect(clientIpFrom(headers({}))).toBeNull();
+  const vercel = { VERCEL: "1" };
+  it("on Vercel: the platform's x-real-ip, then the first x-forwarded-for entry", () => {
+    expect(clientIpFrom(headers({ "x-real-ip": "9.9.9.9", "x-forwarded-for": "1.1.1.1" }), vercel)).toBe("9.9.9.9");
+    expect(clientIpFrom(headers({ "x-forwarded-for": " 1.1.1.1 , 10.0.0.1" }), vercel)).toBe("1.1.1.1");
+    expect(clientIpFrom(headers({}), vercel)).toBeNull();
+  });
+
+  it("elsewhere the headers are the client's own word: not trusted unless a proxy is declared", () => {
+    expect(clientIpFrom(headers({ "x-real-ip": "10.77.0.5" }), {})).toBeNull();
+    expect(clientIpFrom(headers({ "x-real-ip": "10.77.0.5" }), { TRUST_PROXY_HEADERS: "1" })).toBe("10.77.0.5");
   });
 });

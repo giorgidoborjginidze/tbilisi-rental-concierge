@@ -48,6 +48,8 @@ export interface NavFacts {
   profile: string;
   /** Units (rentable rooms/flats with calendars) in the workspace. */
   units: number;
+  /** Cars with a contract (the fleet list has something to show). */
+  vehicles?: number;
 }
 
 export interface NavModel {
@@ -95,7 +97,12 @@ export function navModel(facts: NavFacts): NavModel {
 
   // A car rental that also lets flats keeps its calendar, one tap into
   // the account menu (the top nav's five seats are taken).
-  const menuAlways = primary === "fleet" && facts.units > 0 ? [RENTALS] : [];
+  // A hotel or a personal workspace that lets cars reaches the fleet list
+  // the same way.
+  const menuAlways = [
+    ...(primary === "fleet" && facts.units > 0 ? [RENTALS] : []),
+    ...(primary !== "fleet" && (facts.vehicles ?? 0) > 0 ? [FLEET] : []),
+  ];
 
   const tabHrefs = new Set(tabs.map((seat) => seat.href));
   const menuMobile = [...top, ...menuAlways].filter((entry) => !tabHrefs.has(entry.href));

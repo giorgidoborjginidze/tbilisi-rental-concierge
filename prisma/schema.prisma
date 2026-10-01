@@ -49,6 +49,9 @@ model Operator {
 
   // WhatsApp number that receives owner-side alerts (geofence, overdue rent).
   notifyPhone String?
+  // How renters pay (bank account, "cash to the office"…): the {pay_to}
+  // placeholder of every payment reminder. Free text, shown as typed.
+  payInstructions String?
 
   // The shared public demo (credentials on the landing and login pages):
   // read-only (lib/auth/session.ts requireWriter), never sends WhatsApp
@@ -398,6 +401,12 @@ model RentalContract {
   creditBalance Float     @default(0)
   // Automatic WhatsApp reminders to the renter (the owner still gets alerts).
   remindersEnabled Boolean @default(true)
+  // When the owner recorded that the renter agreed to WhatsApp notices
+  // (null: not recorded), and when the renter asked to get no more
+  // messages (null: no objection). An objection stops every message to the
+  // renter, whatever remindersEnabled says (lib/notify/whatsapp.ts).
+  waConsentAt      DateTime?
+  messagesOptOutAt DateTime?
   // Opening balance of the payment ledger: the paid-up-to date and credit
   // the owner stated at `openingAt`. Payments recorded after `openingAt`
   // are replayed on top of it whenever one of them is deleted.

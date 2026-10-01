@@ -115,6 +115,7 @@ export async function syncAllUnits(
         // when it is the unit's only feed of that channel.
         ownsLegacy: urls.filter((other) => sourceFromUrl(other) === source).length === 1,
         now,
+        emptyBefore: feed.lastError === "empty_suspect",
       });
 
       for (const candidate of plan.create) {
@@ -155,6 +156,17 @@ export async function syncAllUnits(
           data: { status: "cancelled", cancelledAt: now, cancelReason: "missing" },
         });
         result.cancelled = plan.cancel.length;
+      }
+
+      if (plan.suspectEmpty) {
+        // Held back: the stays stand, and the feed says why nothing changed.
+        result.error = "empty_suspect";
+        await prisma.unitFeed.update({
+          where: { id: feed.id },
+          data: { lastAttemptAt: now, lastError: "empty_suspect", lastStatus: null },
+        });
+        results.push(result);
+        continue;
       }
 
       await prisma.unitFeed.update({

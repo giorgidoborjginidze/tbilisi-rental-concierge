@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { createContext, useContext, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { receiveRent, undoPayment } from "@/lib/rentals/actions";
 import { currencySign, formatDueMoney } from "@/lib/format";
@@ -21,6 +21,8 @@ export interface DecideItem {
   /** Unpaid periods already due — more than one asks before recording. */
   periodsOwed: number;
   severe: boolean;
+  /** A car: "Today" then links to the whole fleet list. */
+  vehicle?: boolean;
   /** Other urgent facts about the same asset (outside its red line…). */
   flags: { label: string; tone: "danger" | "warn" }[];
 }
@@ -54,27 +56,36 @@ const FIRST = 4;
 // Rounded up to the tetri: recording the amount shown settles it exactly.
 const fmt = formatDueMoney;
 
-// The demo's "confirm with a flick", wired to real money: swipe right
-// records the outstanding rent as received (a real RentPayment row),
-// swipe left opens the asset's rental service page. The buttons do the
-// same with a mouse, a keyboard or a tap. When more than one period is
-// owed the card asks first; every recording can be undone straight away,
-// and a refusal from the server is shown, never swallowed.
-export default function DecideCards({
-  items,
-  labels,
-}: {
-  items: DecideItem[];
+interface DecideHost {
   labels: DecideLabels;
-}) {
+  pending: boolean;
+  toast: Toast | null;
+  setToast: (toast: Toast | null) => void;
+  run: (job: () => Promise<void>) => void;
+  /** Cards recorded on this screen, hidden until the server agrees. */
+  gone: string[];
+  setGone: (update: (prev: string[]) => string[]) => void;
+}
+
+const HostContext = createContext<DecideHost | null>(null);
+
+function useHost(): DecideHost {
+  const host = useContext(HostContext);
+  if (!host) throw new Error("DecideCards needs a DecideToastHost");
+  return host;
+}
+
+/**
+ * Holds the "recorded — undo" offer for every block of rent cards in
+ * "Today". It sits outside the blocks on purpose: recording the last late
+ * rent makes the server drop the card block entirely, and the undo offer
+ * must outlive it (an accidental swipe on the last card stays undoable).
+ */
+export function DecideToastHost({ labels, children }: { labels: DecideLabels; children: ReactNode }) {
   const router = useRouter();
-  const [gone, setGone] = useState<string[]>([]);
-  const [confirming, setConfirming] = useState<string | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
-  const [expanded, setExpanded] = useState(false);
+  const [gone, setGone] = useState<string[]>([]);
   const [pending, startTransition] = useTransition();
-  const left = items.filter((item) => !gone.includes(item.contractId));
-  const shown = expanded ? left : left.slice(0, FIRST);
 
   // The undo offer stays long enough to read and reach; the rest fade sooner.
   useEffect(() => {
@@ -85,10 +96,94 @@ export default function DecideCards({
 
   const errorText = (key: string) => labels.errors[key] ?? labels.errors.error_required;
 
+  const undo = (item: DecideItem, paymentId: string) => {
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.set("assetId", item.assetId);
+      fd.set("paymentId", paymentId);
+      let result: Awaited<ReturnType<typeof undoPayment>>;
+      try {
+        result = await undoPayment(fd);
+      } catch {
+        result = { error: "error_required" };
+      }
+      if ("error" in result) {
+        setToast({ kind: "error", message: `${item.name} — ${errorText(result.error)}` });
+        return;
+      }
+      // An undone card comes back.
+      setGone((prev) => prev.filter((id) => id !== item.contractId));
+      setToast({ kind: "undone" });
+      router.refresh();
+    });
+  };
+
+  return (
+    <HostContext.Provider
+      value={{ labels, pending, toast, setToast, run: (job) => startTransition(job), gone, setGone }}
+    >
+      {children}
+      <div className="decide-toast-slot" aria-live="polite">
+        {toast && (
+          <div className={`decide-toast${toast.kind === "error" ? " decide-toast--error" : ""}`} role="status">
+            <span>
+              {toast.kind === "recorded"
+                ? labels.recorded
+                    .replace("{amount}", fmt(toast.item.amount, toast.item.currency))
+                    .replace("{name}", toast.item.name)
+                : toast.kind === "undone"
+                  ? labels.undone
+                  : toast.message}
+            </span>
+            {toast.kind === "recorded" && (
+              <button
+                type="button"
+                className="btn-chip decide-act"
+                disabled={pending}
+                onClick={() => undo(toast.item, toast.paymentId)}
+              >
+                {labels.undo}
+              </button>
+            )}
+            {toast.kind === "error" && (
+              <button
+                type="button"
+                className="btn-chip decide-act"
+                aria-label={labels.close}
+                title={labels.close}
+                onClick={() => setToast(null)}
+              >
+                <IconClose size={16} />
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </HostContext.Provider>
+  );
+}
+
+// The demo's "confirm with a flick", wired to real money: swipe right
+// records the outstanding rent as received (a real RentPayment row),
+// swipe left opens the asset's rental service page. The buttons do the
+// same with a mouse, a keyboard or a tap. When more than one period is
+// owed the card asks first; every recording can be undone straight away
+// (the offer lives in DecideToastHost), and a refusal from the server is
+// shown, never swallowed.
+export default function DecideCards({ items }: { items: DecideItem[] }) {
+  const router = useRouter();
+  const { labels, pending, setToast, run, gone, setGone } = useHost();
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  const left = items.filter((item) => !gone.includes(item.contractId));
+  const shown = expanded ? left : left.slice(0, FIRST);
+
+  const errorText = (key: string) => labels.errors[key] ?? labels.errors.error_required;
+
   const record = (item: DecideItem) => {
     setConfirming(null);
     setGone((prev) => [...prev, item.contractId]);
-    startTransition(async () => {
+    run(async () => {
       const fd = new FormData();
       fd.set("contractId", item.contractId);
       fd.set("assetId", item.assetId);
@@ -114,27 +209,6 @@ export default function DecideCards({
   const paid = (item: DecideItem) => {
     if (item.periodsOwed > 1) setConfirming(item.contractId);
     else record(item);
-  };
-
-  const undo = (item: DecideItem, paymentId: string) => {
-    startTransition(async () => {
-      const fd = new FormData();
-      fd.set("assetId", item.assetId);
-      fd.set("paymentId", paymentId);
-      let result: Awaited<ReturnType<typeof undoPayment>>;
-      try {
-        result = await undoPayment(fd);
-      } catch {
-        result = { error: "error_required" };
-      }
-      if ("error" in result) {
-        setToast({ kind: "error", message: `${item.name} — ${errorText(result.error)}` });
-        return;
-      }
-      setGone((prev) => prev.filter((id) => id !== item.contractId));
-      setToast({ kind: "undone" });
-      router.refresh();
-    });
   };
 
   return (
@@ -198,43 +272,6 @@ export default function DecideCards({
           {expanded ? labels.showLess : labels.showAll.replace("{n}", String(left.length))}
         </button>
       )}
-
-      <div className="decide-toast-slot" aria-live="polite">
-        {toast && (
-          <div className={`decide-toast${toast.kind === "error" ? " decide-toast--error" : ""}`} role="status">
-            <span>
-              {toast.kind === "recorded"
-                ? labels.recorded
-                    .replace("{amount}", fmt(toast.item.amount, toast.item.currency))
-                    .replace("{name}", toast.item.name)
-                : toast.kind === "undone"
-                  ? labels.undone
-                  : toast.message}
-            </span>
-            {toast.kind === "recorded" && (
-              <button
-                type="button"
-                className="btn-chip decide-act"
-                disabled={pending}
-                onClick={() => undo(toast.item, toast.paymentId)}
-              >
-                {labels.undo}
-              </button>
-            )}
-            {toast.kind === "error" && (
-              <button
-                type="button"
-                className="btn-chip decide-act"
-                aria-label={labels.close}
-                title={labels.close}
-                onClick={() => setToast(null)}
-              >
-                <IconClose size={16} />
-              </button>
-            )}
-          </div>
-        )}
-      </div>
     </>
   );
 }

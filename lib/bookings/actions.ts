@@ -66,6 +66,12 @@ export async function createBooking(
   // A Booking.com block the owner closed for this very stay is no clash.
   const clash = await firstClash(unitId, dates.checkIn, dates.checkOut, { source });
   if (clash) return { error: "error_booking_overlap", detail: clash, values };
+  // Booking.com's feed cannot tell a closed date from a guest: the owner
+  // says which it is before the stay is saved over it.
+  if (str(formData, "confirmBlock") !== "1") {
+    const block = await closedBlockUnder(unitId, dates.checkIn, dates.checkOut);
+    if (block) return { error: "error_booking_closed_block", detail: block, values };
+  }
 
   await prisma.booking.create({
     data: {
@@ -132,6 +138,10 @@ export async function updateBooking(
         source: booking.source,
       });
       if (clash) return { error: "error_booking_overlap", detail: clash, values };
+      if (str(formData, "confirmBlock") !== "1") {
+        const block = await closedBlockUnder(booking.unitId, dates.checkIn, dates.checkOut, booking.id);
+        if (block) return { error: "error_booking_closed_block", detail: block, values };
+      }
     }
     Object.assign(data, dates);
   }
@@ -199,6 +209,37 @@ export async function restoreBooking(
  * stay being entered: a Booking.com block that only repeats its nights
  * (closed there for this very stay) is not a clash (lib/ical/mirror.ts).
  */
+/**
+ * A Booking.com stay with no price and no guest under the nights a stay
+ * typed by hand takes: either the nights the owner closed for this guest
+ * (then it becomes its copy) or a real Booking.com guest (a double
+ * booking). The iCal feed cannot tell which, so the owner is asked.
+ */
+async function closedBlockUnder(
+  unitId: string,
+  checkIn: Date,
+  checkOut: Date,
+  except?: string,
+): Promise<string | null> {
+  const block = await prisma.booking.findFirst({
+    where: {
+      unitId,
+      ...LIVE_STAY,
+      source: "booking",
+      amount: null,
+      OR: [{ guestName: null }, { guestName: "" }],
+      checkIn: { lt: checkOut },
+      checkOut: { gt: checkIn },
+      ...(except ? { id: { not: except } } : {}),
+    },
+    orderBy: { checkIn: "asc" },
+  });
+  if (!block) return null;
+  const locale = await getLocale();
+  const dayFormat = tbilisiFormat(locale, { day: "numeric", month: "short" });
+  return `Booking.com ${dayFormat.format(block.checkIn)} – ${dayFormat.format(block.checkOut)}`;
+}
+
 async function firstClash(
   unitId: string,
   checkIn: Date,

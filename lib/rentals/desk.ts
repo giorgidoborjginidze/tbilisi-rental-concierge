@@ -10,7 +10,13 @@
 
 export type RentalDesk = "vehicle" | "property";
 
-export function rentalDesk(category: string, contractCount = 0): RentalDesk | null {
+export function rentalDesk(
+  category: string,
+  contractCount = 0,
+  /** The asset's status: one kept for personal use, with no contract, is not offered a desk. */
+  status?: string | null,
+): RentalDesk | null {
+  if (status === "personal_use" && contractCount === 0) return null;
   if (category === "vehicle") return "vehicle";
   if (category === "real_estate") return "property";
   if (category === "other" && contractCount > 0) return "property";
