@@ -7,6 +7,7 @@ import { prisma } from "@/lib/db";
 import { requireWriter } from "@/lib/auth/session";
 import { asCurrency } from "@/lib/fx/convert";
 import { dayFromKey } from "@/lib/time";
+import { LIVE_CONTRACT } from "@/lib/rentals/live";
 import { INVOICE_STATUSES, type InvoiceStatus } from "./draft";
 
 const str = (formData: FormData, key: string, max = 200) => String(formData.get(key) ?? "").trim().slice(0, max);
@@ -42,7 +43,7 @@ export async function createInvoice(formData: FormData) {
   let assetId: string | null = str(formData, "assetId", 40) || null;
   if (contractId) {
     const contract = await prisma.rentalContract.findFirst({
-      where: { id: contractId, asset: { operatorId: operator.id } },
+      where: { id: contractId, ...LIVE_CONTRACT, asset: { operatorId: operator.id } },
       select: { id: true, assetId: true },
     });
     contractId = contract?.id ?? null;
