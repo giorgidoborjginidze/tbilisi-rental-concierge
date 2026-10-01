@@ -1,9 +1,8 @@
-import { prisma } from "@/lib/db";
 import { monthKeyTbilisi, monthStartTbilisi, tbilisiFormat } from "@/lib/time";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
 import { KNOWN_DISTRICTS } from "@/lib/types";
-import { PRICE_PER_SQM } from "@/lib/invest/market";
+import { marketFigures, summarizeSources } from "@/lib/market/figures";
 import Calculator from "./calculator";
 import CarCalculator from "./car-calculator";
 import FlipCalculator from "./flip-calculator";
@@ -75,23 +74,30 @@ export default async function InvestPage({
       : "re";
   const monthKey = monthKeyTbilisi();
 
-  // District rent benchmarks for the current month (estimated averages).
-  const rows = await prisma.rentBenchmark.findMany({
-    where: { month: monthKey, district: { in: [...KNOWN_DISTRICTS] } },
+  // District rent and sale prices per m²: market figures where there are
+  // any (reports, listings, Activo's own data), else the built-in estimates.
+  const [rentFigures, saleFigures] = await Promise.all([
+    marketFigures(KNOWN_DISTRICTS, "rent_sqm", monthKey),
+    marketFigures(KNOWN_DISTRICTS, "sale_sqm", monthKey),
+  ]);
+  const rentPerSqm = Object.fromEntries(Object.entries(rentFigures).map(([district, answer]) => [district, Math.round(answer.value * 10) / 10]));
+  const pricePerSqm = Object.fromEntries(Object.entries(saleFigures).map(([district, answer]) => [district, Math.round(answer.value)]));
+  // Which sources stand behind the prefilled figures, named once for the page.
+  const sourceLine = summarizeSources([...Object.values(rentFigures), ...Object.values(saleFigures)], {
+    listings: t(locale, "market_from_listings"),
+    activo: t(locale, "market_from_activo"),
   });
-  const rentPerSqm = Object.fromEntries(
-    rows.map((row) => [row.district, row.avgRentPerSqm]),
-  );
 
   const labels = Object.fromEntries(
     LABEL_KEYS.map((key) => [key, t(locale, key)]),
   );
   // The prefilled figures are Activo's estimates for this month — say so,
   // with the month, instead of passing them off as market data.
-  labels.invest_disclaimer = labels.invest_disclaimer.replace(
-    "{month}",
-    tbilisiFormat(locale, { month: "long", year: "numeric" }).format(monthStartTbilisi(0)),
-  );
+  // With real figures behind some districts, the note names them instead.
+  labels.invest_disclaimer = (sourceLine
+    ? t(locale, "invest_disclaimer_market").replace("{sources}", sourceLine)
+    : labels.invest_disclaimer
+  ).replace("{month}", tbilisiFormat(locale, { month: "long", year: "numeric" }).format(monthStartTbilisi(0)));
 
   return (
     <main>
@@ -113,7 +119,7 @@ export default async function InvestPage({
             <Calculator
               districts={KNOWN_DISTRICTS.map((value) => ({ value, label: districtLabel(locale, value) }))}
               rentPerSqm={rentPerSqm}
-              pricePerSqm={PRICE_PER_SQM}
+              pricePerSqm={pricePerSqm}
               labels={labels}
             />
           </>

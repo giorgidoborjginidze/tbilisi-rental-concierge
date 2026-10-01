@@ -50,6 +50,7 @@ export const PRIVACY: LegalText = {
           "გადახდა და აღრიცხვა: ხელშეკრულების შესრულება და კანონით დაკისრებული ვალდებულება (საგადასახადო აღრიცხვა).",
           "პაროლის აღდგენის წერილი: ხელშეკრულების შესრულება.",
           "ფასის შეთავაზების ახსნა ხელოვნური ინტელექტით, როცა ჩართულია: იგზავნება ერთეულის სახელი, უბანი, ქალაქი და ფასები — არა დამქირავებლის ან სტუმრის მონაცემები; ჩვენი კანონიერი ინტერესი.",
+          "ანონიმური საბაზრო საშუალოები: მიმდინარე ხელშეკრულებებისა და ჯავშნების ქირიდან ვითვლით უბნის საშუალო ქირას მ²-ზე, ღამის ფასს და დატვირთვას. ინახება მხოლოდ უბნის საშუალო და მხოლოდ მაშინ, როცა ის მინიმუმ 5 ჩანაწერს მინიმუმ 3 სხვადასხვა ანგარიშიდან ეყრდნობა — არც ერთი მფლობელის, დამქირავებლის ან სტუმრის მონაცემი არ ჩანს და არ გადაეცემა; ჩვენი კანონიერი ინტერესი (საბაზრო შედარება ყველა მომხმარებლისთვის).",
         ],
         after: [
           "მარკეტინგულ შეტყობინებებს თანხმობის გარეშე არ ვაგზავნით, მონაცემებს არ ვყიდით და შენზე სამართლებრივი შედეგის მქონე ავტომატურ გადაწყვეტილებას არ ვიღებთ.",
@@ -179,6 +180,7 @@ export const PRIVACY: LegalText = {
           "Billing and accounting: performance of the contract and a legal obligation (tax records).",
           "Password-reset email: performance of the contract.",
           "AI-written explanations of price suggestions, when enabled: the unit's name, district, city and prices are sent — never tenant or guest data; our legitimate interest.",
+          "Anonymous market averages: from running contracts and stays we compute each district's average rent per m², nightly rate and occupancy. Only the district average is kept, and only when it rests on at least 5 records from at least 3 different accounts — no owner's, tenant's or guest's data shows in it or leaves us; our legitimate interest (a market comparison for every customer).",
         ],
         after: [
           "We send no marketing without consent, never sell data and make no automated decisions about you that have legal effect.",

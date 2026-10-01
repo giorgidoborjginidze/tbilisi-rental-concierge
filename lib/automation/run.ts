@@ -27,6 +27,7 @@ import { snapshotDatabase, type SnapshotOutcome } from "@/lib/backup/neon-snapsh
 import { notifyOwner } from "@/lib/notify/owner";
 import { sweepOrphanFiles } from "@/lib/files/sweep";
 import { ACTIVITY_RETENTION_MS } from "@/lib/activity/log";
+import { refreshActivoFigures } from "@/lib/market/activo";
 
 export type RunKind = "daily" | "sync";
 
@@ -47,6 +48,8 @@ export interface RunSummary {
   authRowsPruned: number;
   /** The daily pruning threw (the workspaces' part may still be fine). */
   pruneFailed: boolean;
+  /** District figures published from customers' own data (lib/market/activo.ts). */
+  marketFigures?: number;
   /** Stored files removed because their record was deleted. */
   filesSwept?: number;
   /** Urgent alerts the owners were told about (phone notification / email). */
@@ -68,6 +71,8 @@ export interface RunDeps {
   silence?: (now: Date, operatorId: string) => Promise<number>;
   /** Tells the owner about fresh urgent alerts (lib/notify/owner.ts); tests leave it out. */
   notify?: (operatorId: string, now: Date) => Promise<{ alerts: number }>;
+  /** Recomputes the anonymous market figures; tests leave it out. */
+  market?: (now: Date) => Promise<number>;
   /** Drops activity lines older than a year; tests leave it out. */
   pruneActivity?: (now: Date) => Promise<unknown>;
   /** Removes files whose record is gone (lib/files/sweep.ts); tests leave it out. */
@@ -86,6 +91,7 @@ const DEFAULT_DEPS: RunDeps = {
   silence: checkTrackerSilence,
   notify: (operatorId, now) => notifyOwner(operatorId, now),
   sweepFiles: (now) => sweepOrphanFiles(now),
+  market: (now) => refreshActivoFigures(now),
   pruneActivity: (now) =>
     prisma.activityLog.deleteMany({ where: { createdAt: { lt: new Date(now.getTime() - ACTIVITY_RETENTION_MS) } } }),
   backup: (now) => snapshotDatabase("daily", now),
@@ -198,6 +204,14 @@ export async function runAutomation(
       summary.errors.push(`prune: ${message(error)}`);
       console.error(`[automation] pruning sign-in records failed:`, error);
     }
+  }
+
+  if (kind === "daily" && deps.market) {
+    // Housekeeping too: a failure keeps yesterday's figures and is logged.
+    summary.marketFigures = await deps.market(now).catch((error) => {
+      console.error("[automation] market figures failed:", error);
+      return 0;
+    });
   }
 
   if (kind === "daily" && deps.pruneActivity) {

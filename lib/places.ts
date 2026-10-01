@@ -40,6 +40,23 @@ export const DISTRICT_PLACES: Record<string, Place> = {
     ka: "ბათუმის ბულვარი",
     aliases: ["boulevard", "batumi blvd", "ბულვარი", "ბულვართან", "ბათუმის ბულვართან"],
   },
+  // The rest of Tbilisi and Batumi, so market figures (reports, listings)
+  // and owners' addresses meet on one key.
+  Didube: { en: "Didube", ka: "დიდუბე", aliases: ["დიდუბის", "დიდუბეში"] },
+  Digomi: { en: "Digomi", ka: "დიღომი", aliases: ["digomi massive", "დიღმის მასივი", "დიღომში", "დიღმის"] },
+  Gldani: { en: "Gldani", ka: "გლდანი", aliases: ["გლდანის", "გლდანში"] },
+  Nadzaladevi: { en: "Nadzaladevi", ka: "ნაძალადევი", aliases: ["ნაძალადევის", "ნაძალადევში"] },
+  Isani: { en: "Isani", ka: "ისანი", aliases: ["ისნის", "ისანში"] },
+  Samgori: { en: "Samgori", ka: "სამგორი", aliases: ["სამგორის", "სამგორში"] },
+  Varketili: { en: "Varketili", ka: "ვარკეთილი", aliases: ["ვარკეთილის", "ვარკეთილში"] },
+  Chughureti: { en: "Chughureti", ka: "ჩუღურეთი", aliases: ["chugureti", "ჩუღურეთის", "ჩუღურეთში"] },
+  Krtsanisi: { en: "Krtsanisi", ka: "კრწანისი", aliases: ["კრწანისის", "კრწანისში"] },
+  Avlabari: { en: "Avlabari", ka: "ავლაბარი", aliases: ["ავლაბრის", "ავლაბარში"] },
+  Sololaki: { en: "Sololaki", ka: "სოლოლაკი", aliases: ["სოლოლაკის", "სოლოლაკში"] },
+  Vazisubani: { en: "Vazisubani", ka: "ვაზისუბანი", aliases: ["ვაზისუბნის", "ვაზისუბანში"] },
+  Lisi: { en: "Lisi", ka: "ლისი", aliases: ["lisi lake", "ლისის ტბა", "ლისის"] },
+  "Old Batumi": { en: "Old Batumi", ka: "ძველი ბათუმი", aliases: ["batumi old town", "ძველ ბათუმში"] },
+  "New Boulevard": { en: "New Boulevard", ka: "ახალი ბულვარი", aliases: ["new blvd", "ახალ ბულვარზე", "ახალი ბულვარის"] },
 };
 
 /** Lower case, one space, no surrounding punctuation. */

@@ -844,3 +844,32 @@ model ActivityLog {
 
   @@index([operatorId, createdAt])
 }
+
+// One market figure for one district and period, from one source
+// (lib/market/figures.ts blends them):
+//   source "report"   — a published report entered by Activo's admin
+//                       (TBC Capital, Galt & Taggart, …), sourceName = whose;
+//   source "listings" — aggregated from listing data imported by the admin
+//                       (only the aggregate is kept, never the listings);
+//   source "activo"   — the anonymous average of Activo customers' own
+//                       contracts and stays, published only above a minimum
+//                       number of contracts from several workspaces.
+// Values are in GEL. metric: "rent_sqm" (long-term rent per m² a month),
+// "sale_sqm" (sale price per m²), "adr" (average nightly rate),
+// "occupancy" (0..1).
+model MarketFigure {
+  id         String   @id @default(cuid())
+  district   String
+  metric     String
+  value      Float
+  period     String // "YYYY-MM": the month the figure describes
+  source     String
+  sourceName String   @default("")
+  sampleSize Int      @default(0)
+  note       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([district, metric, period, source, sourceName])
+  @@index([district, metric])
+}

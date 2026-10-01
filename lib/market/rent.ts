@@ -5,6 +5,7 @@
 
 import { prisma } from "@/lib/db";
 import { districtKey } from "@/lib/places";
+import { marketFigure } from "./figures";
 
 export interface RentBenchmarkRow {
   district: string;
@@ -20,6 +21,17 @@ export async function getRentBenchmark(
 ): Promise<RentBenchmarkRow | null> {
   // Keyed by the canonical district: "ვაკე" finds "Vake".
   const key = districtKey(district) ?? district;
+  // Real figures first (reports, listings, Activo's own data).
+  const real = await marketFigure(key, "rent_sqm", month);
+  if (real && !real.estimate) {
+    return {
+      district: key,
+      month,
+      avgRentPerSqm: real.value,
+      sampleSize: real.parts.reduce((sum, part) => sum + part.sampleSize, 0),
+      source: "market",
+    };
+  }
   const row = await prisma.rentBenchmark.findUnique({
     where: { district_month: { district: key, month } },
   });

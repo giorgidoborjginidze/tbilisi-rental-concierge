@@ -15,8 +15,9 @@ describe("districtKey", () => {
   });
 
   it("keeps an unknown district as typed, and empty as null", () => {
-    expect(districtKey(" დიდუბე ")).toBe("დიდუბე");
-    expect(isKnownDistrict("დიდუბე")).toBe(false);
+    expect(districtKey(" კოჯორი ")).toBe("კოჯორი");
+    expect(isKnownDistrict("კოჯორი")).toBe(false);
+    expect(districtKey("დიდუბეში")).toBe("Didube");
     expect(isKnownDistrict("ვერა")).toBe(true);
     expect(districtKey("")).toBeNull();
     expect(districtKey(null)).toBeNull();
