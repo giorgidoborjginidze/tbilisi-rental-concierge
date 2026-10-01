@@ -12,6 +12,10 @@
 //
 // One workspace failing never stops the others; its id is recorded (no
 // names, no phone numbers) and that owner sees the failure on /alerts.
+//
+// The daily run starts with a database snapshot (lib/backup/neon-snapshot.ts,
+// on Neon with NEON_API_KEY set); a failed snapshot is recorded in the
+// summary and logged, but does not hold up the owners' work.
 
 import { prisma } from "@/lib/db";
 import { scanAlerts } from "@/lib/alerts/scan";
@@ -19,6 +23,7 @@ import { syncAllUnits } from "@/lib/ical/run-sync";
 import { flushOutbox } from "@/lib/notify/whatsapp";
 import { pruneAuthRecords } from "@/lib/auth/prune";
 import { checkTrackerSilence } from "@/lib/geo/silence-check";
+import { snapshotDatabase, type SnapshotOutcome } from "@/lib/backup/neon-snapshot";
 
 export type RunKind = "daily" | "sync";
 
@@ -39,6 +44,8 @@ export interface RunSummary {
   authRowsPruned: number;
   /** The daily pruning threw (the workspaces' part may still be fine). */
   pruneFailed: boolean;
+  /** The morning database snapshot ("skipped" without NEON_API_KEY). */
+  backup?: SnapshotOutcome["status"];
   /** Workspaces whose part of the run threw. */
   failedOperators: string[];
   /** Short error texts, for the logs. */
@@ -52,6 +59,8 @@ export interface RunDeps {
   prune: (now: Date) => ReturnType<typeof pruneAuthRecords>;
   /** The silent-tracker check (lib/geo/silence-check.ts), run on every sync too. */
   silence?: (now: Date, operatorId: string) => Promise<number>;
+  /** The morning snapshot; tests leave it out. */
+  backup?: (now: Date) => Promise<SnapshotOutcome>;
   /** Milliseconds since the run began (tests pass their own clock). */
   elapsed?: () => number;
 }
@@ -62,6 +71,7 @@ const DEFAULT_DEPS: RunDeps = {
   flush: flushOutbox,
   prune: (now) => pruneAuthRecords(prisma, now),
   silence: checkTrackerSilence,
+  backup: (now) => snapshotDatabase("daily", now),
 };
 
 /**
@@ -100,6 +110,15 @@ export async function runAutomation(
     failedOperators: [],
     errors: [],
   };
+
+  if (kind === "daily" && deps.backup) {
+    const backup = await deps.backup(now);
+    summary.backup = backup.status;
+    if (backup.status === "failed") {
+      summary.errors.push(`backup: ${backup.error}`);
+      console.error(`[automation] database snapshot failed: ${backup.error}`);
+    }
+  }
 
   const operators = await prisma.operator.findMany({ select: { id: true }, orderBy: { createdAt: "asc" } });
   summary.operators = operators.length;

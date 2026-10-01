@@ -28,7 +28,8 @@ const cspReportOnly = [
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
   "media-src 'self'",
-  "connect-src 'self'",
+  // Sentry's EU ingest (lib/observability/sentry.ts) for browser errors.
+  "connect-src 'self' https://*.ingest.de.sentry.io",
   "frame-src 'none'",
   "frame-ancestors 'none'",
   "object-src 'none'",

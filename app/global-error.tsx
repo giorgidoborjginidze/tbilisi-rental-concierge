@@ -1,5 +1,8 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
+import { useEffect } from "react";
+
 // The last fallback: an error in the root layout itself. It replaces the
 // whole document, so it brings its own <html>, <body>, title and a few
 // inline styles in the Ice colours (globals.css does not reach it). In
@@ -11,6 +14,10 @@ export default function GlobalError({
   error: Error & { digest?: string };
   retry: () => void;
 }) {
+  useEffect(() => {
+    Sentry.captureException(error);
+  }, [error]);
+
   return (
     <html lang="ka">
       <body

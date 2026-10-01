@@ -9,13 +9,25 @@
 // request headers, cookies, query strings or bodies (sessions, reset
 // tokens, phone numbers).
 
+//
+// With NEXT_PUBLIC_SENTRY_DSN set, each error also goes to Sentry (grouped,
+// with the full stack), scrubbed the same way — lib/observability/sentry.ts.
+
+import * as Sentry from "@sentry/nextjs";
 import type { Instrumentation } from "next";
+import { scrubUrl, sentryOptions } from "./lib/observability/sentry";
 
 export function register() {
-  // Nothing to set up: errors are reported through onRequestError below.
+  // Same options on the Node and edge runtimes; a no-op without a DSN.
+  Sentry.init(sentryOptions());
 }
 
 export const onRequestError: Instrumentation.onRequestError = async (error, request, context) => {
+  try {
+    Sentry.captureRequestError(error, { ...request, path: scrubUrl(request.path), headers: {} }, context);
+  } catch {
+    // the log line below is the record
+  }
   const err = error instanceof Error ? error : null;
   const digest =
     typeof error === "object" && error !== null && "digest" in error

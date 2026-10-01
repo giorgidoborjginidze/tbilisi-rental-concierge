@@ -5,8 +5,9 @@
 //     → derive prisma/schema.postgres.prisma from schema.prisma
 //       (provider swap only — single source of truth),
 //       generate the client from it, and on Vercel push the schema
-//       to the database (prisma db push), then run the idempotent data
-//       repairs (scripts/repair-ledger.ts).
+//       to the database (prisma db push) — production deploys only, after a
+//       Neon snapshot — then run the idempotent data repairs
+//       (scripts/repair-ledger.ts).
 //
 // The push NEVER passes --accept-data-loss: a change that would drop or
 // rewrite data (a removed or renamed column, a new unique constraint over
@@ -40,7 +41,19 @@ if (!isPostgres) {
       schema,
   );
   run("npx prisma generate --schema prisma/schema.postgres.prisma");
-  if (process.env.VERCEL) {
+  if (process.env.VERCEL && process.env.VERCEL_ENV !== "production") {
+    // Preview deployments share the production database (the Vercel–Neon
+    // integration gives both the same DATABASE_URL), so a branch build must
+    // never change it: previews only get the client generated above.
+    console.log("[prepare-db] preview build: the database is left untouched");
+  } else if (process.env.VERCEL) {
+    // A way back before anything changes: a Neon snapshot of the database
+    // (scripts/snapshot-db.ts; skipped without NEON_API_KEY, never fatal).
+    try {
+      run("npx tsx scripts/snapshot-db.ts");
+    } catch {
+      console.warn("[prepare-db] pre-deploy snapshot skipped (non-fatal)");
+    }
     // Managed deploy: sync the schema (no migration history needed yet).
     // (Prisma 7 dropped --skip-generate; the extra generate is harmless.)
     // Without --accept-data-loss: a destructive change fails the deploy

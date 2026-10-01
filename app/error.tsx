@@ -1,6 +1,8 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
 import Link from "next/link";
+import { useEffect } from "react";
 
 // Fallback for an unexpected error in a page — in Georgian first, with the
 // English line under it (a client error boundary cannot read the locale
@@ -15,6 +17,12 @@ export default function ErrorPage({
   error: Error & { digest?: string };
   retry: () => void;
 }) {
+  // A client-side crash never reaches instrumentation.ts; report it here
+  // (a no-op without NEXT_PUBLIC_SENTRY_DSN).
+  useEffect(() => {
+    Sentry.captureException(error);
+  }, [error]);
+
   return (
     <main>
       <section className="auth-box" role="alert">
