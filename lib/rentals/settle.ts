@@ -60,6 +60,9 @@ export type WithdrawReason =
   | "owner"
   // The renter asked for no more messages (RentalContract.messagesOptOutAt).
   | "opt_out"
+  // The renter's agreement to WhatsApp messages is not marked on the
+  // contract (RentalContract.waConsentAt): nothing goes to them without it.
+  | "no_consent"
   // Red-line news too old to send when the queue was finally delivered.
   | "too_old"
   // Written in another language than the account now uses (pre-locale drafts).
@@ -67,6 +70,7 @@ export type WithdrawReason =
 
 export const WITHDRAW_REASONS: WithdrawReason[] = [
   "opt_out",
+  "no_consent",
   "too_old",
   "old_language",
   "paid",
@@ -635,6 +639,7 @@ export async function staleMessageReasons(
           paidThrough: true,
           remindersEnabled: true,
           messagesOptOutAt: true,
+          waConsentAt: true,
         },
       })
     ).map((contract) => [contract.id, contract]),
@@ -680,6 +685,9 @@ export async function staleMessageReasons(
       if (!reason && tooOldToSend(message, now)) reason = "too_old";
     }
     if (!reason && message.toRole !== "owner" && contract?.messagesOptOutAt) reason = "opt_out";
+    // Nothing goes to a renter without their recorded agreement (and a
+    // renter message with no contract has none to show).
+    if (!reason && message.toRole !== "owner" && !contract?.waConsentAt) reason = "no_consent";
     if (!reason && inOtherLanguage(message.body, locales.get(message.operatorId) ?? "ka")) {
       reason = "old_language";
     }

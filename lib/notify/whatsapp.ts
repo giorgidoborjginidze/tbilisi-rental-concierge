@@ -138,18 +138,22 @@ export async function queueMessage(input: QueueInput) {
   const now = input.now ?? new Date();
   const toRenter = TEMPLATE_ROLE[input.key] !== "owner";
 
-  // A renter who asked for no more messages gets none — whatever else the
+  // A renter gets messages only with their agreement marked on the contract,
+  // and none at all once they asked for no more — whatever else the
   // contract says; what still waits for them is withdrawn on the spot.
-  if (toRenter && input.contractId) {
+  if (toRenter) {
     // all-contracts: an opt-out holds even on a deleted contract.
-    const contract = await prisma.rentalContract.findUnique({
-      where: { id: input.contractId },
-      select: { messagesOptOutAt: true },
-    });
-    if (contract?.messagesOptOutAt) {
+    const contract = input.contractId
+      ? await prisma.rentalContract.findUnique({
+          where: { id: input.contractId },
+          select: { messagesOptOutAt: true, waConsentAt: true },
+        })
+      : null;
+    const blocked = contract?.messagesOptOutAt ? "opt_out" : !contract?.waConsentAt ? "no_consent" : null;
+    if (blocked) {
       await prisma.notifyMessage.updateMany({
         where: { dedupeKey: input.dedupeKey, status: { in: ["queued", "failed"] } },
-        data: { status: "cancelled", cancelReason: "opt_out", cancelledAt: now },
+        data: { status: "cancelled", cancelReason: blocked, cancelledAt: now },
       });
       return null;
     }

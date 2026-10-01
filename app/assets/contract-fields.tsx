@@ -179,6 +179,16 @@ export default function ContractFields({
         />
         <span className="hint">{labels.contract_paid_up_to_hint}</span>
       </label>
+      {/* What the renter said about messages: their agreement — without it
+          nothing is sent to them — or (below) that they want none. */}
+      <input type="hidden" name="messagesField" value="1" />
+      <label className="field col-span-2">
+        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <input type="checkbox" name="waConsent" defaultChecked={initial?.waConsent ?? false} />
+          {labels.contract_wa_consent}
+        </span>
+        <span className="hint">{labels.contract_wa_consent_hint}</span>
+      </label>
       {!compact && (
         <>
           <label className="field">
@@ -204,13 +214,6 @@ export default function ContractFields({
             <input type="hidden" name="remindersField" value="1" />
             <input type="checkbox" name="remindersEnabled" defaultChecked={initial?.remindersEnabled ?? true} />
             {labels.contract_reminders}
-          </label>
-          {/* What the renter said about messages: their agreement, or that
-              they want none (then nothing at all goes to them). */}
-          <input type="hidden" name="messagesField" value="1" />
-          <label className="field col-span-2" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <input type="checkbox" name="waConsent" defaultChecked={initial?.waConsent ?? false} />
-            {labels.contract_wa_consent}
           </label>
           <label className="field col-span-2" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <input type="checkbox" name="messagesOptOut" defaultChecked={initial?.messagesOptOut ?? false} />

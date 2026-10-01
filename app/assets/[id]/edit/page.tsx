@@ -269,6 +269,7 @@ export default async function EditAssetPage({
     contractLabels.tenant_phone = t(locale, "driver_phone");
     contractLabels.contract_reminders = t(locale, "contract_reminders_driver");
     contractLabels.contract_wa_consent = t(locale, "contract_wa_consent_driver");
+    contractLabels.contract_wa_consent_hint = t(locale, "contract_wa_consent_hint_driver");
     contractLabels.contract_opt_out = t(locale, "contract_opt_out_driver");
   }
 

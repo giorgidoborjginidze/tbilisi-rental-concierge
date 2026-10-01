@@ -64,7 +64,14 @@ function fakeDb(alerts: Row[], messages: Row[], contracts: Row[] = [], events: R
   return {
     alert: table(alerts),
     notifyMessage: table(messages),
-    rentalContract: table(contracts),
+    // Contracts carry the renter's WhatsApp agreement unless a test says otherwise.
+    // (set in place: some tests change a contract row after building the db).
+    rentalContract: table(
+      contracts.map((c) => {
+        if (!("waConsentAt" in c)) c.waConsentAt = new Date("2026-01-01T00:00:00Z");
+        return c;
+      }),
+    ),
     geoEvent: table(events),
     operator: table([{ id: "op1", locale: "ka" }, { id: "opEn", locale: "en" }]),
   } as unknown as PrismaClient & {
@@ -504,6 +511,21 @@ describe("messages that must not go out late or in the wrong language", () => {
     expect(reason("g2")).toBeNull();
     expect(reason("p1")).toBe("opt_out");
     expect(reason("x1")).toBe("old_language");
+  });
+
+  it("withdraws a renter's message when their agreement is not on the contract, never the owner's", async () => {
+    const db = fakeDb(
+      [],
+      [
+        message("r1", "pay|c4|2026-10-01|due", { contractId: "c4", kind: "pay_due_driver" }),
+        message("o1", "pay|c4|2026-10-01|due|owner", { contractId: "c4", kind: "pay_due_owner", toRole: "owner" }),
+      ],
+      [{ id: "c4", startDate: d("2026-09-01"), endDate: d("2027-09-01"), paidThrough: d("2026-10-01"), remindersEnabled: true, waConsentAt: null }],
+    );
+    expect(await sweepStaleMessages(db, d("2026-09-30"))).toBe(1);
+    const reason = (id: string) => db.notifyMessage.rows.find((r) => r.id === id)!.cancelReason;
+    expect(reason("r1")).toBe("no_consent");
+    expect(reason("o1")).toBeNull();
   });
 
   it("pure checks", () => {

@@ -384,6 +384,15 @@ export default async function RentalServicePage({
             </p>
           )}
 
+          {!contract.waConsentAt && !contract.messagesOptOutAt && (
+            <p className="alert-card alert-card--warn" role="note" style={{ display: "block", fontSize: 13 }}>
+              {t(locale, asset.category === "vehicle" ? "contract_no_consent_driver" : "contract_no_consent")}{" "}
+              <Link href={`/assets/${asset.id}/edit#contracts`} className="link">
+                {t(locale, "edit")}
+              </Link>
+            </p>
+          )}
+
           <ScheduleForm
             key={contract.id}
             assetId={asset.id}
