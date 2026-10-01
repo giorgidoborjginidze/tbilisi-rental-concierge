@@ -176,6 +176,39 @@ export async function saveUnit(
   redirect("/units");
 }
 
+/**
+ * /units' "the same flat?" offer: link an unlinked unit to an unlinked
+ * real-estate asset of the same workspace, in one click. Both must still be
+ * free — a second click or a stale page changes nothing.
+ */
+export async function linkUnitToAsset(formData: FormData) {
+  const operator = await requireWriter();
+  const unitId = str(formData, "unitId");
+  const assetId = str(formData, "assetId");
+  if (!unitId || !assetId) redirect("/units");
+  const [unit, asset] = await Promise.all([
+    prisma.unit.findFirst({
+      where: { id: unitId, operatorId: operator.id, asset: null },
+      select: { id: true },
+    }),
+    prisma.asset.findFirst({
+      where: { id: assetId, operatorId: operator.id, category: "real_estate", unitId: null },
+      select: { id: true },
+    }),
+  ]);
+  if (unit && asset) {
+    await prisma.asset.updateMany({
+      where: { id: asset.id, unitId: null },
+      data: { unitId: unit.id },
+    });
+    revalidatePath("/units");
+    revalidatePath("/assets");
+    revalidatePath("/calendar");
+    revalidatePath("/");
+  }
+  redirect("/units?linked=1");
+}
+
 export async function deleteUnit(formData: FormData) {
   const operator = await requireWriter();
   const unitId = str(formData, "unitId");

@@ -5,6 +5,7 @@ import {
   icalLinksAdded,
   namePairs,
   shouldCreateUnit,
+  suggestAssetFor,
   unitFeedsAfterSave,
   unitFromAsset,
   wantsUnit,
@@ -171,5 +172,30 @@ describe("the daily 'rented today?' question (asksDailyQuestion)", () => {
   it("does not ask about a room whose calendar is kept by hand (it has bookings)", () => {
     expect(asksDailyQuestion({ rentalMode: "daily", unit: { channelLinks: null, bookings: 3 } })).toBe(false);
     expect(asksDailyQuestion({ rentalMode: "daily", unit: { channelLinks: null, bookings: 0 } })).toBe(true);
+  });
+});
+
+describe("the 'same flat?' offer on /units (suggestAssetFor)", () => {
+  const assets = [
+    { id: "a1", name: "Saburtalo studio", nameKa: null, city: "Tbilisi", district: "Saburtalo" },
+    { id: "a2", name: "Vake Park view", nameKa: "ვაკის პარკის ხედი", city: "Tbilisi", district: "Vake" },
+    { id: "a3", name: "Batumi sea view", nameKa: null, city: "Batumi", district: "Old Batumi" },
+  ];
+
+  it("prefers the same district, then shared words", () => {
+    expect(suggestAssetFor({ name: "Room 2", city: "Tbilisi", district: "Vake" }, assets)).toBe("a2");
+    expect(
+      suggestAssetFor({ name: "Sea view", nameKa: null, city: "Batumi", district: "Old Batumi" }, assets),
+    ).toBe("a3");
+  });
+
+  it("matches Georgian names too", () => {
+    expect(
+      suggestAssetFor({ name: "Unit 7", nameKa: "პარკის ხედი", city: "", district: "" }, assets),
+    ).toBe("a2");
+  });
+
+  it("suggests nothing when nothing matches", () => {
+    expect(suggestAssetFor({ name: "Kutaisi loft", city: "Kutaisi", district: "Center" }, assets)).toBeNull();
   });
 });

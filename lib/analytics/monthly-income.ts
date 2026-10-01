@@ -2,6 +2,7 @@
 // Every income figure on a page comes through here, so the dashboard hero,
 // the KPIs, the income bars and the /assets total are one number.
 
+import { cache } from "react";
 import { prisma } from "@/lib/db";
 import { LIVE_CONTRACT } from "@/lib/rentals/live";
 import { monthStartTbilisi } from "@/lib/time";
@@ -74,6 +75,21 @@ export async function loadIncomeSources(
 }
 
 /**
+ * The six months the dashboard shows (this Tbilisi month and the five
+ * before it), loaded once per request: the hero's "this month" and the
+ * income bars read the same rows instead of querying twice.
+ */
+const DASHBOARD_MONTHS = 6;
+const recentSources = cache((operatorId: string, firstIso: string) => {
+  const windows = monthWindowsFrom(new Date(firstIso), DASHBOARD_MONTHS);
+  return loadIncomeSources(operatorId, { start: windows[0].start, end: windows[windows.length - 1].end });
+});
+
+function recentFirst(): Date {
+  return monthStartTbilisi(1 - DASHBOARD_MONTHS);
+}
+
+/**
  * Income of one calendar month (default: this Tbilisi month), by source.
  * `month` is any day of it.
  */
@@ -85,7 +101,12 @@ export async function monthlyIncome(
     new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth(), 1)),
     1,
   );
-  return incomeInWindow(await loadIncomeSources(operatorId, window), window);
+  const first = recentFirst();
+  const recent = window.start >= first && window.start <= monthStartTbilisi(0);
+  const sources = recent
+    ? await recentSources(operatorId, first.toISOString())
+    : await loadIncomeSources(operatorId, window);
+  return incomeInWindow(sources, window);
 }
 
 /** Income of `count` consecutive months from `first`, one query round. */
@@ -95,10 +116,13 @@ export async function monthlyIncomeSeries(
   count: number,
 ): Promise<{ start: Date; income: IncomeBreakdown }[]> {
   const windows = monthWindowsFrom(first, count);
-  const sources = await loadIncomeSources(operatorId, {
-    start: windows[0].start,
-    end: windows[windows.length - 1].end,
-  });
+  const sources =
+    count === DASHBOARD_MONTHS && first.getTime() === recentFirst().getTime()
+      ? await recentSources(operatorId, first.toISOString())
+      : await loadIncomeSources(operatorId, {
+          start: windows[0].start,
+          end: windows[windows.length - 1].end,
+        });
   return windows.map((window) => ({
     start: window.start,
     income: incomeInWindow(sources, window),

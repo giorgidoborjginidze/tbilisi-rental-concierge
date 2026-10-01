@@ -22,8 +22,8 @@ import CountUp from "./count-up";
 import AssetDeckClient, { type DeckAsset, type DeckSlide } from "./asset-deck-client";
 import { districtLabel } from "@/lib/places";
 import { LIVE_CONTRACT } from "@/lib/rentals/live";
-import { loadAssetSources } from "@/lib/property/places";
-import { placeStays } from "@/lib/property/stays";
+import { loadAssetSources, loadRentalPlaces } from "@/lib/property/places";
+import { placeMetrics, placeStays } from "@/lib/property/stays";
 import { getNetWorth, type NetWorth } from "@/lib/wealth/net-worth";
 import { PHYSICAL_GROUPS } from "@/lib/wealth/compose";
 import Approx from "./approx";
@@ -607,17 +607,6 @@ export async function AssetDeck({
     take: 12,
   });
 
-  if (assets.length === 0) {
-    return (
-      <section>
-        <h2>{t(locale, "deck_title")}</h2>
-        <p style={{ color: "var(--color-text-muted)", fontSize: 13 }}>
-          {t(locale, "deck_empty")}
-        </p>
-      </section>
-    );
-  }
-
   // District rent benchmarks, so the advice can compare against the market.
   const monthKey = monthKeyTbilisi(now);
   const districts = [...new Set(assets.map((a) => a.district).filter(Boolean))] as string[];
@@ -642,6 +631,23 @@ export async function AssetDeck({
     for (const asset of assets) if (asset.days.length > 0) heldTonight.add(asset.id);
   }
 
+  // Rooms (assets linked to a Rentals unit) are judged by their nights, not
+  // a market value most owners never enter: this month's occupancy, the
+  // same count as /analytics (lib/property/stays.ts placeMetrics).
+  const monthWindow = { start: monthStartTbilisi(0, now), end: monthStartTbilisi(1, now) };
+  const roomIds = assets.filter((asset) => asset.unitId).map((asset) => asset.id);
+  const [roomSources, places] = await Promise.all([
+    loadAssetSources(operatorId, roomIds, monthWindow),
+    loadRentalPlaces(operatorId, monthWindow),
+  ]);
+  // Rentals units with no asset of their own (a hotel's rooms, typically)
+  // get a card of their own, built from the unit — the deck is about the
+  // places, whichever side they were entered on.
+  const looseRooms = places.filter((place) => place.unit && !place.asset).slice(0, 12);
+  const roomMonth = new Map(
+    [...roomSources].map(([assetId, src]) => [assetId, placeMetrics(src, monthWindow)] as const),
+  );
+
   const fmtMoney = (value: number) => formatNumber(value);
   const fmtDate = tbilisiFormat(locale, {
     day: "numeric", month: "short", year: "numeric",
@@ -663,9 +669,23 @@ export async function AssetDeck({
         : null;
 
     const slides: DeckSlide[] = [];
+    const room = asset.unitId && !asset.estimatedValue ? roomMonth.get(asset.id) : undefined;
 
-    // 1 · What it is worth.
-    slides.push({
+    // 1 · What it is worth — for a room without a value, how full it is.
+    if (room) {
+      const nights = room.availableNights + room.leasedNights;
+      const pct = Math.round(room.occupancyRate * 100);
+      slides.push({
+        kind: "metric",
+        label: t(locale, "deck_occ_month"),
+        value: String(pct),
+        unit: "%",
+        meter: pct,
+        note: t(locale, "deck_occ_note")
+          .replace("{n}", String(room.occupiedNights))
+          .replace("{m}", String(nights)),
+      });
+    } else slides.push({
       kind: "metric",
       label: t(locale, "asset_value_col"),
       value: asset.estimatedValue ? fmtMoney(asset.estimatedValue) : "—",
@@ -788,6 +808,15 @@ export async function AssetDeck({
           .replace("{loss}", weekly ? `${fmtMoney(weekly)} ₾` : "—"),
         tone: "warn",
       };
+    } else if (asset.unitId && asset.rentalMode === "daily") {
+      // A room: tonight is the one thing that can still be acted on.
+      const taken = heldTonight.has(asset.id);
+      advice = {
+        kind: "advice",
+        label: t(locale, "deck_advice"),
+        note: t(locale, taken ? "deck_adv_room_ok" : "deck_adv_room_free"),
+        tone: taken ? "good" : "warn",
+      };
     } else if (!asset.estimatedValue) {
       advice = {
         kind: "advice",
@@ -818,6 +847,57 @@ export async function AssetDeck({
       slides,
     };
   });
+
+  for (const place of looseRooms) {
+    const unit = place.unit!;
+    const month = placeMetrics(place.sources, monthWindow);
+    const taken = placeStays(place.sources).some((stay) => stay.start <= today && stay.end > today);
+    const pct = Math.round(month.occupancyRate * 100);
+    deck.push({
+      id: `unit:${unit.id}`,
+      name: locale === "ka" && unit.nameKa ? unit.nameKa : unit.name,
+      href: `/units/${unit.id}/edit`,
+      place: [districtLabel(locale, unit.district), unit.address].filter(Boolean).join(" · "),
+      category: "real_estate",
+      badge: "real_estate",
+      slides: [
+        {
+          kind: "metric",
+          label: t(locale, "deck_occ_month"),
+          value: String(pct),
+          unit: "%",
+          meter: pct,
+          note: t(locale, "deck_occ_note")
+            .replace("{n}", String(month.occupiedNights))
+            .replace("{m}", String(month.availableNights + month.leasedNights)),
+        },
+        {
+          kind: "metric",
+          label: t(locale, "deck_rent"),
+          value: fmtMoney(unit.baseNightlyRate),
+          unit: `${currencySign(unit.currency)} / ${t(locale, "per_day_word")}`,
+          note: t(locale, taken ? "deck_day_taken" : "deck_day_free"),
+        },
+        {
+          kind: "advice",
+          label: t(locale, "deck_advice"),
+          note: t(locale, taken ? "deck_adv_room_ok" : "deck_adv_room_free"),
+          tone: taken ? "good" : "warn",
+        },
+      ],
+    });
+  }
+
+  if (deck.length === 0) {
+    return (
+      <section>
+        <h2>{t(locale, "deck_title")}</h2>
+        <p style={{ color: "var(--color-text-muted)", fontSize: 13 }}>
+          {t(locale, "deck_empty")}
+        </p>
+      </section>
+    );
+  }
 
   return (
     <section>

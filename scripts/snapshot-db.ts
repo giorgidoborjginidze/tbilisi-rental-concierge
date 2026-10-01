@@ -4,12 +4,19 @@
 // destructive, this is the extra way back.
 import { snapshotDatabase } from "../lib/backup/neon-snapshot";
 
-const sha = (process.env.VERCEL_GIT_COMMIT_SHA ?? "").slice(0, 7);
-const outcome = await snapshotDatabase(sha ? `deploy-${sha}` : "deploy");
-if (outcome.status === "created") {
-  console.log(`[snapshot-db] created ${outcome.name}${outcome.deleted.length ? `, removed ${outcome.deleted.join(", ")}` : ""}`);
-} else if (outcome.status === "skipped") {
-  console.log("[snapshot-db] skipped: NEON_API_KEY or the Neon project id is not set");
-} else {
-  console.warn(`[snapshot-db] could not snapshot: ${outcome.error}`);
+async function main() {
+  const sha = (process.env.VERCEL_GIT_COMMIT_SHA ?? "").slice(0, 7);
+  const outcome = await snapshotDatabase(sha ? `deploy-${sha}` : "deploy");
+  if (outcome.status === "created") {
+    const removed = outcome.deleted.length ? `, removed ${outcome.deleted.join(", ")}` : "";
+    console.log(`[snapshot-db] created ${outcome.name}${removed}`);
+  } else if (outcome.status === "skipped") {
+    console.log("[snapshot-db] skipped: NEON_API_KEY or the Neon project id is not set");
+  } else {
+    console.warn(`[snapshot-db] could not snapshot: ${outcome.error}`);
+  }
 }
+
+main().catch((error) => {
+  console.warn("[snapshot-db] could not snapshot:", error);
+});

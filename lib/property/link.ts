@@ -311,3 +311,34 @@ export function namePairs(
   }
   return pairs;
 }
+
+/**
+ * For /units' "the same flat?" offer: the unlinked real-estate asset that
+ * most likely is this unit — same district, then same city, then shared
+ * words in the name. Null when nothing matches at all; the owner still
+ * picks from the full list. Pure.
+ */
+export function suggestAssetFor(
+  unit: { name: string; nameKa?: string | null; city: string; district: string },
+  assets: { id: string; name: string; nameKa?: string | null; city: string | null; district: string | null }[],
+): string | null {
+  const words = (...names: (string | null | undefined)[]) =>
+    new Set(
+      names
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .split(/[^\p{L}\p{N}]+/u)
+        .filter((word) => word.length > 1),
+    );
+  const unitWords = words(unit.name, unit.nameKa);
+  let best: { id: string; score: number } | null = null;
+  for (const asset of assets) {
+    let score = 0;
+    if (unit.district && asset.district === unit.district) score += 3;
+    if (unit.city && asset.city === unit.city) score += 1;
+    for (const word of words(asset.name, asset.nameKa)) if (unitWords.has(word)) score += 2;
+    if (score > 0 && (!best || score > best.score)) best = { id: asset.id, score };
+  }
+  return best?.id ?? null;
+}

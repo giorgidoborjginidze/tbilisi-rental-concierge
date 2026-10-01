@@ -13,13 +13,21 @@ import { titled } from "@/lib/i18n/metadata";
 import { DAY_LET_WITHOUT_UNIT } from "@/lib/property/places";
 import { addAssetToRentals } from "@/lib/assets/actions";
 import { LIVE_STAY } from "@/lib/bookings/live";
+import { linkUnitToAsset } from "@/lib/units/actions";
+import { suggestAssetFor } from "@/lib/property/link";
+import { Notice } from "../alert-icon";
 
 export const dynamic = "force-dynamic";
 
 export const generateMetadata = titled("units_title");
 
-export default async function UnitsPage() {
+export default async function UnitsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ linked?: string }>;
+}) {
   const operator = await requireOperator();
+  const { linked } = await searchParams;
 
   const locale = await getLocale();
   const units = await prisma.unit.findMany({
@@ -38,6 +46,23 @@ export default async function UnitsPage() {
     select: { id: true, name: true, nameKa: true },
     orderBy: { name: "asc" },
   });
+  // Units with no asset beside real-estate assets with no unit: possibly the
+  // same flat entered twice. Offered as pairs to link, best guess first.
+  const linkable = await prisma.asset.findMany({
+    where: { operatorId: operator.id, category: "real_estate", unitId: null },
+    select: { id: true, name: true, nameKa: true, city: true, district: true },
+    orderBy: { name: "asc" },
+  });
+  const assetLabel = (asset: { name: string; nameKa: string | null }) =>
+    locale === "ka" && asset.nameKa ? asset.nameKa : asset.name;
+  const unlinkedUnits =
+    linkable.length > 0
+      ? await prisma.unit.findMany({
+          where: { operatorId: operator.id, asset: null },
+          select: { id: true, name: true, nameKa: true, city: true, district: true },
+          orderBy: { name: "asc" },
+        })
+      : [];
 
   return (
     <main>
@@ -76,6 +101,44 @@ export default async function UnitsPage() {
                 <form action={addAssetToRentals}>
                   <input type="hidden" name="assetId" value={asset.id} />
                   <button type="submit" className="btn-chip">{t(locale, "units_add_from_asset")}</button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {linked === "1" && (
+        <Notice severity="good" role="status" style={{ marginBottom: 16 }}>
+          {t(locale, "units_link_done")}
+        </Notice>
+      )}
+
+      {unlinkedUnits.length > 0 && (
+        <div className="alert-card alert-card--info" style={{ display: "block", marginBottom: 16 }}>
+          <strong>{t(locale, "units_link_title")}</strong>
+          <div className="alert-card__detail">{t(locale, "units_link_text")}</div>
+          <ul className="loose-flats">
+            {unlinkedUnits.map((unit) => (
+              <li key={unit.id}>
+                <span>{locale === "ka" && unit.nameKa ? unit.nameKa : unit.name}</span>
+                <form action={linkUnitToAsset} className="flex flex-wrap items-center gap-2">
+                  <input type="hidden" name="unitId" value={unit.id} />
+                  <label className="sr-only" htmlFor={`link-${unit.id}`}>
+                    {t(locale, "unit_asset_link")}
+                  </label>
+                  <select
+                    id={`link-${unit.id}`}
+                    name="assetId"
+                    defaultValue={suggestAssetFor(unit, linkable) ?? linkable[0].id}
+                  >
+                    {linkable.map((asset) => (
+                      <option key={asset.id} value={asset.id}>
+                        {assetLabel(asset)}
+                      </option>
+                    ))}
+                  </select>
+                  <button type="submit" className="btn-chip">{t(locale, "units_link_btn")}</button>
                 </form>
               </li>
             ))}
