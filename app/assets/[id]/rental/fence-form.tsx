@@ -6,6 +6,7 @@ import type { FormState } from "@/lib/units/actions";
 import { FENCE_PRESETS, type FencePreset } from "@/lib/geo/presets";
 import { IconPin } from "@/app/icons";
 import { keepingValues } from "@/lib/forms";
+import FenceMap, { parsePointLines, type SavedFence } from "./fence-map";
 
 // Defining a red line. Most owners do not know coordinates, so the common
 // agreements ("stay within 30 km of Tbilisi", "do not leave Georgia") are
@@ -19,9 +20,15 @@ import { keepingValues } from "@/lib/forms";
 export default function FenceForm({
   assetId,
   labels,
+  saved = [],
+  car = null,
 }: {
   assetId: string;
   labels: Record<string, string>;
+  /** The red lines already saved, drawn in grey on the map. */
+  saved?: SavedFence[];
+  /** The car's last known position. */
+  car?: { lat: number; lng: number } | null;
 }) {
   const [kind, setKind] = useState<"circle" | "polygon">("circle");
   const [name, setName] = useState("");
@@ -206,6 +213,40 @@ export default function FenceForm({
           <span className="field-hint">{labels.fence_points_hint}</span>
         </label>
       )}
+
+      <div className="col-span-2">
+        <FenceMap
+          kind={kind}
+          center={center}
+          radiusKm={radius}
+          points={points}
+          saved={saved}
+          car={car}
+          labels={labels}
+          onCenter={(lat, lng) => {
+            setPreset(null);
+            setCenter({ lat: String(lat), lng: String(lng) });
+          }}
+          onAddPoint={(lat, lng) => {
+            setPreset(null);
+            setPoints((prev) => `${prev.trim() ? `${prev.trim()}\n` : ""}${lat}, ${lng}`);
+          }}
+        />
+        {kind === "polygon" && parsePointLines(points).length > 0 && (
+          <div className="flex flex-wrap gap-2" style={{ marginTop: 8 }}>
+            <button
+              type="button"
+              className="btn-chip"
+              onClick={() => setPoints((prev) => prev.trim().split("\n").slice(0, -1).join("\n"))}
+            >
+              {labels.fence_map_undo}
+            </button>
+            <button type="button" className="btn-chip" onClick={() => setPoints("")}>
+              {labels.fence_map_clear}
+            </button>
+          </div>
+        )}
+      </div>
 
       <label className="field">
         {labels.fence_approach}

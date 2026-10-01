@@ -80,7 +80,8 @@ const LABEL_KEYS: StringKey[] = [
   "fence_approach_hint", "fence_add", "fence_use_location",
   "fence_presets", "fence_preset_tbilisi30", "fence_preset_tbilisi50",
   "fence_preset_batumi20", "fence_preset_kutaisi20", "fence_preset_georgia",
-  "fence_preset_hint",
+  "fence_preset_hint", "fence_map_aria", "fence_map_hint_circle", "fence_map_hint_polygon",
+  "fence_map_undo", "fence_map_clear", "fence_map_car",
   "tpl_notify_phone", "tpl_notify_phone_hint", "tpl_vars_hint", "tpl_save", "tpl_edited",
   "tpl_pay_to", "tpl_pay_to_hint", "tpl_pay_to_placeholder", "tpl_fixed_hint", "error_template_112",
 ];
@@ -661,7 +662,23 @@ export default async function RentalServicePage({
             open when there is none yet. */}
         <details className="desk-fold" open={fences.length === 0 && device != null}>
           <summary>{t(locale, "desk_fence_new")}</summary>
-          <FenceForm assetId={asset.id} labels={labels} />
+          <FenceForm
+            assetId={asset.id}
+            labels={labels}
+            saved={asset.geofences.map((fence) => ({
+              name: fence.name,
+              kind: fence.kind === "polygon" ? "polygon" : "circle",
+              centerLat: fence.centerLat,
+              centerLng: fence.centerLng,
+              radiusKm: fence.radiusKm,
+              points: Array.isArray(fence.points) ? (fence.points as [number, number][]) : undefined,
+            }))}
+            car={
+              asset.gpsDevice?.lastLat != null && asset.gpsDevice.lastLng != null
+                ? { lat: asset.gpsDevice.lastLat, lng: asset.gpsDevice.lastLng }
+                : null
+            }
+          />
         </details>
 
         <h3 style={{ fontSize: 15, marginTop: 20 }}>{t(locale, "fence_events")}</h3>
