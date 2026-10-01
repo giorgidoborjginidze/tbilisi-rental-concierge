@@ -52,6 +52,9 @@ model Operator {
   // Urgent alerts (double booking, late rent, red line, silent tracker) are
   // also emailed to the account address — on unless the owner turns it off.
   notifyEmail Boolean @default(true)
+  // The "from" block printed on the owner's invoices: name or company, ID
+  // or tax code, address, bank account — free text, as the owner types it.
+  invoiceIssuer String?
   // How renters pay (bank account, "cash to the office"…): the {pay_to}
   // placeholder of every payment reminder. Free text, shown as typed.
   payInstructions String?
@@ -73,6 +76,7 @@ model Operator {
   resets    PasswordReset[]
   pushSubscriptions PushSubscription[]
   attachments       Attachment[]
+  invoices          Invoice[]
 
   @@index([companyId])
 }
@@ -362,6 +366,7 @@ model Asset {
   geofences Geofence[]
   days      DayEntry[]
   attachments Attachment[]
+  invoices    Invoice[]
 
   @@index([operatorId])
 }
@@ -440,6 +445,7 @@ model RentalContract {
 
   asset    Asset         @relation(fields: [assetId], references: [id], onDelete: Cascade)
   payments RentPayment[]
+  invoices Invoice[]
 
   @@index([assetId, endDate])
   @@index([assetId, deletedAt])
@@ -728,4 +734,38 @@ model Attachment {
   @@index([operatorId])
   @@index([assetId])
   @@index([unitId])
+}
+
+// An invoice the owner issues to a renter (lib/invoices): numbered per
+// account (2026-0007), printable or saved as PDF from its page, and shared
+// with the renter by a link that needs no sign-in (/i/<shareToken>).
+// Never deleted once issued — a mistaken one is voided, so the numbers
+// have no gaps.
+model Invoice {
+  id          String    @id @default(cuid())
+  operatorId  String
+  number      Int
+  assetId     String?
+  contractId  String?
+  issuedAt    DateTime  @default(now())
+  dueDate     DateTime?
+  periodStart DateTime?
+  periodEnd   DateTime? // exclusive, like a contract's end
+  billTo      String
+  billToPhone String?
+  description String
+  amount      Float
+  currency    String    @default("GEL")
+  status      String    @default("issued") // "issued" | "paid" | "void"
+  paidAt      DateTime?
+  note        String?
+  shareToken  String    @unique
+  createdAt   DateTime  @default(now())
+
+  operator Operator        @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  asset    Asset?          @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  contract RentalContract? @relation(fields: [contractId], references: [id], onDelete: SetNull)
+
+  @@unique([operatorId, number])
+  @@index([contractId])
 }

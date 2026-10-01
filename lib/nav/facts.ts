@@ -13,15 +13,16 @@ export const workspaceNav = cache(
     // Places let by the night: units, and day-let flats that only exist
     // under Assets so far (lib/property/places.ts) — both are on the
     // Rentals calendar.
-    const [units, looseFlats, rentedCars] = await Promise.all([
+    const [units, looseFlats, rentedCars, contracts] = await Promise.all([
       prisma.unit.count({ where: { operatorId } }),
       prisma.asset.count({ where: { operatorId, ...DAY_LET_WITHOUT_UNIT } }),
       // Cars on a contract: the fleet list is worth a way in.
       prisma.asset.count({
         where: { operatorId, category: "vehicle", contracts: { some: { deletedAt: null } } },
       }),
+      prisma.rentalContract.count({ where: { deletedAt: null, asset: { operatorId } } }),
     ]);
-    return navModel({ profile, units: units + looseFlats, vehicles: rentedCars });
+    return navModel({ profile, units: units + looseFlats, vehicles: rentedCars, contracts });
   },
 );
 

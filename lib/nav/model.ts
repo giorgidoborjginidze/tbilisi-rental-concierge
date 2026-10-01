@@ -50,6 +50,8 @@ export interface NavFacts {
   units: number;
   /** Cars with a contract (the fleet list has something to show). */
   vehicles?: number;
+  /** Rental contracts of any asset (invoices are worth a way in). */
+  contracts?: number;
 }
 
 export interface NavModel {
@@ -72,6 +74,7 @@ const FLEET: NavEntry = { key: "fleet", href: "/fleet", labelKey: "nav_fleet", i
 const ASSETS: NavEntry = { key: "assets", href: "/assets", labelKey: "nav_assets", icon: "grid" };
 const INVEST: NavEntry = { key: "invest", href: "/invest", labelKey: "nav_invest", icon: "invest" };
 const ALERTS: NavEntry = { key: "alerts", href: "/alerts", labelKey: "nav_alerts", icon: "bell" };
+const INVOICES: NavEntry = { key: "invoices", href: "/invoices", labelKey: "invoices_title", icon: "grid" };
 const MENU: TabSeat = { key: "menu", href: "#menu", labelKey: "aria_menu", icon: "menu", action: "menu" };
 
 const CENTER: TabSeat = { ...ASSETS, center: true };
@@ -102,6 +105,8 @@ export function navModel(facts: NavFacts): NavModel {
   const menuAlways = [
     ...(primary === "fleet" && facts.units > 0 ? [RENTALS] : []),
     ...(primary !== "fleet" && (facts.vehicles ?? 0) > 0 ? [FLEET] : []),
+    // Anyone who rents something out bills for it.
+    ...((facts.contracts ?? 0) > 0 ? [INVOICES] : []),
   ];
 
   const tabHrefs = new Set(tabs.map((seat) => seat.href));

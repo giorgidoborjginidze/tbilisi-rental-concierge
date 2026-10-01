@@ -318,6 +318,15 @@ export default async function RentalServicePage({
         noContract
       ) : (
         <>
+          {/* An invoice for the rent owed now (or the next period), prefilled. */}
+          <p style={{ margin: "0 0 12px", display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <Link href={`/invoices/new?contract=${contract.id}`} className="btn-chip">
+              {t(locale, "invoice_make")}
+            </Link>
+            <Link href={`/invoices?asset=${asset.id}`} className="btn-chip">
+              {t(locale, "invoices_title")}
+            </Link>
+          </p>
           {!status || !paymentState ? (
             <p className="alert-card alert-card--info" style={{ display: "block" }}>
               <span className="alert-card__notice">
