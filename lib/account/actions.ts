@@ -16,6 +16,9 @@ import { validEmail } from "@/lib/auth/reset";
 import { destroyOtherSessions, destroySession, requirePerson, requireWriter, type SessionOperator } from "@/lib/auth/session";
 import type { FormState } from "@/lib/units/actions";
 import { WORKSPACE_PROFILES } from "@/lib/nav/model";
+import { after } from "next/server";
+import { sendVerificationLink } from "@/lib/auth/verify";
+import { asLocale } from "@/lib/i18n/strings";
 
 // Update the operator's display name (Company / Operator Name). Empty
 // clears it (the UI then falls back to the email local-part).
@@ -119,7 +122,8 @@ export async function changeEmail(_prev: FormState, formData: FormData): Promise
   if (taken) return { error: "error_email_unavailable", values };
   try {
     await prisma.$transaction([
-      prisma.operator.update({ where: { id: operator.userId }, data: { email } }),
+      // A new address is unconfirmed until its own link is opened.
+      prisma.operator.update({ where: { id: operator.userId }, data: { email, emailVerifiedAt: null } }),
       prisma.passwordReset.updateMany({
         where: { operatorId: operator.userId, usedAt: null },
         data: { usedAt: new Date() },
@@ -131,9 +135,22 @@ export async function changeEmail(_prev: FormState, formData: FormData): Promise
     }
     throw error;
   }
+  after(() => sendVerificationLink(operator.userId, email, asLocale(operator.locale)).catch(() => undefined));
   revalidatePath("/settings");
   revalidatePath("/", "layout");
   return { ok: true };
+}
+
+/** Settings → "send the confirmation link again". */
+export async function resendVerification(): Promise<FormState> {
+  const operator = await requirePerson();
+  const person = await prisma.operator.findUnique({
+    where: { id: operator.userId },
+    select: { email: true, emailVerifiedAt: true },
+  });
+  if (!person || person.emailVerifiedAt) return { ok: true };
+  const sent = await sendVerificationLink(operator.userId, person.email, asLocale(operator.locale));
+  return sent ? { ok: true } : { error: "verify_wait" };
 }
 
 /** "Sign out other devices": every session of this account but this one. */

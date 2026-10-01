@@ -238,7 +238,7 @@ export async function notifyOwner(
   const operator = await prisma.operator.findUnique({
     where: { id: operatorId },
     select: {
-      email: true, locale: true, notifyEmail: true, isDemo: true,
+      email: true, locale: true, notifyEmail: true, isDemo: true, emailVerifiedAt: true,
       pushSubscriptions: { select: { id: true, endpoint: true, p256dh: true, auth: true } },
     },
   });
@@ -295,7 +295,8 @@ export async function notifyOwner(
   }
 
   let emailed = false;
-  if (operator.notifyEmail && deps.email) {
+  // Only to an address its owner has confirmed (lib/auth/verify.ts).
+  if (operator.notifyEmail && operator.emailVerifiedAt && deps.email) {
     const digest = ownerDigest(locale, notes, deps.origin);
     emailed = await deps.mail({ to: operator.email, ...digest }, deps.email);
   }

@@ -74,6 +74,7 @@ beforeEach(() => {
     locale: "ka",
     notifyEmail: true,
     isDemo: false,
+    emailVerifiedAt: new Date("2026-09-01T00:00:00Z"),
     pushSubscriptions: [{ id: "s1", endpoint: "https://push.example/1", p256dh: "p", auth: "a" }],
   };
   db.deleted = [];
@@ -130,6 +131,15 @@ describe("owner notifications", () => {
     expect(outcome.emailed).toBe(false);
     expect(run.mails).toHaveLength(0);
     expect(db.deleted).toEqual(["s1"]);
+  });
+
+  it("emails only a confirmed address", async () => {
+    db.operator!.emailVerifiedAt = null;
+    const run = deps();
+    const outcome = await notifyOwner("op", now, run);
+    expect(outcome.emailed).toBe(false);
+    expect(run.mails).toHaveLength(0);
+    expect(outcome.pushed).toBe(2);
   });
 
   it("never sends for the demo account", async () => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { changeEmail, changePassword, deleteAccount } from "@/lib/account/actions";
+import { changeEmail, changePassword, deleteAccount, resendVerification } from "@/lib/account/actions";
 import type { FormState } from "@/lib/units/actions";
 
 type Labels = Record<string, string>;
@@ -110,5 +110,18 @@ export function DeleteAccountForm({ labels }: { labels: Labels }) {
         </div>
       </form>
     </details>
+  );
+}
+
+/** "Not confirmed — send the link again", next to the sign-in email. */
+export function VerifyEmailButton({ labels }: { labels: Labels }) {
+  const [state, action, pending] = useActionState<FormState, FormData>(resendVerification, null);
+  return (
+    <form action={action} className="flex flex-wrap items-center gap-2">
+      <button type="submit" className="btn-chip" disabled={pending || state?.ok === true}>
+        {state?.ok ? labels.verify_sent : labels.verify_send}
+      </button>
+      {state?.error && <span className="field-hint">{labels[state.error]}</span>}
+    </form>
   );
 }

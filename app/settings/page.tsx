@@ -11,7 +11,7 @@ import {
 } from "@/lib/account/actions";
 import { WORKSPACE_PROFILES } from "@/lib/nav/model";
 import { currentSessionId } from "@/lib/auth/session";
-import { ChangeEmailForm, ChangePasswordForm, DeleteAccountForm } from "./security-forms";
+import { ChangeEmailForm, ChangePasswordForm, DeleteAccountForm, VerifyEmailButton } from "./security-forms";
 import { getBillingContext } from "@/lib/billing/context";
 import { planById, type AccountType } from "@/lib/billing/plans";
 import ThemeToggle from "../theme-toggle";
@@ -72,6 +72,7 @@ export default async function SettingsPage({
     "error_password_wrong", "error_too_many_attempts", "error_email_invalid",
     "error_email_unavailable", "error_demo_readonly",
     "account_delete", "account_delete_hint", "account_delete_word", "account_delete_yes", "error_delete_word",
+    "verify_send", "verify_sent", "verify_wait",
   ];
   const securityLabels = Object.fromEntries(securityKeys.map((k) => [k, t(locale, k)]));
 
@@ -133,6 +134,10 @@ export default async function SettingsPage({
     select: { notifyEmail: true, waPhoneNumberId: true, waTemplateName: true, waTemplateLocale: true, waDisplayPhone: true, waTokenSealed: true },
   });
   const notifyEmail = workspace?.notifyEmail ?? true;
+  // The person's own address: confirmed or not (lib/auth/verify.ts).
+  const emailVerified = await prisma.operator
+    .findUnique({ where: { id: operator.userId }, select: { emailVerifiedAt: true } })
+    .then((found) => found?.emailVerifiedAt != null);
   const waKeys: StringKey[] = [
     "wa_sender_connected", "wa_sender_none", "wa_sender_change", "wa_sender_connect", "wa_sender_id", "wa_sender_token",
     "wa_sender_token_keep", "wa_sender_template", "wa_sender_template_lang", "wa_sender_how", "wa_sender_check_save",
@@ -188,9 +193,23 @@ export default async function SettingsPage({
               {operator.role === "viewer" && <> {t(locale, "team_viewer_note")}</>}
             </p>
           )}
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <span style={row}>{t(locale, "operator_email")}</span>
-            <strong>{operator.email}</strong>
+            <span className="flex flex-wrap items-center justify-end gap-2">
+              <strong>{operator.email}</strong>
+              {emailConfigured() && !operator.isDemo && (
+                emailVerified ? (
+                  <span className={`${badgeClass("good")} badge--icon`}>
+                    <IconCheck size={14} /> {t(locale, "verify_ok")}
+                  </span>
+                ) : (
+                  <>
+                    <span className={badgeClass("warn")}>{t(locale, "verify_no")}</span>
+                    <VerifyEmailButton labels={securityLabels} />
+                  </>
+                )
+              )}
+            </span>
           </div>
           <div className="flex items-center justify-between gap-3">
             <span style={row}>{t(locale, "billing_current")}</span>

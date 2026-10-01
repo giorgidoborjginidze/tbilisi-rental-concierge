@@ -20,6 +20,7 @@ import {
 import { dummyHash, hashPassword, MIN_PASSWORD_LENGTH, verifyPassword } from "./password";
 import { newResetToken, RESET_TTL_MS, resetTokenId, resetUsable, validEmail } from "./reset";
 import { createSession, destroySession } from "./session";
+import { sendVerificationLink } from "./verify";
 import type { FormState } from "@/lib/units/actions";
 
 const str = (formData: FormData, key: string) =>
@@ -149,6 +150,12 @@ export async function register(
     throw error;
   }
   await createSession(operatorId);
+  // The confirmation link, after the response (a slow mail service never holds up sign-up).
+  after(() =>
+    sendVerificationLink(operatorId, email, locale).catch((error) =>
+      console.error(`[auth] verification link failed: ${error instanceof Error ? error.name : "error"}`),
+    ),
+  );
   redirect("/");
 }
 

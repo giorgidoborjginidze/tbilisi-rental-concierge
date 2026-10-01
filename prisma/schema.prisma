@@ -27,6 +27,10 @@ model Operator {
   // sign-in). Null: never chosen — scripts/backfill-locale.ts may move such
   // rows to Georgian.
   localeSetAt  DateTime?
+  // When the person proved the address is theirs (the link in the email,
+  // lib/auth/verify.ts). Null: not confirmed — alert emails are not sent to
+  // an address nobody has confirmed.
+  emailVerifiedAt DateTime?
   createdAt    DateTime @default(now())
 
   // Billing: 30-day full-access trial from signup, then a paid plan. A plan
@@ -88,6 +92,7 @@ model Operator {
   attachments       Attachment[]
   invoices          Invoice[]
   savedCalcs        SavedCalc[]
+  emailChecks       EmailVerification[]
 
   @@index([companyId])
 }
@@ -800,4 +805,20 @@ model SavedCalc {
   operator Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
 
   @@index([operatorId, kind])
+}
+
+// A link that confirms an email address (/verify/<token>). Like a reset
+// link, only the token's SHA-256 is stored; it is for the address it was
+// sent to, works once, and expires.
+model EmailVerification {
+  id         String    @id
+  operatorId String
+  email      String
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  operator Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+
+  @@index([operatorId])
 }

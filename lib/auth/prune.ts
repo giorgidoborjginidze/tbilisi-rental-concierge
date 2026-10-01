@@ -7,7 +7,8 @@
 //   - rate-limit attempts older than ATTEMPT_RETENTION_MS (recordAttempt
 //     prunes too, but only when someone makes a new attempt);
 //   - password-reset links that were used or have expired (a dead link
-//     reads the same as a missing one on /reset).
+//     reads the same as a missing one on /reset), and email-confirmation
+//     links likewise (counted with them).
 //
 // Takes the client so the tests can pass a fake.
 
@@ -22,6 +23,7 @@ export interface PruneStore {
   session: Deletes;
   authAttempt: Deletes;
   passwordReset: Deletes;
+  emailVerification?: Deletes;
 }
 
 export interface PruneCounts {
@@ -41,10 +43,11 @@ export function pruneFilters(now: Date) {
 
 export async function pruneAuthRecords(db: PruneStore, now: Date): Promise<PruneCounts> {
   const where = pruneFilters(now);
-  const [sessions, attempts, resets] = await Promise.all([
+  const [sessions, attempts, resets, checks] = await Promise.all([
     db.session.deleteMany({ where: where.session }),
     db.authAttempt.deleteMany({ where: where.authAttempt }),
     db.passwordReset.deleteMany({ where: where.passwordReset }),
+    db.emailVerification?.deleteMany({ where: where.passwordReset }) ?? Promise.resolve({ count: 0 }),
   ]);
-  return { sessions: sessions.count, attempts: attempts.count, resets: resets.count };
+  return { sessions: sessions.count, attempts: attempts.count, resets: resets.count + checks.count };
 }
