@@ -64,6 +64,7 @@ const assetSelect = (range: Range) => ({
       paymentPeriod: true,
       paymentAmount: true,
       monthlyRent: true,
+      currency: true,
     },
   },
   days: {

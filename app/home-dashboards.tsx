@@ -16,7 +16,8 @@ import { t, type StringKey } from "@/lib/i18n/strings";
 import type { Locale } from "@/lib/i18n/strings";
 import { aggregateMetrics } from "@/lib/analytics/metrics";
 import { loadRentalPlaces } from "@/lib/property/places";
-import { placeMetrics, stayOn } from "@/lib/property/stays";
+import { stayOn } from "@/lib/property/stays";
+import { portfolioPricing } from "@/lib/analytics/portfolio";
 import { monthlyIncome } from "@/lib/analytics/monthly-income";
 import { incomeParts } from "@/lib/analytics/income-display";
 import TourPrompt from "./tour-prompt";
@@ -207,8 +208,11 @@ async function HotelDashboard({
   const monthWindow = { start: monthStart, end: monthEnd };
   // Nightly metrics, one source per night; nights let on a long lease or
   // a long contract are not for sale.
-  const portfolio = aggregateMetrics(places.map((place) => placeMetrics(place.sources, monthWindow)));
-  const currency = moves[0]?.currency ?? "GEL";
+  // Places in more than one currency are added up in lari, marked approximate.
+  const pricing = await portfolioPricing(places);
+  const portfolio = aggregateMetrics(places.map((place) => pricing.metricsOf(place, monthWindow)));
+  const currency = pricing.currency;
+  const approxChip = pricing.mixed ? ` (${t(locale, "approx_word")})` : "";
   // Places a stay, a contract or today's answer holds tonight.
   const occupiedNow = places.filter((place) => stayOn(place.sources, today) != null).length;
   const partial = portfolio.unpricedNights > 0 ? ` (${t(locale, "revenue_partial_short")})` : "";
@@ -270,12 +274,12 @@ async function HotelDashboard({
             ? [
                 `${t(locale, "dash_occupied_now")}: ${occupiedNow} / ${places.length}`,
                 `${t(locale, "kpi_occupancy")}: ${pct(portfolio.occupancyRate)}`,
-                `${t(locale, "kpi_adr_short")}: ${formatMoney(portfolio.adr, currency)}`,
+                `${t(locale, "kpi_adr_short")}: ${formatMoney(portfolio.adr, currency)}${approxChip}`,
                 {
-                  text: `${t(locale, "kpi_revpar_chip")}: ${formatMoney(portfolio.revpar, currency)}${partial}`,
+                  text: `${t(locale, "kpi_revpar_chip")}: ${formatMoney(portfolio.revpar, currency)}${partial}${approxChip}`,
                   hint: t(locale, "kpi_revpar_hint"),
                 },
-                `${t(locale, "kpi_booking_revenue")}: ${formatMoney(portfolio.revenue, currency)}${partial}`,
+                `${t(locale, "kpi_booking_revenue")}: ${formatMoney(portfolio.revenue, currency)}${partial}${approxChip}`,
               ]
             : []
         }

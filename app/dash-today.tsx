@@ -15,6 +15,8 @@ import { checkTrackerSilenceSoon } from "@/lib/geo/silence-check";
 import { alertSeverity } from "@/lib/ui/tone";
 import { dayKey, startOfTodayTbilisi, tbilisiFormat } from "@/lib/time";
 import { formatMoney } from "@/lib/format";
+import { asCurrency, toGel } from "@/lib/fx/convert";
+import { loadGelRates } from "@/lib/fx/gel-rates";
 import { districtLabel } from "@/lib/places";
 import { dayKind, dayPrice } from "@/lib/assets/daily-price";
 import { loadAssetSources } from "@/lib/property/places";
@@ -153,6 +155,7 @@ async function loadDaily(locale: Locale, operatorId: string, today: Date) {
       return {
         label: t(locale, "overlap_src_contract"),
         amount: contract && src.dailyMode ? contractNightValue(contract, today.getTime(), src) : null,
+        currency: contract?.currency,
         contractId: stay.id,
       };
     }
@@ -174,23 +177,37 @@ async function loadDaily(locale: Locale, operatorId: string, today: Date) {
       answered: entry ? { rented: entry.rented, amount: entry.amount } : null,
     };
   });
-  return { rows, currency: rows[0]?.currency ?? "GEL" };
+  return { rows };
 }
 
-/** What the daily rows earned today — a late contract's day counts nothing. */
-function dailyEarned(rows: DayAsset[]): number {
-  return rows.reduce(
-    (sum, row) =>
-      sum +
-      (row.covered
-        ? row.covered.late
-          ? 0
-          : row.covered.amount ?? 0
-        : row.answered?.rented
-          ? row.answered.amount
-          : 0),
-    0,
-  );
+/**
+ * What the daily rows earned today — a late contract's day counts nothing.
+ * Amounts in more than one currency are added up in lari at today's
+ * National Bank rate, and the total says it is approximate.
+ */
+async function dailyEarned(rows: DayAsset[]): Promise<{ amount: number; currency: string; converted: boolean }> {
+  const parts = rows.flatMap((row) => {
+    if (row.covered) {
+      return row.covered.late || row.covered.amount == null
+        ? []
+        : [{ amount: row.covered.amount, currency: asCurrency(row.covered.currency ?? row.currency) }];
+    }
+    return row.answered?.rented ? [{ amount: row.answered.amount, currency: asCurrency(row.currency) }] : [];
+  });
+  const currencies = new Set(parts.map((part) => part.currency));
+  if (currencies.size <= 1) {
+    return {
+      amount: parts.reduce((sum, part) => sum + part.amount, 0),
+      currency: parts[0]?.currency ?? asCurrency(rows[0]?.currency),
+      converted: false,
+    };
+  }
+  const rates = await loadGelRates();
+  return {
+    amount: parts.reduce((sum, part) => sum + toGel(part.amount, part.currency, rates), 0),
+    currency: "GEL",
+    converted: true,
+  };
 }
 
 interface UrgentAlert {
@@ -245,7 +262,7 @@ export async function TodaySection({
     const late = id ? lateContract.get(id) : undefined;
     if (row.covered && late) row.covered = { ...row.covered, late: `${t(locale, "daily_late_warn")} · ${late.sub}` };
   }
-  const earned = daily ? dailyEarned(daily.rows) : 0;
+  const earned = daily ? await dailyEarned(daily.rows) : null;
 
   // Names and desks of the assets the alerts are about — the name the owner
   // reads, not the one stored in the payload.
@@ -462,9 +479,10 @@ export async function TodaySection({
         <div className="today-block">
           <div className="today-block__head">
             <h3>{t(locale, "today_daily")}</h3>
-            {earned > 0 && (
-              <span className="daily-total">
-                {t(locale, "day_earned")}: <b>{formatMoney(earned, daily.currency)}</b>
+            {earned && earned.amount > 0 && (
+              <span className="daily-total" title={earned.converted ? t(locale, "income_converted") : undefined}>
+                {t(locale, "day_earned")}: <b>{formatMoney(earned.amount, earned.currency)}</b>
+                {earned.converted && ` (${t(locale, "approx_word")})`}
               </span>
             )}
           </div>

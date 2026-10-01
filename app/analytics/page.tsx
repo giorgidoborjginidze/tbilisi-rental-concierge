@@ -9,13 +9,13 @@ import {
   type WindowMetrics,
 } from "@/lib/analytics/metrics";
 import { loadRentalPlaces, placeHref } from "@/lib/property/places";
-import { placeMetrics } from "@/lib/property/stays";
 import RentalsSubnav from "../rentals-subnav";
 import RevenuePartial, { monthKeyOf } from "../revenue-partial";
 import { cityLabel, districtLabel } from "@/lib/places";
 import { titled } from "@/lib/i18n/metadata";
 import { currencySign, formatMoney, formatNumber } from "@/lib/format";
 import Kpi from "../kpi";
+import { portfolioPricing } from "@/lib/analytics/portfolio";
 
 export const dynamic = "force-dynamic";
 
@@ -84,7 +84,9 @@ export default async function AnalyticsPage() {
   // nights.
   const units = await loadRentalPlaces(operator.id, { start: rangeStart, end: rangeEnd });
 
-  const currency = units[0]?.currency ?? "GEL";
+  // Places priced in different currencies are added up in lari at today's
+  // National Bank rate (lib/analytics/portfolio.ts), marked approximate.
+  const { currency, mixed, metricsOf } = await portfolioPricing(units);
 
   const thisMonth = {
     start: monthStartTbilisi(0),
@@ -94,13 +96,13 @@ export default async function AnalyticsPage() {
 
   const perUnitThisMonth = units.map((unit) => ({
     unit,
-    metrics: placeMetrics(unit.sources, thisMonth),
+    metrics: metricsOf(unit, thisMonth),
   }));
   const portfolioThisMonth = aggregateMetrics(
     perUnitThisMonth.map((row) => row.metrics),
   );
   const portfolioNext30 = aggregateMetrics(
-    units.map((unit) => placeMetrics(unit.sources, next30)),
+    units.map((unit) => metricsOf(unit, next30)),
   );
 
   const months = monthWindows(rangeStart, new Date(rangeEnd.getTime() - DAY_MS));
@@ -109,7 +111,7 @@ export default async function AnalyticsPage() {
       key: window.key,
       start: window.start,
       metrics: aggregateMetrics(
-        units.map((unit) => placeMetrics(unit.sources, window)),
+        units.map((unit) => metricsOf(unit, window)),
       ),
     }));
 
@@ -125,6 +127,11 @@ export default async function AnalyticsPage() {
       <p className="mb-5" style={{ color: "var(--color-text-muted)", fontSize: 13, maxWidth: 640 }}>
         {t(locale, "analytics_intro")}
       </p>
+      {mixed && (
+        <p className="mb-5 price-missing" style={{ fontSize: 13, maxWidth: 640 }} title={t(locale, "income_converted")}>
+          {t(locale, "income_converted_short")}
+        </p>
+      )}
 
       {units.length === 0 && (
         <div className="alert-card" style={{ alignItems: "center" }}>

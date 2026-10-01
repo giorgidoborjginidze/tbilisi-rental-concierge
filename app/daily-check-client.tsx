@@ -26,6 +26,8 @@ export interface DayAsset {
   covered: {
     label: string;
     amount: number | null;
+    /** The amount's currency when not the row's (a contract in dollars). */
+    currency?: string;
     /** The contract holding the day is late (past its grace): a warning, not a ✓. */
     late?: string;
   } | null;
@@ -131,7 +133,7 @@ function Row({
           <span>{asset.place}</span>
         </span>
         <span className="daily-row__sum">
-          {asset.covered.amount != null ? formatMoney(asset.covered.amount, asset.currency) : labels.day_yes}
+          {asset.covered.amount != null ? formatMoney(asset.covered.amount, asset.covered.currency ?? asset.currency) : labels.day_yes}
         </span>
         <span className="daily-row__src">{asset.covered.label}</span>
       </div>

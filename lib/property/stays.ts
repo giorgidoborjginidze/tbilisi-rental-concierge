@@ -61,6 +61,8 @@ export interface PlaceContract {
   paymentPeriod: string;
   paymentAmount: number | null;
   monthlyRent: number;
+  /** The contract's own currency (it may differ from the place's). */
+  currency?: string;
 }
 
 export interface PlaceDay {
