@@ -208,13 +208,17 @@ export default function UnitForm({
       {linkedAsset ? (
         <p className="field sm:col-span-2" style={{ margin: 0 }}>
           {labels.unit_asset_link}
-          <Link href={`/assets/${linkedAsset.id}/edit`} className="link" style={{ fontWeight: 600 }}>
-            {linkedAsset.label}
-          </Link>
-          {" · "}
-          <Link href={`/assets/${linkedAsset.id}/edit?add=contract#contracts`} className="link">
-            {labels.unit_add_lease}
-          </Link>
+          {/* One span: .field is a flex column, so a bare " · " would
+              stand on a line of its own between the two links. */}
+          <span>
+            <Link href={`/assets/${linkedAsset.id}/edit`} className="link" style={{ fontWeight: 600 }}>
+              {linkedAsset.label}
+            </Link>
+            {" · "}
+            <Link href={`/assets/${linkedAsset.id}/edit?add=contract#contracts`} className="link">
+              {labels.unit_add_lease}
+            </Link>
+          </span>
         </p>
       ) : (
         <label className="field sm:col-span-2">

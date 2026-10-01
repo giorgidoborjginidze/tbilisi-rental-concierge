@@ -120,8 +120,8 @@ export default async function ProAnalysisPage({
     <main>
       <h1>{t(locale, "invest_title")}</h1>
       <InvestSubnav active="pro" />
-      <div className="flex flex-wrap items-center gap-2">
-        <h2 style={{ marginBottom: 0 }}>{t(locale, "wor_title")}</h2>
+      <div className="title-row flex flex-wrap items-center gap-2">
+        <h2>{t(locale, "wor_title")}</h2>
         <span className="badge badge--tag">PRO</span>
       </div>
       <p className="mb-5" style={{ color: "var(--color-text-muted)", fontSize: 13, maxWidth: 640, marginTop: 8 }}>
@@ -152,9 +152,11 @@ export default async function ProAnalysisPage({
                   <th scope="col">{t(locale, "calc_name")}</th>
                   <th scope="col">{t(locale, "calc_col_verdict")}</th>
                   <th scope="col" className="num">{t(locale, "wor_price")}</th>
-                  <th scope="col" className="num">{t(locale, "wor_cf_month")}</th>
-                  <th scope="col" className="num">{t(locale, "wor_coc")}</th>
-                  <th scope="col" className="num">{t(locale, "wor_cap")}</th>
+                  {/* Short heads (the long ones wrapped to five lines); the full
+                      wording on hover and as the phone cards' labels. */}
+                  <th scope="col" className="num" title={t(locale, "wor_cf_month")}>{t(locale, "calc_col_cf")}</th>
+                  <th scope="col" className="num" title={t(locale, "wor_coc")}>{t(locale, "calc_col_coc")}</th>
+                  <th scope="col" className="num" title={t(locale, "wor_cap")}>{t(locale, "calc_col_cap")}</th>
                   <th scope="col" className="num">{t(locale, "wor_payback")}</th>
                   <th scope="col"><span className="visually-hidden">{t(locale, "delete")}</span></th>
                 </tr>

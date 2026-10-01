@@ -24,13 +24,13 @@ export default async function AboutPage() {
   const locale = await getLocale();
 
   return (
-    <main style={{ maxWidth: 860 }}>
+    <main>
       <h1>{t(locale, "about_title")}</h1>
       <p style={{ color: "var(--color-text-muted)", maxWidth: 640, marginBottom: 26 }}>
         {t(locale, "about_intro")}
       </p>
 
-      <div className="deck">
+      <div className="deck" style={{ maxWidth: 796 }}>
         {SECTIONS.map((section, i) => (
           <div
             key={section.h}

@@ -345,10 +345,7 @@ export default async function RentalServicePage({
                   )}
                   {/* Long states wrap inside the tile on a phone. A finished
                       contract is not "late" any more — its rent is unpaid. */}
-                  <span
-                    className={badgeClass(paymentState.tone)}
-                    style={{ whiteSpace: "normal", height: "auto", minHeight: 26, paddingBlock: 3 }}
-                  >
+                  <span className={`${badgeClass(paymentState.tone)} badge--wrap`}>
                     {paymentState.label}
                   </span>
                 </div>
@@ -883,8 +880,10 @@ export default async function RentalServicePage({
           ) : (
             <>
               <div className="desk-card__sub">{t(locale, noContractKey)}</div>
-              <Link href={contractHref} className="btn-primary btn-compact desk-card__link">
-                {t(locale, "desk_add_contract")}
+              {/* A link like the other cards' footers: a big button wrapped
+                  to two lines in this narrow card and broke the row. */}
+              <Link href={contractHref} className="link desk-card__link icon-text">
+                {t(locale, "desk_add_contract")} <IconArrowRight size={14} />
               </Link>
             </>
           )}
@@ -896,7 +895,9 @@ export default async function RentalServicePage({
             <>
               <div className="desk-card__value">{formatDueMoney(status.amountDue, contract!.currency)}</div>
               <div className="desk-card__sub">
-                <span className={badgeClass(paymentState.tone)}>{paymentState.label}</span>{" "}
+                {/* The card is ~240 px wide: a long state wraps instead of
+                    running out past its edge. */}
+                <span className={`${badgeClass(paymentState.tone)} badge--wrap`}>{paymentState.label}</span>{" "}
                 {t(locale, "pay_days_overdue")}: {status.daysOverdue}/{status.graceDays}
               </div>
               <div className="desk-card__sub">
@@ -990,7 +991,7 @@ export default async function RentalServicePage({
             )}
           </h1>
         </div>
-        <Link href={`/assets/${asset.id}/edit`} className="btn-chip btn-chip--icon-text">
+        <Link href={`/assets/${asset.id}/edit`} className="btn-chip btn-chip--icon-text desk-title__edit">
           <IconEdit size={14} /> {t(locale, "edit")}
         </Link>
       </div>

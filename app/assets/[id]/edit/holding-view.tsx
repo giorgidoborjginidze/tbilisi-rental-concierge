@@ -95,7 +95,7 @@ export default async function HoldingView({
 
   return (
     <main>
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <h1 style={{ marginBottom: 0 }}>
           {asset.name}{" "}
           {asset.symbol && (
@@ -127,7 +127,7 @@ export default async function HoldingView({
           {t(locale, "holding_empty").replace("{symbol}", tag)}
         </p>
       ) : (
-        <section className="kpi-grid" style={{ marginTop: 8 }}>
+        <section className="kpi-grid">
           <Kpi
             label={t(locale, holdingLabel)}
             value={`${qty} ${kind === "metal" ? t(locale, "metal_unit_oz") : asset.symbol}`}

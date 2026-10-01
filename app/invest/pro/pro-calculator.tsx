@@ -14,7 +14,7 @@ import {
   type WorthinessInputs,
 } from "@/lib/invest/worthiness";
 import { PAYBACK_CAP_YEARS } from "@/lib/invest/market";
-import { currencySign, formatMoney } from "@/lib/format";
+import { currencySign, formatMoneyInline } from "@/lib/format";
 import { TONE_BADGE, VERDICT_BADGE } from "@/lib/ui/tone";
 import Kpi from "../../kpi";
 
@@ -59,7 +59,7 @@ export default function ProCalculator({
 
   const result = useMemo(() => analyzeWorthiness(inputs), [inputs]);
   const sym = currencySign(currency);
-  const fmt = (v: number) => formatMoney(v, currency);
+  const fmt = (v: number) => formatMoneyInline(v, currency);
   const pct = (v: number) => `${v.toFixed(1)}%`;
   // Past 30 years a payback is not a plan: "30+ years", not "483.3".
   const years = (v: number | null) =>
@@ -95,7 +95,7 @@ export default function ProCalculator({
     <div className="grid items-start gap-6 lg:grid-cols-2">
       <div className="card" style={{ padding: 20, overflow: "visible", minWidth: 0 }}>
         <h2 style={{ margin: "0 0 14px" }}>{labels.wor_deal}</h2>
-        <div className="grid2 grid gap-3" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+        <div className="grid2 grid gap-3 calc-form" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
           <label className="field">
             {labels.wor_currency}
             <select

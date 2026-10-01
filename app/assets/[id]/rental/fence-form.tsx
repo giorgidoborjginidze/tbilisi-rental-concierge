@@ -86,9 +86,10 @@ export default function FenceForm({
   };
 
   return (
+    // No card of its own: it lives inside the desk's bordered fold, and a
+    // card in there doubled the frame and the side insets.
     <form
-      className="card form-grid"
-      style={{ padding: 18 }}
+      className="form-grid"
       noValidate
       onSubmit={(event) => {
         event.preventDefault();

@@ -290,7 +290,7 @@ export default async function CalendarPage({
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
         <h1 style={{ marginBottom: 0 }}>{t(locale, "nav_rentals")}</h1>
         <div className="flex flex-wrap items-center gap-2">
-          <Link href="/bookings" className="btn-chip">
+          <Link href="/bookings" className="btn-secondary">
             {t(locale, "calendar_all_bookings")}
           </Link>
           <Link
@@ -535,8 +535,10 @@ export default async function CalendarPage({
           price" for iCal imports) and a way to add it. */}
       {unitQuery && rows[0]?.place.unit && (
         <section>
+          {/* margin 0, not just the bottom: the h2's top margin would
+              drop it 18px below the chip it is centred with. */}
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 style={{ marginBottom: 0 }}>{t(locale, "nav_bookings")}</h2>
+            <h2 style={{ margin: 0 }}>{t(locale, "nav_bookings")}</h2>
             <Link href={`/bookings/new?unit=${unitQuery}`} className="btn-chip">
               {t(locale, "bookings_add")}
             </Link>

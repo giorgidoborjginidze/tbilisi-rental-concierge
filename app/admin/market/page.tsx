@@ -32,7 +32,7 @@ export default async function MarketAdminPage() {
   });
   const keys = [
     "market_source_name", "market_period", "market_lines", "market_lines_hint", "market_note", "market_save",
-    "market_saved", "market_listings_source", "market_file", "market_paste", "market_listings_hint", "market_import",
+    "market_saved", "market_listings_source", "market_file", "market_file_choose", "market_file_none", "market_paste", "market_listings_hint", "market_import",
     "market_err_source", "market_err_period", "market_err_lines", "market_err_file", "market_err_columns", "market_err_few",
   ] as const;
   const labels = Object.fromEntries(keys.map((key) => [key, t(locale, key)]));
@@ -40,7 +40,7 @@ export default async function MarketAdminPage() {
     metric === "occupancy" ? `${Math.round(value * 100)}%` : `${Math.round(value * 100) / 100} ₾`;
 
   return (
-    <main style={{ maxWidth: 980 }}>
+    <main>
       <h1>{t(locale, "market_title")}</h1>
       <p className="page-lead">{t(locale, "market_lead")}</p>
       <p className="field-hint">

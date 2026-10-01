@@ -389,7 +389,7 @@ export default async function EditAssetPage({
 
   return (
     <main>
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <h1 style={{ marginBottom: 0 }}>{displayName}</h1>
         <div className="flex flex-wrap gap-1.5">
           {/* Only what is rented out gets the service desk (a car: payments,

@@ -86,12 +86,16 @@ export default async function PricingPage({
           selected={selected.id}
         />
       </div>
-      <p className="mb-5" style={{ color: "var(--color-text-muted)", fontSize: 13 }}>
+      <p className="mb-5" style={{ color: "var(--color-text-muted)", fontSize: 13, maxWidth: 640 }}>
         {t(locale, "pricing_intro")}
         {selected.baseNightlyRate > 0 && (
+          // One unbreakable piece: the dot never ends a line on its own.
           <>
-            {" · "}
-            {t(locale, "base_rate_short")}: {formatMoney(selected.baseNightlyRate, selected.currency)}
+            {" "}
+            <span style={{ whiteSpace: "nowrap" }}>
+              {"· "}
+              {t(locale, "base_rate_short")}: {formatMoney(selected.baseNightlyRate, selected.currency)}
+            </span>
           </>
         )}
       </p>

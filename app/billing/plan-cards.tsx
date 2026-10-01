@@ -57,7 +57,9 @@ export default function PlanCards({
                   : {}),
               }}
             >
-              <div className="flex items-center justify-between">
+              {/* The badge's height in every card, so the prices and lists
+                  line up whether or not the card is the current plan. */}
+              <div className="flex items-center justify-between" style={{ minHeight: 26 }}>
                 <div className="kpi__label">{labels[`plan_${plan.id}`]}</div>
                 {isActive && (
                   <span className="badge badge--good">{labels.billing_current}</span>

@@ -88,7 +88,7 @@ export default function Landing({ locale }: { locale: Locale }) {
         <p style={{ color: "var(--color-text-muted)", fontSize: 15 }}>
           {t(locale, "land_sub")}
         </p>
-        <div className="mt-5 flex flex-wrap items-center gap-3">
+        <div className="land-hero__ctas mt-5 flex flex-wrap items-center gap-3">
           <Link href="/register" className="btn-primary">
             {t(locale, "register_free")}
           </Link>
@@ -100,8 +100,8 @@ export default function Landing({ locale }: { locale: Locale }) {
           {t(locale, "land_pricing")}
         </p>
         <div
-          className="alert-card alert-card--info"
-          style={{ marginTop: 16, alignItems: "center", maxWidth: 560 }}
+          className="alert-card alert-card--info land-demo"
+          style={{ marginTop: 16, maxWidth: 560 }}
         >
           <div className="alert-card__detail" style={{ marginTop: 0 }}>
             {t(locale, "land_demo")}{" "}

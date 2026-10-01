@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { currencySign, formatDueMoney, formatMoney, formatNumber } from "./format";
+import { currencySign, formatDueMoney, formatMoney, formatMoneyInline, formatNumber } from "./format";
 
 describe("formatMoney", () => {
   it("puts the lari sign after the number, with separators", () => {
@@ -24,6 +24,12 @@ describe("formatMoney", () => {
     expect(formatMoney(49.4, "GEL", "auto")).toBe("49.40 ₾");
     expect(formatMoney(1200, "GEL", "auto")).toBe("1,200 ₾");
     expect(formatMoney(0.123456, "USD", 4)).toBe("0.1235 $");
+  });
+
+  it("keeps the sign on the figure's line in running text", () => {
+    expect(formatMoneyInline(372522)).toBe("372,522\u00a0₾");
+    expect(formatMoneyInline(-1200, "USD")).toBe(`${formatNumber(-1200)}\u00a0$`);
+    expect(formatMoneyInline(null)).toBe("—");
   });
 
   it("quotes debts rounded UP to the tetri", () => {

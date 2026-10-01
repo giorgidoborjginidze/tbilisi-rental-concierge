@@ -13,11 +13,11 @@ import {
   RENOVATION_PER_SQM,
   type RenovationLevel,
 } from "@/lib/invest/market";
-import { formatMoney } from "@/lib/format";
+import { formatMoney, formatMoneyInline } from "@/lib/format";
 import { VERDICT_BADGE } from "@/lib/ui/tone";
 import Kpi, { KpiSub } from "../kpi";
 
-const fmt = (v: number) => formatMoney(v);
+const fmt = (v: number) => formatMoneyInline(v);
 const pct = (v: number) => `${v.toFixed(1)}%`;
 
 
@@ -94,7 +94,7 @@ export default function Calculator({
 
   return (
     <div className="grid items-start gap-6 lg:grid-cols-2">
-      <div className="card form-grid form-grid--full" style={{ padding: 20, overflow: "visible" }}>
+      <div className="card form-grid form-grid--full calc-form" style={{ padding: 20, overflow: "visible" }}>
         <h2 className="col-span-2" style={{ margin: 0 }}>{labels.inv_params}</h2>
 
         <label className="field">
@@ -121,7 +121,8 @@ export default function Calculator({
           <span className="hint">{labels.inv_rent_hint}</span>
         </label>
 
-        <label className="field">
+        {/* Full width: "Cosmetic (~250 ₾/m²)" is cut off in a half-width select. */}
+        <label className="field col-span-2">
           {labels.inv_renovation}
           <select
             value={renovation}

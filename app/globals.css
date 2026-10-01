@@ -178,6 +178,10 @@ h2 {
   font-weight: 600;
   margin: 36px 0 14px;
 }
+/* A heading with a badge beside it: the row carries the h2's top margin,
+   so the centred badge lines up with the text, not with the margin box. */
+.title-row { margin-top: 36px; }
+.title-row > h2 { margin: 0; }
 /* The serif voice for headings (the Ice design). */
 h1, h2,
 .land-hero__title,
@@ -534,6 +538,15 @@ a:hover {
 .kpi-grid--5 {
   grid-template-columns: repeat(5, 1fr);
 }
+/* The five /analytics tiles share their rows (label, figure, sub-line):
+   a label that wraps to three lines no longer drops its figure below
+   the figures beside it. */
+.kpi-grid--5 .kpi {
+  display: grid;
+  grid-row: span 3;
+  grid-template-rows: subgrid;
+  row-gap: 0;
+}
 @media (max-width: 720px) {
   .kpi-grid,
   .kpi-grid--3,
@@ -588,6 +601,14 @@ a:hover {
 .card td:last-child {
   white-space: nowrap;
 }
+/* ...but a trailing column of sentences (the /pricing reasons) has to
+   wrap, or every reason runs off the card's right edge. */
+.card td.table-stack__wide {
+  white-space: normal;
+}
+@media (min-width: 641px) {
+  .card td.table-stack__wide { min-width: 280px; }
+}
 /* Dense stacked tables (assets): slightly tighter cells so all columns
    fit the card width on desktop. */
 .card--stack th {
@@ -639,9 +660,8 @@ td:first-child {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
-.ical-cell {
-  text-align: center;
-}
+/* .ical-cell (the /units iCal column) stays left-aligned like its feed
+   lines; centring only the header and the "—" gave three alignments. */
 
 .badge {
   display: inline-flex;
@@ -665,6 +685,19 @@ td:first-child {
   flex-shrink: 0;
   opacity: 0.8;
 }
+/* A long state that has to wrap: a rounded label rather than a pill (a
+   999px radius turns two lines into an oval), with the dot on line one. */
+.badge--wrap {
+  white-space: normal;
+  height: auto;
+  min-height: 26px;
+  max-width: 100%;
+  padding-block: 4px;
+  border-radius: 12px;
+  align-items: flex-start;
+  line-height: 1.35;
+}
+.badge--wrap::before { margin-top: 5px; }
 .badge--rented {
   background: var(--status-rented-bg);
   color: var(--status-rented-text);
@@ -718,6 +751,11 @@ td:first-child {
 .alert-card__action {
   font-size: 13px;
   margin-top: 10px;
+}
+/* Text and badge centred on one row — on desktop only: on a phone the
+   card is a column and "center" would centre it sideways. */
+@media (min-width: 761px) {
+  .alert-card--middle { align-items: center; }
 }
 
 .cal-row {
@@ -799,6 +837,13 @@ td:first-child {
 .form-grid--full {
   max-width: none;
 }
+/* /settings team invite: email, role and the button on one row beside
+   the full-width cards around it; the hints and errors span the row. */
+@media (min-width: 641px) {
+  .team-invite { grid-template-columns: 1fr 1fr auto; align-items: end; }
+  .team-invite > .hint,
+  .team-invite > p { grid-column: 1 / -1; }
+}
 @media (max-width: 640px) {
   .form-grid {
     grid-template-columns: 1fr;
@@ -817,6 +862,23 @@ td:first-child {
   gap: 6px;
   font-size: 13px;
   font-weight: 500;
+}
+/* The /invest calculators: two fields side by side share three rows
+   (label, input, hint), so a label that wraps to two lines does not push
+   its input below its neighbour's. Checkbox fields keep their own row. */
+.calc-form > .field:not(:has(input[type="checkbox"])) {
+  display: grid;
+  grid-row: span 3;
+  grid-template-rows: subgrid;
+  align-items: end;
+}
+.calc-form > .field > .hint { align-self: start; }
+@media (max-width: 640px) {
+  /* One column on a phone: nothing beside a field to line up with. */
+  .form-grid.calc-form > .field:not(:has(input[type="checkbox"])) {
+    display: flex;
+    grid-row: auto;
+  }
 }
 .field input,
 .field select,
@@ -847,15 +909,24 @@ td:first-child {
   appearance: none;
   height: auto;
   min-height: 0;
-  line-height: 1.4;
+  line-height: inherit;
   text-align: left;
+}
+/* Chrome ignores line-height on a select, so it gets the text input's
+   height outright: one 1.6 line + 9px padding twice + 1px border twice. */
+.field select:not([multiple]) {
+  height: calc(1.6em + 20px);
 }
 .field input[type="date"]::-webkit-date-and-time-value {
   text-align: left;
   margin: 0;
 }
+/* A hint is small muted text inside a field or on its own (team invite,
+   empty lists, calculator notes) — the same look as .field-hint. */
+.hint,
 .field .hint {
   font-size: 12px;
+  line-height: 1.5;
   color: var(--color-text-muted);
   font-weight: 400;
 }
@@ -881,7 +952,8 @@ td:first-child {
   h1 {
     font-size: 21px;
   }
-  h2 {
+  h2,
+  .title-row {
     margin-top: 28px;
   }
 
@@ -999,8 +1071,7 @@ td:first-child {
     break-before: column;
     -webkit-column-break-before: always;
   }
-  .card--stack td.num,
-  .card--stack td.ical-cell {
+  .card--stack td.num {
     text-align: left;
   }
   .card--stack td[data-label]::before {
@@ -1010,6 +1081,18 @@ td:first-child {
     font-weight: 600;
     color: var(--color-text-muted);
     margin-bottom: 4px;
+  }
+  /* A badge wider than its half-width column ("1,200 ₾ · 30 days late",
+     a verdict) wraps inside it like .badge--wrap, instead of running past
+     the card edge or over the next column. One-line badges look the same. */
+  .card--stack td .badge:not(.badge--sm) {
+    white-space: normal;
+    height: auto;
+    min-height: 26px;
+    max-width: 100%;
+    padding-block: 3px;
+    border-radius: 12px;
+    line-height: 1.35;
   }
 }
 .demo-hint {
@@ -1326,11 +1409,19 @@ td:first-child {
   .card3d:hover .card3d__title {
     transform: translateZ(30px);
   }
+  .card3d:hover .card3d__body {
+    transform: translateZ(6px);
+  }
+  .card3d:hover .card3d__value {
+    transform: translateZ(10px);
+  }
 }
 .card3d:active {
   transform: translateY(-2px) translateZ(8px);
 }
-/* Layers lifted off the card face. */
+/* Layers lifted off the card face — only while the card is hovered or
+   tilting: at rest a translateZ makes Chrome draw the text as a scaled 3D
+   layer, visibly soft on 1x screens. */
 .card3d__icon {
   display: inline-flex;
   align-items: center;
@@ -1340,7 +1431,6 @@ td:first-child {
   border-radius: 13px;
   color: #fff;
   margin-bottom: 14px;
-  transform: translateZ(26px);
   transition: transform 0.4s cubic-bezier(0.2, 0.7, 0.3, 1);
   box-shadow: 0 8px 18px -8px rgba(24, 28, 55, 0.55);
 }
@@ -1348,7 +1438,6 @@ td:first-child {
   font-size: 15.5px;
   font-weight: 700;
   color: var(--color-text);
-  transform: translateZ(14px);
   transition: transform 0.4s cubic-bezier(0.2, 0.7, 0.3, 1);
 }
 .card3d__body {
@@ -1356,14 +1445,14 @@ td:first-child {
   font-size: 13.5px;
   line-height: 1.55;
   color: var(--color-text-muted);
-  transform: translateZ(6px);
+  transition: transform 0.4s cubic-bezier(0.2, 0.7, 0.3, 1);
 }
 .card3d__value {
   margin-top: 8px;
   font-size: 14.5px;
   font-weight: 600;
   color: var(--color-primary);
-  transform: translateZ(10px);
+  transition: transform 0.4s cubic-bezier(0.2, 0.7, 0.3, 1);
   word-break: break-word;
 }
 /* Same depth language applied to calculator result tiles. */
@@ -1400,6 +1489,8 @@ td:first-child {
   .card3d,
   .card3d__icon,
   .card3d__title,
+  .card3d__body,
+  .card3d__value,
   .kpi-grid--3d .kpi,
   .kpi-grid--3d .kpi__value {
     animation: none;
@@ -1419,6 +1510,16 @@ td:first-child {
 .land-hero__copy {
   max-width: 640px;
   min-width: 0;
+}
+/* The demo login card: button centred beside the text, under it (left,
+   like the text) once the card stacks on a phone. */
+.land-demo { align-items: center; }
+@media (max-width: 760px) {
+  .land-demo { align-items: flex-start; }
+}
+/* Stacked on a phone, the two calls to action are one width. */
+@media (max-width: 560px) {
+  .land-hero__ctas > a { flex: 1 1 100%; text-align: center; justify-content: center; }
 }
 @media (max-width: 900px) {
   .land-hero {
@@ -1446,6 +1547,9 @@ td:first-child {
 }
 .aflip__inner {
   position: relative;
+  /* Both faces share one grid cell, so the card is as tall as the taller
+     face and neither one has to scroll or clip. */
+  display: grid;
   cursor: pointer;
   outline-offset: 3px;
   transform-style: preserve-3d;
@@ -1456,12 +1560,12 @@ td:first-child {
 .aflip--open .aflip__inner {
   transform: rotateY(180deg);
 }
-/* The front sits in flow so the card grows with its content — a long name
-   must not push the button out through the bottom edge. The back is
-   overlaid on top of it. */
+/* Both faces sit in flow, stacked in the same cell, so the card grows with
+   whichever holds more — a long name or a full back must not push the
+   buttons out through the bottom edge. */
 .aflip__face {
+  grid-area: 1 / 1;
   position: relative;
-  height: 100%;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   display: flex;
@@ -1474,13 +1578,9 @@ td:first-child {
   box-shadow: var(--glass-edge);
 }
 .aflip__face--back {
-  position: absolute;
-  inset: 0;
-  height: auto;
   transform: rotateY(180deg);
   justify-content: flex-start;
   gap: 0;
-  overflow-y: auto;
 }
 /* Actions sit at the foot of the back, whatever it holds above them. */
 .aflip__face--back .aflip__actions {
@@ -1520,6 +1620,9 @@ td:first-child {
   justify-content: space-between;
   gap: 10px;
   margin-top: 2px;
+  /* As tall as a footer with the day-let badge in it, so the values line
+     up across a row whether a card has the badge or not. */
+  min-height: 28px;
 }
 .aflip__turn {
   display: inline-flex;
@@ -1566,10 +1669,23 @@ td:first-child {
 }
 .aflip__actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
   margin-top: 12px;
+}
+/* The pill has a fixed 26 px height: a wrapped label spills out of it. */
+.aflip__actions .btn-chip { white-space: nowrap; }
+/* On a 300 px desktop card the turn button, the service pill and "Edit"
+   don't fit one row: the pill takes its own full-width row on top. (On a
+   phone the card is wide enough for all three.) */
+@media (min-width: 761px) {
+  .aflip__actions .btn-chip {
+    order: -1;
+    flex: 1 0 100%;
+    justify-content: space-between;
+  }
 }
 .aflip__edit {
   padding: 8px 18px;
@@ -1785,16 +1901,18 @@ td:first-child {
   background: var(--color-primary-hover);
   transform: translateY(-1px);
 }
+/* The denser glass fill: page text must not read through the chat; 12px
+   clear of the 68px launcher below it. */
 .bot-panel {
   position: fixed;
   right: 20px;
-  bottom: 88px;
+  bottom: 100px;
   width: 360px;
   max-width: calc(100vw - 32px);
-  max-height: min(560px, calc(100vh - 120px));
+  max-height: min(560px, calc(100vh - 132px));
   display: flex;
   flex-direction: column;
-  background: var(--glass-fill);
+  background: var(--glass-fill-solid);
   backdrop-filter: var(--glass-blur);
   border: 1px solid transparent;
   border-radius: var(--radius-lg);
@@ -3184,23 +3302,29 @@ body::before {
 @media (prefers-reduced-motion: reduce) {
   .decide-toast { animation: none; }
 }
-/* Phones: the amount drops under the name so the text keeps its room. */
+/* Phones: the text gets the full width; the amount and the buttons share
+   the row under it, so the buttons no longer eat a column beside the name. */
 @media (max-width: 520px) {
   .decide-top:not(.decide-confirm) {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-areas: "ico txt acts" "ico amount acts";
+    grid-template-areas: "ico txt txt" "ico amount acts";
+    align-items: center;
     column-gap: 12px;
-    row-gap: 2px;
+    row-gap: 8px;
   }
-  .decide-top:not(.decide-confirm) .decide-ico { grid-area: ico; }
+  .decide-top:not(.decide-confirm) .decide-ico { grid-area: ico; align-self: start; }
   .decide-top:not(.decide-confirm) .decide-txt { grid-area: txt; }
   .decide-top:not(.decide-confirm) .decide-amount {
     grid-area: amount;
     margin-left: 0;
     font-size: 13px;
   }
-  .decide-top:not(.decide-confirm) .decide-acts { grid-area: acts; margin-left: 0; }
+  .decide-top:not(.decide-confirm) .decide-acts {
+    grid-area: acts;
+    margin-left: 0;
+    justify-self: end;
+  }
   /* Undo sits under the text, on the left — clear of the floating help
      button at the right edge. */
   .decide-toast {
@@ -3260,16 +3384,28 @@ body::before {
   color: var(--color-text-muted);
 }
 .adeck-outer {
-  /* Bleed to the page edge so a card can peek in from the side. */
-  margin: 14px -32px 0;
+  /* Bleed to the page edge so a card can peek in from the side. The
+     negative bottom margin cancels the scroller's shadow room below, so
+     the gap to the next block stays the page's 34 px. */
+  margin: 14px -32px -40px;
 }
 .adeck {
   display: flex;
   gap: 16px;
   overflow-x: auto;
-  padding: 6px 32px 20px;
+  /* A scroller clips everything outside its box: 40 px at the bottom
+     leaves room for the cards' drop shadow (it reaches ~44 px below). */
+  padding: 6px 32px 40px;
   scroll-snap-type: x proximity;
   scrollbar-width: none;
+}
+/* The scroller ends past the content column; fade the right edge so a
+   clipped card and its shadow don't end on a hard vertical line. */
+@media (min-width: 761px) {
+  .adeck {
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent);
+    mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent);
+  }
 }
 .adeck::-webkit-scrollbar { display: none; }
 .adeck__card {
@@ -3350,6 +3486,9 @@ body::before {
   min-height: 104px;
   border-radius: var(--radius-md);
 }
+/* Only the advice slide sits on a tint and needs side padding; the plain
+   figures line up with the card's name and address above them. */
+.adeck__slide.pane { padding-inline: 0; }
 .adeck__k {
   font-size: 12.5px;
   font-weight: 600;
@@ -3427,8 +3566,8 @@ body::before {
 @media (max-width: 760px) {
   /* Bleed exactly to the screen edge (main's side padding is 14 px on a
      phone) — a wider bleed pushed the page 4 px sideways. */
-  .adeck-outer { margin: 14px -14px 0; }
-  .adeck { padding: 6px 14px 20px; }
+  .adeck-outer { margin: 14px -14px -40px; }
+  .adeck { padding: 6px 14px 40px; }
   .adeck__card { flex-basis: 84%; }
 }
 
@@ -3480,6 +3619,10 @@ body::before {
   border-radius: 999px;
   background: linear-gradient(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0));
 }
+/* A short slab is a plain bar: the glass radius and streak squash it into
+   a capsule that looks like a stray button. */
+.bar__slab--low { border-radius: 4px 4px 3px 3px; }
+.bar__slab--low::after { display: none; }
 .bar__m { font-size: 12px; color: var(--color-text-muted); font-weight: 600; }
 .bar__val {
   font-size: 12px;
@@ -3516,6 +3659,13 @@ main > section:last-child {
 /* The gap now comes from the block, not the heading. */
 main > section > h2:first-child {
   margin-top: 0;
+}
+/* That assumes the block above is a section too. A fold (<details>: the
+   folded net-worth ring, the desk's settings) or a status alert-card
+   above a section gives no such gap, so the section brings it. :where()
+   keeps this at element weight, so a section's own class margin wins. */
+main > :where(details, .alert-card) + section {
+  margin-top: 34px;
 }
 
 /* ── The daily question: one row per daily-let asset. ── */
@@ -3841,6 +3991,15 @@ main > section > h2:first-child {
   color: var(--color-text-muted);
   cursor: default;
 }
+/* A field the viewer may not change (a team member's workspace type)
+   looks it: the read-only fill, muted text. Checkboxes keep their look. */
+.field input:disabled:not([type="checkbox"]):not([type="radio"]),
+.field select:disabled,
+.field textarea:disabled {
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
 
 /* ═══════════════ VISUAL SIGNALS — one meaning per colour ═══════════════
    The semantic map, used by badges, alert cards, fence zones, the outbox,
@@ -4162,6 +4321,12 @@ button.tabbar__item {
   font-weight: 600;
   color: var(--color-text-muted);
 }
+/* The edit chip lines up with the title, not with the middle of the
+   eyebrow + title block: (40 px title line - 26 px chip) / 2 = 7 px. On a
+   phone the row may wrap, so it stays centred there. */
+@media (min-width: 761px) {
+  .desk-title__edit { align-self: flex-end; margin-bottom: 7px; }
+}
 .desk-plate {
   display: inline-block;
   margin-left: 10px;
@@ -4195,6 +4360,12 @@ button.tabbar__item {
 .desk-card__label { font-size: 12.5px; font-weight: 600; color: var(--color-text-muted); }
 .desk-card__value { font-size: 20px; font-weight: 700; color: var(--color-text); }
 .desk-card__sub { font-size: 13px; color: var(--color-text); line-height: 1.5; }
+/* A wrapping state badge gets its own line above the figures after it. */
+.desk-card__sub > .badge--wrap {
+  display: flex;
+  width: fit-content;
+  margin-bottom: 4px;
+}
 .desk-card__link { margin-top: auto; align-self: flex-start; padding-top: 6px; }
 .desk-fold {
   margin-top: 16px;
@@ -4207,7 +4378,8 @@ button.tabbar__item {
   cursor: pointer;
   font-weight: 600;
   font-size: 14.5px;
-  list-style-position: outside;
+  /* Inside: an outside marker lands in the padding, right on the border. */
+  list-style-position: inside;
 }
 .desk-fold--settings { margin-top: 28px; }
 .desk-fold__hint {
@@ -4295,28 +4467,35 @@ a.badge--link:hover { text-decoration: underline; }
 }
 
 /* ── Calendar: free windows per unit, each with a suggested price. ── */
+/* 340px: two cards a row on desktop, wide enough that dates, nights and
+   the price fit one line (three narrower cards broke half the rows). */
 .gap-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr));
   gap: 12px;
 }
 .gap-unit { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
-.gap-unit__head { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; }
-.gap-unit__head svg { color: var(--status-str-text, var(--color-primary)); flex: none; }
+/* Icon level with the name's first line: centred, it sat between the two
+   lines of a long name and jumped from card to card. */
+.gap-unit__head { display: flex; align-items: flex-start; gap: 8px; font-weight: 600; font-size: 14px; }
+.gap-unit__head svg { color: var(--status-str-text, var(--color-primary)); flex: none; margin-top: 2px; }
 .gap-unit__name { color: var(--color-text); text-decoration: none; }
 .gap-unit__name:hover { text-decoration: underline; }
 .gap-unit__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+/* When a row is too narrow, the price drops whole onto a line of its own
+   (right-aligned) instead of squeezing "nights" onto a second line. */
 .gap-unit__list li {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  gap: 10px;
+  gap: 2px 10px;
   font-size: 13px;
   padding: 5px 0;
   border-top: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
 }
 .gap-unit__list li:first-child { border-top: 0; }
-.gap-unit__list b { white-space: nowrap; font-weight: 600; }
-.gap-unit__nights { color: var(--color-text-muted); }
+.gap-unit__list b { white-space: nowrap; font-weight: 600; margin-left: auto; }
+.gap-unit__nights { color: var(--color-text-muted); white-space: nowrap; }
 .gap-unit__more { font-size: 12.5px; margin-top: auto; }
 /* A card's one action keeps its label on one line. */
 .alert-card > .btn-primary.btn-compact { flex: none; white-space: nowrap; }
@@ -4336,6 +4515,23 @@ a.badge--link:hover { text-decoration: underline; }
   gap: 10px;
   flex-wrap: wrap;
   font-size: 13.5px;
+}
+/* The "same flat?" picker: a bordered control the height of the chip
+   beside it, not bare text with a loose chevron. */
+.loose-flats select {
+  height: 26px;
+  box-sizing: border-box;
+  max-width: 100%;
+  padding: 0 8px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+}
+@media (max-width: 760px) {
+  .loose-flats select { height: 44px; }
 }
 
 /* ── P11 · Dashboard "Today": one block under the hero — urgent rows,
@@ -4503,8 +4699,15 @@ a.badge--link:hover { text-decoration: underline; }
 @media (max-width: 480px) {
   .wealth-hero { padding: 24px 14px 20px; }
   .wealth-hero__chips { gap: 6px; }
-  /* The 12 px type floor holds on phones too; the chips wrap instead. */
-  .wealth-hero__chips .chip { font-size: 12px; padding: 3px 9px; }
+  /* The 12 px type floor holds on phones too; the chips wrap instead. A
+     14 px radius still reads as a pill on one line, but a chip that wraps
+     to two lines becomes a rounded tag rather than a fat capsule. */
+  .wealth-hero__chips .chip {
+    font-size: 12px;
+    padding: 3px 9px;
+    border-radius: 14px;
+    text-wrap: balance;
+  }
 }
 .wealth-hero__sub {
   margin-top: 4px;
@@ -4629,7 +4832,15 @@ a.badge--link:hover { text-decoration: underline; }
 }
 .alert-group__all { margin-left: auto; }
 @media (max-width: 560px) {
-  .alert-group__head { padding: 12px 12px 12px 14px; }
+  /* On a phone the name and its summary wrap to 2-3 lines; the icon, date
+     and chevron line up with the name (the first line), not the middle. */
+  .alert-group__head {
+    padding: 12px 12px 12px 14px;
+    align-items: flex-start;
+  }
+  .alert-group__head .alert-card__icon { margin-top: 3px; }
+  .alert-group__day { margin-top: 2px; }
+  .alert-group__chev { margin-top: 4px; }
   .alert-group__body { padding: 0 12px 12px 14px; }
   .alert-group__all { margin-left: 0; }
 }
@@ -4761,8 +4972,19 @@ td:has(> .confirm-inline) { white-space: normal; }
   align-items: center;
   gap: 8px;
 }
-.form-fold > summary::-webkit-details-marker { display: none; }
-.form-fold > summary::before {
+/* The delete-account fold on /settings (.settings-danger) takes the same
+   chevron in place of the browser's triangle, on its own plain row. */
+.settings-danger > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.form-fold > summary::-webkit-details-marker,
+.settings-danger > summary::-webkit-details-marker { display: none; }
+.form-fold > summary::before,
+.settings-danger > summary::before {
   content: "";
   width: 7px;
   height: 7px;
@@ -4772,7 +4994,8 @@ td:has(> .confirm-inline) { white-space: normal; }
   transition: transform 0.15s ease;
   flex: none;
 }
-.form-fold[open] > summary::before { transform: rotate(45deg); }
+.form-fold[open] > summary::before,
+.settings-danger[open] > summary::before { transform: rotate(45deg); }
 .form-fold__hint { font-weight: 400; color: var(--color-text-muted); font-size: 12.5px; }
 .form-fold__body {
   display: grid;
@@ -4909,8 +5132,9 @@ td:has(> .confirm-inline) { white-space: normal; }
 @media (max-width: 760px) {
   body:has(> .tabbar) > .site-footer {
     /* Above the bar (6 px off the edge, ~64 px tall) and the home
-       indicator; clear of the support button's column on the right. */
-    padding: 16px 70px calc(92px + env(safe-area-inset-bottom, 0px)) 14px;
+       indicator; clear of the support button's column on the right
+       (14 + 44 px) and the same on the left, so the links stay centred. */
+    padding: 16px 60px calc(92px + env(safe-area-inset-bottom, 0px)) 60px;
   }
   /* The footer carries the bar's room now; main keeps a normal end. */
   body:has(> .tabbar) main { padding-bottom: 40px; }
@@ -5045,7 +5269,15 @@ td:has(> .confirm-inline) { white-space: normal; }
   }
   .kpi { min-width: 0; }
   .kpi .badge { white-space: normal; height: auto; min-height: 26px; }
+  /* Five tiles in two columns: the last one takes the whole row instead
+     of sitting beside an empty half. */
+  .kpi-grid--5 .kpi:last-child:nth-child(odd) { grid-column: 1 / -1; }
   .form-grid { grid-template-columns: minmax(0, 1fr); }
+}
+/* The /assets pair (value, income) stacks on a phone: two-up, the income
+   tile's line wrapped six times beside a half-empty value tile. */
+@media (max-width: 520px) {
+  .kpi-grid--2 { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* ── Fewer blurred layers on a phone: real blur stays on the nav, the tab
@@ -5214,6 +5446,9 @@ td:has(> .confirm-inline) { white-space: normal; }
   }
   .table-stack .table-stack__title { order: -2; }
   .table-stack .table-stack__wide { grid-column: 1 / -1; }
+  /* An open remove question (/settings team members) takes the whole row. */
+  .table-stack td:has(> .confirm-inline) { grid-column: 1 / -1; }
+  .table-stack .confirm-inline--row { display: flex; }
 }
 
 /* ── /calendar: today's column on the month board, cells that open
@@ -5271,12 +5506,14 @@ td:has(> .confirm-inline) { white-space: normal; }
   padding-right: 12px;
   width: max-content;
 }
+/* Opaque (days scroll under it) but in the card's own tone, so the names
+   do not read as separate white or black boxes on the glass. */
 .cal-strip__corner,
 .cal-strip__name {
   position: sticky;
   left: 0;
   z-index: 1;
-  background: var(--color-bg);
+  background: var(--color-surface);
 }
 .cal-strip__name {
   display: flex;
@@ -5289,7 +5526,8 @@ td:has(> .confirm-inline) { white-space: normal; }
   color: var(--color-text);
   text-decoration: none;
   overflow-wrap: anywhere;
-  box-shadow: 6px 0 8px -6px rgba(38, 92, 130, 0.25);
+  /* The first shadow fills the 3px row gap below, so the column is one strip. */
+  box-shadow: 0 3px 0 var(--color-surface), 6px 0 8px -6px rgba(38, 92, 130, 0.25);
 }
 .cal-strip__day {
   display: grid;
@@ -5313,6 +5551,8 @@ td:has(> .confirm-inline) { white-space: normal; }
   width: 34px;
   height: 36px;
   border-radius: 6px;
+  /* Level with the middle of a name that wraps to three lines. */
+  align-self: center;
 }
 .cal-strip__cell.is-today {
   box-shadow: inset 0 0 0 2px var(--color-primary);
@@ -5421,7 +5661,8 @@ td:has(> .confirm-inline) { white-space: normal; }
 
 /* ── Legal pages (Terms of Service, Privacy policy): one readable column of
    numbered sections under a short table of contents. ── */
-main.legal { max-width: 780px; }
+/* The page column keeps the shared left edge; the text keeps its measure. */
+main.legal > * { max-width: 780px; }
 .legal__meta {
   color: var(--color-text-muted);
   font-size: 13px;
@@ -5501,13 +5742,15 @@ main.legal { max-width: 780px; }
 }
 
 /* The PRO calculator's five years: figures never break ("1,550 ₾" on one
-   line) and the table fits its card at desktop widths. */
-.pro-years td.num,
-.pro-years th.num { white-space: nowrap; }
+   line) and the table fits its half-width card at desktop widths — so the
+   long headers wrap (bottom-aligned), only the figures and "Year 1" don't.
+   On a phone the stacked cards' labels must wrap, hence the media query. */
 .pro-years table { width: 100%; font-size: 13px; }
-.pro-years th { font-size: 12px; }
+.pro-years th { font-size: 12px; vertical-align: bottom; }
 @media (min-width: 641px) {
   .pro-years { overflow-x: auto; }
+  .pro-years td.num,
+  .pro-years .table-stack__title { white-space: nowrap; }
   .pro-years td,
   .pro-years th { padding-left: 8px; padding-right: 8px; }
 }
@@ -5652,6 +5895,16 @@ main.legal { max-width: 780px; }
 .files-upload__pick:focus-within { outline: 2px solid var(--color-accent, #4f7cff); outline-offset: 2px; }
 .files-upload__pick.is-busy { opacity: 0.7; cursor: progress; }
 .files-upload__note { flex-basis: 100%; margin: 0; }
+/* /admin/market CSV import: the field's label, then the button and the
+   chosen file's name (the native input stays hidden inside the button). */
+.file-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.file-pick__name { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 .files-empty { color: var(--color-text-muted); font-size: 14px; }
 .files-group + .files-group { margin-top: 14px; }
 .files-group h3 { font-size: 14px; margin: 0 0 8px; color: var(--color-text-muted); font-weight: 600; }
@@ -5744,6 +5997,9 @@ main.legal { max-width: 780px; }
   text-decoration: none;
 }
 .invoice-list__row:hover { border-color: var(--color-text-muted); }
+/* The status hugs its text — in the phone's 1fr column it would stretch
+   into a long empty pill. */
+.invoice-list__row > .badge { justify-self: start; }
 .invoice-list__no { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
 .invoice-list__who { min-width: 0; overflow-wrap: anywhere; }
 .invoice-list__sub { display: block; font-size: 12px; color: var(--color-text-muted); }
@@ -5776,6 +6032,24 @@ main.legal { max-width: 780px; }
 .fleet-sort { color: inherit; text-decoration: none; white-space: nowrap; }
 .fleet-sort:hover { text-decoration: underline; }
 .fleet-table td { vertical-align: top; }
+/* Desktop: the long sort headers wrap instead of the short cells — the
+   car's name, the rent ("600 ₾ / month") and the end date stay on one line. */
+@media (min-width: 761px) {
+  .fleet-sort { white-space: normal; }
+  .fleet-table td:nth-child(1) .link,
+  .fleet-table td:nth-child(3),
+  .fleet-table td:nth-child(4) { white-space: nowrap; }
+}
+/* Phone: the sort chips scroll in one row instead of taking four rows
+   above the first car. */
+@media (max-width: 640px) {
+  .fleet-sortbar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .fleet-sortbar > * { flex: none; }
+}
 
 /* ── Red line map (app/assets/[id]/rental/fence-map.tsx) ── */
 .fence-map__box {

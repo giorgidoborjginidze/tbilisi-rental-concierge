@@ -169,12 +169,16 @@ function Row({
 
       <span className="daily-row__txt">
         <b>{asset.name}</b>
-        <span>
-          {asset.place}
-          {asset.kind !== "base" && (
-            <em className={`daily-tag daily-tag--${asset.kind}`}>{kindLabel}</em>
-          )}
-        </span>
+        {/* No address and no tag: skip the line, or its empty box still
+            takes a line and the name floats above the row's centre. */}
+        {(asset.place || asset.kind !== "base") && (
+          <span>
+            {asset.place}
+            {asset.kind !== "base" && (
+              <em className={`daily-tag daily-tag--${asset.kind}`}>{kindLabel}</em>
+            )}
+          </span>
+        )}
       </span>
 
       <label className="daily-row__amount">

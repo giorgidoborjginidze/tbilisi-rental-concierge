@@ -84,7 +84,7 @@ export default async function EditUnitPage({
       {/* Activo's nights, for the channels to block (lib/ical/export.ts). */}
       <section id="calendar-export" style={{ marginTop: 28 }}>
         <h2>{t(locale, "cal_export_title")}</h2>
-        <p className="field-hint">{t(locale, "cal_export_sub")}</p>
+        <p className="section-hint">{t(locale, "cal_export_sub")}</p>
         <CalendarExport
           unitId={unit.id}
           base={

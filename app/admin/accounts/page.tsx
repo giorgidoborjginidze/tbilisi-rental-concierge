@@ -39,7 +39,7 @@ export default async function AccountsAdminPage() {
   const fmt = tbilisiFormat(locale, { day: "numeric", month: "short", year: "numeric" });
 
   return (
-    <main style={{ maxWidth: 980 }}>
+    <main>
       <h1>{t(locale, "admin_accounts_title")}</h1>
       <p className="page-lead">{t(locale, "admin_accounts_lead")}</p>
       <p className="field-hint">
@@ -60,7 +60,7 @@ export default async function AccountsAdminPage() {
 
       <section style={{ marginTop: 22 }}>
         <h2>{t(locale, "admin_recent")}</h2>
-        <div className="card card--stack">
+        <div className="card table-stack">
           <table>
             <thead>
               <tr>
@@ -86,13 +86,13 @@ export default async function AccountsAdminPage() {
                 const until = standing === "paid" || standing === "grace" ? row.paidUntil : onTrial ? row.trialEndsAt : null;
                 return (
                   <tr key={row.email}>
-                    <td>
+                    <td className="table-stack__title">
                       {row.email}
                       {row.name && <div className="cell-sub">{row.name}</div>}
                     </td>
-                    <td>{row.plan ?? "—"} · {t(locale, `admin_standing_${shown}` as StringKey)}</td>
-                    <td>{until ? fmt.format(until) : "—"}</td>
-                    <td>{fmt.format(row.createdAt)}</td>
+                    <td data-label={t(locale, "admin_plan")}>{row.plan ?? "—"} · {t(locale, `admin_standing_${shown}` as StringKey)}</td>
+                    <td data-label={t(locale, "admin_until")}>{until ? fmt.format(until) : "—"}</td>
+                    <td data-label={t(locale, "admin_joined")}>{fmt.format(row.createdAt)}</td>
                   </tr>
                 );
               })}

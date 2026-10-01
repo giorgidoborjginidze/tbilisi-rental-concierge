@@ -427,9 +427,7 @@ export async function MarketTips({
   return (
     <section>
       <h2>{t(locale, "tips_title")}</h2>
-      <p style={{ color: "var(--color-text-muted)", fontSize: 13, margin: "2px 0 14px" }}>
-        {t(locale, "tips_sub")}
-      </p>
+      <p className="section-hint">{t(locale, "tips_sub")}</p>
       {shown.length === 0 ? (
         <p style={{ color: "var(--color-text-muted)", fontSize: 13 }}>
           {t(locale, empty ? "tips_empty_start" : "tips_empty")}
@@ -949,6 +947,8 @@ export async function IncomeBars({
 
   const max = Math.max(...months.map((m) => m.total));
   const fmtMonth = tbilisiFormat(locale, { month: "short" });
+  // Slab height in px; an empty month keeps a 6 px baseline.
+  const slabHeight = (total: number) => Math.max(6, Math.round((total / max) * 116));
   // Six empty months say nothing: the section only shows with income, or
   // with its one action (adding an income source).
   if (max <= 0 && !action) return null;
@@ -989,9 +989,9 @@ export async function IncomeBars({
                 {month.unpriced > 0 ? "+" : ""}
               </span>
               <span
-                className="bar__slab"
+                className={`bar__slab${slabHeight(month.total) < 24 ? " bar__slab--low" : ""}`}
                 style={{
-                  height: `${Math.max(6, Math.round((month.total / max) * 116))}px`,
+                  height: `${slabHeight(month.total)}px`,
                   animationDelay: `${i * 0.08}s`,
                 }}
               />

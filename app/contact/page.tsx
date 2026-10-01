@@ -17,13 +17,15 @@ export default async function ContactPage() {
   const locale = await getLocale();
 
   return (
-    <main style={{ maxWidth: 720 }}>
+    <main>
       <h1>{t(locale, "contact_title")}</h1>
       <p style={{ color: "var(--color-text-muted)", marginBottom: 26 }}>
         {t(locale, "contact_intro")}
       </p>
 
-      <div className="deck">
+      {/* The shared page column (same left edge as every page); the cards
+          keep their own narrower measure. */}
+      <div className="deck" style={{ maxWidth: 656 }}>
         <a
           href={`mailto:${CONTACT_EMAIL}`}
           className="card3d"

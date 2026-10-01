@@ -34,13 +34,13 @@ export default async function LearnPage() {
   };
 
   return (
-    <main style={{ maxWidth: 900 }}>
+    <main>
       <h1>{t(locale, "learn_title")}</h1>
       <p style={{ color: "var(--color-text-muted)", maxWidth: 620 }}>
         {t(locale, "learn_sub")}
       </p>
 
-      <div className="learn-tour card3d" style={{ marginTop: 20 }}>
+      <div className="learn-tour card3d" style={{ marginTop: 20, maxWidth: 836 }}>
         <div>
           <div className="card3d__title">{t(locale, "tour_prompt_title")}</div>
           <p className="card3d__body" style={{ maxWidth: 480 }}>
@@ -62,7 +62,7 @@ export default async function LearnPage() {
         </p>
       )}
 
-      <div className="learn-grid">
+      <div className="learn-grid" style={{ maxWidth: 836 }}>
         {lessons.map((lesson, i) => {
           const video = videoFor(lesson.slug);
           return (

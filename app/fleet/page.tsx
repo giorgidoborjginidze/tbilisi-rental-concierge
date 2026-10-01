@@ -123,7 +123,7 @@ export default async function FleetPage({
       {rows.length > 0 && view === "table" ? (
         <>
         {/* The order, for phones too (the stacked table has no headings to tap). */}
-        <nav className="flex flex-wrap items-center gap-2" aria-label={t(locale, "fleet_sort")} style={{ marginBottom: 10 }}>
+        <nav className="fleet-sortbar flex flex-wrap items-center gap-2" aria-label={t(locale, "fleet_sort")} style={{ marginBottom: 10 }}>
           <span className="cell-sub">{t(locale, "fleet_sort")}:</span>
           {(["urgent", "name", "owed", "end", "ping"] as const).map((key) => (
             <Link

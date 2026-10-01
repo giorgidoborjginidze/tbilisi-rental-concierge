@@ -819,12 +819,17 @@ export default async function AlertsPage({
                             (href ? t(locale, "alert_open_desk") : "");
                           return (
                           <li key={alert.id} className="alert-row">
+                            {/* One inner box: on phones the detail is a flex row (for the
+                                44 px tap target), and the underpriced line is text + icon +
+                                text — loose, those became three columns. */}
                             {href ? (
                               <Link href={href} className="alert-row__detail link">
-                                {text}
+                                <span>{text}</span>
                               </Link>
                             ) : (
-                              <span className="alert-row__detail">{text}</span>
+                              <span className="alert-row__detail">
+                                <span>{text}</span>
+                              </span>
                             )}
                             <span className="alert-row__acts">
                               <form action={setAlertStatus}>

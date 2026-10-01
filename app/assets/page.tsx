@@ -349,7 +349,9 @@ export default async function AssetsPage() {
         <p style={{ color: "var(--color-text-muted)" }}>{t(locale, "assets_empty")}</p>
       )}
       {assets.length > 0 && (
-        <p style={{ color: "var(--color-text-muted)", fontSize: 13 }}>
+        // Its own margins: flush, it ran into the partial-revenue note above
+        // and the filter below as one cramped block.
+        <p style={{ color: "var(--color-text-muted)", fontSize: 13, margin: "8px 0 12px" }}>
           {t(locale, "asset_detail_hint")}
         </p>
       )}

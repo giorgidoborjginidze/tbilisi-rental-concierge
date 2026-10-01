@@ -69,10 +69,14 @@ export default function InvoicePaper({
       </header>
 
       <div className="invoice-paper__parties">
-        <div>
-          <h2>{t(locale, "invoice_from")}</h2>
-          <p className="invoice-paper__pre">{issuer}</p>
-        </div>
+        {/* No invoice details and no account name: no issuer block at all,
+            rather than a heading with nothing under it. */}
+        {issuer.trim() && (
+          <div>
+            <h2>{t(locale, "invoice_from")}</h2>
+            <p className="invoice-paper__pre">{issuer}</p>
+          </div>
+        )}
         <div>
           <h2>{t(locale, "invoice_to")}</h2>
           <p className="invoice-paper__pre">

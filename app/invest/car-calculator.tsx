@@ -10,11 +10,11 @@ import {
   evaluateCar,
 } from "@/lib/invest/car";
 import { TAXI_DEFAULTS, TAXI_GOOD_PCT, TAXI_OK_PCT, evaluateTaxi, taxiVsRental } from "@/lib/invest/taxi";
-import { formatMoney } from "@/lib/format";
+import { formatMoneyInline } from "@/lib/format";
 import { TONE_BADGE, VERDICT_BADGE } from "@/lib/ui/tone";
 import Kpi from "../kpi";
 
-const fmt = (v: number) => formatMoney(v);
+const fmt = (v: number) => formatMoneyInline(v);
 
 const CUSTOM = "__custom__";
 
@@ -232,7 +232,9 @@ export default function CarCalculator({
                   : `${Math.abs(comparison.deltaPct).toFixed(0)}% ${comparisonLabel}`}
               </span>
             </div>
-            <div className="kpi-grid kpi-grid--3d" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))", marginTop: 14 }}>
+            {/* margin, not marginTop: the grid's own 36px bottom margin left a
+                gap before the note and an empty band at the card's foot. */}
+            <div className="kpi-grid kpi-grid--3d" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))", margin: "14px 0 0" }}>
               <Kpi index={0} label={labels.car_market_price} value={fmt(market.avgPrice)} sub={model} />
               <Kpi index={1} label={labels.car_market_rate} value={fmt(market.avgDailyRate)} />
             </div>
@@ -257,7 +259,7 @@ export default function CarCalculator({
           )}
 
           {mode === "rental" ? (
-            <div className="kpi-grid kpi-grid--3d" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))", marginTop: 14 }}>
+            <div className="kpi-grid kpi-grid--3d" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))", margin: "14px 0 0" }}>
               <Kpi
                 index={0}
                 label={labels.car_monthly_income}
@@ -278,7 +280,7 @@ export default function CarCalculator({
             </div>
           ) : (
             <>
-              <div className="kpi-grid kpi-grid--3d" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))", marginTop: 14 }}>
+              <div className="kpi-grid kpi-grid--3d" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))", margin: "14px 0 0" }}>
                 <Kpi
                   index={0}
                   label={labels.taxi_res_cash}

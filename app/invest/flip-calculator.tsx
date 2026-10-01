@@ -2,11 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { analyzeFlip } from "@/lib/invest/flip";
-import { formatMoney } from "@/lib/format";
+import { formatMoneyInline } from "@/lib/format";
 import { VERDICT_BADGE } from "@/lib/ui/tone";
 import Kpi from "../kpi";
 
-const fmt = (v: number) => formatMoney(v);
+const fmt = (v: number) => formatMoneyInline(v);
 const pct = (v: number) => `${v >= 0 ? "" : "−"}${Math.abs(v).toFixed(1)}%`;
 
 // The same three colours as every other calculator (lib/ui/tone.ts).
@@ -67,7 +67,7 @@ export default function FlipCalculator({
 
       <div className="grid items-start gap-6 lg:grid-cols-2">
         <div
-          className="card form-grid form-grid--full"
+          className="card form-grid form-grid--full calc-form"
           style={{ padding: 20, overflow: "visible" }}
         >
           <h2 className="col-span-2" style={{ margin: 0 }}>{labels.flip_title}</h2>

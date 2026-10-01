@@ -173,13 +173,15 @@ export default async function SettingsPage({
                   </option>
                 ))}
               </select>
-              <span className="field-hint">
-                {t(locale, isMember ? "settings_profile_member" : "settings_profile_hint")}
-              </span>
             </label>
             {!isMember && (
               <button type="submit" className="btn-secondary">{t(locale, "save")}</button>
             )}
+            {/* Its own line under the select and button, so the button lines
+                up with the select rather than with the bottom of the hint. */}
+            <span className="field-hint" style={{ flexBasis: "100%", margin: 0 }}>
+              {t(locale, isMember ? "settings_profile_member" : "settings_profile_hint")}
+            </span>
           </form>
           {saved === "profile" && (
             <p role="status" style={{ margin: 0 }}>
@@ -212,8 +214,8 @@ export default async function SettingsPage({
               )}
             </span>
           </div>
-          <div className="flex items-center justify-between gap-3">
-            <span style={row}>{t(locale, "billing_current")}</span>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span style={{ ...row, whiteSpace: "nowrap" }}>{t(locale, "billing_current")}</span>
             <span className="flex flex-wrap items-center justify-end gap-2">
               <span className="badge badge--tag">{planLatin}</span>
               {!isMember && context.paidUntil && context.standing !== "complimentary" && (
@@ -321,7 +323,7 @@ export default async function SettingsPage({
         <div className="card" style={{ marginTop: 12, padding: 18, display: "grid", gap: 16 }}>
           {!isMember && (
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <span style={row}>
+            <span style={{ ...row, flex: "1 1 280px", minWidth: 0 }}>
               {t(locale, "data_export")}
               <span className="field-hint" style={{ display: "block", margin: "2px 0 0" }}>
                 {t(locale, "data_export_hint")}
@@ -333,7 +335,7 @@ export default async function SettingsPage({
           </div>
           )}
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <span style={row}>
+            <span style={{ ...row, flex: "1 1 280px", minWidth: 0 }}>
               {t(locale, "activity_title")}
               <span className="field-hint" style={{ display: "block", margin: "2px 0 0" }}>
                 {t(locale, "activity_lead")}
@@ -343,10 +345,12 @@ export default async function SettingsPage({
           </div>
           {/* Activo's own administrator: the hand tools. */}
           {!operator.isDemo && isAdminEmail(operator.email) && (
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <span style={row}>{t(locale, "admin_tools")}</span>
-              <Link href="/admin/accounts" className="btn-secondary">{t(locale, "admin_accounts_title")}</Link>
-              <Link href="/admin/market" className="btn-secondary">{t(locale, "market_title")}</Link>
+              <span className="flex flex-wrap gap-2">
+                <Link href="/admin/accounts" className="btn-secondary">{t(locale, "admin_accounts_title")}</Link>
+                <Link href="/admin/market" className="btn-secondary">{t(locale, "market_title")}</Link>
+              </span>
             </div>
           )}
           {!operator.isDemo && <DeleteAccountForm labels={securityLabels} />}

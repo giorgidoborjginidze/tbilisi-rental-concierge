@@ -57,8 +57,8 @@ export default function TeamSection({
 
       <form
         action={formAction}
-        className="card form-grid form-grid--full"
-        style={{ padding: 18, overflow: "visible", maxWidth: 560 }}
+        className="card form-grid form-grid--full team-invite"
+        style={{ padding: 18, overflow: "visible" }}
       >
         <label className="field">
           {labels.operator_email}
@@ -133,12 +133,12 @@ export default function TeamSection({
       {members.length > 0 && (
         <>
           <h2 style={{ marginTop: 24 }}>{membersHeading}</h2>
-          <div className="card">
+          <div className="card table-stack">
             <table>
               <tbody>
                 {members.map((member) => (
                   <tr key={member.id}>
-                    <td>
+                    <td className="table-stack__title">
                       {member.name ?? member.email}
                       <div className="cell-sub">{member.email}</div>
                     </td>

@@ -30,6 +30,12 @@ export function formatMoney(
   return `${formatNumber(value, decimals)} ${currencySign(currency)}`;
 }
 
+/** formatMoney for running text (calculator results): a no-break space
+ *  before the sign, so a line never ends on the figure with "₾" alone on
+ *  the next. Not for messages or exports, which keep the plain space. */
+export const formatMoneyInline = (...args: Parameters<typeof formatMoney>): string =>
+  formatMoney(...args).replace(/ (?=[^ ]*$)/, "\u00a0");
+
 /** An amount owed, rounded up to the tetri: "49.40 ₾", "1,200 ₾". */
 export const formatDueMoney = (
   value: number,

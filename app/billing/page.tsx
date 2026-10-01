@@ -187,7 +187,7 @@ export default async function BillingPage({
       ) : (
         <section>
           {context.trialDaysLeft > 0 && context.standing !== "paid" && (
-            <div className="alert-card alert-card--good" style={{ alignItems: "center" }}>
+            <div className="alert-card alert-card--good alert-card--middle">
               <div className="alert-card__title">
                 <SeverityIcon severity="good" />
                 {t(locale, "billing_trial")}: {context.trialDaysLeft} {t(locale, "days_left")}
@@ -207,7 +207,11 @@ export default async function BillingPage({
             </Notice>
           )}
 
-          <div className="kpi-grid kpi-grid--3d" style={{ margin: "14px 0 8px" }}>
+          {/* As many columns as tiles, so the row ends where the cards do. */}
+          <div
+            className={`kpi-grid kpi-grid--3d ${accountType === "business" ? "kpi-grid--3" : "kpi-grid--2"}`}
+            style={{ margin: "14px 0" }}
+          >
             <Kpi label={t(locale, "nav_assets")} value={`${context.assetCount} / ${context.plan.maxAssets}`} />
             <Kpi label={t(locale, "nav_units")} value={`${context.unitCount} / ${context.plan.maxUnits}`} />
             {accountType === "business" && (
