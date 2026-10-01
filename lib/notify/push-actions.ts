@@ -5,7 +5,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireWriter } from "@/lib/auth/session";
+import { requirePerson, requireWriter } from "@/lib/auth/session";
 import { asLocale, t } from "@/lib/i18n/strings";
 import { pushConfig, webPushSender } from "./owner";
 
@@ -26,8 +26,10 @@ const validEndpoint = (value: string) => {
 };
 const KEY = /^[A-Za-z0-9_-]{8,200}={0,2}$/;
 
+// Every person of a team may get the workspace's notifications, a
+// view-only member too: the device is kept under the workspace.
 export async function savePushSubscription(device: DeviceSubscription): Promise<{ ok: boolean }> {
-  const operator = await requireWriter();
+  const operator = await requirePerson();
   const endpoint = String(device?.endpoint ?? "");
   const p256dh = String(device?.p256dh ?? "");
   const auth = String(device?.auth ?? "");
@@ -44,7 +46,7 @@ export async function savePushSubscription(device: DeviceSubscription): Promise<
 }
 
 export async function removePushSubscription(endpoint: string): Promise<{ ok: boolean }> {
-  const operator = await requireWriter();
+  const operator = await requirePerson();
   await prisma.pushSubscription.deleteMany({ where: { operatorId: operator.id, endpoint: String(endpoint ?? "") } });
   revalidatePath("/settings");
   return { ok: true };
@@ -52,7 +54,7 @@ export async function removePushSubscription(endpoint: string): Promise<{ ok: bo
 
 /** One notification to every device of this account; how many took it. */
 export async function sendTestPush(): Promise<{ sent: number }> {
-  const operator = await requireWriter();
+  const operator = await requirePerson();
   const cfg = pushConfig();
   if (!cfg) return { sent: 0 };
   const locale = asLocale(operator.locale);
@@ -77,8 +79,10 @@ export async function sendTestPush(): Promise<{ sent: number }> {
   return { sent };
 }
 
+/** The workspace's email alerts go to the owner's address: the owner decides. */
 export async function setNotifyEmail(formData: FormData) {
   const operator = await requireWriter();
+  if (operator.companyId) return;
   await prisma.operator.update({
     where: { id: operator.id },
     data: { notifyEmail: formData.get("notifyEmail") === "on" },

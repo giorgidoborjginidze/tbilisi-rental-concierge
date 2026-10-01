@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { requireOperator } from "@/lib/auth/session";
+import { requireOperator, readOnlyOperator } from "@/lib/auth/session";
 import FilesSection from "@/app/files/files-section";
 import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
@@ -109,7 +109,7 @@ export default async function EditUnitPage({
           place={unit.asset ? { assetId: unit.asset.id } : { unitId: unit.id }}
           locale={locale}
           operatorId={operator.id}
-          readOnly={operator.isDemo}
+          readOnly={readOnlyOperator(operator)}
         />
       </div>
     </main>

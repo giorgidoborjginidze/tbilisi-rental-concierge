@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { requireOperator } from "@/lib/auth/session";
+import { requireOperator, readOnlyOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { asLocale, t, type StringKey } from "@/lib/i18n/strings";
 import { shownOrigin } from "@/lib/site";
@@ -994,7 +994,7 @@ export default async function RentalServicePage({
               <p className="page-lead">{t(locale, "rental_service_intro")}</p>
               {overviewSection}
               {/* Handover photos, the technical passport, the driver's ID copy. */}
-              <FilesSection place={{ assetId: asset.id }} locale={locale} operatorId={operator.id} readOnly={operator.isDemo} />
+              <FilesSection place={{ assetId: asset.id }} locale={locale} operatorId={operator.id} readOnly={readOnlyOperator(operator)} />
             </>
           )}
           {tab === "payments" && paymentsSection}
@@ -1012,7 +1012,7 @@ export default async function RentalServicePage({
             place={{ assetId: asset.id }}
             locale={locale}
             operatorId={operator.id}
-            readOnly={operator.isDemo}
+            readOnly={readOnlyOperator(operator)}
             defaultKind="receipt"
           />
         </>

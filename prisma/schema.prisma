@@ -41,9 +41,10 @@ model Operator {
   paidUntil   DateTime?
 
   // Team (business accounts): members belong to an owner's company and
-  // enter their own listings; limits are counted company-wide.
+  // work in its workspace — they see and edit the company's assets,
+  // contracts and calendar (lib/auth/session.ts); "viewer" members only look.
   companyId String?
-  role      String  @default("owner") // "owner" | "member"
+  role      String  @default("owner") // "owner" | "member" | "viewer"
   company   Operator?  @relation("Team", fields: [companyId], references: [id], onDelete: SetNull)
   members   Operator[] @relation("Team")
 
@@ -111,6 +112,9 @@ model Invite {
   companyId String
   email     String
   token     String    @unique
+  // What the person may do once they join: "member" (works in the shared
+  // workspace) or "viewer" (looks only).
+  role      String    @default("member")
   createdAt DateTime  @default(now())
   usedAt    DateTime?
 

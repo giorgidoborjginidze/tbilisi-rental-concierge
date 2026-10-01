@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { requireOperator } from "@/lib/auth/session";
+import { requireOperator, readOnlyOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
 import { titled } from "@/lib/i18n/metadata";
@@ -152,7 +152,7 @@ export default async function NewInvoicePage({
           <textarea name="note" rows={2} maxLength={500} />
         </label>
         <div className="invoice-form__wide">
-          <button type="submit" className="btn-primary" disabled={operator.isDemo}>
+          <button type="submit" className="btn-primary" disabled={readOnlyOperator(operator)}>
             {t(locale, "invoice_issue")}
           </button>
           <p className="field-hint" style={{ marginTop: 8 }}>{t(locale, "invoice_issue_hint")}</p>

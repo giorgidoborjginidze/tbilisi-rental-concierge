@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionOperator } from "@/lib/auth/session";
+import { getSessionOperator, readOnlyOperator } from "@/lib/auth/session";
 import { summarizeSync, syncAllUnits } from "@/lib/ical/run-sync";
 
 // Runs the iCal sync for the signed-in workspace's units and reports
@@ -11,7 +11,7 @@ export async function POST() {
   if (!operator) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  if (operator.isDemo) {
+  if (readOnlyOperator(operator)) {
     return NextResponse.json({ error: "demo_readonly" }, { status: 403 });
   }
   const results = await syncAllUnits(undefined, operator.id);

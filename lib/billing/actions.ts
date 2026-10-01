@@ -106,6 +106,7 @@ export async function createInvite(
       companyId: operator.id,
       email,
       token: randomBytes(18).toString("hex"),
+      role: str(formData, "role") === "viewer" ? "viewer" : "member",
     },
   });
   revalidatePath("/billing");
@@ -120,12 +121,31 @@ export async function revokeInvite(formData: FormData) {
   revalidatePath("/billing");
 }
 
-// Detaches the member from the company; their records stay their own.
-export async function removeMember(formData: FormData) {
+/** What a member may do: work in the workspace, or only look. Owner only. */
+export async function setMemberRole(formData: FormData) {
   const operator = await requireWriter();
+  if (operator.companyId) return;
+  const role = str(formData, "role") === "viewer" ? "viewer" : "member";
   await prisma.operator.updateMany({
     where: { id: str(formData, "memberId"), companyId: operator.id },
+    data: { role },
+  });
+  revalidatePath("/settings");
+}
+
+// Detaches the member from the company: they keep their sign-in, with an
+// empty workspace of their own. Everything they entered stays the company's.
+// Their open sessions end, so a removed person is not left looking at the
+// company's data in a tab still open.
+export async function removeMember(formData: FormData) {
+  const operator = await requireWriter();
+  const memberId = str(formData, "memberId");
+  const removed = await prisma.operator.updateMany({
+    where: { id: memberId, companyId: operator.id },
     data: { companyId: null, accountType: "personal", role: "owner" },
   });
+  // Only someone who really was this company's member is signed out.
+  if (removed.count > 0) await prisma.session.deleteMany({ where: { operatorId: memberId } });
   revalidatePath("/billing");
+  revalidatePath("/settings");
 }

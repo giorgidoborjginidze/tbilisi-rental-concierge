@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionOperator } from "@/lib/auth/session";
+import { getSessionOperator, readOnlyOperator } from "@/lib/auth/session";
 import { scanAlerts } from "@/lib/alerts/scan";
 import { flushOutbox } from "@/lib/notify/whatsapp";
 
@@ -16,7 +16,7 @@ export async function POST() {
   }
   // The shared demo is read-only (lib/auth/session.ts requireWriter); the
   // daily job keeps its alerts current.
-  if (operator.isDemo) {
+  if (readOnlyOperator(operator)) {
     return NextResponse.json({ error: "demo_readonly" }, { status: 403 });
   }
   const result = await scanAlerts(new Date(), operator.id);

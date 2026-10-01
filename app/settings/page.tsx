@@ -58,7 +58,7 @@ export default async function SettingsPage({
   const sessionId = await currentSessionId();
   const otherSessions = await prisma.session.count({
     where: {
-      operatorId: operator.id,
+      operatorId: operator.userId,
       expiresAt: { gt: new Date() },
       ...(sessionId ? { id: { not: sessionId } } : {}),
     },
@@ -94,7 +94,7 @@ export default async function SettingsPage({
     ? await Promise.all([
         prisma.operator.findMany({
           where: { companyId: operator.id },
-          select: { id: true, name: true, email: true, _count: { select: { assets: true, units: true } } },
+          select: { id: true, name: true, email: true, role: true },
           orderBy: { createdAt: "asc" },
         }),
         prisma.invite.findMany({
@@ -108,7 +108,7 @@ export default async function SettingsPage({
     "team_invite", "team_invite_hint", "team_remove", "copy_link", "team_invite_expired",
     "copied", "aria_revoke_invite", "team_revoke_q", "team_revoke_yes", "team_remove_q", "cancel",
     "operator_email", "error_required", "error_limit_members",
-    "error_owner_only", "save",
+    "error_owner_only", "save", "team_role", "team_role_member", "team_role_viewer", "team_role_hint",
   ];
   const labels = Object.fromEntries(labelKeys.map((k) => [k, t(locale, k)]));
 
@@ -122,6 +122,10 @@ export default async function SettingsPage({
     "notify_test", "notify_test_sent",
   ];
   const notifyLabels = Object.fromEntries(notifyKeys.map((k) => [k, t(locale, k)]));
+  // A member: whose workspace this is.
+  const company = isMember
+    ? await prisma.operator.findUnique({ where: { id: operator.id }, select: { name: true, email: true } })
+    : null;
   const notifyEmail = await prisma.operator
     .findUnique({ where: { id: operator.id }, select: { notifyEmail: true } })
     .then((found) => found?.notifyEmail ?? true);
@@ -167,6 +171,12 @@ export default async function SettingsPage({
               </span>
             </p>
           )}
+          {company && (
+            <p className="field-hint" style={{ margin: 0 }}>
+              {t(locale, "team_member_of").replace("{company}", company.name ?? company.email)}
+              {operator.role === "viewer" && <> {t(locale, "team_viewer_note")}</>}
+            </p>
+          )}
           <div className="flex items-center justify-between gap-3">
             <span style={row}>{t(locale, "operator_email")}</span>
             <strong>{operator.email}</strong>
@@ -208,6 +218,7 @@ export default async function SettingsPage({
               </span>
             </div>
           )}
+          {!isMember && (
           <form action={setNotifyEmail} className="flex flex-wrap items-center justify-between gap-3">
             <label style={{ ...row, display: "flex", gap: 10, alignItems: "flex-start", flex: 1, minWidth: 220 }}>
               <input type="checkbox" name="notifyEmail" defaultChecked={notifyEmail} disabled={operator.isDemo} style={{ marginTop: 3 }} />
@@ -224,6 +235,7 @@ export default async function SettingsPage({
               <button type="submit" className="btn-secondary">{t(locale, "save")}</button>
             )}
           </form>
+          )}
         </div>
       </section>
 
@@ -269,8 +281,7 @@ export default async function SettingsPage({
       {context.isOwner && accountType === "business" && (
         <TeamSection
           members={members.map((m) => ({
-            id: m.id, name: m.name, email: m.email,
-            assets: m._count.assets, units: m._count.units,
+            id: m.id, name: m.name, email: m.email, role: m.role,
           }))}
           invites={invites.map((invite) => ({
             id: invite.id, email: invite.email, token: invite.token,

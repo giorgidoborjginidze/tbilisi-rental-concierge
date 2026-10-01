@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { createInvite, removeMember, revokeInvite } from "@/lib/billing/actions";
+import { createInvite, removeMember, revokeInvite, setMemberRole } from "@/lib/billing/actions";
 import type { FormState } from "@/lib/units/actions";
 import { IconCheck, IconClose, IconCopy } from "../icons";
 import ConfirmAction from "../confirm-action";
@@ -10,8 +10,8 @@ export interface MemberRow {
   id: string;
   name: string | null;
   email: string;
-  assets: number;
-  units: number;
+  /** "member" | "viewer" */
+  role: string;
 }
 
 export interface InviteRow {
@@ -64,12 +64,20 @@ export default function TeamSection({
           {labels.operator_email}
           <input name="email" type="email" required placeholder="employee@company.ge" />
         </label>
+        <label className="field">
+          {labels.team_role}
+          <select name="role" defaultValue="member">
+            <option value="member">{labels.team_role_member}</option>
+            <option value="viewer">{labels.team_role_viewer}</option>
+          </select>
+        </label>
         <div className="field" style={{ justifyContent: "flex-end" }}>
           <button type="submit" disabled={pending} className="btn-primary">
             {labels.team_invite}
           </button>
         </div>
         <span className="hint col-span-2">{labels.team_invite_hint}</span>
+        <span className="hint col-span-2">{labels.team_role_hint}</span>
         {state?.error && (
           <p className="col-span-2" style={{ color: "var(--status-danger-text)", fontSize: 13 }}>
             {labels[state.error] ?? state.error}
@@ -135,8 +143,18 @@ export default function TeamSection({
                       <div className="cell-sub">{member.email}</div>
                     </td>
                     <td style={{ fontWeight: 400 }}>
-                      {member.assets} {labels.billing_assets} · {member.units}{" "}
-                      {labels.billing_units}
+                      <form action={setMemberRole} className="flex flex-wrap items-center gap-2">
+                        <input type="hidden" name="memberId" value={member.id} />
+                        <select
+                          name="role"
+                          defaultValue={member.role === "viewer" ? "viewer" : "member"}
+                          aria-label={`${labels.team_role}: ${member.name ?? member.email}`}
+                          onChange={(event) => event.currentTarget.form?.requestSubmit()}
+                        >
+                          <option value="member">{labels.team_role_member}</option>
+                          <option value="viewer">{labels.team_role_viewer}</option>
+                        </select>
+                      </form>
                     </td>
                     <td className="num">
                       <ConfirmAction

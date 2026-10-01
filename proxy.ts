@@ -34,10 +34,12 @@ export async function proxy(request: NextRequest) {
   try {
     const session = await prisma.session.findUnique({
       where: { id: createHash("sha256").update(token).digest("hex") },
-      select: { operatorId: true, expiresAt: true },
+      select: { expiresAt: true, operator: { select: { id: true, companyId: true } } },
     });
     if (!session || session.expiresAt < new Date()) return NextResponse.next();
-    if (await exists(record.kind, record.id, session.operatorId)) return NextResponse.next();
+    // A team member's records are the company's (lib/auth/session.ts).
+    const workspace = session.operator.companyId ?? session.operator.id;
+    if (await exists(record.kind, record.id, workspace)) return NextResponse.next();
     return NextResponse.rewrite(new URL("/_missing", request.url));
   } catch {
     return NextResponse.next();

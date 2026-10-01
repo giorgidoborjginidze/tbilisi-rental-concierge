@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { requireOperator } from "@/lib/auth/session";
+import { requireOperator, readOnlyOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 import { titled } from "@/lib/i18n/metadata";
@@ -60,7 +60,7 @@ export default async function InvoicesPage({
     <main>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 style={{ margin: 0 }}>{t(locale, "invoices_title")}</h1>
-        {!operator.isDemo && (
+        {!readOnlyOperator(operator) && (
           <Link href={`/invoices/new${assetId ? `?asset=${assetId}` : ""}`} className="btn-primary">
             {t(locale, "invoice_new")}
           </Link>
@@ -138,11 +138,11 @@ export default async function InvoicesPage({
               rows={4}
               defaultValue={me?.invoiceIssuer ?? ""}
               placeholder={t(locale, "invoice_issuer_placeholder")}
-              disabled={operator.isDemo}
+              disabled={readOnlyOperator(operator)}
             />
             <span className="field-hint">{t(locale, "invoice_issuer_hint")}</span>
           </label>
-          {!operator.isDemo && (
+          {!readOnlyOperator(operator) && (
             <div>
               <button type="submit" className="btn-secondary">{t(locale, "save")}</button>
             </div>

@@ -125,7 +125,7 @@ export async function register(
             localeSetAt: now,
             accountType: "business",
             profile: company?.profile ?? "hotel",
-            role: "member",
+            role: invite.role === "viewer" ? "viewer" : "member",
             companyId: invite.companyId,
           }
         : {

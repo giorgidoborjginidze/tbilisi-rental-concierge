@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { requireOperator } from "@/lib/auth/session";
+import { requireOperator, readOnlyOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
 import { reopenAlerts, runAlertScan, setAlertStatus } from "@/lib/alerts/actions";
@@ -575,7 +575,7 @@ export default async function AlertsPage({
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3" data-tour="alerts">
         <h1 style={{ marginBottom: 0 }}>{t(locale, "alerts_title")}</h1>
         {/* The demo is read-only: no button it could not use. */}
-        {!done && !outbox && !operator.isDemo && (
+        {!done && !outbox && !readOnlyOperator(operator) && (
           <form action={runAlertScan}>
             <button type="submit" className="btn-secondary">
               {t(locale, "alerts_scan")}

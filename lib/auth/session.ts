@@ -32,8 +32,16 @@ export async function createSession(operatorId: string): Promise<void> {
   });
 }
 
+// A team member works in their company's workspace: `id` is the WORKSPACE
+// (the company owner's account) that every asset, contract, booking and
+// alert belongs to, so every query scoped by operator.id shows the team's
+// shared data. `userId` is the PERSON signed in — their own name, email,
+// password, sessions and language. For an owner the two are the same.
 export type SessionOperator = {
+  /** The workspace the data belongs to (the company owner for a member). */
   id: string;
+  /** The person signed in. */
+  userId: string;
   name: string | null;
   email: string;
   locale: string;
@@ -42,11 +50,19 @@ export type SessionOperator = {
   plan: string | null;
   trialEndsAt: Date | null;
   paidUntil: Date | null;
+  /** The person's company (null: they own their workspace). */
   companyId: string | null;
+  /** "owner" | "member" (edits everything but billing and the team) | "viewer" (read-only). */
   role: string;
   /** The shared public demo: read-only (requireWriter). */
   isDemo: boolean;
 };
+
+const OPERATOR_FIELDS = {
+  id: true, name: true, email: true, locale: true,
+  accountType: true, profile: true, plan: true, trialEndsAt: true,
+  paidUntil: true, companyId: true, role: true, isDemo: true,
+} as const;
 
 /**
  * The signed-in operator, read once per request: the layout's nav, tab bar
@@ -64,13 +80,7 @@ async function readSessionOperator(): Promise<SessionOperator | null> {
   const session = await prisma.session.findUnique({
     where: { id: sha256(token) },
     include: {
-      operator: {
-        select: {
-          id: true, name: true, email: true, locale: true,
-          accountType: true, profile: true, plan: true, trialEndsAt: true,
-          paidUntil: true, companyId: true, role: true, isDemo: true,
-        },
-      },
+      operator: { select: { ...OPERATOR_FIELDS, company: { select: OPERATOR_FIELDS } } },
     },
   });
   if (!session) return null;
@@ -78,8 +88,26 @@ async function readSessionOperator(): Promise<SessionOperator | null> {
     await prisma.session.delete({ where: { id: session.id } }).catch(() => {});
     return null;
   }
-  return session.operator;
+  const { company, ...person } = session.operator;
+  if (!company) return { ...person, userId: person.id };
+  // A member: the company's workspace, plan and demo flag; their own name,
+  // email, language and role.
+  return {
+    ...person,
+    id: company.id,
+    userId: person.id,
+    accountType: company.accountType,
+    profile: company.profile,
+    plan: company.plan,
+    trialEndsAt: company.trialEndsAt,
+    paidUntil: company.paidUntil,
+    isDemo: company.isDemo,
+  };
 }
+
+/** Changes are refused for the demo and for a team member who may only look. */
+export const readOnlyOperator = (operator: Pick<SessionOperator, "isDemo" | "role">): boolean =>
+  operator.isDemo || operator.role === "viewer";
 
 // For pages/actions that need a logged-in operator; redirects otherwise.
 export async function requireOperator(): Promise<SessionOperator> {
@@ -97,6 +125,20 @@ export async function requireOperator(): Promise<SessionOperator> {
  */
 export async function requireWriter(): Promise<SessionOperator> {
   const operator = await requireOperator();
+  if (readOnlyOperator(operator)) {
+    const store = await headers();
+    redirect(demoRefusalPath(store.get("referer"), store.get("host")));
+  }
+  return operator;
+}
+
+/**
+ * For a person's own settings (name, password, email, language, devices):
+ * any signed-in person, a view-only team member included — but never the
+ * shared demo, which anyone can open.
+ */
+export async function requirePerson(): Promise<SessionOperator> {
+  const operator = await requireOperator();
   if (operator.isDemo) {
     const store = await headers();
     redirect(demoRefusalPath(store.get("referer"), store.get("host")));
@@ -111,7 +153,7 @@ export async function requireWriter(): Promise<SessionOperator> {
  */
 export async function getWriter(): Promise<SessionOperator | null> {
   const operator = await requireOperator();
-  return operator.isDemo ? null : operator;
+  return readOnlyOperator(operator) ? null : operator;
 }
 
 /** The id (token hash) of this browser's session, if signed in. */

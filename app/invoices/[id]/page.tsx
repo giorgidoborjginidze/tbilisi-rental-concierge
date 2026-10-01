@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { requireOperator } from "@/lib/auth/session";
+import { requireOperator, readOnlyOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t } from "@/lib/i18n/strings";
 import { loadInvoiceView } from "@/lib/invoices/view";
@@ -40,7 +40,7 @@ export default async function InvoicePage({
     .replace("{amount}", formatMoney(invoice.amount, invoice.currency, "auto"))
     .replace("{link}", link);
   const waHref = `https://wa.me/${phone ?? ""}?text=${encodeURIComponent(waText)}`;
-  const readOnly = operator.isDemo;
+  const readOnly = readOnlyOperator(operator);
 
   return (
     <main className="invoice-page">

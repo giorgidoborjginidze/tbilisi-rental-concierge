@@ -9,6 +9,7 @@ import ActivoLogo from "./activo-logo";
 import AccountMenu from "./account-menu";
 import NavMenu from "./nav-menu";
 import NavLinks from "./nav-links";
+import ViewerNotice from "./viewer-notice";
 import DemoRibbon from "./demo-ribbon";
 import { alertBadge, workspaceNav } from "@/lib/nav/facts";
 import type { NavEntry } from "@/lib/nav/model";
@@ -147,6 +148,11 @@ export default async function Nav() {
         />
       )}
     </nav>
+    {operator?.role === "viewer" && !operator.isDemo && (
+      <Suspense fallback={null}>
+        <ViewerNotice text={t(locale, "team_viewer_note")} close={t(locale, "bot_close")} />
+      </Suspense>
+    )}
     {operator?.isDemo && (
       <Suspense fallback={null}>
         <DemoRibbon

@@ -13,17 +13,17 @@ import {
 } from "@/lib/auth/limit";
 import { hashPassword, MIN_PASSWORD_LENGTH, verifyPassword } from "@/lib/auth/password";
 import { validEmail } from "@/lib/auth/reset";
-import { destroyOtherSessions, destroySession, requireWriter, type SessionOperator } from "@/lib/auth/session";
+import { destroyOtherSessions, destroySession, requirePerson, requireWriter, type SessionOperator } from "@/lib/auth/session";
 import type { FormState } from "@/lib/units/actions";
 import { WORKSPACE_PROFILES } from "@/lib/nav/model";
 
 // Update the operator's display name (Company / Operator Name). Empty
 // clears it (the UI then falls back to the email local-part).
 export async function updateProfileName(formData: FormData) {
-  const operator = await requireWriter();
+  const operator = await requirePerson();
   const name = String(formData.get("name") ?? "").trim();
   await prisma.operator.update({
-    where: { id: operator.id },
+    where: { id: operator.userId },
     data: { name: name || null },
   });
   revalidatePath("/settings");
@@ -64,7 +64,7 @@ async function confirmPassword(
     return "error_too_many_attempts";
   }
   const row = await prisma.operator.findUnique({
-    where: { id: operator.id },
+    where: { id: operator.userId },
     select: { passwordHash: true },
   });
   if (!row?.passwordHash || !(await verifyPassword(password, row.passwordHash))) {
@@ -77,7 +77,7 @@ async function confirmPassword(
 
 /** New password (current one required); every other device is signed out. */
 export async function changePassword(_prev: FormState, formData: FormData): Promise<FormState> {
-  const operator = await requireWriter();
+  const operator = await requirePerson();
   const current = String(formData.get("current") ?? "");
   const next = String(formData.get("password") ?? "");
   const repeat = String(formData.get("repeat") ?? "");
@@ -90,21 +90,21 @@ export async function changePassword(_prev: FormState, formData: FormData): Prom
 
   const passwordHash = await hashPassword(next);
   await prisma.$transaction([
-    prisma.operator.update({ where: { id: operator.id }, data: { passwordHash } }),
+    prisma.operator.update({ where: { id: operator.userId }, data: { passwordHash } }),
     // An open reset link was made for the old password.
     prisma.passwordReset.updateMany({
-      where: { operatorId: operator.id, usedAt: null },
+      where: { operatorId: operator.userId, usedAt: null },
       data: { usedAt: new Date() },
     }),
   ]);
-  await destroyOtherSessions(operator.id);
+  await destroyOtherSessions(operator.userId);
   revalidatePath("/settings");
   return { ok: true };
 }
 
 /** New sign-in email (password required). */
 export async function changeEmail(_prev: FormState, formData: FormData): Promise<FormState> {
-  const operator = await requireWriter();
+  const operator = await requirePerson();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
   const values = { email };
@@ -119,9 +119,9 @@ export async function changeEmail(_prev: FormState, formData: FormData): Promise
   if (taken) return { error: "error_email_unavailable", values };
   try {
     await prisma.$transaction([
-      prisma.operator.update({ where: { id: operator.id }, data: { email } }),
+      prisma.operator.update({ where: { id: operator.userId }, data: { email } }),
       prisma.passwordReset.updateMany({
-        where: { operatorId: operator.id, usedAt: null },
+        where: { operatorId: operator.userId, usedAt: null },
         data: { usedAt: new Date() },
       }),
     ]);
@@ -138,8 +138,8 @@ export async function changeEmail(_prev: FormState, formData: FormData): Promise
 
 /** "Sign out other devices": every session of this account but this one. */
 export async function signOutOtherDevices() {
-  const operator = await requireWriter();
-  await destroyOtherSessions(operator.id);
+  const operator = await requirePerson();
+  await destroyOtherSessions(operator.userId);
   revalidatePath("/settings");
 }
 
@@ -151,7 +151,7 @@ export async function signOutOtherDevices() {
  * their own (they lose the link to the company).
  */
 export async function deleteAccount(_prev: FormState, formData: FormData): Promise<FormState> {
-  const operator = await requireWriter();
+  const operator = await requirePerson();
   const password = String(formData.get("password") ?? "");
   const confirm = String(formData.get("confirm") ?? "").trim().toLowerCase();
   if (!password) return { error: "error_required" };
@@ -159,7 +159,7 @@ export async function deleteAccount(_prev: FormState, formData: FormData): Promi
   const check = await confirmPassword(operator, password);
   if (check !== "ok") return { error: check };
 
-  await prisma.operator.delete({ where: { id: operator.id } });
+  await prisma.operator.delete({ where: { id: operator.userId } });
   await destroySession();
   redirect("/?deleted=1");
 }

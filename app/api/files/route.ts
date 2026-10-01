@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getSessionOperator } from "@/lib/auth/session";
+import { getSessionOperator, readOnlyOperator } from "@/lib/auth/session";
 import { fileStore } from "@/lib/files/store";
 import {
   ACCOUNT_QUOTA_BYTES,
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
 
   const operator = await getSessionOperator();
   if (!operator) return refuse("files_failed", 401);
-  if (operator.isDemo) return refuse("error_demo_readonly", 403);
+  if (readOnlyOperator(operator)) return refuse("error_demo_readonly", 403);
   const store = fileStore();
   if (!store) return refuse("files_not_ready", 503);
 

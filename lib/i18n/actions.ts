@@ -21,7 +21,7 @@ export async function toggleLocale(formData: FormData) {
   const operator = await getSessionOperator();
   if (operator && !operator.isDemo) {
     await prisma.operator.update({
-      where: { id: operator.id },
+      where: { id: operator.userId },
       data: { locale: next, localeSetAt: new Date() },
     });
   }
