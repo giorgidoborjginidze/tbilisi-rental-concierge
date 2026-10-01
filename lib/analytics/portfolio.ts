@@ -30,17 +30,22 @@ export function portfolioCurrency(places: { currency: string | null }[]): { curr
 
 export interface PortfolioPricing {
   currency: Currency;
-  /** Places in more than one currency: totals converted, approximate. */
+  /** Places in more than one currency: totals converted. */
   mixed: boolean;
+  /** Something in the totals was converted at today's rate. */
+  approx: boolean;
   /** A place's metrics for the window, in `currency`. */
   metricsOf: (place: { sources: PlaceSources; currency: string | null }, window: { start: Date; end: Date }) => WindowMetrics;
 }
 
-export function portfolioPricingWith(places: { currency: string | null }[], rates: GelRates | null): PortfolioPricing {
+type Priced = { currency: string | null; converted?: boolean };
+
+export function portfolioPricingWith(places: Priced[], rates: GelRates | null): PortfolioPricing {
   const { currency, mixed } = portfolioCurrency(places);
   return {
     currency,
     mixed,
+    approx: mixed || places.some((place) => place.converted),
     metricsOf: (place, window) => {
       const metrics = placeMetrics(place.sources, window);
       return mixed && rates ? scaledMetrics(metrics, gelPer(place.currency, rates)) : metrics;
@@ -49,7 +54,7 @@ export function portfolioPricingWith(places: { currency: string | null }[], rate
 }
 
 /** Loads the rate only when it is needed (places in more than one currency). */
-export async function portfolioPricing(places: { currency: string | null }[]): Promise<PortfolioPricing> {
+export async function portfolioPricing(places: Priced[]): Promise<PortfolioPricing> {
   const rates = portfolioCurrency(places).mixed ? await loadGelRates() : null;
   return portfolioPricingWith(places, rates);
 }

@@ -17,6 +17,8 @@ import { LIVE_CONTRACT } from "@/lib/rentals/live";
 import type { Booking, Unit } from "@/app/generated/prisma/client";
 import { emptySources, type PlaceSources } from "./stays";
 import { overlapsWhere } from "@/lib/rentals/phase";
+import { loadGelRates } from "@/lib/fx/gel-rates";
+import { asCurrency, gelPer, type GelRates } from "@/lib/fx/convert";
 
 export interface RentalPlace {
   /** The unit id, or "asset:<id>" for a day-let asset without a unit. */
@@ -35,6 +37,12 @@ export interface RentalPlace {
   city: string | null;
   district: string | null;
   currency: string;
+  /**
+   * Some of its amounts — a contract, or the linked asset's daily answers —
+   * were in another currency and are counted in `currency` at today's
+   * National Bank rate: its money figures are approximate.
+   */
+  converted?: boolean;
   sources: PlaceSources;
 }
 
@@ -72,6 +80,49 @@ const assetSelect = (range: Range) => ({
     select: { date: true, amount: true },
   },
 });
+
+/** Amounts of the place not entered in its own currency. */
+const foreignParts = (place: RentalPlace, assetCurrency: string | null) => {
+  const own = asCurrency(place.currency);
+  return {
+    contracts: place.sources.contracts.some((c) => c.currency != null && asCurrency(c.currency) !== own),
+    days: place.sources.days.length > 0 && assetCurrency != null && asCurrency(assetCurrency) !== own,
+  };
+};
+
+/**
+ * One currency per place: a dollar contract or the linked asset's daily
+ * answers in dollars, on a unit priced in lari, are counted in lari (via
+ * the National Bank rate) and the place is marked `converted`. Pure.
+ */
+export function inPlaceCurrency(place: RentalPlace, assetCurrency: string | null, rates: GelRates): RentalPlace {
+  const foreign = foreignParts(place, assetCurrency);
+  if (!foreign.contracts && !foreign.days) return place;
+  const own = gelPer(place.currency, rates);
+  const factor = (currency: string | null | undefined) => gelPer(currency, rates) / own;
+  return {
+    ...place,
+    converted: true,
+    sources: {
+      ...place.sources,
+      contracts: place.sources.contracts.map((contract) => {
+        if (contract.currency == null) return contract;
+        const f = factor(contract.currency);
+        return f === 1
+          ? contract
+          : {
+              ...contract,
+              currency: place.currency,
+              monthlyRent: contract.monthlyRent * f,
+              paymentAmount: contract.paymentAmount == null ? null : contract.paymentAmount * f,
+            };
+      }),
+      days: foreign.days
+        ? place.sources.days.map((day) => ({ ...day, amount: day.amount * factor(assetCurrency) }))
+        : place.sources.days,
+    },
+  };
+}
 
 /** Only real estate joins the Rentals pages (cars have the fleet page). */
 export const DAY_LET_WITHOUT_UNIT = {
@@ -175,7 +226,16 @@ export async function loadRentalPlaces(
       },
     });
   }
-  return places;
+
+  // A rate is read only when some place really mixes currencies.
+  const currencyOf = (place: RentalPlace) => place.asset?.currency ?? null;
+  const mixes = places.some((place) => {
+    const foreign = foreignParts(place, currencyOf(place));
+    return foreign.contracts || foreign.days;
+  });
+  if (!mixes) return places;
+  const rates = await loadGelRates();
+  return places.map((place) => inPlaceCurrency(place, currencyOf(place), rates));
 }
 
 /** Where a place's name leads: its calendar row, or the asset's own page. */

@@ -86,7 +86,7 @@ export default async function AnalyticsPage() {
 
   // Places priced in different currencies are added up in lari at today's
   // National Bank rate (lib/analytics/portfolio.ts), marked approximate.
-  const { currency, mixed, metricsOf } = await portfolioPricing(units);
+  const { currency, approx, metricsOf } = await portfolioPricing(units);
 
   const thisMonth = {
     start: monthStartTbilisi(0),
@@ -127,7 +127,7 @@ export default async function AnalyticsPage() {
       <p className="mb-5" style={{ color: "var(--color-text-muted)", fontSize: 13, maxWidth: 640 }}>
         {t(locale, "analytics_intro")}
       </p>
-      {mixed && (
+      {approx && (
         <p className="mb-5 price-missing" style={{ fontSize: 13, maxWidth: 640 }} title={t(locale, "income_converted")}>
           {t(locale, "income_converted_short")}
         </p>

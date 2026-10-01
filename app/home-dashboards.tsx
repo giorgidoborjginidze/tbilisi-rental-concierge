@@ -212,7 +212,7 @@ async function HotelDashboard({
   const pricing = await portfolioPricing(places);
   const portfolio = aggregateMetrics(places.map((place) => pricing.metricsOf(place, monthWindow)));
   const currency = pricing.currency;
-  const approxChip = pricing.mixed ? ` (${t(locale, "approx_word")})` : "";
+  const approxChip = pricing.approx ? ` (${t(locale, "approx_word")})` : "";
   // Places a stay, a contract or today's answer holds tonight.
   const occupiedNow = places.filter((place) => stayOn(place.sources, today) != null).length;
   const partial = portfolio.unpricedNights > 0 ? ` (${t(locale, "revenue_partial_short")})` : "";
