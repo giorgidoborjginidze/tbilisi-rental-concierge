@@ -6,13 +6,13 @@
 import { prisma } from "@/lib/db";
 
 export async function exportWorkspace(operatorId: string) {
-  const [operator, assets, units, alerts, incomes, templates, messages, payments, files] = await Promise.all([
+  const [operator, assets, units, alerts, incomes, templates, messages, payments, files, invoices, scenarios, activity] = await Promise.all([
     prisma.operator.findUnique({
       where: { id: operatorId },
       select: {
         email: true, name: true, accountType: true, profile: true, locale: true,
         plan: true, trialEndsAt: true, paidUntil: true, notifyPhone: true,
-        payInstructions: true, createdAt: true,
+        payInstructions: true, invoiceIssuer: true, notifyEmail: true, emailVerifiedAt: true, createdAt: true,
       },
     }),
     prisma.asset.findMany({
@@ -49,6 +49,10 @@ export async function exportWorkspace(operatorId: string) {
       where: { operatorId },
       select: { id: true, assetId: true, unitId: true, kind: true, name: true, contentType: true, size: true, createdAt: true },
     }),
+    // Invoices issued to renters (the share link's key is left out).
+    prisma.invoice.findMany({ where: { operatorId }, omit: { shareToken: true } }),
+    prisma.savedCalc.findMany({ where: { operatorId } }),
+    prisma.activityLog.findMany({ where: { operatorId }, orderBy: { createdAt: "desc" } }),
   ]);
   return {
     exportedAt: new Date().toISOString(),
@@ -61,6 +65,11 @@ export async function exportWorkspace(operatorId: string) {
     messageTemplates: templates,
     messages,
     billingPayments: payments,
+    invoices,
+    savedScenarios: scenarios,
+    activityLog: activity,
+    // The documents and photos themselves download one by one from each
+    // asset's or unit's page (Files); this lists what there is.
     files,
   };
 }

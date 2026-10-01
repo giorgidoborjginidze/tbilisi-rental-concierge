@@ -14,7 +14,8 @@ import { getLocale } from "@/lib/i18n/locale";
 import { t, type Locale, type StringKey } from "@/lib/i18n/strings";
 import { BOT_FAQ_IDS } from "@/lib/nav/support";
 import { siteUrl } from "@/lib/site";
-import { whatsappUrl } from "@/lib/contact";
+import { CONTACT_EMAIL, CONTACT_WHATSAPP_READY, supportUrl } from "@/lib/contact";
+import { flittConfig } from "@/lib/billing/flitt";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -63,14 +64,20 @@ function botLabels(locale: Locale): BotLabels {
     placeholder: tr("bot_placeholder"),
     send: tr("bot_send"),
     noAnswer: tr("bot_no_answer"),
-    operatorIntro: tr("bot_operator_intro"),
-    operatorCta: tr("bot_operator_cta"),
+    operatorIntro: tr(CONTACT_WHATSAPP_READY ? "bot_operator_intro" : "bot_operator_intro_email"),
+    operatorCta: tr(CONTACT_WHATSAPP_READY ? "bot_operator_cta" : "bot_operator_cta_email"),
     close: tr("bot_close"),
     askHuman: tr("bot_q_human"),
     faq: Object.fromEntries(
       BOT_FAQ_IDS.map((id) => [
         id,
-        { q: tr(`bot_q_${id}` as StringKey), a: tr(`bot_a_${id}` as StringKey) },
+        {
+          q: tr(`bot_q_${id}` as StringKey),
+          // Card payment is promised only while it is really switched on.
+          a: id === "payment" && !flittConfig()
+            ? tr("bot_a_payment_off").replace("{email}", CONTACT_EMAIL)
+            : tr(`bot_a_${id}` as StringKey),
+        },
       ]),
     ),
   };
@@ -141,7 +148,7 @@ export default async function RootLayout({
             {t(locale, "footer_privacy")}
           </Link>
         </footer>
-        <SupportBot labels={botLabels(locale)} waUrl={whatsappUrl()} />
+        <SupportBot labels={botLabels(locale)} waUrl={supportUrl()} />
         <TourMount />
         <TabBar />
         <UndoToast />

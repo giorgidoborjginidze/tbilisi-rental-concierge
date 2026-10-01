@@ -54,6 +54,7 @@ export const TERMS: LegalText = {
           "შენ მიერ შეყვანილი მონაცემები შენია. გვაძლევ უფლებას, დავამუშაოთ ისინი მხოლოდ სერვისის მოსაწოდებლად, [კონფიდენციალურობის პოლიტიკის](/privacy) მიხედვით.",
           "დამქირავებლის, სტუმრის ან მძღოლის მონაცემებზე დამუშავებისთვის პასუხისმგებელი პირი შენ ხარ, Activo კი — შენი დავალებით მოქმედი უფლებამოსილი პირი. შენ უზრუნველყოფ, რომ მათი მონაცემების შეყვანისა და დამუშავების კანონიერი საფუძველი გქონდეს და ისინი ამის შესახებ ინფორმირებული იყვნენ.",
           "ამ მონაცემებს ვამუშავებთ მხოლოდ შენი მითითებით, ვიცავთ მათ კონფიდენციალურობას, ვიყენებთ მხოლოდ პოლიტიკაში ჩამოთვლილ მომწოდებლებს, გეხმარებით მონაცემთა სუბიექტის მოთხოვნებზე პასუხში და ანგარიშის წაშლისას მათ ვშლით.",
+          "ერთი გამონაკლისით: ხელშეკრულებებისა და ჯავშნების ფასებიდან ვითვლით ანონიმურ უბნის საშუალოებს (მინიმუმ 5 ჩანაწერი მინიმუმ 3 ანგარიშიდან), რომლებიც ყველა მომხმარებელს საბაზრო შედარებად ეჩვენება. მათში არც ერთი ადამიანის ან ანგარიშის მონაცემი არ ჩანს — იხილე [კონფიდენციალურობის პოლიტიკა](/privacy).",
         ],
       },
       {
@@ -61,7 +62,8 @@ export const TERMS: LegalText = {
         heading: "შეტყობინებები შენი სახელით",
         list: [
           "Activo დამქირავებლებსა და მძღოლებს WhatsApp-ით წერს შენი სახელით, შაბლონებით, რომლებსაც შენ ხედავ და ცვლი. შეტყობინების შინაარსზე, გაგზავნაზე და შედეგებზე პასუხს შენ აგებ — განსაკუთრებით შენ მიერ შეცვლილ ტექსტზე.",
-          "მიმღები შენთან ურთიერთობისას (მაგალითად, ხელშეკრულებაში) უნდა დათანხმებოდა შეტყობინებების მიღებას. სპამი, მუქარა, შეურაცხყოფა და კანონსაწინააღმდეგო მოთხოვნა აკრძალულია; ვინც უარს იტყვის, მას შეტყობინება აღარ უნდა გაეგზავნოს.",
+          "მიმღები შენთან ურთიერთობისას (მაგალითად, ხელშეკრულებაში) უნდა დათანხმებოდა შეტყობინებების მიღებას: Activo დამქირავებელს ან მძღოლს მხოლოდ მას შემდეგ წერს, რაც მის თანხმობას ხელშეკრულებაში აღნიშნავ. სპამი, მუქარა, შეურაცხყოფა და კანონსაწინააღმდეგო მოთხოვნა აკრძალულია; ვინც უარს იტყვის, მას შეტყობინება აღარ უნდა გაეგზავნოს.",
+          "თუ საკუთარ WhatsApp Business ნომერს დააკავშირებ, შეტყობინებები შენი Meta-ს ანგარიშით და შენი ხარჯით იგზავნება; Meta-ს წესების დაცვაზე პასუხს შენ აგებ.",
           "შეტყობინება ავტომობილის დაბრუნების ან სხვა ღონისძიების შესახებ მხოლოდ ინფორმაციაა: ღონისძიება ხელშეკრულებისა და კანონის ფარგლებში შენი გადაწყვეტილებაა. Activo თავად არ უკავშირდება პოლიციას ან 112-ს — მათთვის მიმართვის უფლება შენ გაქვს.",
           "შეტყობინების მიწოდება WhatsApp-ზეა დამოკიდებული; მიუწოდებელ ან დაგვიანებულ შეტყობინებაზე პასუხს არ ვაგებთ.",
         ],
@@ -102,9 +104,9 @@ export const TERMS: LegalText = {
         id: "termination",
         heading: "შეწყვეტა",
         list: [
-          "გამოყენების შეწყვეტა ნებისმიერ დროს შეგიძლია. ანგარიშისა და მონაცემების წაშლა მოგვთხოვე მისამართზე {email}.",
+          "გამოყენების შეწყვეტა ნებისმიერ დროს შეგიძლია. ანგარიშსა და მონაცემებს თავად წაშლი: პარამეტრები → შენი მონაცემები; საჭიროებისას მოგვწერე მისამართზე {email}.",
           "ამ პირობების არსებითი დარღვევისას ანგარიში შეიძლება შევაჩეროთ ან დავხუროთ — შესაძლებლობისამებრ წინასწარი გაფრთხილებით.",
-          "დახურვამდე შეგიძლია მოგვთხოვო შენი მონაცემების ასლი.",
+          "დახურვამდე შენი მონაცემების ასლს იქვე ჩამოტვირთავ (ან მოგვთხოვ).",
         ],
       },
       {
@@ -168,6 +170,7 @@ export const TERMS: LegalText = {
           "The data you enter is yours. You allow us to process it only to provide the service, as described in the [Privacy Policy](/privacy).",
           "For a tenant's, guest's or driver's data you are the controller and Activo is the processor acting on your instructions. You make sure you have a lawful basis for entering and processing their data and that they are informed about it.",
           "We process that data only on your instructions, keep it confidential, use only the providers listed in the policy, help you answer data-subject requests and delete it when the account is deleted.",
+          "With one exception: from contract and stay prices we compute anonymous district averages (at least 5 records from at least 3 accounts), shown to every customer as a market comparison. No person's or account's data shows in them — see the [Privacy Policy](/privacy).",
         ],
       },
       {
@@ -175,7 +178,8 @@ export const TERMS: LegalText = {
         heading: "Messages in your name",
         list: [
           "Activo writes to tenants and drivers on WhatsApp in your name, using templates you can see and edit. You are responsible for a message's content, its sending and its consequences — especially for text you changed.",
-          "The recipient must have agreed to receive messages in their dealings with you (for example, in the contract). Spam, threats, insults and unlawful demands are prohibited; anyone who objects must not be sent further messages.",
+          "The recipient must have agreed to receive messages in their dealings with you (for example, in the contract): Activo writes to a tenant or driver only once you record their agreement on the contract. Spam, threats, insults and unlawful demands are prohibited; anyone who objects must not be sent further messages.",
+          "If you connect your own WhatsApp Business number, messages go through your own Meta account and at your cost; you are responsible for following Meta's rules.",
           "A message about taking a vehicle back or any other measure is information only: the measure is your decision, within the contract and the law. Activo never contacts the police or 112 itself — the right to do so is yours.",
           "Delivery depends on WhatsApp; we are not responsible for messages that are not delivered or are delayed.",
         ],
@@ -216,9 +220,9 @@ export const TERMS: LegalText = {
         id: "termination",
         heading: "Ending the service",
         list: [
-          "You can stop using Activo at any time. Ask us to delete your account and data at {email}.",
+          "You can stop using Activo at any time. Delete your account and data yourself in Settings → Your data, or write to us at {email}.",
           "If these terms are materially breached we may suspend or close the account — with notice in advance where possible.",
-          "Before closing, you can ask us for a copy of your data.",
+          "Before closing, download a copy of your data there (or ask us for one).",
         ],
       },
       {

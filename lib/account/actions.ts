@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { fileStore } from "@/lib/files/store";
 import {
   attemptCounts,
   clearAttempts,
@@ -189,7 +190,16 @@ export async function deleteAccount(_prev: FormState, formData: FormData): Promi
       },
     });
   }
+  // A member leaving: their name no longer stands on the company's log.
+  if (operator.companyId) {
+    await prisma.activityLog.updateMany({ where: { actorId: operator.userId }, data: { actorName: "—" } });
+  }
+  // The account's stored documents and photos go now, not at the next
+  // daily sweep (lib/files/sweep.ts remains the safety net).
+  const store = fileStore();
+  const ownFiles = !operator.companyId && store ? await store.list(`op/${operator.userId}/`).catch(() => []) : [];
   await prisma.operator.delete({ where: { id: operator.userId } });
+  if (store && ownFiles.length) await store.del(ownFiles.map((file) => file.pathname)).catch(() => undefined);
   await destroySession();
   redirect("/?deleted=1");
 }

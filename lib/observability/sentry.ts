@@ -28,9 +28,12 @@ export function sentryEnvironment(): string {
   );
 }
 
-/** A path or URL without its query string, fragment or reset token. */
+/** Paths whose last part is a key: whoever has it can open the page. */
+const KEYED_PATHS = /\/(reset|verify|i|api\/ical)\/[^/]+/;
+
+/** A path or URL without its query string, fragment or secret token. */
 export function scrubUrl(value: string): string {
-  return value.split(/[?#]/)[0].replace(/\/reset\/[^/]+/, "/reset/[token]");
+  return value.split(/[?#]/)[0].replace(KEYED_PATHS, (_m, kind: string) => `/${kind}/[token]`);
 }
 
 export function scrubEvent(event: ErrorEvent): ErrorEvent | null {

@@ -11,7 +11,7 @@ import { formatMoney } from "@/lib/format";
 import type { LegalValues } from "./doc";
 
 /** When the Terms and the Privacy policy last changed ("YYYY-MM-DD"). */
-export const LEGAL_UPDATED = "2026-09-30";
+export const LEGAL_UPDATED = "2026-10-01";
 
 const ACCOUNT_KINDS: AccountType[] = ["personal", "business"];
 

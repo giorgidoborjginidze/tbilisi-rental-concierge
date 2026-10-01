@@ -4,6 +4,7 @@ import { t } from "@/lib/i18n/strings";
 import {
   CONTACT_EMAIL,
   CONTACT_WHATSAPP_DISPLAY,
+  CONTACT_WHATSAPP_READY,
   whatsappUrl,
 } from "@/lib/contact";
 import { IconMail, IconChat } from "../icons";
@@ -35,20 +36,23 @@ export default async function ContactPage() {
           <div className="card3d__value">{CONTACT_EMAIL}</div>
         </a>
 
-        <a
-          href={whatsappUrl()}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="card3d"
-          style={{ "--i": 1 } as React.CSSProperties}
-        >
-          <span className="card3d__icon" style={{ background: "#25d366" }}>
-            <IconChat />
-          </span>
-          <div className="card3d__title">{t(locale, "contact_wa_label")}</div>
-          <div className="card3d__value">{CONTACT_WHATSAPP_DISPLAY}</div>
-          <p className="card3d__body">{t(locale, "contact_wa_note")}</p>
-        </a>
+        {/* Only once the number is the real support line (lib/contact.ts). */}
+        {CONTACT_WHATSAPP_READY && (
+          <a
+            href={whatsappUrl()}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="card3d"
+            style={{ "--i": 1 } as React.CSSProperties}
+          >
+            <span className="card3d__icon" style={{ background: "#25d366" }}>
+              <IconChat />
+            </span>
+            <div className="card3d__title">{t(locale, "contact_wa_label")}</div>
+            <div className="card3d__value">{CONTACT_WHATSAPP_DISPLAY}</div>
+            <p className="card3d__body">{t(locale, "contact_wa_note")}</p>
+          </a>
+        )}
       </div>
 
       <p className="hint" style={{ marginTop: 20 }}>{t(locale, "contact_bot_note")}</p>

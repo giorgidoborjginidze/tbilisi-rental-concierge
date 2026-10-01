@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs";
 import { NextResponse } from "next/server";
 import { cronAuthorized } from "@/lib/automation/auth";
 import { runAutomation } from "@/lib/automation/run";
@@ -26,8 +27,15 @@ export async function GET(request: Request) {
   const only = new URL(request.url).searchParams.get("only");
   const { id, ok, summary } = await runAutomation(only === "sync" ? "sync" : "daily");
   // Counts only: which workspace failed, and why, stays in the SystemRun row.
-  const { failedOperators, errors: _errors, ...counts } = summary;
-  void _errors;
+  const { failedOperators, errors, ...counts } = summary;
+  // A run that did not go well reaches error monitoring when it is on
+  // (NEXT_PUBLIC_SENTRY_DSN) — without workspace ids or messages' text.
+  if (!ok) {
+    Sentry.captureMessage(`Daily run ${id} finished with ${errors.length} error(s)`, {
+      level: "error",
+      extra: { failedWorkspaces: failedOperators.length, kinds: [...new Set(errors.map((e) => e.split(":")[0]))].slice(0, 10) },
+    });
+  }
   return NextResponse.json(
     { ok, run: id, ...counts, failedWorkspaces: failedOperators.length },
     { status: ok ? 200 : 500 },

@@ -79,7 +79,7 @@ const en = {
   notify_digest_intro: "These need you now:",
   notify_digest_off: "You get these because email alerts are on. To turn them off:",
   files_title: "Documents and photos",
-  files_hint: "The signed contract, ID copies, the technical passport, receipts, photos of the condition at handover. Only you can open them.",
+  files_hint: "The signed contract, ID copies, the technical passport, receipts, photos of the condition at handover. Only you and your team can open them.",
   files_add: "Add files",
   files_kind: "What is it",
   files_kind_photo: "Photos",
@@ -452,7 +452,9 @@ const en = {
   bot_no_answer:
     "Sorry, I don\u2019t have an answer for that yet. Would you like to talk to a person?",
   bot_operator_intro: "You can reach our team on WhatsApp:",
+  bot_operator_intro_email: "You can reach our team by email:",
   bot_operator_cta: "Chat on WhatsApp",
+  bot_operator_cta_email: "Write to us by email",
   bot_close: "Close",
   bot_q_what: "What is Activo?",
   bot_a_what:
@@ -467,8 +469,10 @@ const en = {
   bot_a_payment:
     "You can pay by card through our secure checkout, including Apple Pay and Google Pay.",
   bot_q_security: "Is my data safe?",
+  bot_a_payment_off:
+    "Online card payment is being switched on. Until then, write to us at {email} and we'll set up your plan.",
   bot_a_security:
-    "Yes. Each account's data is kept apart from every other account, passwords are stored only as hashes, and we never sell your data. Only the providers the service runs on (hosting, WhatsApp messages, card payments, email, price-suggestion texts) receive what their part needs — the Privacy Policy names each of them.",
+    "Yes. Each account's data is kept apart from every other account, passwords are stored only as hashes, and we never sell your data. The providers the service runs on — hosting and file storage, WhatsApp messages, card payments, email, phone notifications, maps, error reports and price-suggestion texts — receive only what their part needs; the Privacy Policy names each of them.",
   bot_q_calc: "Is the calculator free?",
   bot_a_calc:
     "Yes \u2014 the investment calculator is free to try and needs no account.",
@@ -1894,7 +1898,7 @@ const ka: Record<StringKey, string> = {
   notify_digest_intro: "ესენი ახლავე გჭირდება:",
   notify_digest_off: "ამას იღებ, რადგან მეილით შეტყობინებები ჩართულია. გამოსართავად:",
   files_title: "დოკუმენტები და ფოტოები",
-  files_hint: "ხელმოწერილი ხელშეკრულება, პირადობის ასლები, ტექპასპორტი, ქვითრები, ჩაბარებისას მდგომარეობის ფოტოები. მათ მხოლოდ შენ ხედავ.",
+  files_hint: "ხელმოწერილი ხელშეკრულება, პირადობის ასლები, ტექპასპორტი, ქვითრები, ჩაბარებისას მდგომარეობის ფოტოები. მათ მხოლოდ შენ და შენი გუნდი ხედავთ.",
   files_add: "ფაილების დამატება",
   files_kind: "რა არის",
   files_kind_photo: "ფოტოები",
@@ -2266,7 +2270,9 @@ const ka: Record<StringKey, string> = {
   bot_no_answer:
     "უკაცრავად, ამ კითხვაზე პასუხი ჯერ არ მაქვს. გნებავს ადამიანთან საუბარი?",
   bot_operator_intro: "ჩვენს გუნდს WhatsApp-ზე დაუკავშირდები:",
+  bot_operator_intro_email: "ჩვენს გუნდს ელფოსტით დაუკავშირდები:",
   bot_operator_cta: "მისწერე WhatsApp-ზე",
+  bot_operator_cta_email: "მოგვწერე ელფოსტაზე",
   bot_close: "დახურვა",
   bot_q_what: "რა არის Activo?",
   bot_a_what:
@@ -2281,8 +2287,10 @@ const ka: Record<StringKey, string> = {
   bot_a_payment:
     "გადახდა ბარათით შეგიძლია ჩვენი დაცული გვერდიდან, მათ შორის Apple Pay-ითა და Google Pay-ით.",
   bot_q_security: "ჩემი მონაცემები დაცულია?",
+  bot_a_payment_off:
+    "ონლაინ ბარათით გადახდა ირთვება. მანამდე მოგვწერე {email}-ზე და გეგმას ჩვენ გაგიაქტიურებთ.",
   bot_a_security:
-    "დიახ. თითოეული ანგარიშის მონაცემები სხვა ანგარიშებისგან გამიჯნულია, პაროლები მხოლოდ ჰეშის სახით ინახება და მონაცემებს არასდროს ვყიდით. მხოლოდ ის მომწოდებლები, რომლებზეც სერვისი მუშაობს (ჰოსტინგი, WhatsApp შეტყობინებები, ბარათით გადახდა, ელფოსტა, ფასის შეთავაზების ტექსტები), იღებენ იმას, რაც მათ ნაწილს სჭირდება — ყველა მათგანი კონფიდენციალურობის პოლიტიკაშია ჩამოთვლილი.",
+    "დიახ. თითოეული ანგარიშის მონაცემები სხვა ანგარიშებისგან გამიჯნულია, პაროლები მხოლოდ ჰეშის სახით ინახება და მონაცემებს არასდროს ვყიდით. ის მომწოდებლები, რომლებზეც სერვისი მუშაობს — ჰოსტინგი და ფაილების საცავი, WhatsApp შეტყობინებები, ბარათით გადახდა, ელფოსტა, ტელეფონის შეტყობინებები, რუკა, შეცდომების ანგარიშები და ფასის შეთავაზების ტექსტები — იღებენ მხოლოდ იმას, რაც მათ ნაწილს სჭირდება; ყველა მათგანი კონფიდენციალურობის პოლიტიკაშია ჩამოთვლილი.",
   bot_q_calc: "კალკულატორი უფასოა?",
   bot_a_calc:
     "დიახ — საინვესტიციო კალკულატორის ცდა უფასოა და ანგარიში არ სჭირდება.",

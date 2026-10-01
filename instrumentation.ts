@@ -38,8 +38,8 @@ export const onRequestError: Instrumentation.onRequestError = async (error, requ
     event: "request_error",
     at: new Date().toISOString(),
     method: request.method,
-    // The path without its query string, and without a reset link's token.
-    path: request.path.split("?")[0].replace(/^\/reset\/[^/]+/, "/reset/[token]"),
+    // The path without its query string and without a link's secret token.
+    path: scrubUrl(request.path),
     route: context.routePath,
     routeType: context.routeType,
     renderSource: "renderSource" in context ? context.renderSource : undefined,
