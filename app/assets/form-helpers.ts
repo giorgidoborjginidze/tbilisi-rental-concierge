@@ -23,7 +23,7 @@ export async function assetFormProps(
 ) {
   const labelKeys: StringKey[] = [
     "unit_name", "unit_city", "unit_district", "unit_address",
-    "unit_type", "asset_category", "status_label", "asset_area", "asset_value",
+    "unit_type", "asset_category", "status_label", "asset_area", "asset_value", "contract_currency",
     "asset_notes", "asset_link_unit", "asset_none",
     "listing_links", "listing_add", "listing_unknown", "listing_hint", "aria_remove_link",
     "rental_mode", "mode_long_term", "mode_daily",

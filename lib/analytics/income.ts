@@ -96,6 +96,8 @@ export interface IncomeSources {
   /** Days answered "rented" only. */
   dayEntries: IncomeDay[];
   records: IncomeRecordRow[];
+  /** Some amounts were in dollars or euros and are converted to lari here. */
+  converted?: boolean;
 }
 
 export interface IncomeBreakdown {
@@ -110,6 +112,8 @@ export interface IncomeBreakdown {
    * those nights, and the screens say so.
    */
   unpricedNights: number;
+  /** Part of it was in dollars or euros, converted at the NBG rate (≈). */
+  converted?: boolean;
 }
 
 const dayStart = (date: Date) => utcDay(date).getTime();

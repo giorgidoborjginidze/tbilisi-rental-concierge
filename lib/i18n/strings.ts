@@ -618,7 +618,9 @@ const en = {
   contract_amount_daily: "Rent per Day (₾)",
   contract_amount_weekly: "Rent per Week (₾)",
   contract_amount_monthly: "Rent per Month (₾)",
-  contract_monthly_equiv: "about {amount} ₾ a month",
+  contract_monthly_equiv: "about {amount} {sign} a month",
+  contract_currency: "Currency",
+  contract_currency_locked: "The currency cannot change once payments are recorded.",
   contract_paid_up_to: "Rent Paid Up To",
   contract_paid_up_to_hint:
     "The next payment day: every period before it counts as paid. For a lease that is already running it defaults to the next due date, so nothing looks late. If the tenant owes rent, pick an earlier date. Payments fall due on the contract's start day.",
@@ -1074,6 +1076,9 @@ const en = {
 
   // One income definition (lib/analytics/income.ts) and its two scopes.
   income_all_month: "All income · this month",
+  income_converted: "Includes dollar or euro amounts, counted in lari at today’s National Bank rate.",
+  net_worth_converted: "Some values are in dollars or euros — counted in lari at today’s National Bank rate.",
+  income_converted_short: "approximate — converted at the NBG rate",
   income_all_hint: "Rent, daily lets, bookings and other income — each night counted once.",
   kpi_booking_revenue: "Booking revenue",
   income_daily_short: "Daily",
@@ -2122,7 +2127,9 @@ const ka: Record<StringKey, string> = {
   contract_amount_daily: "თანხა დღეში (₾)",
   contract_amount_weekly: "თანხა კვირაში (₾)",
   contract_amount_monthly: "თანხა თვეში (₾)",
-  contract_monthly_equiv: "დაახლ. {amount} ₾ თვეში",
+  contract_monthly_equiv: "დაახლ. {amount} {sign} თვეში",
+  contract_currency: "ვალუტა",
+  contract_currency_locked: "გადახდების ჩაწერის შემდეგ ვალუტა აღარ იცვლება.",
   contract_paid_up_to: "ქირა გადახდილია თარიღამდე",
   contract_paid_up_to_hint:
     "შემდეგი გადახდის დღე — მანამდე ყველა პერიოდი გადახდილად ითვლება. უკვე მიმდინარე ხელშეკრულებისთვის ნაგულისხმევად შემდეგი ვადაა, ამიტომ არაფერი ჩანს დაგვიანებულად. თუ დამქირავებელს ვალი აქვს, ადრინდელი თარიღი აირჩიე. გადახდის დღე ხელშეკრულების დაწყების დღეს ემთხვევა.",
@@ -2577,6 +2584,9 @@ const ka: Record<StringKey, string> = {
 
   // One income definition (lib/analytics/income.ts) and its two scopes.
   income_all_month: "ყველა შემოსავალი · ამ თვეში",
+  income_converted: "შეიცავს დოლარში ან ევროში მიღებულ თანხებს, ლარში გადაყვანილს ეროვნული ბანკის დღევანდელი კურსით.",
+  net_worth_converted: "ზოგი ღირებულება დოლარში ან ევროშია — ლარში გადაყვანილია ეროვნული ბანკის დღევანდელი კურსით.",
+  income_converted_short: "მიახლოებით — გადაყვანილია ეროვნული ბანკის კურსით",
   income_all_hint: "ქირა, დღიური, ჯავშნები და სხვა შემოსავალი — ყოველი ღამე ერთხელ ითვლება.",
   kpi_booking_revenue: "ჯავშნების შემოსავალი",
   income_daily_short: "დღიური",

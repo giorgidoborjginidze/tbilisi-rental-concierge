@@ -70,6 +70,8 @@ export interface NetWorth {
   oldestStaleAt: Date | null;
   rate: FxRate;
   lines: HoldingLine[];
+  /** A property value in dollars or euros was counted in lari at the NBG rate. */
+  converted?: boolean;
 }
 
 const BASIS_RANK: Record<ValueBasis, number> = { live: 0, stale: 1, cost: 2 };

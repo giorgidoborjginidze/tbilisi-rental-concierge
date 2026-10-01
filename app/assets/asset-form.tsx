@@ -24,6 +24,8 @@ export interface AssetFormValues {
   address: string;
   areaSqm: string;
   estimatedValue: string;
+  /** The currency the value, rent and day rate are in (GEL, USD, EUR). */
+  currency?: string;
   monthlyIncome: string;
   myhomeUrl: string;
   ssUrl: string;
@@ -416,6 +418,16 @@ export default function AssetForm({
                 <input name="estimatedValue" type="number" inputMode="decimal" min={0} step="1" defaultValue={val("estimatedValue")} />
               </label>
             )}
+            {/* Georgian property is often priced in dollars: the value (and
+                the income) stay in that currency, totals convert at the NBG rate. */}
+            <label className="field">
+              {labels.contract_currency}
+              <select name="currency" defaultValue={val("currency") || "GEL"}>
+                <option value="GEL">₾ GEL</option>
+                <option value="USD">$ USD</option>
+                <option value="EUR">€ EUR</option>
+              </select>
+            </label>
 
             {/* ── The tenant and the rent, in the same save. ── */}
             {tenantStep && (

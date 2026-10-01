@@ -259,6 +259,11 @@ async function HotelDashboard({
       <WealthHero
         label={t(locale, "income_all_month")}
         total={income.total}
+        approx={
+          income.converted
+            ? { label: t(locale, "income_converted_short"), reason: t(locale, "income_converted") }
+            : undefined
+        }
         sub={incomeParts(locale, income, (v) => formatMoney(v))}
         chips={
           places.length > 0
@@ -377,6 +382,11 @@ async function BrokerageDashboard({
       <WealthHero
         label={t(locale, "income_all_month")}
         total={income.total}
+        approx={
+          income.converted
+            ? { label: t(locale, "income_converted_short"), reason: t(locale, "income_converted") }
+            : undefined
+        }
         sub={incomeParts(locale, income, (v) => formatMoney(v))}
         chips={[
           `${t(locale, "dash_managed")}: ${assets.length}`,
@@ -507,6 +517,11 @@ async function CarRentalDashboard({
       <WealthHero
         label={t(locale, "income_all_month")}
         total={income.total}
+        approx={
+          income.converted
+            ? { label: t(locale, "income_converted_short"), reason: t(locale, "income_converted") }
+            : undefined
+        }
         sub={incomeParts(locale, income, (v) => formatMoney(v))}
         chips={
           vehicles.length > 0
@@ -636,7 +651,11 @@ async function NetWorthHero({
               label: t(locale, "approx_word"),
               reason: t(
                 locale,
-                worth.holdingsBasis === "live" ? "net_worth_approx_rate" : "net_worth_approx",
+                worth.converted && worth.holdingsBasis === "none"
+                  ? "net_worth_converted"
+                  : worth.holdingsBasis === "live" || worth.holdingsBasis === "none"
+                    ? "net_worth_approx_rate"
+                    : "net_worth_approx",
               ),
             }
           : undefined

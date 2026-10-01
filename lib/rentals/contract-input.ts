@@ -4,6 +4,7 @@
 // rule for what editing an existing contract does to its payment ledger.
 // Framework-free; no database.
 
+import { asCurrency, type Currency } from "@/lib/fx/convert";
 import type { StringKey } from "@/lib/i18n/strings";
 import { asPeriod, monthlyEquivalent, perPeriodAmount } from "./amount";
 import { alignPaidThrough, restatesBalance } from "./ledger";
@@ -31,6 +32,8 @@ export interface ContractInput {
   waConsent: boolean | null;
   /** The renter asked for no more messages; null: not on the form. */
   messagesOptOut: boolean | null;
+  /** The rent's currency (GEL, USD, EUR); null: not on the form (keep the asset's). */
+  currency: Currency | null;
 }
 
 /**
@@ -114,6 +117,7 @@ export function parseContractInput(
       remindersEnabled: has("remindersField") ? get("remindersEnabled") === "on" : null,
       waConsent: has("messagesField") ? get("waConsent") === "on" : null,
       messagesOptOut: has("messagesField") ? get("messagesOptOut") === "on" : null,
+      currency: has("contractCurrency") ? asCurrency(get("contractCurrency")) : null,
     },
   };
 }

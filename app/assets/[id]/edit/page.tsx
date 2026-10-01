@@ -321,6 +321,7 @@ export default async function EditAssetPage({
       remindersEnabled: contract.remindersEnabled,
       waConsent: contract.waConsentAt != null,
       messagesOptOut: contract.messagesOptOutAt != null,
+      currency: contract.currency,
     },
   }));
   const restoreButton = (contractId: string, label: string) => (
@@ -360,7 +361,7 @@ export default async function EditAssetPage({
         initialOpen={asset.contracts.length === 0 || firstParam(query.add) === "contract"}
         summary={t(locale, "contract_add")}
       >
-        <ContractForm assetId={asset.id} labels={contractLabels} />
+        <ContractForm assetId={asset.id} labels={contractLabels} defaultCurrency={asset.currency} />
       </KeepOpenFold>
       {deleted.length > 0 && (
         <details className="desk-fold" style={{ marginTop: 12 }}>
@@ -547,6 +548,7 @@ export default async function EditAssetPage({
           address: asset.address ?? "",
           areaSqm: asset.areaSqm?.toString() ?? "",
           estimatedValue: asset.estimatedValue?.toString() ?? "",
+          currency: asset.currency,
           monthlyIncome: asset.monthlyIncome?.toString() ?? "",
           myhomeUrl: asset.myhomeUrl ?? "",
           ssUrl: asset.ssUrl ?? "",

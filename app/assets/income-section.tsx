@@ -22,7 +22,7 @@ export default function IncomeSection({
   incomes: IncomeRow[];
 }) {
   const labelKeys: StringKey[] = [
-    "income_add", "income_source", "income_amount", "income_date", "saved_short",
+    "income_add", "income_source", "income_amount", "income_date", "saved_short", "contract_currency",
     "income_desc", "source_salary", "source_business", "source_dividend",
     "source_other", "save", "error_required", "error_invalid_number",
     "error_email_taken", "error_dates",

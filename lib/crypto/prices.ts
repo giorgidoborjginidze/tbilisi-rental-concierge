@@ -82,18 +82,23 @@ export async function fetchUsdPrices(
 
 /** Official USD→GEL rate from the NBG, or null when it does not answer. */
 export async function fetchUsdGelRate(timeoutMs = PRICE_TIMEOUT_MS): Promise<number | null> {
+  return fetchNbgRate("USD", timeoutMs);
+}
+
+/** Official GEL per one unit of `code` (USD, EUR) from the NBG, or null. */
+export async function fetchNbgRate(code: string, timeoutMs = PRICE_TIMEOUT_MS): Promise<number | null> {
   const to = withTimeout(timeoutMs);
   try {
     const res = await fetch(
-      "https://nbg.gov.ge/gw/api/ct/monetarypolicy/currencies/en/json?currencies=USD",
+      `https://nbg.gov.ge/gw/api/ct/monetarypolicy/currencies/en/json?currencies=${encodeURIComponent(code)}`,
       { signal: to.signal, headers: { accept: "application/json" }, cache: "no-store" },
     );
     if (!res.ok) return null;
     const data = (await res.json()) as Array<{
       currencies?: Array<{ code?: string; rate?: number; quantity?: number }>;
     }>;
-    const usd = data?.[0]?.currencies?.find((c) => c.code === "USD");
-    if (usd?.rate && usd.rate > 0) return usd.rate / (usd.quantity || 1);
+    const found = data?.[0]?.currencies?.find((c) => c.code === code);
+    if (found?.rate && found.rate > 0) return found.rate / (found.quantity || 1);
     return null;
   } catch {
     return null;

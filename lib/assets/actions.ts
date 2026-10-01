@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import type { Prisma } from "@/app/generated/prisma/client";
+import { asCurrency } from "@/lib/fx/convert";
 import { requireWriter } from "@/lib/auth/session";
 import { ASSET_CATEGORIES, ASSET_STATUSES } from "@/lib/types";
 import { COINS } from "@/lib/crypto/prices";
@@ -284,7 +285,7 @@ export async function saveAsset(
     areaSqm,
     estimatedValue,
     monthlyIncome,
-    currency: str(formData, "currency") || owned?.currency || "GEL",
+    currency: str(formData, "currency") ? asCurrency(str(formData, "currency")) : owned?.currency || "GEL",
     status,
     unitId,
     rentalMode,
@@ -458,7 +459,7 @@ async function createContract(
       paymentAmount: input.amount,
       monthlyRent: input.monthlyRent,
       deposit: input.deposit,
-      currency: asset.currency,
+      currency: input.currency ?? asset.currency,
       status: phase,
       paymentPeriod: input.paymentPeriod,
       graceDays: input.graceDays,
@@ -577,6 +578,10 @@ export async function updateContract(
       remindersEnabled,
       waConsentAt: stampedFlag(input.waConsent, contract.waConsentAt, now),
       messagesOptOutAt: stampedFlag(input.messagesOptOut, contract.messagesOptOutAt, now),
+      // The currency changes only while no payment is recorded in the old one.
+      ...(input.currency && (await prisma.rentPayment.count({ where: { contractId } })) === 0
+        ? { currency: input.currency }
+        : {}),
       status: phase,
       ...(ledger ?? {}),
     },
@@ -878,7 +883,7 @@ export async function addIncome(
       description: str(formData, "description") || null,
       date,
       amount,
-      currency: "GEL",
+      currency: asCurrency(str(formData, "currency")),
       assetId,
     },
   });
@@ -930,7 +935,7 @@ export async function restoreIncome(formData: FormData): Promise<void> {
       description: str(formData, "description") || null,
       date,
       amount,
-      currency: str(formData, "currency") === "USD" ? "USD" : "GEL",
+      currency: asCurrency(str(formData, "currency")),
       ...(Number.isNaN(createdAt.getTime()) || createdAt > new Date() ? {} : { createdAt }),
     },
   });

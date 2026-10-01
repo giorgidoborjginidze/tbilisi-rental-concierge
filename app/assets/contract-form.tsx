@@ -17,8 +17,11 @@ export default function ContractForm({
   contract,
   onDone,
   onSaved,
+  defaultCurrency,
 }: {
   assetId: string;
+  /** A new contract's currency (the asset's). */
+  defaultCurrency?: string;
   labels: Record<string, string>;
   /** Edit mode: the contract as stored (form values). */
   contract?: ContractValues & { id: string };
@@ -57,6 +60,7 @@ export default function ContractForm({
         remindersEnabled: sent.remindersEnabled === "on",
         waConsent: sent.waConsent === "on",
         messagesOptOut: sent.messagesOptOut === "on",
+        currency: sent.contractCurrency,
       }
     : contract;
 
@@ -78,6 +82,7 @@ export default function ContractForm({
         labels={labels}
         initial={initial}
         suggestDates={!editing}
+        defaultCurrency={defaultCurrency}
       />
       <div className="col-span-2 flex flex-wrap items-center gap-3">
         <button type="submit" disabled={pending} className="btn-primary">

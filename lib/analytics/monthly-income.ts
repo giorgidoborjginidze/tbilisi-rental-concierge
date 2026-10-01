@@ -15,16 +15,18 @@ import {
 } from "./income";
 import { LIVE_STAY } from "@/lib/bookings/live";
 import { overlapsWhere } from "@/lib/rentals/phase";
+import { loadGelRates } from "@/lib/fx/gel-rates";
+import { anyForeign, toGel } from "@/lib/fx/convert";
 
 export type { IncomeBreakdown } from "./income";
 
-/** Everything that can earn money inside [from, to). */
+/** Everything that can earn money inside [from, to), every amount in lari. */
 export async function loadIncomeSources(
   operatorId: string,
   range: IncomeWindow,
 ): Promise<IncomeSources> {
   const { start: from, end: to } = range;
-  const [assets, contracts, leases, bookings, dayEntries, records] = await Promise.all([
+  const [assets, contracts, leases, bookings, dayEntries, records, rates] = await Promise.all([
     prisma.asset.findMany({
       where: { operatorId },
       select: {
@@ -33,6 +35,7 @@ export async function loadIncomeSources(
         category: true,
         rentalMode: true,
         monthlyIncome: true,
+        currency: true,
         createdAt: true,
         weekendPct: true,
         holidayPct: true,
@@ -47,11 +50,12 @@ export async function loadIncomeSources(
         paymentPeriod: true,
         paymentAmount: true,
         monthlyRent: true,
+        currency: true,
       },
     }),
     prisma.lease.findMany({
       where: { unit: { operatorId }, ...overlapsWhere(from, to) },
-      select: { unitId: true, startDate: true, endDate: true, monthlyRent: true },
+      select: { unitId: true, startDate: true, endDate: true, monthlyRent: true, currency: true },
     }),
     prisma.booking.findMany({
       where: {
@@ -60,18 +64,46 @@ export async function loadIncomeSources(
         checkOut: { gt: from },
         unit: { operatorId },
       },
-      select: { unitId: true, checkIn: true, checkOut: true, nights: true, amount: true },
+      select: { unitId: true, checkIn: true, checkOut: true, nights: true, amount: true, currency: true },
     }),
     prisma.dayEntry.findMany({
       where: { asset: { operatorId }, rented: true, date: { gte: from, lt: to } },
-      select: { assetId: true, date: true, amount: true },
+      select: { assetId: true, date: true, amount: true, currency: true },
     }),
     prisma.incomeRecord.findMany({
       where: { operatorId, date: { gte: from, lt: to } },
-      select: { date: true, amount: true },
+      select: { date: true, amount: true, currency: true },
     }),
+    loadGelRates(),
   ]);
-  return { assets, contracts, leases, bookings, dayEntries, records };
+  // A dollar lease or a euro booking counts in lari at today's NBG rate
+  // (lib/fx): the totals are one currency, the rows keep their own.
+  const gel = (amount: number, currency: string) => toGel(amount, currency, rates);
+  const converted = anyForeign([
+    ...contracts.map((row) => row.currency),
+    ...leases.map((row) => row.currency),
+    ...bookings.map((row) => row.currency),
+    ...dayEntries.map((row) => row.currency),
+    ...records.map((row) => row.currency),
+    ...assets.filter((row) => row.monthlyIncome).map((row) => row.currency),
+  ]);
+  const gelOrNull = (amount: number | null, currency: string) => (amount == null ? null : gel(amount, currency));
+  return {
+    assets: assets.map(({ currency, ...asset }) => ({
+      ...asset,
+      monthlyIncome: gelOrNull(asset.monthlyIncome, currency),
+    })),
+    contracts: contracts.map(({ currency, ...contract }) => ({
+      ...contract,
+      paymentAmount: gelOrNull(contract.paymentAmount, currency),
+      monthlyRent: gel(contract.monthlyRent, currency),
+    })),
+    leases: leases.map(({ currency, ...lease }) => ({ ...lease, monthlyRent: gel(lease.monthlyRent, currency) })),
+    bookings: bookings.map(({ currency, ...booking }) => ({ ...booking, amount: gelOrNull(booking.amount, currency) })),
+    dayEntries: dayEntries.map(({ currency, ...day }) => ({ ...day, amount: gel(day.amount, currency) })),
+    records: records.map(({ currency, ...record }) => ({ ...record, amount: gel(record.amount, currency) })),
+    converted,
+  };
 }
 
 /**
@@ -106,7 +138,7 @@ export async function monthlyIncome(
   const sources = recent
     ? await recentSources(operatorId, first.toISOString())
     : await loadIncomeSources(operatorId, window);
-  return incomeInWindow(sources, window);
+  return { ...incomeInWindow(sources, window), converted: sources.converted };
 }
 
 /** Income of `count` consecutive months from `first`, one query round. */
@@ -125,6 +157,6 @@ export async function monthlyIncomeSeries(
         });
   return windows.map((window) => ({
     start: window.start,
-    income: incomeInWindow(sources, window),
+    income: { ...incomeInWindow(sources, window), converted: sources.converted },
   }));
 }

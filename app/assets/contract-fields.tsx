@@ -6,6 +6,7 @@ import { defaultPaidThrough } from "@/lib/rentals/schedule";
 import { dayFromKey, dayKey, todayKey } from "@/lib/time";
 import { Req } from "@/app/form-bits";
 import { formatNumber } from "@/lib/number";
+import { currencySign } from "@/lib/format";
 
 const AMOUNT_LABEL = {
   daily: "contract_amount_daily",
@@ -29,6 +30,8 @@ export interface ContractValues {
   waConsent?: boolean;
   /** The renter asked for no more messages. */
   messagesOptOut?: boolean;
+  /** GEL, USD or EUR. */
+  currency?: string;
 }
 
 /** One year after a "YYYY-MM-DD" day (the usual lease), as "YYYY-MM-DD". */
@@ -51,6 +54,7 @@ export default function ContractFields({
   compact = false,
   suggestDates = false,
   defaultPeriod = "monthly",
+  defaultCurrency = "GEL",
 }: {
   labels: Record<string, string>;
   initial?: ContractValues;
@@ -59,12 +63,15 @@ export default function ContractFields({
   suggestDates?: boolean;
   /** A new contract's frequency (cars are usually let by the week). */
   defaultPeriod?: "daily" | "weekly" | "monthly";
+  /** A new contract's currency (the asset's). */
+  defaultCurrency?: string;
 }) {
   const today = todayKey();
   const [period, setPeriod] = useState<"daily" | "weekly" | "monthly">(
     asPeriod(initial?.paymentPeriod ?? defaultPeriod),
   );
   const [amount, setAmount] = useState(initial?.amount ?? "");
+  const [currency, setCurrency] = useState(initial?.currency ?? defaultCurrency);
   const [start, setStart] = useState(initial?.startDate ?? (suggestDates ? today : ""));
   const [end, setEnd] = useState(initial?.endDate ?? (suggestDates ? yearAfter(today) : ""));
   // Until the owner types a date, "paid up to" follows the suggestion.
@@ -135,8 +142,18 @@ export default function ContractFields({
           onChange={(event) => setAmount(event.target.value)}
         />
         {monthly && (
-          <span className="hint">{labels.contract_monthly_equiv.replace("{amount}", monthly)}</span>
+          <span className="hint">
+            {labels.contract_monthly_equiv.replace("{amount}", monthly).replace("{sign}", currencySign(currency))}
+          </span>
         )}
+      </label>
+      <label className="field">
+        {labels.contract_currency}
+        <select name="contractCurrency" value={currency} onChange={(event) => setCurrency(event.target.value)}>
+          <option value="GEL">₾ GEL</option>
+          <option value="USD">$ USD</option>
+          <option value="EUR">€ EUR</option>
+        </select>
       </label>
       <label className="field">
         <span>

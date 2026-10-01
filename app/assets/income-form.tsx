@@ -60,6 +60,14 @@ export default function IncomeForm({ labels }: { labels: Record<string, string> 
         />
       </label>
       <label className="field">
+        {labels.contract_currency}
+        <select name="currency" defaultValue={sent?.currency ?? "GEL"}>
+          <option value="GEL">₾ GEL</option>
+          <option value="USD">$ USD</option>
+          <option value="EUR">€ EUR</option>
+        </select>
+      </label>
+      <label className="field">
         {labels.income_desc}
         <input name="description" defaultValue={sent?.description} />
       </label>
