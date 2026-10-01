@@ -15,6 +15,7 @@ import {
 } from "@/lib/geo/ping";
 import { flushOutbox } from "@/lib/notify/whatsapp";
 import { checkTrackerSilenceSoon } from "@/lib/geo/silence-check";
+import { notifyOwner } from "@/lib/notify/owner";
 
 // GPS ingest. Trackers do not call this by themselves: a gateway (a Wialon
 // retranslator per unit, or a small relay behind Traccar that maps each IMEI
@@ -118,7 +119,13 @@ async function handle(fields: PingFields, token: string | null, test = false) {
   const queued = outcomes.some((outcome) => outcome.queued > 0);
   if (queued) await flushOutbox(device.asset.operatorId).catch(() => undefined);
   // This car spoke; another of the workspace's cars may have gone quiet.
-  await checkTrackerSilenceSoon(device.asset.operatorId, now);
+  const silent = await checkTrackerSilenceSoon(device.asset.operatorId, now);
+  // A red line crossed or a tracker gone quiet: the owner's phone, now.
+  if (silent > 0 || outcomes.some((outcome) => outcome.event === "breach")) {
+    await notifyOwner(device.asset.operatorId, now).catch((error) =>
+      console.error("[gps] owner notification failed:", error),
+    );
+  }
 
   return NextResponse.json({
     ok: true,

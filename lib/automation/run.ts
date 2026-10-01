@@ -24,6 +24,7 @@ import { flushOutbox } from "@/lib/notify/whatsapp";
 import { pruneAuthRecords } from "@/lib/auth/prune";
 import { checkTrackerSilence } from "@/lib/geo/silence-check";
 import { snapshotDatabase, type SnapshotOutcome } from "@/lib/backup/neon-snapshot";
+import { notifyOwner } from "@/lib/notify/owner";
 
 export type RunKind = "daily" | "sync";
 
@@ -44,6 +45,8 @@ export interface RunSummary {
   authRowsPruned: number;
   /** The daily pruning threw (the workspaces' part may still be fine). */
   pruneFailed: boolean;
+  /** Urgent alerts the owners were told about (phone notification / email). */
+  ownerAlerts?: number;
   /** The morning database snapshot ("skipped" without NEON_API_KEY). */
   backup?: SnapshotOutcome["status"];
   /** Workspaces whose part of the run threw. */
@@ -59,6 +62,8 @@ export interface RunDeps {
   prune: (now: Date) => ReturnType<typeof pruneAuthRecords>;
   /** The silent-tracker check (lib/geo/silence-check.ts), run on every sync too. */
   silence?: (now: Date, operatorId: string) => Promise<number>;
+  /** Tells the owner about fresh urgent alerts (lib/notify/owner.ts); tests leave it out. */
+  notify?: (operatorId: string, now: Date) => Promise<{ alerts: number }>;
   /** The morning snapshot; tests leave it out. */
   backup?: (now: Date) => Promise<SnapshotOutcome>;
   /** Milliseconds since the run began (tests pass their own clock). */
@@ -71,6 +76,7 @@ const DEFAULT_DEPS: RunDeps = {
   flush: flushOutbox,
   prune: (now) => pruneAuthRecords(prisma, now),
   silence: checkTrackerSilence,
+  notify: (operatorId, now) => notifyOwner(operatorId, now),
   backup: (now) => snapshotDatabase("daily", now),
 };
 
@@ -155,6 +161,15 @@ export async function runAutomation(
       } else if (deps.silence) {
         // Between the daily runs: a tracker that went quiet is still noticed.
         summary.alertsCreated += await deps.silence(now, id);
+      }
+      if (deps.notify) {
+        // The owner's own phone and email. A failed notification is logged,
+        // not a failed workspace: the alert still waits on /alerts.
+        const told = await deps.notify(id, now).catch((error) => {
+          console.error(`[automation] owner notification failed for workspace ${id}:`, error);
+          return { alerts: 0 };
+        });
+        summary.ownerAlerts = (summary.ownerAlerts ?? 0) + told.alerts;
       }
     } catch (error) {
       summary.failedOperators.push(id);

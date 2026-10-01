@@ -22,6 +22,10 @@ import { titled } from "@/lib/i18n/metadata";
 import { firstParam, type QueryValue } from "@/lib/params";
 import { IconCheck } from "../icons";
 import { badgeClass } from "@/lib/ui/tone";
+import PushDevice from "./notify-section";
+import { pushConfig } from "@/lib/notify/owner";
+import { setNotifyEmail } from "@/lib/notify/push-actions";
+import { emailConfigured } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -110,6 +114,18 @@ export default async function SettingsPage({
 
   const row = { color: "var(--color-text-muted)" };
 
+  // Notifications: phone/browser (Web Push) and email.
+  const push = pushConfig();
+  const notifyKeys: StringKey[] = [
+    "notify_push", "notify_push_hint", "notify_push_on", "notify_push_turn_on", "notify_push_off",
+    "notify_push_unsupported", "notify_push_ios", "notify_push_denied", "notify_push_failed",
+    "notify_test", "notify_test_sent",
+  ];
+  const notifyLabels = Object.fromEntries(notifyKeys.map((k) => [k, t(locale, k)]));
+  const notifyEmail = await prisma.operator
+    .findUnique({ where: { id: operator.id }, select: { notifyEmail: true } })
+    .then((found) => found?.notifyEmail ?? true);
+
   return (
     <main>
       <h1>{t(locale, "settings_title")}</h1>
@@ -172,6 +188,42 @@ export default async function SettingsPage({
               )}
             </span>
           </div>
+        </div>
+      </section>
+
+      {/* ── Notifications: what needs the owner now, on the phone and by email ── */}
+      <section id="notifications" style={{ marginTop: 20 }}>
+        <h2>{t(locale, "notify_title")}</h2>
+        <div className="card" style={{ marginTop: 12, padding: 18, display: "grid", gap: 16 }}>
+          <p className="field-hint" style={{ margin: 0 }}>{t(locale, "notify_what")}</p>
+          {push && !operator.isDemo ? (
+            <PushDevice publicKey={push.publicKey} labels={notifyLabels} />
+          ) : (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span style={row}>
+                {t(locale, "notify_push")}
+                <span className="field-hint" style={{ display: "block", margin: "2px 0 0" }}>
+                  {t(locale, operator.isDemo ? "error_demo_readonly" : "notify_push_not_ready")}
+                </span>
+              </span>
+            </div>
+          )}
+          <form action={setNotifyEmail} className="flex flex-wrap items-center justify-between gap-3">
+            <label style={{ ...row, display: "flex", gap: 10, alignItems: "flex-start", flex: 1, minWidth: 220 }}>
+              <input type="checkbox" name="notifyEmail" defaultChecked={notifyEmail} disabled={operator.isDemo} style={{ marginTop: 3 }} />
+              <span>
+                {t(locale, "notify_email").replace("{email}", operator.email)}
+                {!emailConfigured() && (
+                  <span className="field-hint" style={{ display: "block", margin: "2px 0 0" }}>
+                    {t(locale, "notify_email_not_ready")}
+                  </span>
+                )}
+              </span>
+            </label>
+            {!operator.isDemo && (
+              <button type="submit" className="btn-secondary">{t(locale, "save")}</button>
+            )}
+          </form>
         </div>
       </section>
 

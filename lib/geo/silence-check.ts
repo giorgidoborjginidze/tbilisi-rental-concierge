@@ -114,11 +114,12 @@ export const SILENCE_CHECK_EVERY_MS = 5 * 60_000;
  * The same check, at most once every few minutes per workspace — for page
  * views and pings. Never throws: a failed check must not break a page.
  */
-export async function checkTrackerSilenceSoon(operatorId: string, now: Date = new Date()): Promise<void> {
+export async function checkTrackerSilenceSoon(operatorId: string, now: Date = new Date()): Promise<number> {
   const last = lastCheck.get(operatorId) ?? 0;
-  if (now.getTime() - last < SILENCE_CHECK_EVERY_MS) return;
+  if (now.getTime() - last < SILENCE_CHECK_EVERY_MS) return 0;
   lastCheck.set(operatorId, now.getTime());
-  await checkTrackerSilence(now, operatorId).catch((error) =>
-    console.error("[silence-check] failed:", error),
-  );
+  return checkTrackerSilence(now, operatorId).catch((error) => {
+    console.error("[silence-check] failed:", error);
+    return 0;
+  });
 }

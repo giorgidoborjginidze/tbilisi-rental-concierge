@@ -49,6 +49,9 @@ model Operator {
 
   // WhatsApp number that receives owner-side alerts (geofence, overdue rent).
   notifyPhone String?
+  // Urgent alerts (double booking, late rent, red line, silent tracker) are
+  // also emailed to the account address — on unless the owner turns it off.
+  notifyEmail Boolean @default(true)
   // How renters pay (bank account, "cash to the office"…): the {pay_to}
   // placeholder of every payment reminder. Free text, shown as typed.
   payInstructions String?
@@ -68,6 +71,7 @@ model Operator {
   templates NotifyTemplate[]
   messages  NotifyMessage[]
   resets    PasswordReset[]
+  pushSubscriptions PushSubscription[]
 
   @@index([companyId])
 }
@@ -642,11 +646,32 @@ model Alert {
   status     String    @default("open") // "open" | "dismissed" | "resolved"
   resolvedAt DateTime?
   createdAt  DateTime  @default(now())
+  // When the owner was told by phone notification / email (lib/notify/owner.ts):
+  // each urgent alert is pushed once.
+  ownerNotifiedAt DateTime?
 
   operator Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
   unit     Unit?    @relation(fields: [unitId], references: [id], onDelete: Cascade)
 
   @@index([operatorId, status])
+}
+
+// A browser or phone that asked for the owner's notifications (Web Push).
+// The endpoint is the push service's address for that device; p256dh and
+// auth are its public encryption keys — none of them is a secret of ours.
+// Removed when the push service says the device is gone (404/410).
+model PushSubscription {
+  id         String   @id @default(cuid())
+  operatorId String
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  operator Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+
+  @@index([operatorId])
 }
 
 // One run of the automatic jobs (Vercel Cron → /api/cron, or the local
