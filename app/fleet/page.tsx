@@ -1,21 +1,18 @@
 import Link from "next/link";
-import { prisma } from "@/lib/db";
 import { requireOperator } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n/locale";
 import { t, type StringKey } from "@/lib/i18n/strings";
 import { titled } from "@/lib/i18n/metadata";
 import { startOfTodayTbilisi } from "@/lib/time";
-import { activeContract, contractPhase } from "@/lib/rentals/phase";
-import { settlementContract, statusFor } from "@/lib/rentals/terms";
 import { rentLabel } from "@/lib/rentals/display";
-import { deskHref, fleetRank } from "@/lib/rentals/desk";
-import { evaluateFence, shapeFromRow } from "@/lib/geo/fence";
-import { isTrackerSilent } from "@/lib/geo/silence";
+import { deskHref } from "@/lib/rentals/desk";
+import { asFleetSort, loadFleetRows, sortFleet, type FleetSort } from "@/lib/fleet/rows";
+import { firstParam, type QueryValue } from "@/lib/params";
+import { tbilisiFormat } from "@/lib/time";
 import { checkTrackerSilenceSoon } from "@/lib/geo/silence-check";
 import { formatDueMoney } from "@/lib/format";
 import { badgeClass, PAYMENT_TONE, TONE_BADGE, toneOf } from "@/lib/ui/tone";
 import { IconArrowRight } from "../icons";
-import { LIVE_CONTRACT } from "@/lib/rentals/live";
 
 export const dynamic = "force-dynamic";
 
@@ -24,79 +21,38 @@ export const generateMetadata = titled("fleet_title");
 // The car rental's fleet: every vehicle and where it stands today — who
 // drives it, what is owed and how late, whether the tracker still speaks —
 // the most urgent first. Each car opens its service desk (payments, GPS,
-// messages). A glance list, not a spreadsheet.
-export default async function FleetPage() {
+// messages). A glance list by default; the table view lays the same rows
+// out in columns to sort, and exports them as a spreadsheet.
+export default async function FleetPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: QueryValue; sort?: QueryValue }>;
+}) {
   const operator = await requireOperator();
   const locale = await getLocale();
   const today = startOfTodayTbilisi();
   const now = new Date();
   await checkTrackerSilenceSoon(operator.id, now);
 
-  const vehicles = await prisma.asset.findMany({
-    where: { operatorId: operator.id, category: "vehicle" },
-    include: {
-      contracts: { where: LIVE_CONTRACT, orderBy: { endDate: "desc" } },
-      gpsDevice: true,
-      geofences: { where: { active: true } },
-    },
-    orderBy: { name: "asc" },
-  });
-  // A red line crossed and not yet resolved: the car counts as outside
-  // even when its tracker has since gone quiet (the last word it gave).
-  const breached = new Set(
-    (
-      await prisma.alert.findMany({
-        where: { operatorId: operator.id, status: "open", type: "geofence_breach" },
-        select: { payload: true },
-        take: 200,
-      })
-    )
-      .map((alert) => (alert.payload as { assetId?: string } | null)?.assetId)
-      .filter((id): id is string => !!id),
-  );
-
-  const rows = vehicles.map((vehicle) => {
-    const running = activeContract(vehicle.contracts, today) ?? null;
-    const money = settlementContract(vehicle.contracts, today, vehicle) ?? null;
-    const endedOwing = money != null && contractPhase(money, today) === "ended";
-    const status = money?.paidThrough ? statusFor(money, today, vehicle) : null;
-    const owes = status != null && status.periodsOwed > 0 && status.amountDue > 0;
-    const device = vehicle.gpsDevice;
-    const watched = vehicle.geofences.length > 0 && running != null;
-    const silent = watched && device?.lastPingAt != null && isTrackerSilent(device.lastPingAt, now);
-    const position =
-      device?.lastLat != null && device.lastLng != null && !silent
-        ? { lat: device.lastLat, lng: device.lastLng }
-        : null;
-    const outside =
-      (watched && breached.has(vehicle.id)) ||
-      (position != null &&
-        vehicle.geofences.some((fence) => {
-          const shape = shapeFromRow(fence);
-          return shape ? evaluateFence(shape, fence.approachKm, position).zone === "outside" : false;
-        }));
-    return {
-      vehicle,
-      running,
-      money,
-      status,
-      owes: owes && (endedOwing || running != null),
-      endedOwing: endedOwing && owes,
-      silent,
-      outside,
-      rank: fleetRank({
-        payState: status?.state ?? null,
-        endedOwing: endedOwing && owes,
-        outside,
-        silent,
-        rented: running != null,
-      }),
-    };
-  });
-  rows.sort((a, b) => a.rank - b.rank || a.vehicle.name.localeCompare(b.vehicle.name));
+  const query = await searchParams;
+  const view = firstParam(query.view) === "table" ? "table" : "list";
+  const sort = asFleetSort(firstParam(query.sort));
+  const rows = await loadFleetRows(operator.id, today, now);
+  const tableRows = sortFleet(rows, sort);
 
   const displayName = (a: { name: string; nameKa: string | null }) =>
     locale === "ka" && a.nameKa ? a.nameKa : a.name;
+  const fmtDay = tbilisiFormat(locale, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+  const fmtTime = tbilisiFormat(locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  // A column heading that sorts the table by it (a second tap goes back to "most urgent").
+  const sortHead = (key: FleetSort, label: StringKey, num = false) => (
+    <th scope="col" className={num ? "num" : undefined} aria-sort={sort === key ? (key === "owed" ? "descending" : "ascending") : undefined}>
+      <Link href={`/fleet?view=table${sort === key ? "" : `&sort=${key}`}`} className="fleet-sort" scroll={false}>
+        {t(locale, label)}
+        {sort === key ? (key === "owed" ? " ↓" : " ↑") : ""}
+      </Link>
+    </th>
+  );
   const rented = rows.filter((row) => row.running).length;
   // Late means money: past its due date (grace or repossession) or a
   // finished rental still owing. A car outside its red line is counted on
@@ -144,7 +100,113 @@ export default async function FleetPage() {
         )}
       </p>
 
-      {rows.length === 0 ? (
+      {rows.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2" style={{ margin: "4px 0 12px" }}>
+          <nav className="flex flex-wrap gap-2" aria-label={t(locale, "fleet_view")}>
+            {(["list", "table"] as const).map((key) => (
+              <Link
+                key={key}
+                href={key === "table" ? `/fleet?view=table${sort !== "urgent" ? `&sort=${sort}` : ""}` : "/fleet"}
+                className={`btn-chip${view === key ? " btn-chip--active" : ""}`}
+                aria-current={view === key ? "true" : undefined}
+              >
+                {t(locale, key === "table" ? "fleet_view_table" : "fleet_view_list")}
+              </Link>
+            ))}
+          </nav>
+          <a href={`/fleet/export?sort=${sort}`} className="btn-chip" download>
+            {t(locale, "fleet_export")}
+          </a>
+        </div>
+      )}
+
+      {rows.length > 0 && view === "table" ? (
+        <>
+        {/* The order, for phones too (the stacked table has no headings to tap). */}
+        <nav className="flex flex-wrap items-center gap-2" aria-label={t(locale, "fleet_sort")} style={{ marginBottom: 10 }}>
+          <span className="cell-sub">{t(locale, "fleet_sort")}:</span>
+          {(["urgent", "name", "owed", "end", "ping"] as const).map((key) => (
+            <Link
+              key={key}
+              href={`/fleet?view=table${key === "urgent" ? "" : `&sort=${key}`}`}
+              className={`btn-chip${sort === key ? " btn-chip--active" : ""}`}
+              aria-current={sort === key ? "true" : undefined}
+              scroll={false}
+            >
+              {t(locale, `fleet_sort_${key}`)}
+            </Link>
+          ))}
+        </nav>
+        <div className="card card--stack fleet-table">
+          <table>
+            <thead>
+              <tr>
+                {sortHead("name", "fleet_col_car")}
+                <th scope="col">{t(locale, "fleet_col_driver")}</th>
+                <th scope="col">{t(locale, "fleet_col_rent")}</th>
+                {sortHead("end", "fleet_col_end")}
+                <th scope="col">{t(locale, "fleet_col_paid")}</th>
+                {sortHead("owed", "fleet_col_owed", true)}
+                {sortHead("ping", "fleet_col_tracker")}
+              </tr>
+            </thead>
+            <tbody>
+              {tableRows.map(({ vehicle, running, money, status, owes, endedOwing, silent, outside, lastPingAt }) => (
+                <tr key={vehicle.id}>
+                  <td data-label={t(locale, "fleet_col_car")}>
+                    <Link href={deskHref(vehicle.id, "vehicle")} className="link">{displayName(vehicle)}</Link>
+                    {vehicle.plateNumber && <div className="cell-sub">{vehicle.plateNumber}</div>}
+                  </td>
+                  <td data-label={t(locale, "fleet_col_driver")}>
+                    {running ? running.tenantName ?? "—" : <span className="cell-sub">{t(locale, "fleet_free")}</span>}
+                    {running?.tenantPhone && <div className="cell-sub">{running.tenantPhone}</div>}
+                  </td>
+                  <td data-label={t(locale, "fleet_col_rent")}>{running ? rentLabel(locale, running) : "—"}</td>
+                  <td data-label={t(locale, "fleet_col_end")}>{running ? fmtDay.format(running.endDate) : "—"}</td>
+                  <td data-label={t(locale, "fleet_col_paid")}>
+                    {status && money ? (
+                      <span className={badgeClass(toneOf(PAYMENT_TONE, status.state))}>
+                        {fmtDay.format(status.paidThrough)}
+                      </span>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className="num" data-label={t(locale, "fleet_col_owed")}>
+                    {owes && status && money ? (
+                      <Link
+                        href={deskHref(vehicle.id, "vehicle", "payments")}
+                        className={`badge badge--link ${TONE_BADGE[endedOwing || status.state === "repossess" ? "danger" : "warn"]}`}
+                      >
+                        {formatDueMoney(status.amountDue, money.currency)}
+                        {status.daysOverdue > 0 ? ` · ${t(locale, "fleet_days_late").replace("{n}", String(status.daysOverdue))}` : ""}
+                      </Link>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td data-label={t(locale, "fleet_col_tracker")}>
+                    {outside ? (
+                      <Link href={deskHref(vehicle.id, "vehicle", "gps")} className="badge badge--link badge--danger">
+                        {t(locale, "fence_status_outside")}
+                      </Link>
+                    ) : silent ? (
+                      <Link href={deskHref(vehicle.id, "vehicle", "gps")} className="badge badge--link badge--warn">
+                        {t(locale, "fence_status_unknown")}
+                      </Link>
+                    ) : lastPingAt ? (
+                      <span className="cell-sub">{fmtTime.format(lastPingAt)}</span>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        </>
+      ) : rows.length === 0 ? (
         <div className="alert-card alert-card--info" style={{ alignItems: "center" }}>
           <div className="alert-card__detail" style={{ marginTop: 0 }}>
             {t(locale, "fleet_empty")}
