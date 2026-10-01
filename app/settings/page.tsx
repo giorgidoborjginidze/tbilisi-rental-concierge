@@ -28,6 +28,7 @@ import { setNotifyEmail } from "@/lib/notify/push-actions";
 import { emailConfigured } from "@/lib/email";
 import WhatsAppSender from "./whatsapp-sender";
 import { openSecret, secretsConfigured } from "@/lib/security/secret";
+import { isAdminEmail } from "@/lib/auth/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -340,6 +341,14 @@ export default async function SettingsPage({
             </span>
             <Link href="/activity" className="btn-secondary">{t(locale, "activity_open")}</Link>
           </div>
+          {/* Activo's own administrator: the hand tools. */}
+          {!operator.isDemo && isAdminEmail(operator.email) && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span style={row}>{t(locale, "admin_tools")}</span>
+              <Link href="/admin/accounts" className="btn-secondary">{t(locale, "admin_accounts_title")}</Link>
+              <Link href="/admin/market" className="btn-secondary">{t(locale, "market_title")}</Link>
+            </div>
+          )}
           {!operator.isDemo && <DeleteAccountForm labels={securityLabels} />}
         </div>
       </section>

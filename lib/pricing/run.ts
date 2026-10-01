@@ -1,7 +1,7 @@
 // DB-bound orchestration: compute rule-based suggestions for a unit's
-// upcoming dates, attach rationales (Claude or local stub), and persist
-// them as PricingSuggestion rows (idempotent upsert per unit+date, after
-// the response).
+// upcoming dates and attach rationales (Claude or local stub). Nothing is
+// stored: the page and the export compute them fresh (the PricingSuggestion
+// table is no longer written).
 
 import { prisma } from "@/lib/db";
 import { startOfTodayTbilisi } from "@/lib/time";
@@ -11,7 +11,6 @@ import { generateRationales } from "@/lib/ai/rationale";
 import type { Locale } from "@/lib/i18n/strings";
 import { benchmarkMonth, placeOccupancy } from "./nightly";
 import { loadRentalPlaces } from "@/lib/property/places";
-import { inBackground } from "@/lib/prices/background";
 
 const DAY_MS = 86_400_000;
 
@@ -84,32 +83,6 @@ export async function computeSuggestionsForUnit(
     ...row,
     rationale: rationales[i],
   }));
-
-  // A record of what was suggested — nothing on the page reads it back, so
-  // it is written after the response is sent instead of one upsert per day
-  // while the owner waits.
-  inBackground(() =>
-    Promise.all(
-      suggestions.map((suggestion) => {
-        const reasons = {
-          factors: suggestion.result.factors,
-          reasons: suggestion.result.reasons,
-          rationale: suggestion.rationale,
-        };
-        return prisma.pricingSuggestion.upsert({
-          where: { unitId_date: { unitId, date: suggestion.date } },
-          create: {
-            unitId,
-            date: suggestion.date,
-            suggestedRate: suggestion.result.suggestedRate,
-            currency: unit.currency,
-            reasons,
-          },
-          update: { suggestedRate: suggestion.result.suggestedRate, reasons },
-        });
-      }),
-    ),
-  );
 
   return suggestions;
 }

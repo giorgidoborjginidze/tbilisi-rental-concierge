@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth/admin";
 import { getLocale } from "@/lib/i18n/locale";
@@ -42,6 +43,9 @@ export default async function MarketAdminPage() {
     <main style={{ maxWidth: 980 }}>
       <h1>{t(locale, "market_title")}</h1>
       <p className="page-lead">{t(locale, "market_lead")}</p>
+      <p className="field-hint">
+        <Link href="/admin/accounts" className="link">{t(locale, "admin_accounts_title")}</Link>
+      </p>
 
       <section style={{ marginTop: 18 }}>
         <h2>1. {t(locale, "market_s_report")}</h2>
