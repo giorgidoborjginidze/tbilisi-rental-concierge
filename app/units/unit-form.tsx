@@ -211,6 +211,10 @@ export default function UnitForm({
           <Link href={`/assets/${linkedAsset.id}/edit`} className="link" style={{ fontWeight: 600 }}>
             {linkedAsset.label}
           </Link>
+          {" · "}
+          <Link href={`/assets/${linkedAsset.id}/edit?add=contract#contracts`} className="link">
+            {labels.unit_add_lease}
+          </Link>
         </p>
       ) : (
         <label className="field sm:col-span-2">

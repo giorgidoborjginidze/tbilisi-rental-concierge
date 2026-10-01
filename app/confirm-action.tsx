@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
+import { useRouter } from "next/navigation";
 import { announceUndo } from "./undo-toast";
 
 // A destructive action that asks first — inside the page, never with the
@@ -35,6 +36,7 @@ export default function ConfirmAction({
   confirmClassName = "btn-danger btn-compact",
   inline = false,
   undo,
+  after,
 }: {
   /** May return `{ undo: fields }`: what `undo.action` needs to put it back. */
   action: (formData: FormData) => unknown;
@@ -53,8 +55,18 @@ export default function ConfirmAction({
   /** Keep the question on the trigger's line (tables, chip rows). */
   inline?: boolean;
   /** An undo offer after the action ("Deleted. — Undo"), for 10 seconds. */
-  undo?: { action: (formData: FormData) => Promise<unknown>; label: string; done: string };
+  undo?: {
+    /** A server action — or `url`, a route that takes the same form fields,
+     *  for an undo offered after leaving the page (`after`). */
+    action?: (formData: FormData) => Promise<unknown>;
+    url?: string;
+    label: string;
+    done: string;
+  };
+  /** Where to go once it is done (the page itself was deleted); the undo offer follows. */
+  after?: string;
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -100,10 +112,12 @@ export default function ConfirmAction({
             run: () => {
               const data = new FormData();
               for (const [name, value] of Object.entries(fields)) data.set(name, value);
-              return undo.action(data);
+              if (undo.url) return fetch(undo.url, { method: "POST", body: data });
+              return undo.action ? undo.action(data) : Promise.resolve();
             },
           });
         }
+        if (after) router.push(after);
       }}
       className={`confirm-inline${inline ? " confirm-inline--row" : ""}`}
       role="alertdialog"

@@ -36,6 +36,8 @@ export default async function UnitsPage({
       // Live stays only: a cancelled stay or a channel copy is not a booking.
       _count: { select: { bookings: { where: LIVE_STAY }, leases: true } },
       feeds: true,
+      // The same flat under Assets: its value, and where long contracts live.
+      asset: { select: { id: true, name: true, nameKa: true } },
     },
     orderBy: [{ city: "asc" }, { district: "asc" }, { name: "asc" }],
   });
@@ -161,6 +163,7 @@ export default async function UnitsPage({
                 <th className="num">{t(locale, "base_rate_short")}</th>
                 <th className="num">{t(locale, "bookings")}</th>
                 <th className="ical-cell">iCal</th>
+                <th>{t(locale, "unit_asset_link")}</th>
                 <th><span className="sr-only">{t(locale, "col_actions")}</span></th>
               </tr>
             </thead>
@@ -188,6 +191,22 @@ export default async function UnitsPage({
                         <FeedStatus locale={locale} urls={urls} feeds={unit.feeds} compact />
                       ) : (
                         "—"
+                      )}
+                    </td>
+                    <td data-label={t(locale, "unit_asset_link")}>
+                      {unit.asset ? (
+                        <>
+                          <Link href={`/assets/${unit.asset.id}/edit`} className="link">
+                            {locale === "ka" && unit.asset.nameKa ? unit.asset.nameKa : unit.asset.name}
+                          </Link>
+                          <div className="cell-sub">
+                            <Link href={`/assets/${unit.asset.id}/edit?add=contract#contracts`} className="link">
+                              {t(locale, "unit_add_lease")}
+                            </Link>
+                          </div>
+                        </>
+                      ) : (
+                        <span style={{ color: "var(--color-text-muted)" }}>{t(locale, "unit_no_asset")}</span>
                       )}
                     </td>
                     <td className="num">

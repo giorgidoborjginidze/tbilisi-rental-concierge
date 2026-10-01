@@ -389,7 +389,7 @@ export async function TodaySection({
     "error_demo_readonly",
   ];
   const dailyKeys: StringKey[] = [
-    "day_amount", "day_yes", "day_no", "day_edit",
+    "day_amount", "day_yes", "day_no", "day_edit", "day_settled",
     "day_holiday", "day_weekend", "day_base",
     "error_required", "error_invalid_number",
   ];
@@ -487,14 +487,20 @@ export async function TodaySection({
  * A day's moves as a compact two-column list: a hotel's arrivals and
  * departures, a fleet's handovers and returns.
  */
+/** Rows a column shows before "all (N)" — the rest are on the calendar. */
+const MOVES_SHOWN = 3;
+
 export function TodayMoves({
   columns,
+  more,
 }: {
   columns: {
     title: string;
     empty: string;
     rows: { key: string; href: string; name: string; sub: string; aside?: ReactNode }[];
   }[];
+  /** Where the full lists are, and its label ("all ({n})"). */
+  more?: { href: string; label: string };
 }) {
   return (
     <div className="today-block today-moves">
@@ -508,7 +514,7 @@ export function TodayMoves({
             <p className="today__none">{column.empty}</p>
           ) : (
             <ul className="today-moves__list">
-              {column.rows.map((row) => (
+              {column.rows.slice(0, more ? MOVES_SHOWN : undefined).map((row) => (
                 <li key={row.key}>
                   <span className="today-moves__txt">
                     <Link href={row.href} className="link">
@@ -520,6 +526,11 @@ export function TodayMoves({
                 </li>
               ))}
             </ul>
+          )}
+          {more && column.rows.length > MOVES_SHOWN && (
+            <Link href={more.href} className="link icon-text today-moves__more">
+              {more.label.replace("{n}", String(column.rows.length))} <IconArrowRight size={14} />
+            </Link>
           )}
         </div>
       ))}

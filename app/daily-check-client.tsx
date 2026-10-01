@@ -42,11 +42,27 @@ export default function DailyCheckClient({
   assets: DayAsset[];
   labels: Record<string, string>;
 }) {
+  // Rows still asking (and late stays, which warn) come first; days already
+  // settled — answered, or held by a booking or contract — fold into one
+  // line, so a long list of flats does not push the rest of Home down.
+  const settled = (asset: DayAsset) =>
+    asset.answered != null || (asset.covered != null && !asset.covered.late);
+  const open = assets.filter((asset) => !settled(asset));
+  const done = assets.filter(settled);
+  const [showDone, setShowDone] = useState(open.length === 0 && done.length <= 3);
   return (
     <div className="daily-zone">
-      {assets.map((asset) => (
+      {open.map((asset) => (
         <Row key={asset.id} asset={asset} labels={labels} />
       ))}
+      {done.length > 0 &&
+        (showDone ? (
+          done.map((asset) => <Row key={asset.id} asset={asset} labels={labels} />)
+        ) : (
+          <button type="button" className="btn-chip daily-more" onClick={() => setShowDone(true)}>
+            <IconCheck size={14} /> {labels.day_settled.replace("{n}", String(done.length))}
+          </button>
+        ))}
     </div>
   );
 }

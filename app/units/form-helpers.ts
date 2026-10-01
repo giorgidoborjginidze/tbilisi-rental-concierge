@@ -12,7 +12,7 @@ export function unitFormProps(locale: Locale) {
     "unit_ical_urls", "unit_ical_hint", "save", "cancel", "delete",
     "delete_confirm", "error_required", "error_invalid_number",
     "error_email_taken", "error_ical_url", "ph_amenities",
-    "unit_asset_link", "unit_asset_new", "unit_asset_none", "unit_asset_hint",
+    "unit_asset_link", "unit_asset_new", "unit_asset_none", "unit_asset_hint", "unit_add_lease",
     "error_limit_units", "error_demo_readonly", "form_required_legend", "asset_name_ka",
     "form_more", "form_more_hint_unit",
   ];

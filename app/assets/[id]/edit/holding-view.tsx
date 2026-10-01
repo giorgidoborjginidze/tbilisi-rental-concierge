@@ -4,7 +4,7 @@ import { IconArrowLeft, IconTrash } from "@/app/icons";
 import { prisma } from "@/lib/db";
 import { tbilisiFormat, todayKey } from "@/lib/time";
 import { t, type Locale, type StringKey } from "@/lib/i18n/strings";
-import { deleteAsset } from "@/lib/assets/actions";
+import { deleteHolding } from "@/lib/assets/actions";
 import { loadQuotes } from "@/lib/prices/quotes";
 import { quoteKey } from "@/lib/prices/freshness";
 import { priceAge, rateLine } from "@/lib/prices/labels";
@@ -211,8 +211,14 @@ export default async function HoldingView({
           bottom, named, and asked first. */}
       <div className="danger-zone">
         <ConfirmAction
-          action={deleteAsset}
+          action={deleteHolding}
           fields={{ assetId: asset.id }}
+          after="/assets"
+          undo={{
+            url: "/api/undo/holding",
+            label: t(locale, "decide_undo"),
+            done: t(locale, "deleted_undo_holding").replace("{symbol}", tag),
+          }}
           trigger={
             <>
               <IconTrash size={15} /> {t(locale, "holding_delete").replace("{symbol}", tag)}

@@ -73,6 +73,7 @@ const LABEL_KEYS: StringKey[] = [
   "asset_plate", "asset_plate_hint",
   "gps_device_id", "gps_label", "gps_provider", "gps_connect", "gps_token",
   "gps_endpoint", "gps_endpoint_hint", "gps_tech_details", "gps_example", "gps_tech_note",
+  "gps_check", "gps_check_ok", "gps_check_bad", "gps_check_error",
   "fence_name", "fence_kind", "fence_circle", "fence_polygon", "fence_center",
   "fence_radius", "fence_points", "fence_points_hint", "fence_approach",
   "fence_approach_hint", "fence_add", "fence_use_location",

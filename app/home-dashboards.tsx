@@ -296,6 +296,7 @@ async function HotelDashboard({
                   rows: moves.filter((b) => inToday(b.checkOut)).map(moveRow),
                 },
               ]}
+              more={{ href: "/calendar", label: t(locale, "decide_show_all") }}
             />
           ) : null
         }
@@ -532,6 +533,7 @@ async function CarRentalDashboard({
                 { title: t(locale, "today_handovers"), empty: t(locale, "today_none"), rows: handovers },
                 { title: t(locale, "today_returns"), empty: t(locale, "today_none"), rows: returns },
               ]}
+              more={{ href: "/fleet", label: t(locale, "decide_show_all") }}
             />
           ) : null
         }

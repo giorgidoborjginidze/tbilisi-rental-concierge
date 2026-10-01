@@ -5,6 +5,7 @@ import { randomInt } from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
+import type { Prisma } from "@/app/generated/prisma/client";
 import { requireWriter } from "@/lib/auth/session";
 import { ASSET_CATEGORIES, ASSET_STATUSES } from "@/lib/types";
 import { COINS } from "@/lib/crypto/prices";
@@ -760,6 +761,88 @@ export async function deleteAsset(formData: FormData) {
     revalidatePath("/assets");
   }
   redirect("/assets");
+}
+
+/**
+ * Deleting a holding (crypto, stock, metal) with an undo: the asset and
+ * its trades are deleted, and what it took to put them back comes back to
+ * the page as the undo fields (ConfirmAction → the app's undo toast). A
+ * holding has nothing else of its own — no contracts, tracker or calendar —
+ * so the snapshot is the whole of it, plus which income rows pointed at it.
+ */
+const HOLDING_LIST: string[] = [...HOLDING_CATEGORIES];
+
+export async function deleteHolding(formData: FormData) {
+  const operator = await requireWriter();
+  const assetId = str(formData, "assetId");
+  const asset = await prisma.asset.findFirst({
+    where: { id: assetId, operatorId: operator.id, category: { in: HOLDING_LIST } },
+    include: { trades: true, incomes: { select: { id: true } } },
+  });
+  if (!asset) return null;
+  const { trades, incomes, ...row } = asset;
+  await prisma.asset.deleteMany({ where: { id: asset.id, operatorId: operator.id } });
+  revalidatePath("/assets");
+  revalidatePath("/invest");
+  revalidatePath("/");
+  return {
+    undo: { snapshot: JSON.stringify({ asset: row, trades, incomeIds: incomes.map((income) => income.id) }) },
+  };
+}
+
+/** The undo of deleteHolding: the same asset, id and trades, back in this workspace. */
+export async function restoreHolding(formData: FormData) {
+  const operator = await requireWriter();
+  let parsed: {
+    asset: Record<string, unknown> & { id: string; category: string };
+    trades: { id: string; side: string; quantity: number; unitPrice: number; tradedAt: string; createdAt: string }[];
+    incomeIds: string[];
+  };
+  try {
+    parsed = JSON.parse(str(formData, "snapshot"));
+  } catch {
+    return null;
+  }
+  const { asset, trades, incomeIds } = parsed;
+  // Only a holding comes back this way, only into the signed-in workspace,
+  // and only if its id is free again (a second click changes nothing).
+  if (!asset?.id || !HOLDING_LIST.includes(asset.category)) return null;
+  if (await prisma.asset.findUnique({ where: { id: asset.id }, select: { id: true } })) return null;
+  const sides = ["buy", "sell"];
+  await prisma.$transaction(async (tx) => {
+    await tx.asset.create({
+      data: {
+        ...(asset as unknown as Prisma.AssetUncheckedCreateInput),
+        operatorId: operator.id,
+        unitId: null,
+      },
+    });
+    if (trades.length > 0) {
+      await tx.cryptoTrade.createMany({
+        data: trades
+          .filter((trade) => sides.includes(trade.side))
+          .map((trade) => ({
+            id: trade.id,
+            assetId: asset.id,
+            side: trade.side,
+            quantity: Number(trade.quantity),
+            unitPrice: Number(trade.unitPrice),
+            tradedAt: new Date(trade.tradedAt),
+            createdAt: new Date(trade.createdAt),
+          })),
+      });
+    }
+    if (incomeIds.length > 0) {
+      await tx.incomeRecord.updateMany({
+        where: { id: { in: incomeIds }, operatorId: operator.id, assetId: null },
+        data: { assetId: asset.id },
+      });
+    }
+  });
+  revalidatePath("/assets");
+  revalidatePath("/invest");
+  revalidatePath("/");
+  return { ok: true };
 }
 
 export async function addIncome(

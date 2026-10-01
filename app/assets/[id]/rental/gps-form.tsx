@@ -46,6 +46,22 @@ export default function GpsForm({
   const sentDevice = deviceState && "values" in deviceState ? deviceState.values : undefined;
   const sentPlate = plateState && "values" in plateState ? plateState.values : undefined;
   const [copied, setCopied] = useState<string | null>(null);
+  // "Check the address": the same address and token, sent once with
+  // test=1 — the server says whether they are right without moving the car.
+  const [check, setCheck] = useState<"idle" | "busy" | "ok" | "bad" | "error">("idle");
+  const runCheck = async () => {
+    if (!device) return;
+    setCheck("busy");
+    try {
+      const res = await fetch(
+        `/api/gps/ping?deviceId=${encodeURIComponent(device.deviceId)}&token=${encodeURIComponent(device.token)}&test=1`,
+        { cache: "no-store" },
+      );
+      setCheck(res.ok ? "ok" : res.status === 401 ? "bad" : "error");
+    } catch {
+      setCheck("error");
+    }
+  };
 
   const pingUrl = device
     ? `${endpoint}?deviceId=${encodeURIComponent(device.deviceId)}&token=${encodeURIComponent(device.token)}`
@@ -122,6 +138,16 @@ export default function GpsForm({
               >
                 {copied === "url" ? <IconCheck size={16} /> : <IconCopy size={16} />}
               </button>
+            </div>
+            <div className="gps-check">
+              <button type="button" className="btn-chip" onClick={runCheck} disabled={check === "busy"}>
+                {labels.gps_check}
+              </button>
+              {check !== "idle" && check !== "busy" && (
+                <span role="status" className={`gps-check__result gps-check__result--${check}`}>
+                  {labels[`gps_check_${check}`]}
+                </span>
+              )}
             </div>
             <details className="gps-tech">
               <summary>{labels.gps_tech_details}</summary>

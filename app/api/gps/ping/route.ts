@@ -35,6 +35,10 @@ import { checkTrackerSilenceSoon } from "@/lib/geo/silence-check";
 // in the request, an empty or non-numeric one, 0,0 (no satellite fix), a
 // fix stamped more than five minutes ahead, one no newer than the last
 // accepted fix, or more than one ping per device every five seconds.
+//
+// `?test=1` only checks the device and token and answers { ok, test }: the
+// rental page's "Check the address" button, so an owner can tell a wrong
+// address from a tracker that is not sending yet.
 
 export const dynamic = "force-dynamic";
 
@@ -57,7 +61,7 @@ function headerToken(request: Request): string | null {
   return bearer?.[1]?.trim() || request.headers.get("x-device-token")?.trim() || null;
 }
 
-async function handle(fields: PingFields, token: string | null) {
+async function handle(fields: PingFields, token: string | null, test = false) {
   // Credentials first: a sender without the device's token learns nothing
   // about why its position would have been refused.
   const credentials = pingCredentials(fields, token);
@@ -70,6 +74,9 @@ async function handle(fields: PingFields, token: string | null) {
   if (!credentials || !device || !tokensMatch(device.token, credentials.token)) {
     return refuse("unauthorized");
   }
+  // "Check the address" on the rental page (?test=1): the device and token
+  // are right — and nothing else happens, the car stays where it was.
+  if (test) return NextResponse.json({ ok: true, test: true });
   // The shared demo is read-only: its trackers' tokens are visible to every
   // visitor, so their positions are not moved from outside.
   if (device.asset.operator.isDemo) {
@@ -138,9 +145,15 @@ export async function POST(request: Request) {
   for (const [key, values] of Object.entries(query)) {
     fields[key] = [...(fields[key] ?? []), ...values];
   }
-  return handle(fields, headerToken(request));
+  return handle(fields, headerToken(request), isTest(request));
 }
 
 export async function GET(request: Request) {
-  return handle(fieldsFromParams(new URL(request.url).searchParams), headerToken(request));
+  const params = new URL(request.url).searchParams;
+  return handle(fieldsFromParams(params), headerToken(request), isTest(request));
+}
+
+/** A check of the address and token from the rental page, not a position. */
+function isTest(request: Request): boolean {
+  return new URL(request.url).searchParams.get("test") === "1";
 }

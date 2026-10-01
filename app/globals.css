@@ -5599,3 +5599,28 @@ main.legal { max-width: 780px; }
   color: var(--color-text-muted);
 }
 .learn-lesson { scroll-margin-top: 90px; }
+
+/* Today: the folded "settled" daily rows and the moves' "all (N)" link. */
+.daily-more {
+  justify-self: start;
+}
+.today-moves__more {
+  display: inline-flex;
+  margin-top: 6px;
+  font-size: 13px;
+  gap: 4px;
+}
+
+/* GPS: "Check the address" and its answer. */
+.gps-check {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.gps-check__result {
+  font-size: 13px;
+}
+.gps-check__result--ok { color: var(--status-rented-text); }
+.gps-check__result--bad,
+.gps-check__result--error { color: var(--status-danger-text); }
