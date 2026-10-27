@@ -68,6 +68,7 @@ function botLabels(locale: Locale): BotLabels {
     operatorCta: tr(CONTACT_WHATSAPP_READY ? "bot_operator_cta" : "bot_operator_cta_email"),
     close: tr("bot_close"),
     askHuman: tr("bot_q_human"),
+    typing: tr("bot_typing"),
     faq: Object.fromEntries(
       BOT_FAQ_IDS.map((id) => [
         id,

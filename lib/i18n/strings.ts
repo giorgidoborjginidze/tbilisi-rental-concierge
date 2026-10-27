@@ -480,11 +480,12 @@ const en = {
   bot_a_payment_off:
     "Online card payment is being switched on. Until then, write to us at {email} and we'll set up your plan.",
   bot_a_security:
-    "Yes. Each account's data is kept apart from every other account, passwords are stored only as hashes, and we never sell your data. The providers the service runs on — hosting and file storage, WhatsApp messages, card payments, email, phone notifications, maps, error reports and price-suggestion texts — receive only what their part needs; the Privacy Policy names each of them.",
+    "Yes. Each account's data is kept apart from every other account, passwords are stored only as hashes, and we never sell your data. The providers the service runs on — hosting and file storage, WhatsApp messages, card payments, email, phone notifications, maps, error reports, price-suggestion texts and the support chat's answers — receive only what their part needs; the Privacy Policy names each of them.",
   bot_q_calc: "Is the calculator free?",
   bot_a_calc:
     "Yes \u2014 the investment calculator is free to try and needs no account.",
   bot_q_human: "Talk to a person",
+  bot_typing: "Writing an answer…",
   type_commercial: "Commercial Space",
   type_land: "Land",
   type_garage: "Garage",
@@ -2304,11 +2305,12 @@ const ka: Record<StringKey, string> = {
   bot_a_payment_off:
     "ონლაინ ბარათით გადახდა ირთვება. მანამდე მოგვწერე {email}-ზე და გეგმას ჩვენ გაგიაქტიურებთ.",
   bot_a_security:
-    "დიახ. თითოეული ანგარიშის მონაცემები სხვა ანგარიშებისგან გამიჯნულია, პაროლები მხოლოდ ჰეშის სახით ინახება და მონაცემებს არასდროს ვყიდით. ის მომწოდებლები, რომლებზეც სერვისი მუშაობს — ჰოსტინგი და ფაილების საცავი, WhatsApp შეტყობინებები, ბარათით გადახდა, ელფოსტა, ტელეფონის შეტყობინებები, რუკა, შეცდომების ანგარიშები და ფასის შეთავაზების ტექსტები — იღებენ მხოლოდ იმას, რაც მათ ნაწილს სჭირდება; ყველა მათგანი კონფიდენციალურობის პოლიტიკაშია ჩამოთვლილი.",
+    "დიახ. თითოეული ანგარიშის მონაცემები სხვა ანგარიშებისგან გამიჯნულია, პაროლები მხოლოდ ჰეშის სახით ინახება და მონაცემებს არასდროს ვყიდით. ის მომწოდებლები, რომლებზეც სერვისი მუშაობს — ჰოსტინგი და ფაილების საცავი, WhatsApp შეტყობინებები, ბარათით გადახდა, ელფოსტა, ტელეფონის შეტყობინებები, რუკა, შეცდომების ანგარიშები, ფასის შეთავაზების ტექსტები და დახმარების ჩატის პასუხები — იღებენ მხოლოდ იმას, რაც მათ ნაწილს სჭირდება; ყველა მათგანი კონფიდენციალურობის პოლიტიკაშია ჩამოთვლილი.",
   bot_q_calc: "კალკულატორი უფასოა?",
   bot_a_calc:
     "დიახ — საინვესტიციო კალკულატორის ცდა უფასოა და ანგარიში არ სჭირდება.",
   bot_q_human: "ადამიანთან დაკავშირება",
+  bot_typing: "პასუხს ვწერ…",
   type_commercial: "კომერციული ფართი",
   type_land: "მიწის ნაკვეთი",
   type_garage: "გარაჟი",

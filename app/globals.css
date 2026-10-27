@@ -6157,3 +6157,29 @@ summary.settings-form__title {
   .select-inline { min-height: 44px; }
   a.badge--link::after { inset: -10px -2px; }
 }
+
+/* ── Support chat: AI answers keep their line breaks; three dots while one
+   is being written. ── */
+.bot-bubble { white-space: pre-line; overflow-wrap: anywhere; }
+.bot-bubble--typing {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  min-height: 20px;
+}
+.bot-bubble--typing i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-text-muted);
+  animation: bot-dot 1s ease-in-out infinite;
+}
+.bot-bubble--typing i:nth-child(2) { animation-delay: 0.15s; }
+.bot-bubble--typing i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes bot-dot {
+  0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-3px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bot-bubble--typing i { animation: none; opacity: 0.6; }
+}

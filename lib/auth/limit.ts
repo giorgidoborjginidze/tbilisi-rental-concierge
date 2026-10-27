@@ -12,12 +12,15 @@
 //   - registration: 5 new accounts per address an hour.
 //   - reset links: 3 requests per email and 10 per IP an hour, so nobody can
 //     flood someone's inbox with reset emails.
+//   - support chat (AI answers): 20 questions per address an hour, and 200
+//     an hour from everyone together (recorded with an empty email, so the
+//     "email" count is the global one) — a cap on what a flood can cost.
 //
 // Rows hold the email, the IP and the time — no password, no token — and are
 // pruned after a day. The counting functions take the client so the tests can
 // pass a fake.
 
-export type AttemptKind = "login" | "reset" | "register";
+export type AttemptKind = "login" | "reset" | "register" | "bot";
 
 interface Rule {
   windowMs: number;
@@ -31,6 +34,7 @@ export const ATTEMPT_RULES: Record<AttemptKind, Rule> = {
   login: { windowMs: 15 * 60_000, perEmail: 10, perIp: 30, perEmailIp: 5 },
   reset: { windowMs: 60 * 60_000, perEmail: 3, perIp: 10 },
   register: { windowMs: 60 * 60_000, perEmail: 5, perIp: 5 },
+  bot: { windowMs: 60 * 60_000, perEmail: 200, perIp: 20 },
 };
 
 /** Attempt rows older than this are deleted. */

@@ -15,8 +15,9 @@ guest/renter concierge (Phase 2) — the data model is kept clean and exportable
   (2026 light-first design system: indigo primary, soft-shadow cards, Noto Sans Georgian)
 - **Prisma 7** ORM with **SQLite** locally (via `@prisma/adapter-better-sqlite3`;
   schema kept Postgres-compatible for later)
-- **Anthropic API** (Claude) for pricing rationales — optional, falls back to a
-  deterministic local stub when `ANTHROPIC_API_KEY` is unset
+- **Anthropic API** (Claude) for pricing rationales and the support chat's
+  answers — optional: without `ANTHROPIC_API_KEY` the rationales come from a
+  deterministic local stub and the chat answers from its keyword FAQ
 
 ## Getting started
 
@@ -266,7 +267,7 @@ lib/analytics/        Occupancy, ADR, RevPAR, revenue math (pure, tested)
 lib/pricing/          Rule-based pricing engine (pure, tested)
 lib/market/           MarketDataSource interface + Db/Mock sources
 lib/alerts/           Vacancy-gap / lease-expiry / underpriced scan job
-lib/ai/               Claude rationale writer + deterministic stub
+lib/ai/               Claude rationale writer + stub, support-chat answers
 prisma/               Schema, migrations, seed
 ```
 

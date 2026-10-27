@@ -33,6 +33,8 @@ export interface BotLabels {
   operatorCta: string;
   close: string;
   askHuman: string;
+  /** Read out while an AI answer is being written. */
+  typing: string;
   /** Question and answer per FAQ id (lib/nav/support.ts BOT_FAQ_IDS). */
   faq: Partial<Record<BotFaqId, { q: string; a: string }>>;
 }
@@ -53,6 +55,8 @@ export default function SupportBot({
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [msgs, setMsgs] = useState<Msg[]>([]);
+  // An AI answer is on its way: a typing bubble shows and sending waits.
+  const [pending, setPending] = useState(false);
   // A field has focus (the phone's keyboard is up): the floating button
   // steps aside so it never sits over what is being typed.
   const [typing, setTyping] = useState(false);
@@ -95,7 +99,7 @@ export default function SupportBot({
   // Keep the newest message in view.
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [msgs, open]);
+  }, [msgs, open, pending]);
 
   const answerFor = (text: string): Msg => {
     const q = text.toLowerCase();
@@ -123,12 +127,35 @@ export default function SupportBot({
   // opened from the menu); while typing it hides on phones (CSS).
   const launcherHidden = !open && supportLauncherHidden(pathname);
 
-  const submit = (e: React.FormEvent) => {
+  // A typed question goes to the AI answer route (app/api/support); when
+  // it has no answer — no API key, the hourly cap, an error — the keyword
+  // FAQ answers as before.
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const text = input.trim();
-    if (!text) return;
+    if (!text || pending) return;
     setInput("");
-    setMsgs((m) => [...m, { role: "user", text }, answerFor(text)]);
+    const history = [...msgs, { role: "user" as const, text }];
+    setMsgs(history);
+    setPending(true);
+    let answer: Msg = answerFor(text);
+    try {
+      const response = await fetch("/api/support", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ messages: history.map(({ role, text }) => ({ role, text })) }),
+      });
+      if (response.ok) {
+        const data: { reply?: unknown; human?: unknown } = await response.json();
+        if (typeof data.reply === "string" && data.reply) {
+          answer = { role: "bot", text: data.reply, operator: data.human === true };
+        }
+      }
+    } catch {
+      // Offline or the route failed: the FAQ answer stands.
+    }
+    setPending(false);
+    setMsgs((m) => [...m, answer]);
   };
 
   return (
@@ -202,6 +229,16 @@ export default function SupportBot({
               </div>
             ))}
 
+            {pending && (
+              <div className="bot-msg bot-msg--bot" aria-live="polite">
+                <div className="bot-bubble bot-bubble--typing" aria-label={labels.typing}>
+                  <i />
+                  <i />
+                  <i />
+                </div>
+              </div>
+            )}
+
             {/* Suggested questions — always available so the user can tap. */}
             <div className="bot-chips">
               {BOT_FAQ.map((f) => {
@@ -225,7 +262,7 @@ export default function SupportBot({
               placeholder={labels.placeholder}
               aria-label={labels.placeholder}
             />
-            <button type="submit" className="btn-primary" disabled={!input.trim()}>
+            <button type="submit" className="btn-primary" disabled={!input.trim() || pending}>
               {labels.send}
             </button>
           </form>

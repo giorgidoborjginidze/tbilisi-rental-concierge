@@ -75,7 +75,7 @@ export const PRIVACY: LegalText = {
           "Resend — პაროლის აღდგენის და სასწრაფო შეტყობინებების წერილები: შენი ელფოსტა და შეტყობინების ტექსტი.",
           "შენი ბრაუზერის push-სერვისი (Google, Apple, Mozilla) — დაშიფრული შეტყობინება ტელეფონზე, თუ ჩართავ.",
           "Sentry — შეცდომების ანგარიშები: შეცდომის ტექნიკური დეტალები, სახელისა და ელფოსტის გარეშე.",
-          "Anthropic — ფასის შეთავაზების ახსნის ტექსტი (ერთეულის სახელი, უბანი, ფასები), როცა ეს ფუნქცია ჩართულია.",
+          "Anthropic — ფასის შეთავაზების ახსნის ტექსტი (ერთეულის სახელი, უბანი, ფასები) და დახმარების ჩატში დაწერილი შეტყობინებები, რომ პასუხი დაიწეროს — როცა ეს ფუნქციები ჩართულია. ჩატი შენს ანგარიშს ვერ ხედავს; პირად მონაცემებს ჩატში ნუ ჩაწერ.",
           "OpenStreetMap — რუკის ფრაგმენტები წითელი ხაზის დახატვისას: შენი IP მისამართი და რუკის არე.",
         ],
         after: [
@@ -214,7 +214,7 @@ export const PRIVACY: LegalText = {
           "Resend — password-reset and urgent-alert emails: your email address and the alert text.",
           "Your browser's push service (Google, Apple, Mozilla) — the encrypted notification to your phone, if you turn it on.",
           "Sentry — error reports: the technical details of an error, without your name or email.",
-          "Anthropic — the text of price-suggestion explanations (unit name, district, prices), when that feature is enabled.",
+          "Anthropic — the text of price-suggestion explanations (unit name, district, prices) and the messages you type into the support chat, so an answer can be written — when these features are enabled. The chat cannot see your account; please do not type personal details into it.",
           "OpenStreetMap — map tiles when you draw a red line: your IP address and the map area.",
         ],
         after: [
