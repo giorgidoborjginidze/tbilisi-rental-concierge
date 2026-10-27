@@ -1,7 +1,8 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   CELL_CLASS,
   OVERLAP_CODE,
@@ -40,8 +41,9 @@ export interface StripRow {
 }
 
 // /calendar on a phone: one week at a time instead of a month of 9-px
-// slivers. Seven 44-px nights fill the screen's width, so nothing scrolls
-// sideways; each unit's full name sits on its own line above its week,
+// slivers. Seven 44-px nights fill the screen's width; a sideways swipe
+// (or the arrows) turns the week. Each unit's full name sits on its own
+// line above its week,
 // today's column is marked, and every cell is a link — a taken night opens
 // its booking (or contract), a free one the add-a-stay form on that date.
 // The server sends the month, two weeks before it and four after; paging
@@ -74,7 +76,11 @@ export default function CalendarStrip({
     overlap: string;
   };
 }) {
+  const router = useRouter();
   const [start, setStart] = useState(openIndex);
+  // Which way the last page turned, so the new week slides in from that side.
+  const [turn, setTurn] = useState<-1 | 1 | 0>(0);
+  const touch = useRef<{ x: number; y: number } | null>(null);
   // "Today" pages back to today's week from anywhere in the range.
   const todayStart = todayIndex != null ? stripStart(days.length, todayIndex, openIndex) : null;
   const end = Math.min(days.length, start + STRIP_DAYS);
@@ -98,19 +104,45 @@ export default function CalendarStrip({
     return row.addHref ? `${row.addHref}${days[index].key}` : row.href;
   };
 
+  // Past the loaded range: the neighbouring month, opening on the night
+  // after the last one shown (or the week before the first).
+  const monthHref = (direction: -1 | 1) => {
+    const from = days.length ? addDaysKey(days[0].key, stripHandOff(start, days.length, direction)) : null;
+    const href = direction < 0 ? prevMonthHref : nextMonthHref;
+    return from ? `${href}&from=${from}` : href;
+  };
+  const turnPage = (direction: -1 | 1) => {
+    const target = direction < 0 ? back : forward;
+    setTurn(direction);
+    if (target != null) setStart(target);
+    else router.push(monthHref(direction));
+  };
+
+  // A swipe: mostly sideways and at least 48 px. Vertical scrolling is left
+  // to the browser (touch-action: pan-y on the grid).
+  const onTouchStart = (event: React.TouchEvent) => {
+    const t = event.touches[0];
+    touch.current = event.touches.length === 1 ? { x: t.clientX, y: t.clientY } : null;
+  };
+  const onTouchEnd = (event: React.TouchEvent) => {
+    const from = touch.current;
+    touch.current = null;
+    if (!from) return;
+    const t = event.changedTouches[0];
+    const dx = t.clientX - from.x;
+    const dy = t.clientY - from.y;
+    if (Math.abs(dx) >= 48 && Math.abs(dx) > 1.5 * Math.abs(dy)) turnPage(dx < 0 ? 1 : -1);
+  };
+
   const pager = (direction: -1 | 1) => {
     const target = direction < 0 ? back : forward;
     const label = direction < 0 ? labels.prev : labels.next;
     const icon = direction < 0 ? <IconChevronLeft size={18} /> : <IconChevronRight size={18} />;
     if (target == null) {
-      // Past the loaded range: the neighbouring month, opening on the
-      // night after the last one shown (or the week before the first).
       const monthLabel = direction < 0 ? labels.prevMonth : labels.nextMonth;
-      const from = days.length ? addDaysKey(days[0].key, stripHandOff(start, days.length, direction)) : null;
-      const href = direction < 0 ? prevMonthHref : nextMonthHref;
       return (
         <Link
-          href={from ? `${href}&from=${from}` : href}
+          href={monthHref(direction)}
           className="btn-chip btn-chip--icon"
           aria-label={monthLabel}
           title={monthLabel}
@@ -125,7 +157,7 @@ export default function CalendarStrip({
         className="btn-chip btn-chip--icon"
         aria-label={label}
         title={label}
-        onClick={() => setStart(target)}
+        onClick={() => turnPage(direction)}
       >
         {icon}
       </button>
@@ -141,12 +173,26 @@ export default function CalendarStrip({
         </b>
         {pager(1)}
         {todayStart != null && start !== todayStart && (
-          <button type="button" className="btn-chip" onClick={() => setStart(todayStart)}>
+          <button
+            type="button"
+            className="btn-chip"
+            onClick={() => {
+              setTurn(todayStart < start ? -1 : 1);
+              setStart(todayStart);
+            }}
+          >
             {labels.today}
           </button>
         )}
       </div>
-      <div className="cal-strip__grid" style={{ "--n": visible.length } as React.CSSProperties}>
+      <div
+        // A new week is a new grid, so its slide-in plays each time.
+        key={start}
+        className={`cal-strip__grid${turn > 0 ? " is-turn-next" : turn < 0 ? " is-turn-prev" : ""}`}
+        style={{ "--n": visible.length } as React.CSSProperties}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      >
         {visible.map((index) => (
           <span
             key={days[index].key}

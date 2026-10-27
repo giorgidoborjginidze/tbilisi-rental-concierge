@@ -5499,6 +5499,17 @@ td:has(> .confirm-inline) { white-space: normal; }
   grid-template-columns: repeat(var(--n, 7), minmax(0, 1fr));
   gap: 4px;
   align-items: stretch;
+  /* Sideways swipes turn the week (calendar-strip.tsx); the page itself
+     still scrolls up and down. */
+  touch-action: pan-y;
+}
+.cal-strip__grid.is-turn-next { animation: cal-week-in-next 0.2s ease-out; }
+.cal-strip__grid.is-turn-prev { animation: cal-week-in-prev 0.2s ease-out; }
+@keyframes cal-week-in-next { from { opacity: 0.4; transform: translateX(28px); } }
+@keyframes cal-week-in-prev { from { opacity: 0.4; transform: translateX(-28px); } }
+@media (prefers-reduced-motion: reduce) {
+  .cal-strip__grid.is-turn-next,
+  .cal-strip__grid.is-turn-prev { animation: none; }
 }
 .cal-strip__name {
   grid-column: 1 / -1;
