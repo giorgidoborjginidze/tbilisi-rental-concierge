@@ -147,6 +147,7 @@ export default function TeamSection({
                         <input type="hidden" name="memberId" value={member.id} />
                         <select
                           name="role"
+                          className="select-inline"
                           defaultValue={member.role === "viewer" ? "viewer" : "member"}
                           aria-label={`${labels.team_role}: ${member.name ?? member.email}`}
                           onChange={(event) => event.currentTarget.form?.requestSubmit()}

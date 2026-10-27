@@ -419,6 +419,7 @@ const en = {
   legal_language_version: "English version",
   footer_privacy: "Privacy",
   footer_terms: "Terms",
+  skip_to_content: "Skip to main content",
   footer_about: "About Us",
   footer_contact: "Contact",
   // \u2500\u2500 About page \u2500\u2500
@@ -2242,6 +2243,7 @@ const ka: Record<StringKey, string> = {
   legal_language_version: "ქართული ვერსია",
   footer_privacy: "კონფიდენციალურობა",
   footer_terms: "პირობები",
+  skip_to_content: "მთავარ შინაარსზე გადასვლა",
   footer_about: "ჩვენ შესახებ",
   footer_contact: "კონტაქტი",
   // ── About page ──

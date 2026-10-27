@@ -134,9 +134,15 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${notoGeorgian.variable} ${notoSerifGeorgian.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        {/* First stop for keyboard users: jumps past the navigation. */}
+        <a href="#main-content" className="skip-link">
+          {t(locale, "skip_to_content")}
+        </a>
         <TiltProvider />
         <Nav />
-        <div className="flex-1">{children}</div>
+        <div id="main-content" tabIndex={-1} className="flex-1">
+          {children}
+        </div>
         {/* On a phone with the tab bar, the footer keeps clear of it
             (globals.css .site-footer) so the legal links can be tapped. */}
         <footer className="site-footer">

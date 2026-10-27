@@ -6089,3 +6089,78 @@ main.legal > * { max-width: 780px; }
 }
 .activity-list time { color: var(--color-text-muted); font-variant-numeric: tabular-nums; font-size: 13px; padding-top: 1px; }
 .activity-list__text { min-width: 0; overflow-wrap: anywhere; }
+
+/* ── UX audit (ui-ux-pro-max checklist) ── */
+/* Skip link: hidden until a keyboard user tabs to it, then it sits on top
+   of the navigation. */
+.skip-link {
+  position: absolute;
+  left: 12px;
+  top: -100px;
+  z-index: 1000;
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
+  font-weight: 600;
+  text-decoration: none;
+  min-height: 44px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+}
+.skip-link:focus { top: 12px; }
+#main-content:focus { outline: none; }
+/* The bot's field showed focus with a 1 px border only. */
+.bot-input input:focus {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+/* A select that stands on its own (outside .field), e.g. a member's role. */
+.select-inline {
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 14px;
+}
+/* A summary that is a form title (Settings → delete account) is a target. */
+summary.settings-form__title {
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+  cursor: pointer;
+}
+/* With a mouse, names and amounts that are links still get a 24 px tall
+   target (WCAG 2.5.8) without moving the text. Phones have their own
+   44 px hit areas above. */
+@media (min-width: 761px) {
+  .aflip__name,
+  .fleet-row__name,
+  .today-moves__amount,
+  .demo-ribbon__cta,
+  a.link.icon-text {
+    position: relative;
+  }
+  .aflip__name::after,
+  .fleet-row__name::after,
+  .today-moves__amount::after,
+  .demo-ribbon__cta::after,
+  a.link.icon-text::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 28px;
+    transform: translateY(-50%);
+  }
+}
+@media (max-width: 760px) {
+  .tour__skip { min-height: 44px; padding-inline: 12px; }
+  summary.settings-form__title { min-height: 44px; }
+  .select-inline { min-height: 44px; }
+  a.badge--link::after { inset: -10px -2px; }
+}

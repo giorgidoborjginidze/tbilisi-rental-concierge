@@ -45,6 +45,7 @@ export default function ListingInput({
                 type="url"
                 inputMode="url"
                 placeholder="https://…"
+                aria-label={labels.listing_links}
                 value={url}
                 onChange={(e) => update(i, e.target.value)}
                 style={{ flex: 1 }}
