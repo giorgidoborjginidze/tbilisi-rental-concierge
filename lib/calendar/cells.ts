@@ -67,11 +67,12 @@ export function nightCells(
   return out;
 }
 
-/** The two-week window on a phone: how many nights it shows. */
-export const STRIP_DAYS = 14;
+/** The week on a phone: how many nights it shows — seven fit the screen
+    at 44 px a night, so the strip never scrolls sideways. */
+export const STRIP_DAYS = 7;
 /** Nights the strip loads before the month's first night… */
 export const STRIP_PAD_BEFORE = 14;
-/** …and after its last, so a window near the month's end still pages by fortnights. */
+/** …and after its last, so a window near the month's end still pages by whole weeks. */
 export const STRIP_PAD_AFTER = 28;
 
 /** The nights one month's strip loads: its first night and how many. */
@@ -112,7 +113,7 @@ export function stripOpen(
 }
 
 /**
- * One page back or forward: always a whole fortnight, so no night is shown
+ * One page back or forward: always a whole week, so no night is shown
  * twice or skipped. Null when the next full page would leave the range —
  * the neighbouring month's strip takes over from there (`stripHandOff`).
  */
@@ -124,7 +125,7 @@ export function stripStep(start: number, days: number, direction: -1 | 1): numbe
 /**
  * Past the range's edge: the night the neighbouring month's strip should
  * open on, as an offset from this range's first night — the night after
- * the last one shown (forward), or two weeks before the first one shown
+ * the last one shown (forward), or a week before the first one shown
  * (back). The offset may lie outside this range.
  */
 export function stripHandOff(start: number, days: number, direction: -1 | 1): number {

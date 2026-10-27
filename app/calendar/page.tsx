@@ -78,9 +78,9 @@ export default async function CalendarPage({
   const aheadEnd = range
     ? new Date(Math.max(range.end.getTime(), today.getTime() + 30 * DAY_MS))
     : today;
-  // The phone's two-week strip pages through the month, two weeks before
+  // The phone's week strip pages through the month, two weeks before
   // it and four after (so a window near the month's end still pages by
-  // whole fortnights) without a round trip.
+  // whole weeks) without a round trip.
   const { from: stripFrom, days: stripLength, monthIndex: stripMonthIndex } = stripRange(year, month);
   const stripTo = new Date(stripFrom.getTime() + stripLength * DAY_MS);
   const loadStart = new Date(Math.min(windowStart.getTime(), today.getTime(), stripFrom.getTime()));
@@ -321,7 +321,7 @@ export default async function CalendarPage({
             selected={unitQuery ?? ""}
             allLabel={t(locale, "calendar_all_units")}
           />
-          {/* On a phone the strip's own arrows page the fortnights and step
+          {/* On a phone the strip's own arrows page the weeks and step
               into the neighbouring month: one pair of arrows, not two. */}
           <div className="flex items-center gap-2 cal-month-nav">
             <Link
@@ -420,7 +420,7 @@ export default async function CalendarPage({
         ))}
       </div>
 
-      {/* Phones: two weeks at a time, full names, today marked, every
+      {/* Phones: a week at a time, full names, today marked, every
           cell a link (the month board above is hidden there). */}
       <CalendarStrip
         // A new month (or a hand-off night) is a new strip: it opens where

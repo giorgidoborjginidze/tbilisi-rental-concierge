@@ -39,29 +39,29 @@ describe("nightCells", () => {
   });
 });
 
-describe("the phone's two-week strip", () => {
+describe("the phone's week strip", () => {
   it("opens on today when the range holds it, never running past the end", () => {
     expect(stripStart(59, 20, 14)).toBe(20);
     expect(stripStart(59, 55, 14)).toBe(59 - STRIP_DAYS);
     expect(stripStart(59, null, 14)).toBe(14);
-    expect(stripStart(10, 3, 0)).toBe(0);
+    expect(stripStart(5, 3, 0)).toBe(0); // shorter than a page: from its start
   });
 
-  it("pages by whole fortnights and stops where a full page would leave the range", () => {
-    expect(stripStep(20, 59, 1)).toBe(34);
-    expect(stripStep(31, 59, 1)).toBe(45); // the last full window
-    expect(stripStep(32, 59, 1)).toBeNull(); // 13 nights left: the next month takes over
-    expect(stripStep(45, 59, 1)).toBeNull();
-    expect(stripStep(20, 59, -1)).toBe(6);
-    expect(stripStep(14, 59, -1)).toBe(0);
+  it("pages by whole weeks and stops where a full page would leave the range", () => {
+    expect(stripStep(20, 59, 1)).toBe(27);
+    expect(stripStep(45, 59, 1)).toBe(52); // the last full window
+    expect(stripStep(46, 59, 1)).toBeNull(); // 6 nights left: the next month takes over
+    expect(stripStep(52, 59, 1)).toBeNull();
+    expect(stripStep(20, 59, -1)).toBe(13);
+    expect(stripStep(7, 59, -1)).toBe(0);
     expect(stripStep(6, 59, -1)).toBeNull(); // the previous month takes over
     expect(stripStep(0, 59, -1)).toBeNull();
   });
 
-  it("hands over the night after the last shown, or the fortnight before the first", () => {
-    expect(stripHandOff(45, 59, 1)).toBe(59);
-    expect(stripHandOff(40, 59, 1)).toBe(54);
-    expect(stripHandOff(6, 59, -1)).toBe(-8);
+  it("hands over the night after the last shown, or the week before the first", () => {
+    expect(stripHandOff(52, 59, 1)).toBe(59);
+    expect(stripHandOff(40, 59, 1)).toBe(47);
+    expect(stripHandOff(6, 59, -1)).toBe(-1);
     expect(addDaysKey("2026-09-30", 1)).toBe("2026-10-01");
     expect(addDaysKey("2026-03-01", -1)).toBe("2026-02-28");
     expect(nightIndex(new Date("2026-09-17T00:00:00Z"), "2026-10-01")).toBe(14);
@@ -111,8 +111,8 @@ describe("the phone's two-week strip", () => {
       windows.push(`${addDaysKey(firstKey(range), start)}..${addDaysKey(firstKey(range), end - 1)}`);
     };
     shown();
-    expect(windows[0]).toBe("2026-09-30..2026-10-13");
-    for (let page = 0; page < 10; page++) {
+    expect(windows[0]).toBe("2026-09-30..2026-10-06");
+    for (let page = 0; page < 22; page++) {
       const next = stripStep(start, range.days, 1);
       if (next != null) {
         start = next;
@@ -122,7 +122,7 @@ describe("the phone's two-week strip", () => {
       }
       shown();
     }
-    // Every page is a whole fortnight and begins the night after the
+    // Every page is a whole week and begins the night after the
     // previous one ended — no night repeated, none skipped.
     for (let i = 1; i < windows.length; i++) {
       const prevEnd = windows[i - 1].split("..")[1];
@@ -130,14 +130,19 @@ describe("the phone's two-week strip", () => {
       expect(from).toBe(addDaysKey(prevEnd, 1));
       expect(to).toBe(addDaysKey(from, STRIP_DAYS - 1));
     }
-    // The reviewer's walk: 30 Sep–13 Oct, 14–27 Oct, then October's strip
-    // opens on 28 Oct (not back on today).
-    expect(windows.slice(0, 3)).toEqual(["2026-09-30..2026-10-13", "2026-10-14..2026-10-27", "2026-10-28..2026-11-10"]);
+    // The reviewer's walk: week by week from today, and October's strip
+    // takes over on 21 Oct (not back on today).
+    expect(windows.slice(0, 4)).toEqual([
+      "2026-09-30..2026-10-06",
+      "2026-10-07..2026-10-13",
+      "2026-10-14..2026-10-20",
+      "2026-10-21..2026-10-27",
+    ]);
     expect(view).toMatchObject({ year: 2027, month: 2 }); // it crossed months and the year end
 
     // And back: each page ends the night before the previous one began.
     const back: string[] = [windows[windows.length - 1]];
-    for (let page = 0; page < 10; page++) {
+    for (let page = 0; page < 22; page++) {
       const prev = stripStep(start, range.days, -1);
       if (prev != null) {
         start = prev;
@@ -152,7 +157,7 @@ describe("the phone's two-week strip", () => {
       const [prevStart] = back[i - 1].split("..");
       const [from, to] = back[i].split("..");
       expect(to).toBe(addDaysKey(prevStart, -1));
-      // Every page is a whole fortnight.
+      // Every page is a whole week.
       const nights = Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000) + 1;
       expect(nights).toBe(STRIP_DAYS);
     }

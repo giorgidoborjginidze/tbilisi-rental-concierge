@@ -1346,8 +1346,9 @@ td:first-child {
 }
 .cal-board .cal-cell {
   width: 100%;
-  height: 18px;
-  border-radius: 3px;
+  /* 28 px: a night is a target for the mouse (24 px minimum), not a sliver. */
+  height: 28px;
+  border-radius: 4px;
 }
 @media (max-width: 760px) {
 }
@@ -5474,14 +5475,13 @@ td:has(> .confirm-inline) { white-space: normal; }
   .cal-month-nav { display: none !important; }
   .cal-strip {
     display: block;
-    padding: 12px 0 12px 12px;
+    padding: 12px;
   }
 }
 .cal-strip__bar {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding-right: 12px;
   margin-bottom: 10px;
   flex-wrap: wrap;
 }
@@ -5491,55 +5491,39 @@ td:has(> .confirm-inline) { white-space: normal; }
   flex: 1 1 auto;
   text-align: center;
 }
-.cal-strip__scroll {
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scrollbar-width: thin;
-  padding-bottom: 4px;
-}
+/* One week across the full width: seven equal columns, 44 px nights,
+   no sideways scrolling. Each unit's name takes its own line above its
+   week, so the whole name shows without a pinned column. */
 .cal-strip__grid {
   display: grid;
-  /* Full names pinned on the left; the days scroll beside them. */
-  grid-template-columns: 112px repeat(var(--n, 14), 34px);
-  gap: 3px;
+  grid-template-columns: repeat(var(--n, 7), minmax(0, 1fr));
+  gap: 4px;
   align-items: stretch;
-  padding-right: 12px;
-  width: max-content;
-}
-/* Opaque (days scroll under it) but in the card's own tone, so the names
-   do not read as separate white or black boxes on the glass. */
-.cal-strip__corner,
-.cal-strip__name {
-  position: sticky;
-  left: 0;
-  z-index: 1;
-  background: var(--color-surface);
 }
 .cal-strip__name {
+  grid-column: 1 / -1;
   display: flex;
-  align-items: center;
-  min-height: 36px;
-  padding: 4px 8px 4px 0;
-  font-size: 12.5px;
+  align-items: flex-end;
+  min-height: 44px;
+  padding: 10px 0 2px;
+  font-size: 13px;
   font-weight: 600;
   line-height: 1.25;
   color: var(--color-text);
   text-decoration: none;
   overflow-wrap: anywhere;
-  /* The first shadow fills the 3px row gap below, so the column is one strip. */
-  box-shadow: 0 3px 0 var(--color-surface), 6px 0 8px -6px rgba(38, 92, 130, 0.25);
 }
 .cal-strip__day {
   display: grid;
   justify-items: center;
   gap: 1px;
-  padding: 3px 0;
+  padding: 4px 0;
   border-radius: 8px;
   font-size: 12px;
   color: var(--color-text-muted);
 }
 .cal-strip__day small { font-size: 12px; }
-.cal-strip__day b { font-size: 13px; color: var(--color-text); }
+.cal-strip__day b { font-size: 14px; color: var(--color-text); }
 .cal-strip__day.is-weekend b { color: var(--status-vacant-text); }
 .cal-strip__day.is-today {
   background: var(--color-primary);
@@ -5548,11 +5532,9 @@ td:has(> .confirm-inline) { white-space: normal; }
 .cal-strip__day.is-today b { color: var(--color-primary-contrast); }
 .cal-strip__cell.cal-cell {
   display: block;
-  width: 34px;
-  height: 36px;
-  border-radius: 6px;
-  /* Level with the middle of a name that wraps to three lines. */
-  align-self: center;
+  width: auto;
+  height: 44px;
+  border-radius: 8px;
 }
 .cal-strip__cell.is-today {
   box-shadow: inset 0 0 0 2px var(--color-primary);

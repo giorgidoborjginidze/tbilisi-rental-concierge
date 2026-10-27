@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useState } from "react";
 import Link from "next/link";
 import {
   CELL_CLASS,
@@ -39,8 +39,9 @@ export interface StripRow {
   prices: Record<number, string>;
 }
 
-// /calendar on a phone: two weeks at a time instead of a month of 9-px
-// slivers. Full unit names stay pinned on the left while the days scroll,
+// /calendar on a phone: one week at a time instead of a month of 9-px
+// slivers. Seven 44-px nights fill the screen's width, so nothing scrolls
+// sideways; each unit's full name sits on its own line above its week,
 // today's column is marked, and every cell is a link — a taken night opens
 // its booking (or contract), a free one the add-a-stay form on that date.
 // The server sends the month, two weeks before it and four after; paging
@@ -74,15 +75,8 @@ export default function CalendarStrip({
   };
 }) {
   const [start, setStart] = useState(openIndex);
-  // "Today" pages back to today's fortnight from anywhere in the range.
+  // "Today" pages back to today's week from anywhere in the range.
   const todayStart = todayIndex != null ? stripStart(days.length, todayIndex, openIndex) : null;
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  // A new window starts at its first day.
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ left: 0 });
-  }, [start]);
-
   const end = Math.min(days.length, start + STRIP_DAYS);
   const visible = Array.from({ length: end - start }, (_, i) => start + i);
   const back = stripStep(start, days.length, -1);
@@ -110,7 +104,7 @@ export default function CalendarStrip({
     const icon = direction < 0 ? <IconChevronLeft size={18} /> : <IconChevronRight size={18} />;
     if (target == null) {
       // Past the loaded range: the neighbouring month, opening on the
-      // night after the last one shown (or the fortnight before the first).
+      // night after the last one shown (or the week before the first).
       const monthLabel = direction < 0 ? labels.prevMonth : labels.nextMonth;
       const from = days.length ? addDaysKey(days[0].key, stripHandOff(start, days.length, direction)) : null;
       const href = direction < 0 ? prevMonthHref : nextMonthHref;
@@ -152,40 +146,37 @@ export default function CalendarStrip({
           </button>
         )}
       </div>
-      <div className="cal-strip__scroll" ref={scrollRef}>
-        <div className="cal-strip__grid" style={{ "--n": visible.length } as React.CSSProperties}>
-          <span className="cal-strip__corner" aria-hidden />
-          {visible.map((index) => (
-            <span
-              key={days[index].key}
-              className={`cal-strip__day${index === todayIndex ? " is-today" : ""}${days[index].weekend ? " is-weekend" : ""}`}
-              aria-current={index === todayIndex ? "date" : undefined}
-            >
-              <small>{days[index].wd}</small>
-              <b>{days[index].d}</b>
-            </span>
-          ))}
-          {rows.map((row) => (
-            <Fragment key={row.key}>
-              <Link href={row.href} className="cal-strip__name" prefetch={false}>
-                {row.name}
-              </Link>
-              {visible.map((index) => {
-                const title = cellTitle(row, index);
-                return (
-                  <Link
-                    key={index}
-                    href={cellHref(row, index)}
-                    prefetch={false}
-                    className={`cal-strip__cell cal-cell ${CELL_CLASS[row.cells[index][0]] ?? ""}${index === todayIndex ? " is-today" : ""}`}
-                    title={title}
-                    aria-label={title}
-                  />
-                );
-              })}
-            </Fragment>
-          ))}
-        </div>
+      <div className="cal-strip__grid" style={{ "--n": visible.length } as React.CSSProperties}>
+        {visible.map((index) => (
+          <span
+            key={days[index].key}
+            className={`cal-strip__day${index === todayIndex ? " is-today" : ""}${days[index].weekend ? " is-weekend" : ""}`}
+            aria-current={index === todayIndex ? "date" : undefined}
+          >
+            <small>{days[index].wd}</small>
+            <b>{days[index].d}</b>
+          </span>
+        ))}
+        {rows.map((row) => (
+          <Fragment key={row.key}>
+            <Link href={row.href} className="cal-strip__name" prefetch={false}>
+              {row.name}
+            </Link>
+            {visible.map((index) => {
+              const title = cellTitle(row, index);
+              return (
+                <Link
+                  key={index}
+                  href={cellHref(row, index)}
+                  prefetch={false}
+                  className={`cal-strip__cell cal-cell ${CELL_CLASS[row.cells[index][0]] ?? ""}${index === todayIndex ? " is-today" : ""}`}
+                  title={title}
+                  aria-label={title}
+                />
+              );
+            })}
+          </Fragment>
+        ))}
       </div>
     </div>
   );
