@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { setAssetStatus } from "@/lib/assets/actions";
+import { isWebUrl } from "@/lib/listings";
 
 export interface ListingLink {
   /** Platform key — maps to a .brandmark--* variant. */
@@ -101,7 +102,9 @@ export default function ListingControls({
       formData.set("status", next);
       await setAssetStatus(formData);
     });
-    if (links[0]) window.open(links[0].url, "_blank", "noopener");
+    // Only a web address is opened (a row saved before links were checked
+    // could hold anything).
+    if (links[0] && isWebUrl(links[0].url)) window.open(links[0].url, "_blank", "noopener");
   };
 
   const linkChips = links.map((link) => <Brandmark key={link.platform} link={link} />);

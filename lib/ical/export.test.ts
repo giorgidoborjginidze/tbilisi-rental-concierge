@@ -31,3 +31,11 @@ describe("calendar export", () => {
     expect(ics.split("\r\n").every((l) => new TextEncoder().encode(l).length <= 75)).toBe(true);
   });
 });
+
+describe("buildIcs keeps a name on one line", () => {
+  it("escapes a lone carriage return, so a name cannot add a property", () => {
+    const ics = buildIcs({ name: "Vake\rX-INJECTED:1", stays: [], now: new Date("2026-10-01T08:00:00Z") });
+    expect(ics).not.toMatch(/\r\nX-INJECTED/);
+    expect(ics.split("\r\n").some((line) => line.startsWith("X-INJECTED"))).toBe(false);
+  });
+});

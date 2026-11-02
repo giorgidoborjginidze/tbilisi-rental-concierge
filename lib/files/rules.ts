@@ -81,6 +81,20 @@ export function storePath(operatorId: string, id: string, contentType: string): 
   return `op/${operatorId}/${id}${EXTENSION[contentType] ?? ""}`;
 }
 
+/**
+ * Is this exactly a path storePath made for this account — its folder, a
+ * random UUID, a kept type's extension? A prefix check is not enough: a
+ * path like "op/<me>/../<other>/…" starts with the right folder and still
+ * leads out of it.
+ */
+export function isOwnStorePath(operatorId: string, pathname: string): boolean {
+  const prefix = `op/${operatorId}/`;
+  if (!pathname.startsWith(prefix)) return false;
+  const rest = pathname.slice(prefix.length);
+  const match = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(\.[a-z]+)$/.exec(rest);
+  return match != null && Object.values(EXTENSION).includes(match[1]);
+}
+
 /** "1.4 MB", "820 KB". */
 export function formatBytes(bytes: number, locale: "ka" | "en" = "ka"): string {
   const mb = locale === "ka" ? "მბ" : "MB";

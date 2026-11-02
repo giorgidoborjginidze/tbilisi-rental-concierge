@@ -12,3 +12,17 @@ describe("suggestionsCsv", () => {
     expect(csv).toContain('2026-10-02,140,GEL,"say ""hi"", ok"');
   });
 });
+
+describe("suggestionsCsv and spreadsheet formulas", () => {
+  it("never lets a cell start a formula (= + - @)", () => {
+    const csv = suggestionsCsv(["d", "p", "c", "r"], [
+      { date: "2026-10-01", price: 100, currency: "GEL", reason: '=HYPERLINK("http://x","y")' },
+      { date: "2026-10-02", price: 100, currency: "GEL", reason: "+1" },
+      { date: "2026-10-03", price: 100, currency: "GEL", reason: "@SUM(A1)" },
+    ]);
+    for (const line of csv.split("\r\n").slice(1)) {
+      const reason = line.slice(line.lastIndexOf(",GEL,") + 5).replace(/^"/, "");
+      if (reason) expect(reason).not.toMatch(/^[=+\-@]/);
+    }
+  });
+});

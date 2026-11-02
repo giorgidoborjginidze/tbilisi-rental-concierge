@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { answerSupport, cleanHistory } from "@/lib/ai/support-bot";
-import { attemptCounts, clientIpFrom, isLimited, recordAttempt } from "@/lib/auth/limit";
+import { clientIpFrom, takeAttempt } from "@/lib/auth/limit";
 import { flittConfig } from "@/lib/billing/flitt";
 import { readCapped } from "@/lib/security/csp-report";
 
@@ -33,8 +33,7 @@ export async function POST(request: Request) {
   const ip = clientIpFrom((name) => request.headers.get(name));
   const now = new Date();
   // The empty email makes the "email" count the global one (see ATTEMPT_RULES.bot).
-  if (isLimited("bot", await attemptCounts(prisma, "bot", "", ip, now))) return fallback();
-  await recordAttempt(prisma, "bot", "", ip, now);
+  if ((await takeAttempt(prisma, "bot", "", ip, now)).limited) return fallback();
 
   const answer = await answerSupport(turns, { cardPayments: flittConfig() != null });
   return answer ? Response.json(answer) : fallback();

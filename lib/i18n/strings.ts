@@ -1483,7 +1483,7 @@ const en = {
   email_reset_body:
     "Someone (hopefully you) asked to reset the password of your Activo account. Open this link within one hour to choose a new one: {link} — If it wasn't you, ignore this email; your password stays the same.",
   error_invite_email: "This invite was made for a different email address.",
-  invite_email_hint: "The invite works only with this email.",
+  invite_email_hint: "Type the email your invite was made for — it works only with that one.",
 
   // Settings: sign-in and security.
   settings_security: "Sign-in and Security",
@@ -3302,7 +3302,7 @@ const ka: Record<StringKey, string> = {
   email_reset_body:
     "ვიღაცამ (იმედია, შენ) შენი Activo-ს ანგარიშის პაროლის აღდგენა მოითხოვა. ახალი პაროლის ასარჩევად ერთი საათის განმავლობაში გახსენი ეს ბმული: {link} — თუ ეს შენ არ იყავი, უბრალოდ ყურადღებას ნუ მიაქცევ ამ წერილს; პაროლი არ შეიცვლება.",
   error_invite_email: "ეს მოწვევა სხვა ელფოსტისთვის შეიქმნა.",
-  invite_email_hint: "მოწვევა მხოლოდ ამ ელფოსტით მუშაობს.",
+  invite_email_hint: "ჩაწერე ის ელფოსტა, რომლისთვისაც მოწვევა შეიქმნა — მხოლოდ მასთან მუშაობს.",
 
   // Settings: sign-in and security.
   settings_security: "შესვლა და უსაფრთხოება",

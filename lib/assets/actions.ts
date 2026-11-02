@@ -38,6 +38,7 @@ import { parseTradeInput, toUsdTrade } from "@/lib/assets/trade-input";
 import { usdGelOn } from "@/lib/prices/usd-gel-on";
 import { cityKey, districtKey } from "@/lib/places";
 import { checkFeedUrl } from "@/lib/ical/fetch";
+import { listingUrlFor } from "@/lib/listings";
 import { normalizeFeedUrl } from "@/lib/ical/sync";
 import { parseChannelLinks } from "@/lib/types";
 import { benchmarkMonth } from "@/lib/pricing/nightly";
@@ -290,11 +291,11 @@ export async function saveAsset(
     dailyRate,
     weekendPct,
     holidayPct,
-    myhomeUrl: str(formData, "myhomeUrl") || null,
-    ssUrl: str(formData, "ssUrl") || null,
-    myautoUrl: str(formData, "myautoUrl") || null,
-    airbnbUrl: str(formData, "airbnbUrl") || null,
-    bookingUrl: str(formData, "bookingUrl") || null,
+    myhomeUrl: listingUrlFor("myhomeUrl", str(formData, "myhomeUrl")),
+    ssUrl: listingUrlFor("ssUrl", str(formData, "ssUrl")),
+    myautoUrl: listingUrlFor("myautoUrl", str(formData, "myautoUrl")),
+    airbnbUrl: listingUrlFor("airbnbUrl", str(formData, "airbnbUrl")),
+    bookingUrl: listingUrlFor("bookingUrl", str(formData, "bookingUrl")),
     notes: str(formData, "notes") || null,
     // A car's state plate (quoted in the red-line messages); the GPS
     // settings on its desk write the same field.
@@ -803,6 +804,47 @@ export async function deleteHolding(formData: FormData) {
   };
 }
 
+/**
+ * What a restored holding may be created with: a holding's own plain
+ * fields, each of its type, read from the snapshot one by one. The snapshot
+ * comes back from the browser, so it is never spread into the create — a
+ * nested relation write in it (gpsDevice / contracts / attachments …
+ * "connect") would otherwise move another workspace's rows onto this asset.
+ */
+function holdingRestoreData(
+  asset: Record<string, unknown> & { id: string; category: string },
+  operatorId: string,
+): Prisma.AssetUncheckedCreateInput {
+  const text = (key: string) => (typeof asset[key] === "string" ? (asset[key] as string) : null);
+  const number = (key: string) => {
+    const value = asset[key];
+    return typeof value === "number" && Number.isFinite(value) ? value : null;
+  };
+  const date = (key: string) => {
+    const value = asset[key];
+    const parsed = typeof value === "string" ? new Date(value) : null;
+    return parsed && !Number.isNaN(parsed.getTime()) ? parsed : null;
+  };
+  const status = text("status");
+  return {
+    id: asset.id,
+    operatorId,
+    unitId: null,
+    name: text("name") ?? "",
+    nameKa: text("nameKa"),
+    category: asset.category,
+    type: text("type") ?? asset.category,
+    symbol: text("symbol"),
+    coingeckoId: text("coingeckoId"),
+    estimatedValue: number("estimatedValue"),
+    currency: asCurrency(text("currency") ?? "GEL"),
+    status: status && (ASSET_STATUSES as readonly string[]).includes(status) ? status : "personal_use",
+    statusSetAt: date("statusSetAt"),
+    notes: text("notes"),
+    ...(date("createdAt") ? { createdAt: date("createdAt")! } : {}),
+  };
+}
+
 /** The undo of deleteHolding: the same asset, id and trades, back in this workspace. */
 export async function restoreHolding(formData: FormData) {
   const operator = await requireWriter();
@@ -823,13 +865,7 @@ export async function restoreHolding(formData: FormData) {
   if (await prisma.asset.findUnique({ where: { id: asset.id }, select: { id: true } })) return null;
   const sides = ["buy", "sell"];
   await prisma.$transaction(async (tx) => {
-    await tx.asset.create({
-      data: {
-        ...(asset as unknown as Prisma.AssetUncheckedCreateInput),
-        operatorId: operator.id,
-        unitId: null,
-      },
-    });
+    await tx.asset.create({ data: holdingRestoreData(asset, operator.id) });
     if (trades.length > 0) {
       await tx.cryptoTrade.createMany({
         data: trades

@@ -11,11 +11,9 @@ import { t, type Locale } from "@/lib/i18n/strings";
 import { siteUrl } from "@/lib/site";
 import { inviteProblem } from "./invite";
 import {
-  attemptCounts,
   clearAttempts,
   clientIpFrom,
-  isLimited,
-  recordAttempt,
+  takeAttempt,
 } from "./limit";
 import { dummyHash, hashPassword, MIN_PASSWORD_LENGTH, verifyPassword } from "./password";
 import { newResetToken, RESET_TTL_MS, resetTokenId, resetUsable, validEmail } from "./reset";
@@ -82,10 +80,9 @@ export async function register(
   // the form is no machine for minting accounts or probing which emails
   // are taken.
   const ip = await clientIp();
-  if (isLimited("register", await attemptCounts(prisma, "register", email, ip, now))) {
+  if ((await takeAttempt(prisma, "register", email, ip, now)).limited) {
     return { error: "error_too_many_attempts", values };
   }
-  await recordAttempt(prisma, "register", email, ip, now);
 
   // Hash first: a taken email is refused only after the same work as a
   // free one, and with a message that does not say which it was.
@@ -175,19 +172,18 @@ export async function login(
     select: { id: true, passwordHash: true, isDemo: true, locale: true, localeSetAt: true },
   });
 
-  // 5 failures per email and per address in 15 minutes, then a pause. The
-  // demo's password is public, so its email is not counted (a visitor's
-  // typos must not lock every other visitor out); the address still is.
-  const counts = await attemptCounts(prisma, "login", email, ip, now);
-  if (isLimited("login", operator?.isDemo ? { ...counts, email: 0 } : counts)) {
-    return { error: "error_too_many_attempts", values };
-  }
+  // 5 attempts per email and per address in 15 minutes, then a pause. The
+  // attempt is counted before the password is checked, so parallel guesses
+  // cannot all slip in before any is counted (takeAttempt). The demo's
+  // password is public, so its email is not counted (a visitor's typos
+  // must not lock every other visitor out); the address still is.
+  const { limited } = await takeAttempt(prisma, "login", email, ip, now, operator?.isDemo === true);
+  if (limited) return { error: "error_too_many_attempts", values };
 
   // Always one scrypt: an unknown email is checked against a dummy hash,
   // so it takes as long to refuse as a wrong password.
   const ok = await verifyPassword(password, operator?.passwordHash ?? (await dummyHash()));
   if (!operator?.passwordHash || !ok) {
-    await recordAttempt(prisma, "login", email, ip, now);
     return { error: "error_invalid_credentials", values };
   }
 
@@ -246,10 +242,9 @@ export async function requestPasswordReset(
 
   const now = new Date();
   const ip = await clientIp();
-  if (isLimited("reset", await attemptCounts(prisma, "reset", email, ip, now))) {
+  if ((await takeAttempt(prisma, "reset", email, ip, now)).limited) {
     return { error: "error_too_many_resets", values };
   }
-  await recordAttempt(prisma, "reset", email, ip, now);
 
   const locale = await getLocale();
   after(async () => {

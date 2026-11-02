@@ -315,11 +315,18 @@ export async function fetchFeed(raw: string, deps: FetchFeedDeps = {}): Promise<
     timeoutMs: deps.timeoutMs ?? FEED_TIMEOUT_MS,
     maxBytes: deps.maxBytes ?? MAX_FEED_BYTES,
   };
+  // One time budget for the whole feed, redirects included: otherwise each
+  // hop would get the full limit again, and a feed answering slow
+  // redirects could hold the daily run (and every workspace after it) for
+  // several times the limit.
+  const deadline = Date.now() + settings.timeoutMs;
   let current = normalizeFeedUrl(raw);
   for (let hop = 0; hop <= MAX_REDIRECTS; hop += 1) {
     const checked = checkFeedUrl(current);
     if ("error" in checked) throw new FeedFetchError(checked.error);
-    const response = await requestOnce(checked.url, settings);
+    const left = deadline - Date.now();
+    if (left <= 0) throw new FeedFetchError("timeout");
+    const response = await requestOnce(checked.url, { ...settings, timeoutMs: left });
     if (response.status >= 300 && response.status < 400) {
       if (!response.location) throw new FeedFetchError("http", response.status);
       // Relative redirects resolve against the current address; the next

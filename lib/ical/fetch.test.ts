@@ -195,6 +195,23 @@ describe("fetchFeed", () => {
     await expect(fetchFeed("https://feeds.example.com/old.ics", relative)).resolves.toBe(ICAL);
   });
 
+  it("times out a feed as a whole, not hop by hop", async () => {
+    // Three slow redirects, each just inside the limit, must not add up to
+    // several times the limit: one feed gets one time budget.
+    const net = fakeNetwork(dns, {
+      "feeds.example.com/a": { status: 302, headers: { location: "/b" } },
+      "feeds.example.com/b": { status: 302, headers: { location: "/c" } },
+      "feeds.example.com/c": { status: 302, headers: { location: "/d" } },
+      "feeds.example.com/d": { status: 200, body: ICAL },
+    });
+    const slow: RequestFn = (options, onResponse) =>
+      net.request(options, (response) => setTimeout(() => onResponse(response), 60));
+    const started = Date.now();
+    const code = await codeOf(fetchFeed("https://feeds.example.com/a", { ...net, request: slow, timeoutMs: 100 }));
+    expect(code).toBe("timeout");
+    expect(Date.now() - started).toBeLessThan(200);
+  });
+
   it("stops after three redirects", async () => {
     const loop = fakeNetwork(dns, {
       "feeds.example.com/a": { status: 302, headers: { location: "/b" } },

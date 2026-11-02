@@ -11,6 +11,7 @@ import { checkFeedUrl } from "@/lib/ical/fetch";
 import { normalizeFeedUrl } from "@/lib/ical/sync";
 import { cityKey, districtKey } from "@/lib/places";
 import { submittedValues } from "@/lib/forms";
+import { listingUrlFor } from "@/lib/listings";
 import {
   assetHoldsNothing,
   createAssetForUnit,
@@ -115,8 +116,8 @@ export async function saveUnit(
     currency: str(formData, "currency") || "GEL",
     amenities,
     channelLinks: {
-      airbnbUrl: str(formData, "airbnbUrl") || null,
-      bookingUrl: str(formData, "bookingUrl") || null,
+      airbnbUrl: listingUrlFor("airbnbUrl", str(formData, "airbnbUrl")),
+      bookingUrl: listingUrlFor("bookingUrl", str(formData, "bookingUrl")),
       icalUrls,
     },
   };

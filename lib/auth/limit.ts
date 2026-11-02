@@ -100,6 +100,35 @@ export async function recordAttempt(
   });
 }
 
+/**
+ * Counts this attempt first, then decides whether it may go on. Recording
+ * before the check (and before the slow password hash) is what keeps the
+ * limit when guesses arrive in parallel: every attempt that is let through
+ * has already been counted, so a burst cannot all read "0 so far" at once.
+ * The attempt's own row is left out of the decision. A successful sign-in
+ * then clears the email's rows (clearAttempts), this one included.
+ */
+export async function takeAttempt(
+  db: AttemptStore,
+  kind: AttemptKind,
+  email: string,
+  ip: string | null,
+  now: Date,
+  /** Leaves the email's own count out (the shared demo's public password). */
+  ignoreEmail = false,
+): Promise<{ limited: boolean }> {
+  await recordAttempt(db, kind, email, ip, now);
+  const counts = await attemptCounts(db, kind, email, ip, now);
+  const others = (count: number | null | undefined) => (count == null ? count : Math.max(0, count - 1));
+  return {
+    limited: isLimited(kind, {
+      email: ignoreEmail ? 0 : others(counts.email)!,
+      ip: others(counts.ip) ?? null,
+      emailIp: ignoreEmail ? null : others(counts.emailIp),
+    }),
+  };
+}
+
 /** After a successful sign-in: forget this email's failures. */
 export async function clearAttempts(db: AttemptStore, kind: AttemptKind, email: string): Promise<void> {
   await db.authAttempt.deleteMany({ where: { kind, email } });

@@ -1,8 +1,12 @@
 // The night-by-night suggestions as a CSV table the owner copies into a
 // channel or a sheet. Pure.
 
+// Text that would start a spreadsheet formula (= + - @) gets a leading
+// apostrophe, as in lib/fleet/csv.ts: a reason written by the AI from a unit
+// name like "=HYPERLINK(…)" is shown, never run.
 const cell = (value: string | number) => {
-  const text = String(value);
+  let text = String(value);
+  if (typeof value === "string" && /^[=+\-@\t\r]/.test(text)) text = `'${text}`;
   return /[",\n;]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 };
 

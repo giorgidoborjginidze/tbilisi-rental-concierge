@@ -11,14 +11,11 @@ export default function AuthForm({
   mode,
   labels,
   invite,
-  inviteEmail,
 }: {
   mode: "login" | "register";
   labels: Record<string, string>;
   /** Team invite token (register mode): joins the inviter's company. */
   invite?: string;
-  /** The email the invite was made for — the only one it works with. */
-  inviteEmail?: string;
 }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     mode === "login" ? login : register,
@@ -103,20 +100,17 @@ export default function AuthForm({
       )}
       <label className="field">
         {labels.operator_email}
-        {inviteEmail ? (
-          <>
-            <input name="email" type="email" value={inviteEmail} readOnly required />
-            <span className="hint">{labels.invite_email_hint}</span>
-          </>
-        ) : (
-          <input
-            name="email"
-            type="email"
-            required
-            autoComplete="email"
-            defaultValue={sent?.email ?? ""}
-          />
-        )}
+        <input
+          name="email"
+          type="email"
+          required
+          autoComplete="email"
+          defaultValue={sent?.email ?? ""}
+        />
+        {/* An invite works only with the email it was made for. The page
+            never prints that email: a forwarded or leaked link alone must
+            not be enough to take the seat. */}
+        {invite && <span className="hint">{labels.invite_email_hint}</span>}
       </label>
       <label className="field">
         {labels.password_label}

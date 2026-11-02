@@ -44,6 +44,8 @@ export async function syncAllUnits(
   fetchText: IcalFetcher = defaultFetcher,
   operatorId?: string,
   now: Date = new Date(),
+  /** Stop starting feeds after this moment (ms since epoch); the rest wait for the next run. */
+  deadline: number = Number.POSITIVE_INFINITY,
 ): Promise<FeedSyncResult[]> {
   const units = await prisma.unit.findMany({
     where: operatorId ? { operatorId } : undefined,
@@ -59,6 +61,9 @@ export async function syncAllUnits(
     });
 
     for (const url of urls) {
+      // Out of time (the cron's budget): unfetched feeds keep their last
+      // status and are pulled on the next run.
+      if (Date.now() > deadline) return results;
       const source = sourceFromUrl(url);
       const result: FeedSyncResult = {
         unitId: unit.id,

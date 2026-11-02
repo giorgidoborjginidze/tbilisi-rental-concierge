@@ -1,7 +1,8 @@
 // Team invites (business plans): the link /register?invite=<token> is for
-// the person it was made for. It works only with the invited email, only
-// once, and only for INVITE_DAYS days — a forwarded or leaked link does not
-// give a stranger a seat on the company's plan. Pure.
+// the person it was made for. It works only with the invited email (which
+// the sign-up page never shows — the person types it), only once, and only
+// for INVITE_DAYS days, so a forwarded or leaked link alone does not give
+// a stranger a seat on the company's plan. Pure.
 
 export const INVITE_DAYS = 7;
 

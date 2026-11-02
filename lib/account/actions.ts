@@ -5,13 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { fileStore } from "@/lib/files/store";
-import {
-  attemptCounts,
-  clearAttempts,
-  clientIpFrom,
-  isLimited,
-  recordAttempt,
-} from "@/lib/auth/limit";
+import { clearAttempts, clientIpFrom, takeAttempt } from "@/lib/auth/limit";
 import { hashPassword, MIN_PASSWORD_LENGTH, verifyPassword } from "@/lib/auth/password";
 import { validEmail } from "@/lib/auth/reset";
 import { destroyOtherSessions, destroySession, requirePerson, requireWriter, type SessionOperator } from "@/lib/auth/session";
@@ -64,7 +58,8 @@ async function confirmPassword(
   const now = new Date();
   const store = await headers();
   const ip = clientIpFrom((name) => store.get(name));
-  if (isLimited("login", await attemptCounts(prisma, "login", operator.email, ip, now))) {
+  // Counted before the check, so parallel guesses are counted too (takeAttempt).
+  if ((await takeAttempt(prisma, "login", operator.email, ip, now)).limited) {
     return "error_too_many_attempts";
   }
   const row = await prisma.operator.findUnique({
@@ -72,7 +67,6 @@ async function confirmPassword(
     select: { passwordHash: true },
   });
   if (!row?.passwordHash || !(await verifyPassword(password, row.passwordHash))) {
-    await recordAttempt(prisma, "login", operator.email, ip, now);
     return "error_password_wrong";
   }
   await clearAttempts(prisma, "login", operator.email);
@@ -136,6 +130,9 @@ export async function changeEmail(_prev: FormState, formData: FormData): Promise
     }
     throw error;
   }
+  // The new address is the new reset channel: like a new password, it
+  // signs every other device out, so a stolen session does not outlive it.
+  await destroyOtherSessions(operator.userId);
   after(() => sendVerificationLink(operator.userId, email, asLocale(operator.locale)).catch(() => undefined));
   revalidatePath("/settings");
   revalidatePath("/", "layout");

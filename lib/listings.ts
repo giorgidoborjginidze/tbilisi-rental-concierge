@@ -24,20 +24,45 @@ export const PLATFORMS: PlatformDef[] = [
   { key: "booking", label: "Booking.com", field: "bookingUrl", hosts: ["booking.com"] },
 ];
 
-/** Detects a listing platform from a URL, or null if unrecognized. */
-export function detectPlatform(url: string): PlatformDef | null {
+/**
+ * The link as a web address: https:// added when no scheme was typed;
+ * null for anything that is not http(s) — a "javascript://myhome.ge/…"
+ * would otherwise pass as a myhome.ge link (its host parses as myhome.ge)
+ * and run when opened.
+ */
+function asWebUrl(url: string): URL | null {
   const raw = url.trim();
   if (!raw) return null;
-  let host: string;
+  const withScheme = /^[a-z][a-z0-9+.-]*:/i.test(raw) && raw.includes("://") ? raw : `https://${raw}`;
   try {
-    host = new URL(raw.includes("://") ? raw : `https://${raw}`).hostname.toLowerCase();
+    const parsed = new URL(withScheme);
+    return parsed.protocol === "https:" || parsed.protocol === "http:" ? parsed : null;
   } catch {
     return null;
   }
-  host = host.replace(/^www\./, "");
+}
+
+/** Detects a listing platform from a URL, or null if unrecognized. */
+export function detectPlatform(url: string): PlatformDef | null {
+  const parsed = asWebUrl(url);
+  if (!parsed) return null;
+  const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
   return (
     PLATFORMS.find((p) =>
       p.hosts.some((h) => host === h || host.endsWith(`.${h}`)),
     ) ?? null
   );
 }
+
+/**
+ * What a listing column may store: the link as a full web address, and only
+ * when it is that column's own platform. Anything else is dropped (null).
+ */
+export function listingUrlFor(field: PlatformDef["field"], url: string | null | undefined): string | null {
+  if (!url) return null;
+  const parsed = asWebUrl(url);
+  return parsed && detectPlatform(url)?.field === field ? parsed.toString() : null;
+}
+
+/** Only a web address may be opened from a stored link (older rows included). */
+export const isWebUrl = (url: string): boolean => /^https?:\/\//i.test(url.trim());

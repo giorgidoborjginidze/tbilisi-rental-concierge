@@ -100,7 +100,7 @@ const DEFAULT_DEPS: RunDeps = {
 /**
  * The function has 300 s (app/api/cron/route.ts). Past this point the
  * remaining workspaces skip their calendar pull (each feed may take up to
- * 15 s) and only get the scan and delivery, so a run with many slow feeds
+ * 15 s, redirects included — lib/ical/fetch.ts) and only get the scan and delivery, so a run with many slow feeds
  * still reaches every workspace's late rent and messages.
  */
 export const SYNC_BUDGET_MS = 150_000;
@@ -158,7 +158,12 @@ export async function runAutomation(
     try {
       // Calendars first, so the scan sees today's bookings — while there is
       // time for them.
-      const feeds = elapsed() > SYNC_BUDGET_MS ? [] : await deps.sync(undefined, id);
+      // Inside a workspace too: its feeds stop being started once the
+      // budget is spent, however many it has.
+      const feeds =
+        elapsed() > SYNC_BUDGET_MS
+          ? []
+          : await deps.sync(undefined, id, undefined, Date.now() + (SYNC_BUDGET_MS - elapsed()));
       summary.feeds += feeds.filter((feed) => !feed.demo).length;
       summary.bookingsCreated += feeds.reduce((sum, feed) => sum + feed.created, 0);
       summary.bookingsUpdated += feeds.reduce((sum, feed) => sum + feed.updated, 0);

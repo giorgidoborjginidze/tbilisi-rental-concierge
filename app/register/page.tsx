@@ -23,8 +23,10 @@ export default async function RegisterPage({
   const { invite: rawInvite } = await searchParams;
   const invite = typeof rawInvite === "string" && rawInvite ? rawInvite : undefined;
   const locale = await getLocale();
-  // An invite shows the email it was made for, read-only: the link works
-  // only with that address. An unknown, used or expired one says so.
+  // An invite works only with the email it was made for, which the person
+  // types themselves: the page never prints it, so a forwarded or leaked
+  // link alone does not take the seat. An unknown, used or expired one
+  // says so.
   const inviteRow = invite
     ? await prisma.invite.findUnique({
         where: { token: invite },
@@ -50,7 +52,6 @@ export default async function RegisterPage({
           mode="register"
           labels={labels}
           invite={invite}
-          inviteEmail={inviteOk ? inviteRow?.email : undefined}
         />
       )}
       <p className="demo-hint" style={{ marginTop: 20 }}>

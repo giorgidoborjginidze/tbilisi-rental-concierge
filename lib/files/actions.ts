@@ -8,7 +8,8 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { logActivity } from "@/lib/activity/log";
 import { requireWriter } from "@/lib/auth/session";
-import { asFileKind, cleanName, MAX_FILE_BYTES, typeOfPath } from "./rules";
+import { asFileKind, cleanName, isOwnStorePath, typeOfPath } from "./rules";
+import { fileStore } from "./store";
 
 const pageOf = (row: { assetId: string | null; unitId: string | null }) =>
   row.assetId ? `/assets/${row.assetId}` : `/units/${row.unitId}/edit`;
@@ -40,8 +41,9 @@ export async function restoreAttachment(formData: FormData): Promise<boolean> {
     return false;
   }
   const pathname = String(snap.pathname ?? "");
-  // Only this account's own files, and only once.
-  if (!pathname.startsWith(`op/${operator.id}/`)) return false;
+  // Only this account's own files (exactly the shape storePath makes, so
+  // no "../" leads out of its folder), and only once.
+  if (!isOwnStorePath(operator.id, pathname)) return false;
   if (await prisma.attachment.count({ where: { pathname } })) return false;
   const assetId = typeof snap.assetId === "string" ? snap.assetId : null;
   const unitId = assetId ? null : typeof snap.unitId === "string" ? snap.unitId : null;
@@ -56,6 +58,12 @@ export async function restoreAttachment(formData: FormData): Promise<boolean> {
   // something that would run as a page (an SVG, HTML).
   const contentType = typeOfPath(pathname);
   if (!contentType) return false;
+  // The size too comes from the stored bytes, not the snapshot: a file put
+  // back as "0 bytes" would no longer count toward the account's quota.
+  // No bytes left (swept, or never there): nothing to put back.
+  const stored = await fileStore()?.get(pathname);
+  if (!stored) return false;
+  await stored.stream.cancel().catch(() => {});
   await prisma.attachment.create({
     data: {
       operatorId: operator.id,
@@ -64,7 +72,7 @@ export async function restoreAttachment(formData: FormData): Promise<boolean> {
       kind: asFileKind(snap.kind, "document"),
       name: cleanName(String(snap.name ?? ""), contentType),
       contentType,
-      size: Math.min(MAX_FILE_BYTES, Math.max(0, Math.round(Number(snap.size) || 0))),
+      size: stored.size,
       pathname,
     },
   });
